@@ -1,12 +1,12 @@
 /* ============================================================================
  * web/nav.js —— 站点顶栏，一处实现，三个页面各自挂载
  * ----------------------------------------------------------------------------
- * 收敛之前：index.html / web/market.html / web/economy.html 各写各的顶栏标记，
+ * 收敛之前：index.html / web/market.html / web/status.html 各写各的顶栏标记，
  * 那份「站点顶栏 · 共用块 v1」的样式也在三处**逐字**各存一份（每份 97 行 CSS）。
  * 于是「三个导航栏不一样」是必然的：改一处忘两处，或者三处抄歪一处。
  *
  * 现在：样式 + 标记 + 行为都在这一个文件里，三页各调一次
- *   MirrorNav.mount({ page: 'simulator' | 'market' | 'economy', ... })
+ *   MirrorNav.mount({ page: 'simulator' | 'market' | 'status', ... })
  *
  * ------------------------------- 页面差异怎么表达 -------------------------------
  * **不复制整块**，只给参数：
@@ -87,7 +87,7 @@
     "   三页并排看就是一条栏高一条栏矮 —— 顶栏里的按钮归顶栏管，不跟正文按钮走。",
     "   只管直接子元素：浮层里的「切换账户 / 断开」还是正文按钮的尺寸。 */",
     "#siteNav .topbtns > button, #siteNav .topbtns > a{height:32px}",
-    "/* 离线单文件里页面切换整条收起（market/economy 那两页不在包里），撑开中间的 flex:1",
+    "/* 离线单文件里页面切换整条收起（market / status 那些页不在包里），撑开中间的 flex:1",
     "   也就跟着没了。收起时把右区顶回右边：两种构建里顶栏都是两端对齐的同一个样子。",
     "   （[hidden] 的元素照样参与选择器匹配，所以这条选得中。） */",
     "#siteNav .pagenav[hidden] + .topbtns{margin-left:auto}",
@@ -230,7 +230,6 @@
   var PAGES = [
     { key: 'simulator', href: '/app.html',     id: 'navSim',     label: '模拟器', brandTag: 'span' },
     { key: 'market',    href: '/market.html',  id: 'navMarket',  label: '市场',   brandTag: 'h1' },
-    { key: 'economy',   href: '/economy.html', id: 'navEconomy', label: '经济',   brandTag: 'span' },
     /* 状态页正文自带 h1（「BNBBANG · 系统状态」），站名用 span —— 口径见文件头。 */
     { key: 'status',    href: '/status.html',  id: 'navStatus',  label: '状态',   brandTag: 'span' }
   ];
@@ -262,21 +261,16 @@
      文案写成静态文本节点（不是 JS 拼的字符串常量）：MirrorI18n 在 DOMContentLoaded
      上遍历 document.body 翻译，mount() 是同步跑在 body 解析途中的，所以这些节点
      那时已经在树上，照样被翻到。 */
-  /* 站点标识（specs/btcbang-v1.md §三）：'btc' = BTCBANG（bang.satloot.com），品牌名换成「比特宇宙」；
-     其余一律 'bnb'，品牌名「镜像宇宙」一个字不变。
-     **每次现读，不在文件顶层捕获**：市场 / 经济 / 文档页里 nav.js 排在 config.js 之前，顶层读到的永远是空。
-     两个来源按序：window.BNBBANG_SITE（build-web.js --site btc 在每页 <head> 里打的一行，
+  /* 站点标识（specs/arcbang-v1.md）：'arc' = ARCBANG，品牌名「ARC宇宙」。
+     **每次现读，不在文件顶层捕获**：市场 / 文档页里 nav.js 排在 config.js 之前，顶层读到的永远是空。
+     两个来源按序：window.BNBBANG_SITE（build-web.js 在每页 <head> 里打的一行，
      mount 时一定已经在）→ BNBBANG_CONFIG.site（config.js 先于 nav.js 的页面，或 mount 之后的补正）。 */
   function siteOf() {
     var c = root.BNBBANG_CONFIG || {};
-    return String(root.BNBBANG_SITE || c.site || 'bnb');
+    return String(root.BNBBANG_SITE || c.site || '');
   }
-  /* arc = ARCBANG（specs/arcbang-v1.md），品牌名「ARC宇宙」；btc = 比特宇宙；其余照旧。 */
   function brandName() {
-    var s = siteOf();
-    if (s === 'btc') return '比特宇宙';
-    if (s === 'arc') return 'ARC宇宙';
-    return '镜像宇宙';
+    return siteOf() === 'arc' ? 'ARC宇宙' : '镜像宇宙';
   }
 
   function html(o, pg) {
@@ -295,9 +289,6 @@
     s += '<nav class="pagenav" id="pageNav" aria-label="站点页面">';
     for (var i = 0; i < PAGES.length; i++) {
       var p = PAGES[i], cur = (p.key === pg.key);
-      /* ARCBANG 没有代币，整页经济学也就不存在（specs/arcbang-v1.md）——
-         页签必须跟着消失：留一个指向 404 的链接比少一个页签糟得多。 */
-      if (p.key === 'economy' && siteOf() === 'arc') continue;
       s += '<a class="pagelink" id="' + p.id + '" href="' + p.href + '"'
          + (cur ? ' aria-current="page"' : '') + '>' + p.label + '</a>';
     }

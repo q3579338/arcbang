@@ -39,10 +39,6 @@
   function seen() { return get(KEY) === '1'; }
   function markSeen() { set(KEY, '1'); }
   function forget() { del(KEY); }
-  function site() {
-    var c = root.BNBBANG_CONFIG;
-    return (c && c.site) || root.BNBBANG_SITE || 'bnb';
-  }
   // prefers-reduced-motion 由上面 CSS 里那条 @media 管：挖洞不做位移动画，直接跳过去
   function forced() {
     try { return /[?&]tour=1\b/.test(root.location.search || ''); } catch (e) { return false; }
@@ -73,17 +69,12 @@
   /* ---------------------------------------------------------- 步骤
      sel 可以是选择器、选择器数组，或一个自己挑元素的函数；返回 null = 这一步现在不适用。
      adv:'click' = 目标本身被点了就进下一步；'next' = 只能按「下一步」；'input' = 拖动它也算。 */
-  function SANDBOX() { return site() === 'arc' ? '调参沙盒' : '干预沙盒'; }
+  function SANDBOX() { return '调参沙盒'; }
   function STEPS() {
-    var s = site();
     return [
       {
         id: 'give', sel: '#bnbGive', adv: 'click',
-        body: s === 'btc'
-          ? '先拿一个宇宙。比特币的一个区块哈希，就是一套完整的物理定律。'
-          : s === 'arc'
-            ? '先拿一个宇宙。Arc 链的一个区块哈希，就是一套完整的物理定律。'
-            : '先拿一个宇宙。BNB 链的一个区块哈希，就是一套完整的物理定律。'
+        body: '先拿一个宇宙。Arc 链的一个区块哈希，就是一套完整的物理定律。'
       },
       {
         id: 'card', sel: '#bnbCard', adv: 'next', pad: 6,
@@ -114,9 +105,7 @@
       },
       {
         id: 'done', sel: null, adv: 'next',
-        body: s === 'arc'
-          ? '就这些。不喜欢这个结局就换一个区块再炸一次；想自己拧参数，' + SANDBOX() + '随便玩，不花钱也不上链。'
-          : '就这些。喜欢这个宇宙就把它铸成 NFT 收着；想自己拧参数，' + SANDBOX() + '随便玩，不花钱也不上链。'
+        body: '就这些。不喜欢这个结局就换一个区块再炸一次；想自己拧参数，' + SANDBOX() + '随便玩，不花钱也不上链。'
       }
     ];
   }

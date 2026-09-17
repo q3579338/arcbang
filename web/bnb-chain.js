@@ -286,10 +286,6 @@
   function usedFree(addr) {
     return call('usedFree(address)', encAddress(addr)).then(function (r) { return decUint(r) === 1n; });
   }
-  /** 每枚铸造发多少 BANG（v5 五档同额，链上现值 600e18）。 */
-  function rewardPerMint() {
-    return call('rewardPerMint()', '').then(function (r) { return decUint(r); });
-  }
   /** eth_call 的失败分两种，下面的 freeStatus 必须分开对待：
       revert / 空返回数据 = 「这版字节码没有这个方法」；网络/节点失败 = 「这次没读到」。
       rpc() 给前一种打了 er.rpc 标（带 rpcData）；空数据在 callUint 里打 emptyData 标
@@ -586,7 +582,6 @@
     totalSupply: totalSupply,
     freeLeft: freeLeft,
     usedFree: usedFree,
-    rewardPerMint: rewardPerMint,
     freeStatus: freeStatus,
     mintValueFor: mintValueFor,
     ownerOf: ownerOf,

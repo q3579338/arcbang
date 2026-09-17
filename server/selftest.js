@@ -2044,7 +2044,11 @@ function call(method, url, body, headers) {
         && src.indexOf("root.ethereum.on('accountsChanged'") < 0);
       ok('免费次数行是「已用 X / Y 次免费」的语义', src.indexOf('已用 {0} / {1} 次免费') >= 0
         && src.indexOf('免费次数：{0} / {1}') < 0);
-      ok('BANG 数额不再借 fmtBNB（走 bangAmt）', src.indexOf('bangAmt(W.reward)') >= 0);
+      /* ARCBANG 没有代币：面板里一个 BANG 数额都不许出现，也不许去问合约的 rewardPerMint
+         （ArcUniverse 上没有这个方法，读了必 revert）。 */
+      ok('铸造按钮只标价、不提代币奖励', src.indexOf('rewardPerMint') < 0
+        && src.indexOf('bangAmt(') < 0
+        && src.indexOf("TX('{0} {1} 铸造', C.fmtBNB(W.price), chainCur())") >= 0);
 
       const srcI = readWeb('intervene.js');
       ok('报价失败不永久钉死（记时间戳冷却重试，不写 quote=null）',

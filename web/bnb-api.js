@@ -179,32 +179,6 @@
       });
     },
 
-    /* ---- BTCBANG（specs/btcbang-v1.md §四 / §五）：比特币主网区块当奇点 ----
-       取块与元数据在 web/btc-source.js（MirrorBtcSource）里也有一份带缓存的封装，
-       这里的三个是**裸端点**：给不想要缓存的调用方（自检、状态页）用。 */
-    /** GET /api/btc/tip → {height, hash, time, confirmationsRequired, updatedAt} */
-    btcTip: function () { return req('/btc/tip'); },
-    /** GET /api/btc/block/<高度|哈希> → {height, hash, time, confirmations, mintable, reason, zeros, badges, reserved, openAt}
-        高度 > tip → 404（e.tip = 当前高度）；哈希不是主网块 → 404；上游全挂 → 503 */
-    btcBlock: function (x) { return req('/btc/block/' + encodeURIComponent(String(x == null ? '' : x).trim())); },
-    /** 真引爆（比特币区块）：POST /api/btc/bang {height, minter, ref}。
-        **只交高度不交哈希**：服务端自己去上游核对哈希（不信客户端），校验确认数与保留名单后签名。
-        响应与 bang() 同形（card / cardHash / deadline / sig / signer / rarity / art），
-        多一个 btc:{height, hash, time, badges, zeros}。extra 的口径与 bang() 完全相同。 */
-    btcBang: function (height, extra) {
-      var body = { height: Number(height) };
-      if (extra) for (var k in extra) {
-        if (!extra.hasOwnProperty(k) || extra[k] == null) continue;
-        if (k === 'minter') putMinter(body, extra[k]);
-        else body[k] = extra[k];
-      }
-      return req('/btc/bang', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-    },
-
     /** NFT 图的地址。图也在服务端出，浏览器不画 */
     artUrl: function (hash, withParams) {
       return BASE + withVer('/art/' + String(hash).toLowerCase() + '.svg' + (withParams ? '?p=1' : ''));
