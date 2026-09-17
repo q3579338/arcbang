@@ -34,8 +34,6 @@
     '每个 Arc 区块哈希，都是一个宇宙': 'Every Arc block hash is a universe',
     '引爆它。哈希里读出 23 个常数：引力多强、光速多快、空间有几个维度。引擎按这套常数把宇宙从第一秒算到热寂，看它长不长得出恒星、行星、生命。':
       'Detonate it. The hash gives you 23 constants: how strong gravity is, how fast light travels, how many dimensions space has. The engine takes them and runs the universe from its first second to heat death, to see whether it grows stars, planets, life.',
-    '九成以上的宇宙第一秒就废了：没有稳定轨道，物质飞散或者坠核。大约二十个区块里有一个能一路长到生命。喜欢哪个就把它铸成 NFT，一个哈希只能铸一枚。':
-      'More than nine in ten universes are finished inside their first second: no stable orbit, matter either flying apart or falling into the core. About one block in twenty makes it all the way to life. Mint the one you like as an NFT — a hash can only be minted once.',
     /* {0} = config.arc.js 的 chain 块给的链名（中文态 name、英文态 nameEn）。
        **整句进词典**：英文语序和中文对不上，在外面拼 T('当前在') + 链名 会拼错。 */
     '当前在 {0} · 前 387 枚每地址免费 1 次，之后 1 USDC、每地址最多 3 枚':
@@ -68,9 +66,9 @@
     /* 「个人中心」这一句被切成三段：中间那段是页内链接的文字，它的词条在
        i18n-market.js 的全局导航段里（'个人中心' → 'Profile'），**这里不重收** ——
        重收一次就是两处维护同一句话，而且值不一样时控制台会喊「全局词条被改写」。 */
-    '这是一个钱包地址。星图还没上线，先连上钱包，在':
-      'That is a wallet address. The sky map is not live yet — connect your wallet and open',
-    '里能看到你名下的宇宙。': 'to see the universes you hold.',
+    '这是一个钱包地址，不是区块。要看某个地址名下的宇宙，去':
+      'That is a wallet address, not a block. To see the universes an address holds, open',
+    '。': '.',
     '认不出来：给一个区块高度、一个 0x 开头的 64 位区块哈希，或者一个钱包地址。':
       'Not recognised: give a block height, a 0x block hash (64 hex chars), or a wallet address.',
 

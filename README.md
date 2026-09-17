@@ -23,7 +23,12 @@ byte-identical universe on every machine. That is the whole point: you never hav
 
 ```bash
 node tools/recompute.js 0x<block hash>     # rebuild that universe from the hash alone, zero dependencies
+node tools/verify-onchain.js <tokenId>     # read that NFT back from Arc (two eth_calls) and diff outcome / rarity / cardHash, zero dependencies
 ```
+
+`verify-onchain.js` takes the contract address and RPC from `web/config.arc.js` (override with `--contract` / `--rpc`
+or `ARCBANG_CONTRACT` / `ARCBANG_RPC`); add `--block` to also check the stored hash against the block at that height.
+Until `ArcUniverse` is deployed the address is empty and the command says so and exits 0.
 
 **There is no token.** No BANG, no mint rewards, no referral payouts, no naming, no crafting. The only
 things on chain are the NFT (`ArcUniverse`) and an optional marketplace (`ArcMarket`).
@@ -68,6 +73,7 @@ it runs. `web/dist-arc/` is the site: same simulator plus block fetching, wallet
 node engine/test.js               # engine derivation + evolution        313 checks
 node engine/planet.test.js        # planet / surface generation          152 checks
 node tools/recompute.test.js      # the standalone recompute tool agrees with the server's card builder
+node tools/verify-onchain.test.js # selector + struct decoding + end-to-end diff against a fake node (offline)
 node tools/check-dist.js          # build artefacts
 
 cd contracts && npm i
@@ -95,6 +101,7 @@ Last full run of this tree (2026-09-17, Node 24, Windows):
 | `node engine/test.js` | **313 passed, 0 failed** |
 | `node engine/planet.test.js` | **152 passed, 0 failed** |
 | `node tools/recompute.test.js` | **10 passed, 0 failed** |
+| `node tools/verify-onchain.test.js` | **41 passed, 0 failed** |
 | `contracts` · `node tools/arctest.js` | **47 passed, 0 failed** (ArcUniverse, 18,407 B runtime) |
 | `contracts` · `node tools/arcmarket-test.js` | **98 passed, 0 failed** (ArcMarket, 5,846 B runtime) |
 

@@ -495,7 +495,8 @@
     '未保存': 'Unsaved',
     '观测 2 维世界（示意）': 'Observe a 2-D world (schematic)',
     '轨道投影演示': 'Orbit-projection demo',
-    '　依据：': '　source: ',
+    /* 同 i18n-mirror：分隔符换成中点，英文里不留全角空格。 */
+    '　依据：': ' · source: ',
     ' · 本约定中固定': ' · fixed in this convention',
     '（引擎未提供有量纲常数）': '(the engine provided no dimensionful constants)',
     '有量纲常数': 'Dimensionful constants',

@@ -1374,7 +1374,7 @@
       if (!rows || !rows.length) return '';
       var body = rows.map(function (r) {
         /* 名称/单位/basis 是固定词（走词典），值与说明里嵌着数字（走模板）。 */
-        return '<tr><td>' + esc(TR(r.name)) + (r.symbol && r.symbol !== '—' ? ' <span class="mb-dim">' + esc(r.symbol) + '</span>' : '')
+        return '<tr><td>' + esc(TR(r.name)) + (r.symbol && r.symbol !== '—' ? ' <span class="mb-dim">' + esc(TR(r.symbol)) + '</span>' : '')
           + '</td><td>' + esc(TX(String(r.value))) + '</td><td class="mb-dim">' + esc(TR(r.unit || '')) + '</td>'
           + '<td><span class="mb-bas ' + esc(r.basis) + '">' + esc(TR(r.basisLabel)) + '</span></td></tr>'
           + '<tr class="src"><td colspan="4">' + esc(TX(r.desc || '')) + (r.ref ? TR('　依据：') + esc(TX(r.ref)) : '') + '</td></tr>';

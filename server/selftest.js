@@ -2458,7 +2458,58 @@ function call(method, url, body, headers) {
       html.indexOf('class="btn" href="/app.html?bang=8642956&amp;ref=K7M2X9QP">Open in the simulator</a>') > 0);
     ok('上一块 / 下一块 / 回首页三条链接',
       html.indexOf('href="/s/8642955"') > 0 && html.indexOf('href="/s/8642957"') > 0
-      && html.indexOf('Back to bnbbang.com') > 0);
+      /* 「Back to」读的是 o.base（landing.js），自测里的 base 是 BNBBANG_PUBLIC_BASE，不是 bnbbang.com */
+      && html.indexOf('Back to ' + BASE.replace(/^https?:\/\//, '') + '<') > 0);
+    {
+      /* 站名 / 链名可配（BNBBANG_BRAND / BNBBANG_CHAIN_WORD）：三站共用这一份代码，
+         ARCBANG 那个实例从前渲出来自称 BNBBANG、把 Arc 区块叫 BNB block。
+         直接调 landingHTML，三种 base 各渲一遍；不配变量时 bnb / btc 两站必须逐字节不变。 */
+      const savedBrand = process.env.BNBBANG_BRAND, savedWord = process.env.BNBBANG_CHAIN_WORD;
+      const mk = (base, extra) => LANDING.landingHTML(Object.assign({
+        blockNumber: NUM, hash: H[0], card: rc, mint: { minted: null }, indexable: false,
+        appUrl: '/app.html?bang=' + NUM, canonical: base + '/s/' + NUM,
+        ogImage: base + '/api/art/' + H[0] + '.png?og=1', cardImage: base + '/api/art/' + H[0] + '.png?p=1', base
+      }, extra || {}));
+      const btcX = { origin: 'btc', btc: { height: NUM, time: null, badges: [], zeros: null, base: 'https://bang.satloot.com' } };
+      const ldOf = (h) => { try { return JSON.parse(h.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]); } catch (e) { return null; } };
+      const four = (h, brand) => h.indexOf('<a class="wm" href="/">' + brand + '</a>') > 0
+        && h.indexOf(' | ' + brand + '</title>') > 0
+        && h.indexOf('og:site_name" content="' + brand + '"') > 0
+        && !!ldOf(h) && ldOf(h).creator.name === brand;
+
+      delete process.env.BNBBANG_BRAND; delete process.env.BNBBANG_CHAIN_WORD;
+      const bnb0 = mk('https://bnbbang.com'), btc0 = mk('https://bang.satloot.com', btcX);
+      ok('不配 BNBBANG_BRAND / BNBBANG_CHAIN_WORD：bnb 站四处站名 BNBBANG、链名 BNB；btc 站 BTCBANG / Bitcoin',
+        four(bnb0, 'BNBBANG') && bnb0.indexOf('<h1>Universe from BNB block #8,642,956</h1>') > 0
+        && bnb0.indexOf('<th>BNB block</th>') > 0 && bnb0.indexOf('Every BNB block hash') > 0
+        && four(btc0, 'BTCBANG') && btc0.indexOf('<h1>Universe from Bitcoin block #8,642,956</h1>') > 0);
+
+      process.env.BNBBANG_BRAND = 'ARCBANG'; process.env.BNBBANG_CHAIN_WORD = 'Arc';
+      const arc1 = mk('https://arcbang.xyz'), btc1 = mk('https://bang.satloot.com', btcX);
+      ok('配成 ARCBANG / Arc：watermark、<title> 后缀、og:site_name、ld+json creator.name 全是 ARCBANG，creator.url 是 arcbang.xyz',
+        four(arc1, 'ARCBANG') && ldOf(arc1).creator.url === 'https://arcbang.xyz/'
+        && arc1.indexOf('Back to arcbang.xyz') > 0);
+      ok('配成 ARCBANG / Arc：H1 / og:title / 描述 / 常数表写 Arc block，整页不剩 BNBBANG 也不剩 BNB block',
+        arc1.indexOf('<h1>Universe from Arc block #8,642,956</h1>') > 0
+        && arc1.indexOf('og:title" content="Universe from Arc block #8,642,956') > 0
+        && arc1.indexOf('Every Arc block hash is a set of physical laws') > 0
+        && arc1.indexOf('<th>Arc block</th>') > 0
+        && arc1.indexOf('BNBBANG') < 0 && arc1.indexOf('BNB block') < 0 && arc1.indexOf('bnbbang.com') < 0,
+        (arc1.match(/BNB[A-Z]*|bnbbang\.com/g) || []).join(','));
+      ok('比特币宇宙变体不跟这两个变量走：配了也逐字节不变', btc1 === btc0);
+
+      process.env.BNBBANG_BRAND = '  '; process.env.BNBBANG_CHAIN_WORD = '';
+      ok('变量配成空串 / 空白 = 没配：bnb 站逐字节不变', mk('https://bnbbang.com') === bnb0);
+      process.env.BNBBANG_BRAND = '<b>&"'; process.env.BNBBANG_CHAIN_WORD = '<i>';
+      {
+        const hx = mk('https://arcbang.xyz');
+        ok('站名 / 链名里的 < > & " 全部转义（env 写错不至于破页）',
+          hx.indexOf('<b>') < 0 && hx.indexOf('<i>') < 0 && hx.indexOf('&lt;b&gt;&amp;&quot;') > 0
+          && !!ldOf(hx) && ldOf(hx).creator.name === '<b>&"');
+      }
+      if (savedBrand === undefined) delete process.env.BNBBANG_BRAND; else process.env.BNBBANG_BRAND = savedBrand;
+      if (savedWord === undefined) delete process.env.BNBBANG_CHAIN_WORD; else process.env.BNBBANG_CHAIN_WORD = savedWord;
+    }
     ok('十二个结局各有一段解释，本页那段在正文里',
       LANDING.OUTCOME_EXPLAIN.length === 12
       && LANDING.OUTCOME_EXPLAIN.every((t) => typeof t === 'string' && t.length > 120)
@@ -3101,7 +3152,7 @@ function call(method, url, body, headers) {
         sA.status === 200 && sA.body === sC.body && sC.body === sD.body
         && String(sC.body).indexOf('<h1>Universe from BNB block #8,642,956</h1>') > 0 && String(sC.body).indexOf('| BNBBANG</title>') > 0
         && String(sC.body).indexOf('Bitcoin') < 0 && String(sC.body).indexOf('bang.satloot.com') < 0
-        && String(sC.body).indexOf('Back to bnbbang.com') > 0 && String(sC.body).indexOf('<th>BNB block</th>') > 0);
+        && String(sC.body).indexOf('Back to ' + process.env.BNBBANG_PUBLIC_BASE.replace(/^https?:\/\//, '') + '<') > 0 && String(sC.body).indexOf('<th>BNB block</th>') > 0);
       ok('bnbbang.com 上的 /s/840000 仍按 BNB 区块解释（桩里没有这个高度 → 302）',
         (await call('GET', '/s/840000', null, hostB(10, 'bnbbang.com'))).status === 302);
       const sH = await call('GET', '/s/' + HX(709632), null, ipB(10));

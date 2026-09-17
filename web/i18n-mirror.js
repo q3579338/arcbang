@@ -491,7 +491,8 @@
     '值': 'Value',
     '单位': 'Unit',
     '报告': 'Report',
-    '　依据：': '　basis: ',
+    /* 「　依据：」的分隔用的是全角空格；英文里没有这个字符，改成全站通行的中点。 */
+    '　依据：': ' · basis: ',
     '已经形成': 'already formed',
     '尚未形成': 'not formed yet',
     '尚未形成——只有正在坍缩的气体': 'not formed yet — only collapsing gas',
@@ -1627,6 +1628,8 @@
     '潮汐锁定时标': 'Tidal-locking timescale',
     '日长（太阳日）': 'Day length (solar day)',
     '季节幅度（45° 纬度）': 'Seasonal amplitude (45° latitude)',
+    /* 派生量表里的符号列：只有这一个符号带汉字（下标是「季」＝季节） */
+    'ΔT_季': 'ΔT_seas',
     '常压下可能的液态溶剂': 'Liquid solvents possible at 1 bar',
     '放射性地表热流': 'Radiogenic surface heat flux',
     '地质活动指数': 'Geological activity index',
@@ -1730,6 +1733,10 @@
       'Gladman et al. 1996, Icarus 122, 166; Peale 1969 (spin–orbit resonance)',
     'Nutman et al. 2016（37 亿年叠层石）；Knoll 2015；Carter 1983（时间尺度论证）':
       'Nutman et al. 2016 (3.7-Gyr stromatolites); Knoll 2015; Carter 1983 (the timescale argument)',
+    /* 书名号：英文书名用斜体或直排即可，这里保持纯文本 */
+    'Catling & Kasting 2017《Atmospheric Evolution on Inhabited and Lifeless Worlds》§5':
+      'Catling & Kasting 2017, Atmospheric Evolution on Inhabited and Lifeless Worlds, §5',
+    'Turcotte & Schubert《Geodynamics》': 'Turcotte & Schubert, Geodynamics',
     /* 输入参数的说明行（SCHEMA.desc）。引擎按句号拼，tx() 也按句号拆，所以这里一句一条。 */
     '决定表面重力、逃逸速度、大气保留、内部热与最大质量判据。':
       'Sets surface gravity, escape velocity, atmospheric retention, internal heat and the maximum-mass criterion.',

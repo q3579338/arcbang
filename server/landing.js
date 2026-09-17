@@ -26,6 +26,16 @@ const ALPHA_INV_0 = 137.035999084;
    分享页是服务端渲染的，站点包里的改写表（web/arc-patch.js）够不到这里。 */
 const REPO_URL = process.env.BNBBANG_REPO_URL || 'https://github.com/q3579338/arcbang/tree/main/engine';
 
+/* 站名与链名，同一个道理。站名出现在 watermark、<title> 后缀、og:site_name、ld+json 的 creator.name；
+   链名出现在 H1「Universe from BNB block #n」、描述「Every BNB block hash…」、常数表「BNB block」那一行。
+   从前两样都按 isBtc 二选一写死 —— ARCBANG 那个实例（arcbang.xyz）渲出来就自称 BNBBANG、
+   把 Arc 的区块叫 BNB block。
+   只管**非 btc** 那一支：比特币宇宙的变体按 Host / 注册表判，和 bnb 共用同一个进程，
+   站名 BTCBANG / 链名 Bitcoin 不跟 env 走。不配这两个变量时输出逐字节不变。
+   在调用时读（不在模块加载时读）：selftest 要在同一个进程里换着 env 验三种站。 */
+const brandOf = () => String(process.env.BNBBANG_BRAND || '').trim() || 'BNBBANG';
+const chainWordOf = () => String(process.env.BNBBANG_CHAIN_WORD || '').trim() || 'BNB';
+
 /**
  * 十二个结局各一段物理解释（按 card.outcome.index 索引，顺序与合约 outcomeName() 一致）。
  * 逐条对着 engine/engine.js OUTCOMES 的 visual 写，不加戏。
@@ -90,8 +100,8 @@ const shortAddr = a => (a && /^0x[0-9a-fA-F]{40}$/.test(a)) ? a.slice(0, 6) + '�
 function landingHTML(o) {
   const card = o.card || null;
   const isBtc = o.origin === 'btc';
-  const chainWord = isBtc ? 'Bitcoin' : 'BNB';
-  const brand = isBtc ? 'BTCBANG' : 'BNBBANG';
+  const chainWord = isBtc ? 'Bitcoin' : chainWordOf();
+  const brand = isBtc ? 'BTCBANG' : brandOf();
   const bt = (isBtc && o.btc) || {};
   const N = Number.isSafeInteger(o.blockNumber) ? o.blockNumber : null;
   /* 标题 / 表格里用的高度：比特币宇宙的哈希链接也知道高度（注册表里有），照印；
@@ -157,7 +167,7 @@ function landingHTML(o) {
 
   const rows = [];
   const row = (k, v, r) => rows.push('<tr><th>' + k + '</th><td class="n">' + v + '</td><td class="r">' + (r || '') + '</td></tr>');
-  if (BN != null) row(chainWord + ' block', numTxt);
+  if (BN != null) row(esc(chainWord) + ' block', numTxt);
   if (o.hash) {
     /* 比特币宇宙：哈希旁边给一条去 mempool.space 复核的链接（§1.1「谁都能复核」）。BNB 那行不动。 */
     row('Block hash', '<code>' + esc(o.hash) + '</code>', isBtc
@@ -276,7 +286,7 @@ function landingHTML(o) {
     + 'small{color:#6f7f9c;font-size:12px}'
     + '@media (max-width:480px){td.r{white-space:normal}.v{font-size:19px}}'
     + '</style></head><body><main>'
-    + '<a class="wm" href="/">' + brand + '</a>'
+    + '<a class="wm" href="/">' + esc(brand) + '</a>'
     + '<h1>' + esc(subject) + '</h1>'
     + verdict
     + '<img src="' + esc(o.cardImage) + '" alt="' + esc(ogTitle) + '" width="1200" height="1200" loading="lazy">'

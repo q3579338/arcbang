@@ -501,7 +501,21 @@
     seg.addEventListener('click', function (ev) {
       var b = ev.target.closest ? ev.target.closest('.segbtn') : null;
       if (!b) return;
-      root.MirrorI18n.set(b.getAttribute('data-lang'));
+      var lang = b.getAttribute('data-lang');
+      /* ARCBANG 的三个说明页是各写一份的静态正文（中文在根、英文在 /en/），词典翻不动它们：
+         开关直接跳到 <link rel=alternate hreflang> 指的那一份（09-17 用户把页脚的语言链接删了，只留这一个开关）。 */
+      if (siteOf() === 'arc' && /\/(faq|how-it-works|verify)\.html$/.test(location.pathname)) {
+        var alt = document.querySelector('link[rel="alternate"][hreflang="' + (lang === 'en' ? 'en' : 'zh-CN') + '"]');
+        /* hreflang 里是构建时写死的正式域名；本地预览与镜像域名也要能跳，所以只取路径、换成当前 origin */
+        var to = null;
+        try { to = alt ? new URL(alt.getAttribute('href'), location.href).pathname : null; } catch (e) { to = null; }
+        if (to && to !== location.pathname) {
+          root.MirrorI18n.set(lang);
+          location.href = location.origin + to;
+          return;
+        }
+      }
+      root.MirrorI18n.set(lang);
       syncLangSeg();                 // set() 只在真换了语言时派事件，这里无条件对一次
     });
     syncLangSeg();
