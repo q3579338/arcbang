@@ -3279,7 +3279,11 @@ function call(method, url, body, headers) {
       I.CFG.universe = savedUni; I.setMeta(savedMeta); I.setState(savedState);
     }
 
-    {
+    /* 这份样例只在单体仓库里有：导出成独立仓库的 ARCBANG（tools/export-arcbang.js）故意不带它。
+       文件不在就跳过这一条，不能让整份自测在这里 ENOENT 崩掉。 */
+    if (!fs.existsSync(path.join(__dirname, 'api.env.mainnet.example'))) {
+      console.log('  ○ 跳过：api.env.mainnet.example 不在这个仓库里（ARCBANG 导出树不带 BNB 主网样例）');
+    } else {
       const ex = fs.readFileSync(path.join(__dirname, 'api.env.mainnet.example'), 'utf8');
       ok('api.env.mainnet.example 列出六个 BNBBANG_BTC_* 变量',
         ['BNBBANG_BTC_API', 'BNBBANG_BTC_HOSTS', 'BNBBANG_BTC_PUBLIC_BASE', 'BNBBANG_BTC_CONFIRMATIONS', 'BNBBANG_BTC_RESERVED', 'BNBBANG_BTC_OPEN_AT']
