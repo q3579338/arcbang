@@ -1,0 +1,12 @@
+{
+  "name": "mirror-universe",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "node build.js && node tools/check-dist.js"
+  },
+  "devDependencies": {
+    "terser": "^5.50.0"
+  }
+}

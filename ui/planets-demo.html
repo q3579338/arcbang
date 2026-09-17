@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>星球探索模块 · 演示</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #ddd; font: 13px/1.5 "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; overflow: hidden; }
+  #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #panel { position: absolute; top: 10px; right: 10px; width: 300px; max-height: calc(100% - 20px); overflow: auto; background: rgba(8,8,10,0.78); border: 1px solid #333; border-radius: 6px; padding: 10px 12px; box-sizing: border-box; backdrop-filter: blur(4px); }
+  #panel h1 { font-size: 14px; margin: 0 0 8px; color: #fff; font-weight: 600; }
+  #panel h2 { font-size: 12px; margin: 10px 0 4px; color: #9ab; font-weight: 600; letter-spacing: 1px; }
+  .row { display: flex; gap: 6px; align-items: center; margin: 4px 0; flex-wrap: wrap; }
+  button, select, input[type=text], input[type=number] { background: #1a1c22; color: #ddd; border: 1px solid #444; border-radius: 4px; padding: 3px 8px; font: inherit; }
+  button:hover { background: #2a2d36; cursor: pointer; }
+  button.on { background: #2f4f7f; border-color: #5b8ad0; color: #fff; }
+  input[type=range] { width: 100%; }
+  #planets button { display: block; width: 100%; text-align: left; margin: 2px 0; }
+  #planets .life { color: #bde5b8; }
+  #desc { color: #bbb; font-size: 12px; margin: 4px 0; min-height: 3em; }
+  #status { color: #8ab; font-size: 11px; white-space: pre-wrap; }
+  #log { font-size: 11px; color: #777; max-height: 90px; overflow: auto; border-top: 1px solid #333; margin-top: 6px; padding-top: 4px; }
+  #time { position: absolute; left: 12px; right: 330px; bottom: 56px; }
+  #time input { width: 100%; }
+  #time .lab { display: flex; justify-content: space-between; color: #aaa; font-size: 11px; }
+  #ocean { position: absolute; left: 12px; top: 12px; width: 360px; height: 200px; border: 1px solid #333; display: none; background: #000; }
+  kbd { background: #222; border: 1px solid #444; border-radius: 3px; padding: 0 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<canvas id="ocean" width="720" height="400"></canvas>
+<div id="time">
+  <div class="lab"><span id="tlab">时间</span><span id="tera"></span></div>
+  <input id="tslider" type="range" min="0" max="1000" value="1000" step="0.1">
+  <div class="row" id="presets"></div>
+</div>
+<div id="panel">
+  <h1>星球探索模块 · 演示 <span id="ver" style="color:#666;font-weight:400"></span></h1>
+  <div class="row">
+    <label>seed <input id="seed" type="number" value="1207" style="width:90px"></label>
+    <label><input id="ours" type="checkbox" checked> #1207 我们的宇宙</label>
+    <label>维数 D <select id="dim"><option value="3" selected>3</option><option value="2">2（二维镜像）</option><option value="2.5">2.5（分数维·轨道演示）</option><option value="3.7">3.7（分数维·轨道演示）</option><option value="4">4（轨道演示）</option><option value="6">6（轨道演示）</option></select></label>
+  </div>
+  <div class="row">
+    <button id="gen">生成恒星系</button>
+    <button id="rand">随机参观下一个星球</button>
+    <button id="oceanBtn">大洋世界</button>
+    <button id="tbBtn">经典三体演示</button>
+    <button id="acBtn">定位南门二</button>
+  </div>
+  <h2>视图</h2>
+  <div class="row">
+    <button id="bSys">恒星系</button>
+    <button id="bGlobe">星球</button>
+    <button id="bLand">降落（1 万米）</button>
+    <button id="bUp">返回上一级</button>
+  </div>
+  <div class="row">
+    <label>降落点 纬 <input id="lat" type="number" value="31.2" step="0.1" style="width:60px"></label>
+    <label>经 <input id="lon" type="number" value="121.5" step="0.1" style="width:60px"></label>
+    <label>高度 m <input id="alt" type="number" value="10000" style="width:80px"></label>
+  </div>
+  <div class="row">
+    <button data-alt="120000">120 km</button><button data-alt="10000">1 万米</button><button data-alt="1000">1000 m</button><button data-alt="40">40 m（地表）</button><button data-alt="-20">入海 -20 m</button>
+  </div>
+  <h2>行星</h2>
+  <div id="planets"></div>
+  <div id="desc"></div>
+  <h2>状态</h2>
+  <div id="status"></div>
+  <div style="color:#666;font-size:11px;margin-top:6px">操作：拖动旋转 · 滚轮缩放/高度 · 单击选中 · 双击进入/下潜 · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 平移 · <kbd>←</kbd><kbd>→</kbd> 转向 · <kbd>R</kbd><kbd>F</kbd> 升降 · <kbd>Shift</kbd> 加速 · <kbd>Esc</kbd> 返回（先点击画布获取焦点）</div>
+  <div id="log"></div>
+</div>
+<script src="citydata.js"></script>
+<script src="planets.js"></script>
+<script>
+(function () {
+  var P = window.MirrorPlanets, canvas = document.getElementById('c');
+  document.getElementById('ver').textContent = 'v' + P.version;
+  var q = new URLSearchParams(location.search); var view = P.createView(canvas, { hud: true, forceCanvas2D: q.get('canvas2d') === '1', glAttrs: q.get('preserve') === '1' ? { preserveDrawingBuffer: true } : null });
+  var system = null, planet = null, uni = { isOurs: true, id: 1207 };
+  var $ = function (id) { return document.getElementById(id); };
+  var logEl = $('log');
+  function log(s) { var d = document.createElement('div'); d.textContent = s; logEl.prepend(d); while (logEl.children.length > 30) logEl.lastChild.remove(); }
+  window.__errors = []; window.addEventListener('error', function (e) { window.__errors.push(String(e.message)); log('错误：' + e.message); });
+
+  // 时间滚动条：0 → 恒星形成前 0.1 Gyr，1000 → 现在（宇宙 190 亿年）；对数感知：前段粗、后段细
+  var tslider = $('tslider'), tNow = P.NOW_YR;
+  function sliderToYr(v) { // 0..1000 → 年；分段：0-100 形成前后（-0.1..0.3 Gyr）；100-900 线性 0.3..4.55 Gyr；900-1000 最后 5000 万年至今（含最后 200 年）
+    var f0 = system ? system.star.formedYr : tNow - 4.6e9, age;
+    if (v <= 100) age = -0.1 + v / 100 * 0.4;
+    else if (v <= 900) age = 0.3 + (v - 100) / 800 * ((tNow - f0) / 1e9 - 0.05 - 0.3);
+    else { var t = (v - 900) / 100, end = (tNow - f0) / 1e9; age = end - 0.05 * Math.pow(1 - t, 3); if (t >= 0.999) age = end; }
+    return f0 + age * 1e9;
+  }
+  function fmtAge(yr) { var f0 = system ? system.star.formedYr : tNow - 4.6e9, a = yr - f0; if (Math.abs(a) < 1e4) return (a >= 0 ? '+' : '') + a.toFixed(0) + ' 年'; if (Math.abs(a) < 1e8) return (a / 1e4).toFixed(1) + ' 万年'; return (a / 1e8).toFixed(2) + ' 亿年'; }
+  function applyTime() { var yr = sliderToYr(+tslider.value); view.setTime(yr); var st = view.getState(); $('tlab').textContent = '宇宙时间 ' + (yr / 1e8).toFixed(3) + ' 亿年 · 恒星系年龄 ' + fmtAge(yr) + (yr >= tNow - 1 ? '（现在）' : ''); $('tera').textContent = st.era || ''; }
+  tslider.addEventListener('input', applyTime);
+  [['形成前', 0], ['尘埃环', 40], ['行星诞生', 100], ['冥古宙', 130], ['褐色海', 190], ['太古宙', 350], ['雪球', 470], ['大陆变绿', 795], ['冈瓦纳分裂', 850], ['现在', 1000]].forEach(function (p) { var b = document.createElement('button'); b.textContent = p[0]; b.onclick = function () { tslider.value = p[1]; applyTime(); }; $('presets').appendChild(b); });
+
+  function refreshPlanets() {
+    var box = $('planets'); box.innerHTML = '';
+    if (!system) return;
+    system.planets.forEach(function (p, i) {
+      var b = document.createElement('button'); b.innerHTML = p.name + ' · ' + P.TYPES[p.type] + (p.subtype === 'iceGiant' ? '（冰巨星）' : '') + ' · ' + p.orbitAU + ' AU · ' + p.tempK + ' K' + (p.life ? ' <span class="life">· ' + p.life.level + '</span>' : '');
+      if (p === planet) b.className = 'on';
+      b.onclick = function () { planet = p; view.select(i); refreshPlanets(); $('desc').textContent = P.describe(p, view.getState().timeYr); };
+      b.ondblclick = function () { planet = p; view.showGlobe(p, {}); refreshPlanets(); };
+      box.appendChild(b);
+    });
+  }
+  function gen() {
+    var seed = +$('seed').value || 0; uni = $('ours').checked ? { isOurs: true, id: 1207 } : { isOurs: false }; uni.dimS = +$('dim').value; if (uni.dimS !== 3) uni.isOurs = false;
+    system = P.generateSystem(seed, uni, {}); planet = system.planets[system.habitableIndex >= 0 ? system.habitableIndex : 0] || null;
+    view.showSystem(system, { timeYr: system.nowYr }); tslider.value = 1000; applyTime(); refreshPlanets();
+    if (planet) $('desc').textContent = planet.desc;
+    log('生成恒星系 ' + system.name + '（seed ' + seed + '，' + system.planets.length + ' 颗行星，恒星 ' + system.star.type + '，D=' + system.dim + ' → ' + system.dimMode + (system.note ? '：' + system.note : '') + '）');
+  }
+  $('gen').onclick = gen;
+  $('rand').onclick = function () { var r = view.visitNext(uni); system = r.system; planet = r.planet; refreshPlanets(); $('desc').textContent = planet.desc; log('随机参观：' + planet.name + '（' + P.TYPES[planet.type] + '）'); applyTime(); };
+  $('bSys').onclick = function () { if (system) view.showSystem(system, {}); };
+  $('tbBtn').onclick = function () { view.showThreeBody({ seed: +$('seed').value || 1 }); log('经典三体演示（T 键返回）'); };
+  $('acBtn').onclick = function () { system = P.alphaCentauri(); planet = system.planets[1]; view.showSystem(system, {}); refreshPlanets(); $('desc').textContent = system.note; log('南门二：' + system.hierarchy.note); };
+  $('bGlobe').onclick = function () { if (planet) view.showGlobe(planet, {}); };
+  $('bLand').onclick = function () { if (planet) view.land(planet, { lat: +$('lat').value, lon: +$('lon').value, altitudeM: +$('alt').value }); };
+  $('bUp').onclick = function () { view.goUp(); };
+  document.querySelectorAll('[data-alt]').forEach(function (b) { b.onclick = function () { $('alt').value = b.getAttribute('data-alt'); if (view.getState().mode === 'surface') view.setAltitude(+b.getAttribute('data-alt')); else if (planet) view.land(planet, { lat: +$('lat').value, lon: +$('lon').value, altitudeM: +b.getAttribute('data-alt') }); }; });
+  var oceanHandle = null;
+  $('oceanBtn').onclick = function () { var oc = $('ocean'); if (oceanHandle) { oceanHandle.dispose(); oceanHandle = null; oc.style.display = 'none'; return; } oc.style.display = 'block'; oceanHandle = P.renderOceanWorld(oc, +$('seed').value || 2, {}); log('大洋世界渲染：' + (oceanHandle.webgl ? 'WebGL2' : '2D 回退')); };
+
+  view.on('select', function (e) { if (e && e.planet) { planet = e.planet; refreshPlanets(); $('desc').textContent = P.describe(planet, view.getState().timeYr); log('选中 ' + planet.name); } });
+  view.on('enter', function (e) { if (e.planet) planet = e.planet; refreshPlanets(); log('进入 ' + e.kind + (e.planet ? ' ' + e.planet.name : '') + (e.lat != null ? ' @ ' + e.lat.toFixed(2) + ', ' + e.lon.toFixed(2) + ' 高度 ' + Math.round(e.altitudeM) + ' m' : '')); });
+  view.on('exit', function (e) { log('返回 ' + e.to); });
+  view.on('change', function (s) { log('模式 → ' + s.mode); });
+  var hoverEl = null; view.on('hover', function (h) { hoverEl = h; });
+  setInterval(function () {
+    var s = view.getState(); if (planet) $('desc').textContent = P.describe(planet, s.timeYr);
+    $('status').textContent = '模式 ' + s.mode + ' · ' + (s.webgl ? 'WebGL2' : 'Canvas 2D 回退') + '\n' + (s.caption || '') + (s.altitudeM != null ? '\n高度 ' + Math.round(s.altitudeM) + ' m' : '') + (s.mode === 'surface' ? ' · 纬 ' + s.lat.toFixed(3) + ' 经 ' + s.lon.toFixed(3) + (s.surfaceView ? ' · 地表视角' : '') + (s.underwater ? ' · 水下' : '') : '') + (hoverEl ? '\n悬停 ' + (hoverEl.planet ? hoverEl.planet.name : '') + (hoverEl.lat != null ? ' ' + hoverEl.lat.toFixed(1) + ',' + hoverEl.lon.toFixed(1) : '') : '');
+  }, 250);
+  gen();
+  window.__view = view; window.__P = P;
+})();
+</script>
+</body>
+</html>

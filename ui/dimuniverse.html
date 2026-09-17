@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>整体宇宙 · 只改维度的对照</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;
+    font:13px/1.5 Consolas,"Microsoft YaHei",monospace;color:#c9cde0}
+  #c{position:fixed;left:0;top:0;width:900px;height:900px;display:block;outline:none;touch-action:none}
+  /* universe3d 自己往 body 里塞的按钮/提示浮层在对照图里是噪声，藏掉；
+     .mine 是我自己的字幕，不能一起藏（第一版就是这么把字幕藏没的） */
+  body > div:not(.mine){display:none !important}
+  .mine{position:fixed;z-index:99;pointer-events:none}
+  #st{left:918px;top:12px;color:#8b95b0;font-size:12px;width:340px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<canvas id="c" tabindex="0"></canvas>
+<div id="st" class="mine">启动…</div>
+<script src="../engine/params.js"></script>
+<script src="../engine/engine.js"></script>
+<script src="localdata.js"></script>
+<script src="universe3d.js"></script>
+<script>
+(function () {
+  /* universe3d 建 WebGL2 上下文时写死了 preserveDrawingBuffer:false（universe3d.js:1295），
+     于是 toDataURL 读到的是已经被交换走的空缓冲 —— 第一次跑出来九张全黑就是这个原因。
+     只在取图页里劫持 getContext 把它打开，引擎源码不动。 */
+  var _gc = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, attrs) {
+    if (type === 'webgl2') attrs = Object.assign({}, attrs || {}, { preserveDrawingBuffer: true });
+    return _gc.call(this, type, attrs);
+  };
+
+  var U = window.MirrorUniverse3D;
+  var q = new URLSearchParams(location.search);
+  var LIST = (q.get('list') || '1,1.5,2,2.5,3,3.5,4,5,6').split(',').map(Number);
+  var seed = q.get('seed') != null ? +q.get('seed') >>> 0 : 1207;
+  var box  = q.get('box')  != null ? +q.get('box')  : 200;
+  var tier = q.get('tier') || 'mid';
+  var aEnd = q.get('a') != null ? +q.get('a') : 1;
+  var CAP  = +(q.get('cap') || 120000);          // 单个维度最多跑多久
+
+  /* 除维度外一切锁死：同一套平坦 ΛCDM、同一颗种子、同一个盒长、同一个粒子档。
+     九张图之间唯一的变量就是 D —— 差异全部来自引力核指数 pexp = 5 − D。 */
+  var COSMO = { h: 0.674, omegaB: 0.049, omegaC: 0.26, omegaLambda: 0.69, omegaK: 0, ns: 0.965, sigma8: 0.81 };
+
+  var st = document.getElementById('st'), canvas = document.getElementById('c');
+  var log = [], results = [];
+  function say(s) { st.textContent = s + '\n\n' + log.join('\n'); }
+
+  function save(name, cb) {
+    var data = canvas.toDataURL('image/png');
+    var x = new XMLHttpRequest();
+    x.open('POST', '/_save?name=' + encodeURIComponent(name));
+    x.onload = function () { cb(null); };
+    x.onerror = function () { cb(new Error('save failed')); };
+    x.send(data);
+  }
+
+  function runOne(D, done) {
+    var u = U.create(canvas, {
+      cosmology: COSMO, dimS: D, seed: seed, boxMpc: box, particles: tier, force: 'webgl2',
+      local: false,                              // 不叠本星系群/太阳数据层，纯看结构
+      onStatus: function () {}
+    });
+    window.u3d = u;
+    var t0 = Date.now(), finished = false;
+
+    function finish() {
+      if (finished) return; finished = true;
+      u.pause();
+      u.requestAnalysis();
+      setTimeout(function () {
+        var f = u.getState(), an = null;
+        try { an = u.diagnostics(); } catch (e) { /* 分析可能还没回来 */ }   // 接口叫 diagnostics，不是 analysis
+        var rec = { D: D, a: +f.a.toFixed(3), steps: f.steps, N: f.N, mesh: f.mesh, mode: f.mode,
+                    sigma8: an && an.sigma8 != null ? +an.sigma8.toFixed(3) : null,
+                    halos: an && an.haloCount != null ? an.haloCount : null,
+                    reachedTarget: f.a >= aEnd - 1e-3, secs: Math.round((Date.now() - t0) / 1000) };
+        results.push(rec);
+        log.push('D=' + D + '  a=' + rec.a + '  σ₈=' + rec.sigma8 + '  晕=' + rec.halos + '  ' + rec.secs + 's'
+                 + (rec.reachedTarget ? '' : '  ← 未跑到 a=1（高维限速）'));
+        save('u-D' + String(D).replace('.', 'p') + '.png', function () {
+          u.dispose();
+          setTimeout(function () { done(); }, 400);
+        });
+      }, 2600);
+    }
+
+    u.ready.then(function () {
+      /* 整盒视角：27 重平铺 + 站在盒心 + 大视场，才看得到"整个宇宙"而不是身边一块 */
+      u.toggleTiling(true);
+      u.toggleParticles(true);
+      u.toggleLabels(false);          // 关掉晕标签，否则画面里会多一个青色准星圆圈
+      u.setColorMode('density');
+      u.setCamera({ pos: [0.5, 0.5, 0.5], yaw: 0.6, pitch: -0.35, fovDeg: 90 });
+      u._S.targetA = aEnd;
+      u.start();
+      var timer = setInterval(function () {
+        var s = u.getState();
+        say('D=' + D + ' · ' + s.mode + ' · N=' + s.N + ' · a=' + s.a.toFixed(3) + ' · 步 ' + s.steps);
+        if (s.a >= aEnd - 1e-3 || Date.now() - t0 > CAP) { clearInterval(timer); finish(); }
+      }, 500);
+    }, function (err) {
+      results.push({ D: D, error: String(err && err.message || err) });
+      log.push('D=' + D + '  初始化失败：' + results[results.length - 1].error);
+      done();
+    });
+  }
+
+  var i = 0;
+  (function next() {
+    if (i >= LIST.length) {
+      var x = new XMLHttpRequest();
+      x.open('POST', '/_save?name=results.json');
+      x.onload = function () { say('全部完成'); window.__done = true; };
+      x.send('data:application/json;base64,' + btoa(unescape(encodeURIComponent(JSON.stringify(results, null, 1)))));
+      window.__results = results;
+      return;
+    }
+    runOne(LIST[i++], next);
+  })();
+})();
+</script>
+</body>
+</html>

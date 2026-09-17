@@ -1,0 +1,36 @@
+# 依赖
+node_modules/
+
+# 构建产物（每次都能从源码重建，不入库）
+dist/
+web/dist/
+web/dist-*/
+contracts/out/*.runtime.hex
+contracts/forge-out/
+
+# 运行时数据与缓存（服务端落盘的存档、出图缓存）
+server/.store/
+server/.store-*/
+server/.cache/
+server/.cache-*/
+
+# 真的环境变量与密钥：只有 *.example 进库
+*.env
+.env
+.env.*
+!*.env.example
+api.env
+api.env.*
+!api.env.*.example
+*.key
+*.pem
+
+# 日志与草稿
+*.log
+*.jsonl
+*.bak
+scratchpad/
+
+# 系统
+.DS_Store
+Thumbs.db

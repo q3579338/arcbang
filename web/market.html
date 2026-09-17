@@ -1,0 +1,4018 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG</title>
+<meta name="description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
+<link rel="canonical" href="https://bnbbang.com/market.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BNBBANG">
+<meta property="og:url" content="https://bnbbang.com/market.html">
+<meta property="og:title" content="镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG">
+<meta property="og:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
+<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG">
+<meta name="twitter:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
+<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0A0F2E">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","name":"镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT","url":"https://bnbbang.com/market.html","inLanguage":["zh-CN","en"],"isPartOf":{"@type":"WebSite","name":"BNBBANG","url":"https://bnbbang.com/"},"about":{"@type":"Thing","name":"Mirror Universe NFT market on BSC"},"publisher":{"@type":"Organization","name":"BNBBANG","url":"https://bnbbang.com/"}}
+</script>
+<!--
+  web/market.html —— 宇宙 NFT 的交易市场（独立静态页，与模拟器分开）
+  ============================================================================
+  规格：specs/economy-v4.md。三块内容：我的资产 / 宇宙市场 / 挂单。
+
+  **为什么这一页没有「资源」了**
+    ERC-1155 那套资源设计（specs/market-v1.md §1，economy v3）已经**彻底废弃**：
+    资源有产出口没有消耗口，价格只能靠新人接盘。取代它的是 ERC-20 的 BANG 代币
+    （contracts/src/BangToken.sol）—— 铸造时发币，修正宇宙时**真的烧掉**。
+    所以 MirrorResources 相关的一切（七种资源余额、储量结算/揭晓/领取、资源挂单、
+    剩余储量进度条）在这一页全部删除，不留注释掉的残骸：留着只会让下一个人
+    以为它还能用，然后去调一个已经没人维护的合约。
+
+  **新的价值锚**（economy-v4 §11：区块要多少有多少，币不是）
+    cardOf(id)    非零才代表这枚 NFT 走过服务端、带参数 —— 零的一律不上架、不显示
+    burnedOn(id)  这枚 token 累计烧掉多少 BANG
+    rescueOf(id)  救活记录，at != 0 就是全场最稀缺的东西，页面上给金色
+
+  为什么是自带脚本的单文件，而不是 <script src="bnb-chain.js">：
+    bnb-chain.js 开头是 `var K = root.MirrorKeccak;`，它算函数选择器要那份 keccak256
+    （web/keccak-lite.js）。市场页只想一个文件一次 scp 就能发，所以照 deploy.html 的
+    先例走：**选择器离线算好写死**（见下方 SEL 注释里的命令），手写 ABI 编解码、
+    公开 RPC 轮换、小狐狸连接与切链这些手法全部沿用 bnb-chain.js。
+    推导（区块哈希→参数）已经搬到服务端，浏览器里不再有 MirrorBnbHash，这一页也不需要它。
+
+  唯一的外部脚本是同目录的 config.js（合约地址与 RPC 列表）；它取不到时页面
+  照常渲染，只是三个合约都当成"未部署"。
+
+  没连钱包也能浏览：所有读操作走公开 RPC，钱包只在写链（授权/挂单/买入/撤单）时才需要。
+-->
+<!-- 主题（浅色 / 深色 / 跟随系统）。**全站唯一一份实现在 ui/theme.js** ——
+     本页原来自带一份 MarketTheme（页头一段 + 脚本里一段），已经全部删掉。
+     必须排在最前面且同步执行：首屏绘制前 <html data-theme> 就已就位，不闪白也不闪黑。
+     构建时 web/build-web.js 把这个路径改写成同目录的 theme.js（见那边的 REWRITE）。 -->
+<script src="../ui/theme.js"></script>
+<!-- 中英双语。原来这七行在 </body> 前面，现在提到 <head> 里（与 index.html 一致）：
+     下面 nav.js 的 mount() 是同步跑在 body 开头的，它要问 MirrorI18n 当前是哪门语言，
+     i18n 还没加载的话，设置浮层里的语言那一行会被整行藏掉。
+     漏翻的句子原样退回中文，所以词典可以一句一句加，任何时候都能发布。 -->
+<script src="i18n.js"></script>
+<script src="i18n-planets.js"></script>
+<script src="i18n-app.js"></script>
+<script src="i18n-mirror.js"></script>
+<script src="i18n-tools.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<!-- 多钱包发现与选择（EIP-6963 + window.BinanceChain 兜底 + 连接前的选择器）。
+     app 那条线早就在用它（build-web 的 LAYER），本页原来直接抓 window.ethereum ——
+     装了两个钱包时是谁抢到算谁，用户想用币安钱包连上的却是小狐狸。
+     排在 i18n 之后（选择器文案走 app 命名空间）、业务脚本之前。 -->
+<script src="wallet.js"></script>
+<!-- 设计令牌表，三页共用同一份。本页原来自带的那份（:root 浅色 / [data-theme="dark"] /
+     @media 跟随系统，三段）已经删掉，**值一个都没改** —— 逐字对过，本页用到的 49 个键
+     在 web/tokens.css 里同名同值。
+     这一页是独立 HTML、通过 HTTP 提供，外链没问题（它本来就有十几个外部引用）；
+     「零外部请求」那条约束只对离线单文件 dist/mirror.html 成立，那条线由 build.js 内联。
+     排在本页 <style> 之前 —— 页面自己的规则要能覆盖它。 -->
+<link rel="stylesheet" href="tokens.css">
+<!-- 站点顶栏（结构 + 样式 + 行为）。body 里 <div id="siteNavMount"> 处挂载。
+     它在自己的顶层就往 <head> 最前面插顶栏样式，所以要排在本页 <style> 之前。 -->
+<script src="nav.js"></script>
+<style>
+
+/* ------------------------------------------------------------ 基础 */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--void);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body{overflow-x:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+[hidden]{display:none !important}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 14px 64px}
+.mono{font-family:var(--mono);font-size:12px;word-break:break-all;overflow-wrap:anywhere}
+.dim{color:var(--dim)}
+.tiny{font-size:12px}
+.ok{color:var(--green)} .err{color:var(--bad)} .warn{color:var(--amber)}
+h2{font-size:15px;margin:0;letter-spacing:.01em}
+
+/* ---------------- 站点顶栏 ----------------
+   顶栏的样式（原「共用块 v1」，97 行）已经收进 web/nav.js —— 它在 <head> 最前面
+   插一个 <style>，三页同一份，本页不再自带拷贝。--navh 也归 nav.js 管
+   （连同三条响应式覆盖）。本页只留下面这几条**自己的差异**。 */
+
+/* ---------------- 本页差异（市场）----------------
+   钱包 chip 的壳（.wchip/.wav、浮层内容排布那套 §3.4 样式）已经**整块收进
+   web/nav.js 的 walletChip()**，四个页面同一份，本页不再自带拷贝。
+   本页只剩两件自己的事：链上行为（连接 / 断开 / 切换那套函数，包成适配器
+   交给壳，见脚本里的 WCHIP）和右区多出的刷新钮（mount({wallet:true}) 给的）。 */
+
+/* ------------------------------------------------------------ 按钮（§3.2） */
+button{height:36px;padding:0 14px;border:1px solid var(--line2);border-radius:var(--radius-btn);
+  background:var(--panel);color:var(--ink2);font-size:13px;font-weight:600;
+  transition:background .15s,border-color .15s}
+button:hover:not(:disabled){background:var(--panel2)}
+button:disabled{opacity:.45;cursor:default}
+/* 主色按钮的字用 --deep：浅色下就是规格写的 #fff；深色下 --cyan 是浅靛蓝，
+   白字压上去只有 2.5:1，必须用近黑的 --deep（约 9:1）才读得出来。 */
+button.primary{background:var(--cyan);border-color:var(--cyan);color:var(--on-cyan)}
+button.primary:hover:not(:disabled){background:var(--cyan);filter:brightness(1.06)}
+button.ghost{background:transparent;border-color:transparent;color:var(--dim)}
+button.ghost:hover:not(:disabled){background:var(--panel2);color:var(--ink2)}
+button.sm{height:30px;padding:0 11px;font-size:12px}
+
+/* .iconbtn 在上面的共用块里（#siteNav .iconbtn），本页不再单写一份 */
+
+/* 钱包 chip（§3.4）与钱包浮层的内容排布：整套在共用块里（web/nav.js 的
+   walletChip），本页不再单写一份。右区窄屏可压缩那条（.topbtns.haswallet）
+   也随壳走了。 */
+
+/* 设置浮层（.setrow/.setlab/.seg/.segbtn）整套在共用块里，本页不再单写一份 */
+
+/* ------------------------------------------------------------ 页面引子与状态行 */
+.sub{margin:0 0 14px;color:var(--dim);font-size:13px}
+/* #acct 用 id 选择器写：toast() 每次都整个重写 className（'mono ok' 之类），
+   markup 上挂的类活不过第一次 toast。 */
+#acct{margin:0 0 14px;padding:9px 12px;border:1px solid var(--line);
+  border-radius:var(--radius-btn);background:var(--panel);box-shadow:var(--shadow-card);
+  font-family:var(--mono);font-size:12px;color:var(--dim);
+  word-break:break-all;overflow-wrap:anywhere}
+#acct.ok{color:var(--green)} #acct.err{color:var(--bad)} #acct.warn{color:var(--amber)}
+
+/* ------------------------------------------------------------ 卡片与区块（§3.1）
+   .card = 白卡片（表单、表格这种"一整块内容"）
+   .block = 不画卡片的区块（里面装的是一格一格的白色宇宙卡，
+            再套一层白底就成了白压白，层次反而没了） */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);
+  box-shadow:var(--shadow-card);padding:22px;margin-bottom:22px}
+.block{margin-bottom:26px}
+.cardhead{display:flex;gap:10px;align-items:baseline;justify-content:space-between;
+  flex-wrap:wrap;margin-bottom:14px}
+.notice{border:1px solid var(--amber-line);background:var(--amber-bg);
+  border-radius:var(--radius-btn);padding:11px 13px;font-size:13px;color:var(--ink2)}
+.notice b{color:var(--amber)}
+.notice.plain{border-color:var(--line);background:var(--panel2);color:var(--dim)}
+.notice.warn{border-color:var(--amber-line);background:var(--amber-bg)}
+.notice.bad{border-color:var(--red-line);background:var(--red-bg)}
+.notice.bad b{color:var(--red)}
+.empty{padding:26px 16px;text-align:center;color:var(--dim);font-size:13px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card)}
+
+/* ------------------------------------------------------------ 合约状态条 */
+.cfgbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);
+  border-radius:var(--radius-chip);padding:4px 12px;font-size:12px;font-weight:600;
+  background:var(--panel);color:var(--ink2);max-width:100%}
+.chip .val{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--dim)}
+.chip.on{border-color:var(--green-line);background:var(--green-bg);color:var(--green)}
+.chip.off{border-color:var(--amber-line);background:var(--amber-bg);color:var(--amber)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--dim3);flex:none}
+.chip.on .dot{background:var(--green)} .chip.off .dot{background:var(--amber)}
+
+/* ------------------------------------------------------------ BANG 数字条 */
+.bangbar{display:flex;gap:var(--gap);flex-wrap:wrap;margin:0 0 22px}
+.stat{flex:1 1 240px;min-width:0;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:16px 18px}
+.statlab{font-size:11px;font-weight:600;color:var(--dim);letter-spacing:.04em}
+.statval{font-family:var(--mono);font-size:24px;font-weight:700;line-height:1.35;
+  font-variant-numeric:tabular-nums;word-break:break-all;overflow-wrap:anywhere;margin-top:2px}
+.statval .unit{font-size:12px;font-weight:400;color:var(--dim);margin-left:5px}
+.statnote{font-size:11px;color:var(--dim);margin-top:3px;line-height:1.5}
+
+/* ------------------------------------------------------------ 分段标签页
+   showSec() 会把 className 整个写成 'tab' / 'tab on'，
+   所以这两个类之外的类挂在标签上活不过一次切换。 */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 20px;padding:4px;
+  background:var(--panel2);border-radius:var(--radius-btn);width:-moz-fit-content;width:fit-content;max-width:100%}
+.tab{height:32px;padding:0 14px;border:0;background:transparent;color:var(--dim);
+  border-radius:7px;font-size:13px;font-weight:600}
+.tab:hover:not(.on){background:var(--panel);color:var(--ink2)}
+.tab.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px var(--shadow)}
+
+/* ------------------------------------------------------------ 宇宙卡片 */
+.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:var(--gap)}
+.ucard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);
+  box-shadow:var(--shadow-card);padding:14px;display:flex;flex-direction:column;gap:9px;min-width:0}
+/* 救活过的：整张卡换成金边 + 微光。这是全场最稀缺的一档，必须一眼认出来。 */
+.ucard.rescued{border-color:var(--gold-line);background:var(--gold-bg);
+  box-shadow:0 0 0 3px var(--gold-glow),var(--shadow-card)}
+/* 缩略图那块黑底是链上 SVG 自带的颜色，属于资产本身，不跟界面主题走 */
+.uthumb{width:100%;aspect-ratio:1/1;border-radius:10px;border:1px solid var(--line);
+  background:#0b0d14;display:block;object-fit:contain}
+.uthumb.ph{display:flex;align-items:center;justify-content:center;color:var(--dim2);font-size:12px}
+.uid{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.uout{font-size:12px;color:var(--ink2);min-height:1.6em}
+.urow{display:flex;gap:6px;align-items:center;justify-content:space-between;font-size:12px;flex-wrap:wrap}
+.ubtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:4px}
+.uhash{font-family:var(--mono);font-size:10px;color:var(--dim2);word-break:break-all}
+
+/* ------------------------------------------------------------ 名字
+   命名过的宇宙：名字当主标题，编号退成 .uid.sub 那一行的小字。
+   名字是用户输入的，长度上限 32 且只有 ASCII，但**窄屏上仍然可能撑爆一格**
+   （32 个 W 比一格宽），所以必须能断行。 */
+.unamerow{display:flex;min-width:0}
+.uname{font-size:16px;font-weight:700;line-height:1.3;color:var(--ink);
+  word-break:break-all;overflow-wrap:anywhere;min-width:0}
+.uid.sub{font-weight:600;font-size:12px;color:var(--dim)}
+button.sm.name{border-color:var(--cyan-line);background:var(--cyan-bg);color:var(--cyan)}
+button.sm.name:hover:not(:disabled){background:var(--cyan-bg);filter:brightness(1.08)}
+/* 「拯救」（specs/rescue-entry.md §1）。金色 —— 与 .ucard.rescued、.b-rescue、
+   销毁数字同一套色，卡上凡是跟"烧 BANG"有关的东西都是金的，这颗也不例外。 */
+button.sm.fix{border-color:var(--gold-line);background:var(--gold-bg);color:var(--gold)}
+button.sm.fix:hover:not(:disabled){background:var(--gold-bg);filter:brightness(1.08)}
+
+/* ------------------------------------------------------------ 命名弹窗
+   居中模态。z-index 要压过顶栏（#siteNav 是 85）。 */
+.modal{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(11,13,22,.55);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal[hidden]{display:none}
+.modalbox{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius-card);box-shadow:var(--shadow-pop);padding:20px;
+  display:flex;flex-direction:column;gap:13px;margin:auto}
+.modalhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.modaltitle{font-size:15px;font-weight:700;color:var(--ink)}
+.modal .iconbtn{width:32px;height:32px;padding:0;flex:none;border:0;background:transparent;
+  color:var(--dim);border-radius:var(--radius-btn);display:inline-flex;
+  align-items:center;justify-content:center;transition:background .15s,color .15s}
+.modal .iconbtn:hover:not(:disabled){background:var(--panel2);color:var(--ink2)}
+.modal .iconbtn svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* 原著里那句话。它是这个功能的来由，不是装饰，所以摆在最上面 */
+.modalquote{margin:0;padding:10px 12px;border-left:2px solid var(--cyan-line);
+  background:var(--panel2);border-radius:0 10px 10px 0;font-size:12.5px;
+  line-height:1.6;color:var(--ink2)}
+.modalquote .qsrc{color:var(--dim);margin-left:6px;white-space:nowrap}
+.modalsub{font-size:12px;color:var(--dim)}
+.modal .field{gap:6px}
+/* 查重状态：三种颜色对应三种结论，读不到时不许显示成"可以用" */
+.namestat{font-size:12px;line-height:1.5;min-height:1.5em;overflow-wrap:anywhere}
+.namestat.free{color:var(--green)} .namestat.bad{color:var(--bad)} .namestat.wait{color:var(--dim)}
+.namecost{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--panel2);
+  font-size:12px;color:var(--ink2);line-height:1.55}
+.namecost b{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--gold);
+  font-variant-numeric:tabular-nums;word-break:break-all}
+.namecost .unit{font-size:11px;font-weight:400;color:var(--dim);margin-left:3px}
+.modalnote{margin:0;font-size:11px;line-height:1.6;color:var(--dim);
+  border-top:1px solid var(--line-soft);padding-top:9px}
+
+/* ------------------------------------------------------------ 状态徽标（§3.7）
+   语义一个字没改：已验证 = cardOf 非零；C 档 = 稀有度；★ = 救活过。 */
+.badges{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.badge{font-size:11px;font-weight:600;border:1px solid var(--line2);background:var(--panel2);
+  color:var(--ink2);border-radius:var(--radius-chip);padding:3px 10px;white-space:nowrap}
+.b-stamp{border-color:var(--green-line);background:var(--green-bg);color:var(--green)}
+.b-rescue{border-color:var(--gold-line);background:var(--gold-bg);color:var(--gold)}
+.b-rar{font-family:var(--mono)}
+.r-0{border-color:var(--violet-line);background:var(--violet-bg);color:var(--violet)}   /* S */
+.r-1{border-color:var(--cyan-line);background:var(--cyan-bg);color:var(--cyan)}         /* A */
+.r-2,.r-3,.r-4{border-color:var(--line);background:var(--panel2);color:var(--dim)}      /* B/C/D */
+.r-x{border-style:dashed;color:var(--dim2)}                                             /* 读不到 */
+/* 造物系列的徽标（--violet 那族，与 S 档同家族 —— 都是"尖货"的颜色）。
+   config.js 里 crafted 没配时这一类根本不会被渲染出来，规则只是躺着。 */
+.b-craft{border-color:var(--violet-line);background:var(--violet-bg);color:var(--violet)}
+
+/* ------------------------------------------------------------ 销毁量 */
+.burnbox{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--panel2)}
+.burnval{font-family:var(--mono);font-size:19px;font-weight:700;line-height:1.2;
+  font-variant-numeric:tabular-nums;word-break:break-all;overflow-wrap:anywhere}
+.burnval .unit{font-size:11px;font-weight:400;color:var(--dim);margin-left:3px}
+.burned{color:var(--gold)} .noburn{color:var(--dim2)}
+.rescuebox{border:1px solid var(--gold-line);background:var(--gold-bg);border-radius:10px;
+  padding:8px 10px;font-size:11px;color:var(--ink2);line-height:1.5}
+.rescuebox b{color:var(--gold)}
+
+/* ------------------------------------------------------------ 表格（§3.6） */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;
+  border:1px solid var(--line);border-radius:var(--radius-btn)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:420px}
+th,td{text-align:left;padding:0 14px;white-space:nowrap}
+th{height:44px;background:var(--panel2);color:var(--dim);font-size:12px;font-weight:600;
+  letter-spacing:.04em;border-bottom:1px solid var(--line)}
+td{height:56px;border-bottom:1px solid var(--line-soft);color:var(--ink2)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--panel2)}
+td.num{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+th.r,td.r{text-align:right}
+
+/* ------------------------------------------------------------ 表单 */
+.form{display:flex;flex-direction:column;gap:14px;max-width:520px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:600;color:var(--dim);letter-spacing:.02em}
+input[type=text],select{height:40px;padding:0 12px;border:1px solid var(--line2);
+  border-radius:var(--radius-btn);background:var(--panel2);color:var(--ink);
+  font-size:14px;width:100%;max-width:100%;transition:background .15s,border-color .15s}
+input[type=text]:focus,select:focus{background:var(--panel);border-color:var(--focus)}
+input[type=text]::placeholder{color:var(--dim2)}
+.steps{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{font-size:13px;min-height:1.4em;overflow-wrap:anywhere}
+footer{margin-top:30px;color:var(--dim);font-size:12px;line-height:1.7;
+  border-top:1px solid var(--line);padding-top:16px}
+footer a{color:var(--cyan)}
+
+/* ------------------------------------------------------------ 窄屏
+   375px 下页面本身不许横向滚动：表格由 .tablewrap 兜住，
+   顶栏那一套断点全在共用块里（顶栏永远一行、页面切换自己横滚）。 */
+@media (max-width:420px){
+  .wrap{padding:16px 12px 48px}
+  h1{font-size:15px}
+  .card{padding:16px}
+  .ugrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .statval{font-size:21px}
+  .pop{width:calc(100vw - 28px)}
+  /* 375px 下弹窗要贴边但不许溢出：外框 10px，内框自己 16px。
+     .modal 自带 overflow-y:auto，内容比屏幕高时整块滚动，按钮不会被切掉。 */
+  .modal{padding:10px}
+  .modalbox{padding:16px;gap:11px}
+  .uname{font-size:15px}
+  /* 两个按钮在一格宽的卡片里排不下，让它们各占一行，别把卡片撑出横向滚动。
+     图标钮除外 —— 它们本来就只有 30px 宽，摊成整行反而丑 */
+  .ubtns button:not(.icon){flex:1 1 100%}
+}
+
+/* ------------------------------------------------------------ 卡片动作三件套（specs/share-referral-v1.md §二）
+   图标钮：与 .sm 同高，方形，SVG 描边用 currentColor 跟主题走 */
+button.sm.icon{width:30px;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
+img.uthumb[data-view]{cursor:zoom-in}
+
+/* 灯箱：点卡片图片看大图。z 压过顶栏(85)与命名弹窗(120) */
+.lbox{position:fixed;inset:0;z-index:150;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;padding:20px;background:var(--scrim)}
+.lbox[hidden]{display:none}
+.lbox img{max-width:min(92vw,860px);max-height:80vh;border-radius:12px;border:1px solid var(--line);
+  background:#0b0d14;box-shadow:var(--shadow-pop)}
+.lbox-bar{display:flex;gap:14px;align-items:center;font-size:13px}
+.lbox-bar a{color:var(--on-cyan);background:var(--cyan);border-radius:var(--radius-btn);
+  padding:6px 14px;text-decoration:none;font-weight:600}
+.lbox-bar button{height:32px;padding:0 14px;font-size:13px}
+
+/* 广播浮层 外观 v3（用户 2026-08-21「做好看、科幻」）：玻璃拟态半透面板 +
+   顶缘扫描光 + hover 发光描边。颜色一处不写死，全走 tokens.css —— 深色主题里
+   --cyan 是亮紫，发光描边自然亮；浅色主题里同一套令牌退成干净的白卡淡描边。
+   ⚠ web/bnb-ui.js 的 .bshare-* 是同款一份（app 页的浮层长在那边），
+   改这里要连那边一起改 —— 先例见本页 qrEncode 的说明。 */
+#sharePop{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:shareFade .15s ease-out}
+#sharePop.closing{opacity:0;transition:opacity .15s ease-in}
+#sharePop .modalbox{position:relative;max-width:460px;background:var(--panel);
+  border-color:var(--cyan-line);overflow:hidden;
+  box-shadow:var(--shadow-pop),0 0 42px var(--cyan-bg);
+  animation:sharePopIn .18s cubic-bezier(.2,.7,.3,1)}
+/* 玻璃质感只给支持 backdrop-filter 的浏览器：半透面板必须配毛玻璃，
+   不然身后的页面文字会清清楚楚透进来叠在正文上（headless/老浏览器实测）。 */
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  #sharePop .modalbox{background:var(--panel-a,var(--panel));
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+}
+#sharePop.closing .modalbox{opacity:0;transform:translateY(8px) scale(.97);
+  transition:opacity .15s ease-in,transform .15s ease-in}
+#sharePop .modalbox:focus{outline:none}
+/* 顶缘一线扫描光：科幻感的主笔画。颜色仍是令牌，深浅两态自己配平 */
+#sharePop .modalbox::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan) 35%,var(--cyan) 65%,transparent);opacity:.8}
+@keyframes shareFade{from{opacity:0}}
+@keyframes sharePopIn{from{opacity:0;transform:translateY(10px) scale(.96)}}
+#sharePop .modaltitle{flex:1;min-width:0;letter-spacing:.06em}
+/* 信号徽标：广播塔图标，装在一枚发光小方块里 */
+.share-sig{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  border-radius:9px;background:var(--cyan-bg);border:1px solid var(--cyan-line);color:var(--cyan);flex:none}
+.share-sig svg{width:17px;height:17px;display:block}
+/* 广播浮层里的文案预览与激励小字 */
+.share-preview{margin:0;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--ink2);
+  background:var(--panel2);border:1px solid var(--line-soft);border-left:2px solid var(--cyan-line);
+  border-radius:var(--radius-btn);word-break:break-all;user-select:text}
+/* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页没有模拟器画面，
+   这里摆的就是要发出去的卡面 PNG（懒加载：浮层开了 fillShare 才填 src）。
+   右下角来源小签压在图上，图是深底星空，签的底色写死深色不走令牌。
+   ⚠ web/bnb-ui.js 的 .bshare-shot 是同款一份，改一处连另一处一起改。 */
+.share-shot{position:relative;margin:0;padding:6px;background:var(--panel2);
+  border:1px solid var(--line-soft);border-radius:var(--radius-btn)}
+.share-shot[hidden]{display:none}
+.share-shot img{display:block;margin:0 auto;height:110px;max-width:100%;width:auto;
+  object-fit:contain;border-radius:8px;background:#000;cursor:zoom-in}
+.share-shot-tag{position:absolute;right:12px;bottom:10px;margin:0;font-size:10px;font-weight:600;
+  letter-spacing:.08em;padding:2px 8px;border-radius:999px;background:rgba(5,11,19,.7);
+  color:#9fe8ff;pointer-events:none}
+.share-shot-tag:empty{display:none}
+.share-note{font-size:11.5px;line-height:1.7;color:var(--dim)}
+/* 主功能位：只有「复制文案和图片」一颗通栏大格（specs/broadcast-v2.md §三 是主路；
+   微信在渠道网格里，点开在网格下方展开二维码面板 §四） */
+.share-feats{display:grid;grid-template-columns:1fr;gap:8px}
+.share-feat{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;
+  padding:0 12px;border-radius:var(--radius-btn);font-size:13px;font-weight:700;
+  font-family:inherit;cursor:pointer;white-space:nowrap;min-width:0;
+  transition:filter .15s,background .15s,border-color .15s,color .15s}
+.share-feat svg{width:18px;height:18px;flex:none}
+.share-feat span{overflow:hidden;text-overflow:ellipsis}
+.share-feat.primary{background:var(--cyan);border:1px solid var(--cyan);color:var(--on-cyan)}
+.share-feat.primary:hover:not(:disabled){background:var(--cyan);filter:brightness(1.08)}
+.share-feat:disabled{opacity:.55;cursor:default}
+.share-feat:focus-visible,.share-tile:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+/* 渠道网格：一格一个渠道（图标 + 名字），hover 发光描边微微上浮 */
+.share-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.share-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  height:auto;padding:10px 4px 8px;border:1px solid var(--line);border-radius:var(--radius-btn);
+  background:var(--panel2);color:var(--ink2);cursor:pointer;text-decoration:none;
+  font-family:inherit;font-size:11px;font-weight:600;min-width:0;
+  transition:border-color .15s,background .15s,color .15s,box-shadow .15s,transform .15s}
+.share-tile svg{width:20px;height:20px;flex:none}
+.share-tile span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-tile:hover:not(:disabled){border-color:var(--cyan);background:var(--cyan-bg);color:var(--cyan);
+  box-shadow:0 0 14px var(--cyan-bg);transform:translateY(-1px)}
+.share-tile.ok{border-color:var(--green-line);background:var(--green-bg);color:var(--green)}
+/* 微信格的展开态（aria-expanded 同步）：微信绿 —— --green 系令牌正好是它的品牌色相 */
+.share-tile.on{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+/* 窄屏（≤430）：网格收三列 —— 375 不许有横向滚动 */
+@media (max-width:430px){
+  .share-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+/* 动效纪律：prefers-reduced-motion 一律直切（关闭那 160ms 由 closeShare 的 JS 同步跳过） */
+@media (prefers-reduced-motion:reduce){
+  #sharePop,#sharePop .modalbox{animation:none}
+  #sharePop.closing,#sharePop.closing .modalbox{transition:none}
+  .share-feat,.share-tile{transition:none}
+  .share-tile:hover:not(:disabled){transform:none}
+}
+/* 复制的结果那一行：图片没进剪贴板时要**明说**（specs/broadcast-v2.md §三） */
+.share-msg{margin:0;font-size:11.5px;line-height:1.7;color:var(--dim)}
+.share-msg.warn{color:var(--gold)}
+/* 微信二维码。码本身**永远白底黑块**（相机要的是对比度），所以垫一层白 ——
+   深色主题下它也不至于是一张浮在暗面上的孤零零方块。 */
+.share-wx{padding:12px;border:1px solid var(--line-soft);border-radius:var(--radius-btn);
+  background:var(--panel2);text-align:center}
+.share-qr{display:inline-block;padding:8px;background:#fff;border-radius:8px;line-height:0;
+  max-width:100%;font-size:12px;color:#333}
+.share-qr svg{display:block;width:100%;height:auto;max-width:168px}
+.share-qrnote{margin-top:8px;font-size:12px;color:var(--ink2)}
+.share-qrlink{margin-top:4px;font-size:11px;color:var(--dim);word-break:break-all;user-select:text}
+
+/* ------------------------------------------------------------ 筛选与排序条
+   观感沿用 .tabs/.tab；控件本身是原生 select + 稀有度小 chip 多选 */
+.fbar{display:flex;gap:8px 10px;flex-wrap:wrap;align-items:center;margin:0 0 14px;
+  padding:10px 12px;background:var(--panel2);border:1px solid var(--line-soft);
+  border-radius:var(--radius-btn);font-size:12px;color:var(--dim)}
+.fbar select{height:28px;padding:0 8px;font-size:12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--panel);color:var(--ink2);font-family:inherit}
+.fbar .flab{font-weight:600;color:var(--dim)}
+.fbar .fchip{height:26px;min-width:26px;padding:0 7px;font-size:11.5px;font-weight:700;
+  border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--dim);cursor:pointer}
+.fbar .fchip.on{border-color:var(--cyan);background:var(--cyan-bg);color:var(--cyan)}
+.fbar .fcount{margin-left:auto;font-variant-numeric:tabular-nums}
+.fbar .fclear{height:26px;padding:0 10px;font-size:11.5px}
+@media (max-width:560px){.fbar .fcount{margin-left:0;flex-basis:100%}}
+
+/* ---- 物理参数那两组（维度 / 进阶常数），specs/market-physics-filter.md 第三节 ----
+   维度 chip 上是「D=3（能长出结构的）」这种整句，比稀有度那种单字 chip 宽得多，
+   所以 .wide 放开 min-width 并允许换行内断字；.fnote / .fadv 占满一行（flex-basis:100%）
+   —— 说明必须落在**它解释的那一组下面**，跟在同一行末尾就没人当它是说明了。 */
+.fbar .fchip.wide{min-width:0;font-weight:600;max-width:100%}
+.fbar .fnote{flex-basis:100%;margin:-2px 0 0;font-size:11.5px;line-height:1.5;color:var(--dim);opacity:.85}
+.fbar .fnote.warn{color:var(--gold);opacity:1}
+.fbar .fadv{flex-basis:100%;margin:2px 0 0}
+.fbar .fadv>summary{cursor:pointer;font-size:11.5px;font-weight:600;color:var(--dim);
+  list-style:revert;user-select:none}
+.fbar .fadv>summary:hover{color:var(--cyan)}
+.fbar .fadvbody{display:flex;gap:8px 10px;flex-wrap:wrap;align-items:center;margin:8px 0 0}
+/* 页身那条 input/select 通则是 width:100%（挂单表单要的），筛选条里的下拉因此每个独占一行。
+   外面那几个原样不动（那是这条筛选条一直以来的样子），**只把进阶这一栏收窄** ——
+   它自己是一组，一组里三四个控件排成一行才看得出是一组。 */
+.fbar .fadvbody select{width:auto;max-width:100%}
+.fbar .fadvbody input{width:104px;max-width:38vw;height:28px;padding:0 8px;font-size:12px;
+  border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink2);
+  font-family:var(--mono)}
+.fbar .fadvbody input.bad{border-color:var(--red);color:var(--red)}
+.fbar .fdash,.fbar .funit{color:var(--dim);font-size:11.5px}
+
+/* ---- 卡片上的物理行：维度 + 偏离度档。两个值都来自服务端，前端一个数都不算 ---- */
+.physrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 0}
+.pchip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;font-size:11px;
+  font-weight:700;border:1px solid var(--line);border-radius:999px;background:var(--panel2);
+  color:var(--dim);white-space:nowrap}
+.pchip.pdim{font-family:var(--mono);color:var(--ink2)}
+.pchip .pfrac{font-style:normal;font-weight:600;font-size:10px;opacity:.75}
+/* 偏离度三档只借颜色分个远近，**不借金色**：这一页的金色是「已救活」那一档的身份色，
+   借过来会让人以为「差得很远」是一种稀缺档位。 */
+.pchip.dev-low{border-color:var(--cyan-line);background:var(--cyan-bg);color:var(--cyan)}
+.pchip.dev-mid{color:var(--dim)}
+.pchip.dev-high{border-color:var(--gold-line);color:var(--amber)}
+</style>
+</head>
+<body>
+
+<!-- ============================ 站点顶栏 ============================
+     结构 / 样式 / 行为全在 web/nav.js 里，三个页面同一份实现，这里只挂载。
+     差异用参数表达：市场页要钱包 chip + 刷新（wallet:true），所以 mount() 会生成
+     #btnConnect 与 #btnRefresh；经济页两者都不给。设置齿轮三页都有，永远在最右。
+
+     挂载点 <div id="siteNavMount"> **里面**只剩那颗不显示的旧 #btnTheme —— 本页独有。
+     钱包浮层 #walletPop 不再写在这里：它的标记（连同 #walletAv/#walletFull/
+     #btnCopyAddr/#lnkExplorer/#btnSwitchAcct/#btnDisconnect，id 一个没改）
+     由 web/nav.js 的 walletChip() 生成，四页同一份。
+     mount() 是同步的：下面的脚本执行时 #btnConnect / #btnRefresh / #btnSettings /
+     #themeSeg / #langSeg 都已经在树上，按 id 抓得到。 -->
+<div id="siteNavMount">
+      <!-- 主题切换已经并进设置浮层里的三选一（浅色 / 深色 / 跟随系统），
+           这个旧的一键切换按钮因此不再显示。**但不能删**：boot() 和一个 click
+           监听都按 id 抓它，删了就是一个 null.textContent。 -->
+      <button id="btnTheme" class="ghost" type="button" hidden>深色</button>
+</div>
+<script>MirrorNav.mount({ page: 'market', wallet: true });</script>
+
+<div class="wrap">
+
+  <!-- 链名从 config.js 的 chain 块来（specs/mainnet-ready.md），所以这一行由 renderChainText() 填。
+       本页整页都是 JS 画的，留空比留一句写死链名的兜底诚实。 -->
+  <p class="sub" id="subLede"></p>
+
+  <div id="acct" class="mono dim">未连钱包 · 只读浏览（走公开 RPC）</div>
+  <div id="cfgbar" class="cfgbar"></div>
+  <div id="bangbar" class="bangbar"></div>
+
+
+  <nav class="tabs" id="tabs">
+    <button class="tab on" type="button" data-sec="mine">我的宇宙</button>
+    <button class="tab" type="button" data-sec="uni">宇宙市场</button>
+    <button class="tab" type="button" data-sec="list">挂单</button>
+  </nav>
+
+  <!-- ============================ 1. 我的宇宙 ============================ -->
+  <section id="sec-mine">
+    <div class="block">
+      <div class="cardhead"><h2>我的宇宙</h2><span class="dim tiny" id="mineNote"></span></div>
+      <div id="mineNotice"></div>
+      <!-- 筛选与排序条。永远由 JS 填：没连钱包/没有持仓时保持空 -->
+      <div id="mineFil"></div>
+      <div id="mineList"></div>
+    </div>
+  </section>
+
+  <!-- ============================ 2. 宇宙市场 ============================ -->
+  <section id="sec-uni" hidden>
+    <div class="block">
+      <div class="cardhead">
+        <h2>在售的宇宙</h2>
+        <span class="dim tiny">销毁量与救活记录是这里最要紧的两栏 —— 区块要多少有多少，币不是</span>
+      </div>
+      <!-- 系列筛选（全部 / 原生 / 造物）。**永远由 JS 填**：config.js 里 crafted
+           没配时这个容器保持空，页面与没有造物代码时逐像素一致。 -->
+      <div id="uniSeg"></div>
+      <!-- 筛选与排序条（specs 追加）：只在已拉取的数据上筛与排，不改拉取策略 -->
+      <div id="uniFil"></div>
+      <div id="uniNotice"></div>
+      <div id="uniList" class="ugrid"></div>
+    </div>
+    <div class="block" id="recentCard" hidden>
+      <div class="cardhead"><h2>最近铸造的宇宙</h2><span class="dim tiny">不在售，只是让你看看链上现在有什么</span></div>
+      <div id="recentList" class="ugrid"></div>
+    </div>
+  </section>
+
+  <!-- ============================ 3. 挂单 ============================ -->
+  <section id="sec-list" hidden>
+    <div class="card">
+      <div class="cardhead"><h2>挂一单</h2><span class="dim tiny">选宇宙 → 填价 → 授权 → 挂单</span></div>
+      <div id="listNotice"></div>
+      <div class="form">
+        <div class="field">
+          <label for="fAsset">卖哪一个宇宙</label>
+          <select id="fAsset"><option value="">先连钱包</option></select>
+        </div>
+        <div class="field">
+          <label for="fCur">计价</label>
+          <!-- 两种币走合约里两条不同的支付路径：原生币单成交抽 1%、BANG 单抽 5%，
+               都在成交那一刻从买家付的钱里扣，卖家拿其余。挂单本身不区别对待。
+               原生币那一项的文字（tBNB / BNB）由 renderChainText() 按 config.js 的 chain 块填。 -->
+          <select id="fCur">
+            <option value="bnb" id="fCurNative" data-nolang></option>
+            <option value="bang" data-nolang>BANG</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fPrice" id="fPriceLab"></label>
+          <input type="text" id="fPrice" placeholder="例如 0.02">
+        </div>
+        <div class="steps">
+          <button id="btnApprove" type="button">① 授权市场</button>
+          <button id="btnList" class="primary" type="button">② 挂单</button>
+          <span id="approveState" class="tiny dim"></span>
+        </div>
+        <div id="listMsg" class="msg"></div>
+        <div class="notice plain">
+          手续费在成交时从买家付的钱里扣：BNB 计价单抽 1%、BANG 计价单抽 5%。授权是一次性的：<span class="mono">setApprovalForAll</span>
+          之后市场才有权在成交那一刻把 NFT 转给买家 —— 在那之前东西一直在你自己钱包里。<br>
+          没盖章的宇宙（<span class="mono">cardOf == 0</span>，也就是没走服务端引爆的）不在这个下拉里 —— 它们没有参数卡，市场不上架。
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cardhead"><h2>我挂着的单</h2><span class="dim tiny" id="myListNote"></span></div>
+      <div id="myListings"></div>
+    </div>
+  </section>
+
+  <!-- ============================ 命名弹窗 ============================
+       为什么是居中的模态而不是顶栏那种 .pop：这里面是一个要边打字边查重的表单，
+       .pop 挂在触发按钮下方，卡片在网格里，弹出来会被裁掉或者顶到屏幕外。
+       **输入框写在 HTML 里、不由 JS 重画** —— 重画会在每次查重后夺走焦点。
+       JS 只更新下面那几块状态文字。 -->
+  <div class="modal" id="namePop" hidden role="dialog" aria-modal="true" aria-label="给宇宙命名">
+    <div class="modalbox">
+      <div class="modalhead">
+        <b class="modaltitle" id="nameTitle">给宇宙命名</b>
+        <button class="iconbtn" id="btnNameClose" type="button" title="关闭" aria-label="关闭">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p class="modalquote">「分数维的宇宙很少见，我要把这组创世参数记下来。」<span class="qsrc">——《镜子》第八章</span></p>
+      <div class="modalsub mono" id="nameFor"></div>
+      <div class="field">
+        <label for="fName">名字</label>
+        <input type="text" id="fName" placeholder="例如 first-light" autocomplete="off"
+               autocapitalize="off" spellcheck="false" maxlength="32">
+        <div class="namestat" id="nameStat"></div>
+      </div>
+      <div class="namecost" id="nameCost"></div>
+      <div class="steps">
+        <button id="btnNameApprove" type="button">① 授权</button>
+        <button id="btnNameGo" class="primary" type="button">② 命名</button>
+      </div>
+      <div class="msg" id="nameMsg"></div>
+      <!-- 两套名册各自独立（specs/crafted-names-v1.md §四，用户 2026-08-21 点名要求）。
+           文案由 openName() 按当前语言填，切语言时一并重画。 -->
+      <p class="modalnote" id="nameDual"></p>
+      <p class="modalnote" id="nameRules"></p>
+    </div>
+  </div>
+
+  <!-- ============================ 灯箱（查看大图，specs/share-referral-v1.md §二） ============================
+       大图 = 去掉 ?t=1 的原图 URL。Esc / 点外关闭；「在新标签打开」给想存图的人。 -->
+  <div class="lbox" id="lbox" hidden role="dialog" aria-modal="true" aria-label="查看大图">
+    <img id="lboxImg" alt="宇宙大图">
+    <div class="lbox-bar">
+      <a id="lboxOpen" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">在新标签打开</a>
+      <button class="sm" id="lboxX" type="button">关闭</button>
+    </div>
+  </div>
+
+  <!-- ============================ 广播浮层（specs/share-referral-v1.md §二/§三 + broadcast-v2.md §三/§四） ============================
+       外观 v3（用户 2026-08-21「做好看、科幻」）：与 web/bnb-ui.js 的 .bshare-* 浮层**同款**
+       （渠道、图标、样式改一处连另一处一起改，先例见本页 qrEncode 的说明）。
+       渠道链接全部是纯 intent URL、零 SDK，href 由 fillShare() 填，点击前零对外请求；
+       一律 <a target=_blank rel="noopener noreferrer"> 普通新标签页 —— 不用 window.open 弹小窗
+       （用户 2026-08-21：「X不要打开窗口 打开浏览器的X即可」）。
+       图标全部内联 SVG、currentColor 上色，零外部图标库。
+       专名（X/Telegram/Facebook/Reddit/WhatsApp）中英同形挂 data-nolang；「微博」「复制链接」进词典。 -->
+  <div class="modal" id="sharePop" hidden role="dialog" aria-modal="true" aria-label="广播">
+    <div class="modalbox" tabindex="-1">
+      <div class="modalhead">
+        <span class="share-sig" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="11" r="1.8" fill="currentColor"/><path d="M12 13.5V20M5.6 16.2a8.5 8.5 0 0 1 0-10.4M8.3 13.9a5 5 0 0 1 0-5.8M18.4 16.2a8.5 8.5 0 0 0 0-10.4M15.7 13.9a5 5 0 0 0 0-5.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+        <b class="modaltitle">广播</b>
+        <button class="iconbtn" id="shareX" type="button" aria-label="关闭">✕</button>
+      </div>
+      <!-- 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：广播前先看到发出去的是哪张图。
+           市场页没有模拟器画面，这里是卡面 PNG；src 由 fillShare() 懒填（浮层开了才 fetch），
+           404（艺术图还没生成）→ onerror 把整块收起来，浮层其它功能照常。
+           点图走既有灯箱（#lbox）看大图。alt/title/小签文案由 JS 按当前语言填。 -->
+      <figure class="share-shot" id="shareShot" hidden>
+        <img id="shareShotImg" alt="">
+        <figcaption class="share-shot-tag" id="shareShotTag"></figcaption>
+      </figure>
+      <p class="share-preview mono" id="sharePreview"></p>
+      <!-- 主功能位：只有「复制文案和图片」一颗通栏大格（specs/broadcast-v2.md §三）。
+           微信降级进下面的渠道网格（用户 2026-08-21「微信应该和别的在一起」），
+           点击行为不变：点格子 → 展开二维码面板（§四）。 -->
+      <div class="share-feats">
+        <button class="share-feat primary" id="shareCopy" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12.5" height="12.5" rx="2"/><path d="M15.5 3.5H6A2.5 2.5 0 0 0 3.5 6v9.5"/><path d="m9 17.5 2.7-2.7 3.2 3.2 1.8-1.8 3.3 3.3"/></svg><span>复制文案和图片</span></button>
+      </div>
+      <p class="share-msg" id="shareMsg" hidden></p>
+      <!-- 渠道网格：一格一个渠道（图标 + 名字）。
+           微信排第一格：没有网页分享 API，点开是二维码面板（在网格下方展开）。 -->
+      <div class="share-grid">
+        <button class="share-tile" id="shareWx" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4.5C6.1 4.5 3 7 3 10c0 1.7.9 3.2 2.4 4.2l-.6 2.3 2.5-1.3c.5.2 1.1.3 1.7.3"/><path d="M14.6 8.1c3.2 0 5.9 2.2 5.9 4.9 0 1.5-.8 2.9-2.1 3.8l.5 2-2.2-1.1c-.7.2-1.4.3-2.1.3-3.2 0-5.9-2.2-5.9-4.9s2.6-5 5.9-5z"/></svg><span>微信</span></button>
+        <a class="share-tile" id="shareTw" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" aria-label="广播到 X"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M17.9 3H21l-6.8 7.8L22.2 21h-6.3l-4.9-6-5.6 6H2.3l7.3-8.3L1.8 3h6.4l4.4 5.5L17.9 3zm-1.1 16.1h1.7L7.3 4.8H5.5l11.3 14.3z"/></svg><span data-nolang>X</span></a>
+        <a class="share-tile" id="shareTg" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M21.9 3.1 2.5 10.6c-.8.3-.8 1 .1 1.3l4.9 1.6 1.9 5.7c.3.8.9.9 1.4.3l2.6-2.8 4.9 3.6c.7.5 1.4.2 1.6-.7l3-15.3c.2-.9-.4-1.4-1-.9zM7.9 13.2l9.5-6c.5-.3.9 0 .5.4l-7.7 7-.3 3.3-2-4.7z"/></svg><span data-nolang>Telegram</span></a>
+        <a class="share-tile" id="shareWb" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10.4 8.7c-4 .5-7.4 3.1-7.4 6 0 3 3.2 5 7.2 5s7.4-2.2 7.4-5.3c0-2.6-2.9-4.2-5.6-4"/><circle cx="10.2" cy="14.8" r="2.1"/><path d="M15.6 3.7a6.6 6.6 0 0 1 6 7.2M15.4 7a3.4 3.4 0 0 1 3.1 3.7"/></svg><span>微博</span></a>
+        <a class="share-tile" id="shareFb" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M14 8.6V7.1c0-.8.2-1.2 1.3-1.2H17V3h-2.6c-2.7 0-3.9 1.4-3.9 4v1.6H8.5V12h2v9H14v-9h2.5l.5-3.4H14z"/></svg><span data-nolang>Facebook</span></a>
+        <a class="share-tile" id="shareRd" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21c-4.4 0-8-2.2-8-5 0-1.1.6-2.1 1.6-2.9a2 2 0 0 1 3-2.5A10 10 0 0 1 12 10c1.2 0 2.4.2 3.4.6a2 2 0 0 1 3 2.5c1 .8 1.6 1.8 1.6 2.9 0 2.8-3.6 5-8 5z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9.5" cy="15.2" r="1.1" fill="currentColor"/><circle cx="14.5" cy="15.2" r="1.1" fill="currentColor"/><path d="M9.6 18.1c1.6 1 3.2 1 4.8 0M12 10l1-4.6 3.4 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="17.6" cy="6.1" r="1.2" fill="currentColor"/></svg><span data-nolang>Reddit</span></a>
+        <a class="share-tile" id="shareWa" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5A8.5 8.5 0 0 0 4.6 16.2L3.5 20.5l4.4-1.1A8.5 8.5 0 1 0 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.8 8.4c-.5 2.6 4.2 7.3 6.8 6.8l.9-1.6-2.1-1.3-.9.8c-1.1-.5-2.1-1.5-2.6-2.6l.8-.9-1.3-2.1-1.6.9z" fill="currentColor"/></svg><span data-nolang>WhatsApp</span></a>
+        <button class="share-tile" id="shareLnk" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.7 1.7"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.7-1.7"/></svg><span>复制链接</span></button>
+      </div>
+      <!-- 微信二维码面板（specs/broadcast-v2.md §四）：默认收起，点上面网格里的微信格展开。
+           二维码是本页自己算的（qrEncode），不调任何第三方二维码接口。 -->
+      <div class="share-wx" id="shareWxBox" hidden>
+        <div class="share-qr" id="shareQr"></div>
+        <div class="share-qrnote">长按识别 / 扫码打开</div>
+        <div class="share-qrlink mono" id="shareQrLink"></div>
+      </div>
+      <p class="share-note" id="shareNote"></p>
+    </div>
+  </div>
+
+  <footer>
+    合约：<span id="fContract" class="mono">—</span><br>
+    <!-- 「这是 XX 测试网。」那半句只在 chain.isTestnet 为真时出现，见 renderChainText()。 -->
+    <span id="fChainNote"></span><br>
+    「已验证」= 合约里的 <span class="mono">cardOf</span> 非零，表示这枚 NFT 的参数是服务端算过并签过名的； 「已烧」= <span class="mono">burnedOn</span>，这枚 token 上累计销毁的 BANG，链上可查、伪造不了。<br>
+    <!-- 名字这一句单独一个文本节点：拆成几段再拼，英文的语序对不上（见 i18n-market.js 的第 2 条）。 -->
+    名字 = 持有人烧 BANG 登记的，在本系列内唯一（原生与造物是两套独立名册）；大小写和同形字（O/0、I i L l/1）都算重名，名字跟着 NFT 一起转手。<br>
+    <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
+    <a href="mailto:admin@bnbbang.com" data-nolang>admin@bnbbang.com</a>
+    <!-- 友情链接：satloot 站族五个站。样式只在 nav.js 的共用块里（.sitefriends），
+         文案键在 i18n-site.js；标记静态写在页脚里 —— 爬虫与 /en/ 预渲染要在 HTML 里看得见它。 -->
+    <nav class="sitefriends" aria-label="友情链接">
+      <span class="sitefriends-t">友情链接</span>
+      <a href="https://bang.satloot.com/" rel="noopener">BTCBANG 比特宇宙</a>
+      <a href="https://satloot.com/" rel="noopener">satloot 项目总览</a>
+      <a href="https://sim.satloot.com/" rel="noopener">合约模拟器</a>
+      <a href="https://earn.satloot.com/" rel="noopener">riskdesk 风控面板</a>
+      <a href="https://airdrop.satloot.com/" rel="noopener">空投雷达</a>
+      <a href="https://game.satloot.com/" rel="noopener">satloot 游戏厅</a>
+      <a href="https://tool.satloot.com/" rel="noopener">satloot 工具站</a>
+      <a href="https://trx.satloot.com/" rel="noopener">TRX 质押收益计算器</a>
+      <a href="https://faucet.satloot.com/" rel="noopener">比特币测试币水龙头</a>
+    </nav>
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script>
+'use strict';
+/* ============================================================================
+   市场页脚本。ES5 风格（var / 具名函数 / 不用箭头与模板串），与 web/ 下现有文件一致。
+   BigInt 用了字面量（10n），和 bnb-chain.js、deploy.html 里的写法一致。
+   ============================================================================ */
+(function () {
+
+  /* ------------------------------------------------------------ 配置 */
+  var CFG = window.BNBBANG_CONFIG || {};
+  var ADDR = {
+    universe: addr(CFG.contract),
+    bang:     addr(CFG.bangToken),     // ERC-20 BANG，见 specs/economy-v4.md §1
+    market:   addr(CFG.market),
+    /* 命名合约（contracts/src/BangNames.sol）—— BANG 的第二条销毁通路。
+       **它是纯附加的一层**：config.js 里没填这个键（或者填错、或者合约没部署）时，
+       这一页照常工作，只是所有宇宙都没有名字、命名入口不出现。
+       所以它不能进 boot() 末尾那个"三个都没配就不打 RPC"的判断里 ——
+       没有它市场依然成立，有它才多一栏。 */
+    names:    addr(CFG.bangNames),
+    /* 造物系列（contracts/src/MirrorCrafted.sol，specs/crafted-v1.md）—— 第二套 721：
+       沙盒里干预后的宇宙铸在这里。**照 bangNames 的先例做成纯附加层**：
+       config.js 里没填这个键时，本页所有造物代码第一行就返回，页面与从前逐像素一致。
+       市场合约的 list(token,…) 本来就收任意 721 地址，所以挂单/买入不用任何新合约。 */
+    crafted:  addr(CFG.crafted),
+    /* 造物系列的命名合约（contracts/src/BangNames2.sol，specs/crafted-names-v1.md）。
+       **ABI 与 BangNames 逐字节同形**（当初刻意保留的），所以选择器、编码、check()
+       查重那一整套一个字都不用改，只是 eth_call 打到这个地址、名字记在另一张表里。
+       两套名册**各自独立**：同一个名字在原生和造物各能占一次，查重只在本系列内。
+       没填这个键时造物卡上不出现命名入口（照 bangNames 的先例，一次 RPC 都不多打）。 */
+    cnames:   addr(CFG.craftedNames)
+  };
+  /* ---------------------------------------------------------- 链身份
+     唯一真相来源是 config.js 的 chain 块（specs/mainnet-ready.md）；**派生只有一份**，
+     在 web/nav.js 里（五个站点页共用）。这里不再抄一份兜底 —— 抄一份就是
+     「改了一处漏三处」，正是这轮改造要拔掉的病。nav.js 本来就是本页的硬依赖
+     （顶栏是它挂的），它不在的话页面在 MirrorNav.mount() 那一行就已经停了。 */
+  var CH = MirrorNav.chain();
+  function chainName() { return MirrorNav.chainName(); }
+  var CUR = CH.currency;                    // 原生币符号（tBNB / BNB）—— 全页的计价单位
+
+  var CHAIN = {
+    hex: '0x' + CH.id.toString(16),
+    /* 钱包注册用的规范链名（wallet_addEthereumChain 的 chainName）：小狐狸的网络列表
+       是全局的、不跟页面语言走，所以固定用英文名。给人看的走 chainName()。 */
+    name: CH.nameEn,
+    currency: { name: CUR, symbol: CUR, decimals: 18 },
+    rpc: (CFG.rpc && CFG.rpc.length) ? CFG.rpc : [
+      'https://data-seed-prebsc-1-s1.bnbchain.org:8545',
+      'https://data-seed-prebsc-2-s1.bnbchain.org:8545',
+      'https://bsc-testnet-rpc.publicnode.com'
+    ],
+    explorer: CH.explorer
+  };
+  function addr(a) {
+    a = String(a || '').trim();
+    return /^0x[0-9a-fA-F]{40}$/.test(a) ? a.toLowerCase() : '';
+  }
+
+  /* 一次扫描最多看多少个 tokenId（合约没有 ERC-721 Enumerable，只能挨个 ownerOf 问）。
+     现在链上总量是个位数，这个上限纯粹是防止将来供应量涨上去以后把公开 RPC 打爆。 */
+  var SCAN_CAP = 120;
+  var RECENT_CAP = 12;       // "最近铸造"最多展示这么多（只算盖过章的）
+  var LIST_CAP = 200;        // 市场挂单最多读这么多
+
+  /* ------------------------------------------------------------ 函数选择器
+     = keccak256(签名) 前 4 字节。这一页不加载任何外部脚本（见文件头注释），所以离线算好写死：
+       node -e "var K=require('./web/keccak-lite.js'); console.log(K.keccak256('cardOf(uint256)').slice(0,10))"
+     （浏览器里那份同样的实现挂在 window.MirrorKeccak 上；推导用的 MirrorBnbHash 已经搬到服务端，
+       这里既没有也不需要。）
+     改了合约签名就要回来改这里，对不上的表现是 eth_call 返回 0x（页面会显示"读不到"，不会崩）。 */
+  var SEL = {
+    /* MirrorUniverse（ERC-721） */
+    totalSupply:      '0x18160ddd',   // totalSupply()
+    ownerOf:          '0x6352211e',   // ownerOf(uint256)
+    tokenURI:         '0xc87b56dd',   // tokenURI(uint256)
+    universeOf:       '0x003eb9d7',   // universeOf(uint256)
+    cardOf:           '0xc22b8d82',   // cardOf(uint256)      非零 = 走过服务端、带参数
+    burnedOn:         '0xffeb9ad4',   // burnedOn(uint256)    这枚 token 累计烧掉的 BANG
+    rescueOf:         '0x179401b4',   // rescueOf(uint256)  → (uint64 at, uint8 fromOutcome, uint8 steps)
+    totalBurned:      '0xd89135cd',   // totalBurned()
+    isApprovedForAll: '0xe985e9c5',   // isApprovedForAll(address,address)
+    setApprovalForAll:'0xa22cb465',   // setApprovalForAll(address,bool)
+    /* MirrorCrafted（造物系列）。totalSupply / ownerOf / cardOf / setApprovalForAll /
+       isApprovedForAll 的**签名与上面完全一致**，选择器照用，只是 eth_call 打到
+       ADDR.crafted。唯一要注意：MirrorUniverse.cardOf 返回一个 bytes32，
+       而 MirrorCrafted.cardOf 返回 8 槽的 Card 结构体（旧字节码 7 槽）—— 选择器相同，解码不同
+       （见 loadCCard，字段序照合约源码；与 server/marketindex.parseCraftedCard 同口径）。 */
+    burnBps:          '0x53deb3d6',   // burnBps() —— 造物铸造费里**当前**销毁的比例（bps）
+    /* BangToken（ERC-20） */
+    balanceOf:        '0x70a08231',   // balanceOf(address)
+    allowance:        '0xdd62ed3e',   // allowance(address,address)
+    approveErc20:     '0x095ea7b3',   // approve(address,uint256)  ← ERC-20 的，别和 721 的 setApprovalForAll 混
+    /* BangNames（命名） */
+    nameOf:           '0x051a2664',   // nameOf(uint256)              → string
+    setName:          '0xfe55932a',   // setName(uint256,string)
+    /* check(uint256,string) → (uint8 status, uint256 detail, uint256 heldBy, uint256 cost)
+       实时查重全靠它：一次 eth_call 把"能不能用、被谁占了、要烧多少"一起答完，
+       而且**它不 revert** —— 边打字边查的场景下，revert 只会变成一个分辨不出原因的
+       "调用失败"。规则也因此只有链上那一份，不在 JS 里抄第二遍（抄的那份迟早走散，
+       走散的表现是界面说能用、交易发上去 revert）。 */
+    check:            '0x3edee90e',
+    totalBurnedForNames: '0x3e9074c3',   // totalBurnedForNames()
+    /* MirrorMarket */
+    listingCount:     '0xa9b07c26',   // listingCount()
+    activeListings:   '0xaa4df6f0',   // activeListings(uint256,uint256)
+    listings:         '0xde74e57b',   // listings(uint256)
+    checkListing:     '0x5443b28a',   // checkListing(uint256)
+    /* v5 换了签名：多了第 5 个参数 bool inBang（true = 按 BANG 计价）。
+       旧选择器 0xbb74a1c2 在新合约上打不中任何函数，直接 revert —— 这是故意的，
+       比打中一个语义变了的函数安全。 */
+    list:             '0x05408a26',   // list(address,uint256,uint256,uint256,bool)
+    cancel:           '0x40e58ee5',   // cancel(uint256)
+    buy:              '0xd96a094a'    // buy(uint256)
+  };
+  /* 事件 topic = keccak256(事件签名)（不截断）。稀有度只在事件里，合约没有对应的 view，
+     所以这是唯一的来源。 */
+  var TOPIC_MINTED = '0x3217aaaf5b1eedb840d681723e770f7cd019266d201e27875c14596544057ce6';
+
+  /* ------------------------------------------------------------ 词表 */
+  var OUTCOMES = ['无稳定轨道', '大挤压', '大撕裂', '热寂·无结构', '黑洞主导', '没有原子',
+                  '没有化学', '没有恒星', '有恒星但没有生命', '可能诞生观察者', '无碳化学', '超出模型（D≠3）'];
+  /* 稀有度 0..4 = S/A/B/C/D，由服务端算、签进摘要、随 Minted 事件发出。
+     占比是 economy-v4.md §11 的实测值（块高 116,795,103，N=6000）。 */
+  var RAR = [
+    { k: 'S', why: '能诞生观察者', pct: '1.53%' },
+    { k: 'A', why: '三维但没活',   pct: '0.62%' },
+    { k: 'B', why: '整数维（非三维）', pct: '46.25%' },
+    { k: 'C', why: '半整数维',     pct: '28.55%' },
+    { k: 'D', why: '一维及以下',   pct: '23.05%' }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ------------------------------------------------------------ 中英双语
+     词典在 web/i18n-market.js，**key 就是中文原文**（机制见 web/i18n.js 顶部）。
+     这里只有三个入口：
+       T(zh)       —— 一句话。没译文就原样退回中文，界面上永远不会出现裸 key。
+       TF(zh,a,b)  —— 带 {0}/{1} 占位符的句子。**整句进词典**，别在外面拼
+                      T('已切到') + addr —— 英文的语序不一定跟中文一样。
+       TV(zh)      —— 就近覆盖动词形。核心词典把「挂单」定成 Listings，那是标签页
+                      的标题（名词），核心不许改；而交易标签要的是动词。
+                      中文一个字不变，只在英文下换成 List。
+     i18n 没加载时三个都原样返回中文，页面照常能用。 */
+  var T = function (s) { return (window.MirrorI18n ? window.MirrorI18n.t(s, 'market') : s); };
+  function isEn() { return !!window.MirrorI18n && window.MirrorI18n.lang() === 'en'; }
+  function TF(zh, a, b) {
+    var s = T(zh);
+    if (a !== undefined) s = s.split('{0}').join(String(a));
+    if (b !== undefined) s = s.split('{1}').join(String(b));
+    return s;
+  }
+  var VERB_EN = { '挂单': 'List' };
+  function TV(zh) { return (isEn() && VERB_EN[zh]) ? VERB_EN[zh] : T(zh); }
+
+  /* ============================================================ RPC
+     2026-09-02 改：① 每次 fetch 8 秒超时 —— 国内被 DNS 污染的节点一挂就是十几秒，页面整段「读不到」；
+     ② 同一时刻发出的调用合并成一个 JSON-RPC 批量请求（最多 40 条）—— 市场页首屏几十个 eth_call
+     原来是几十个请求，publicnode 按 IP 限流，一被拒就整页翻车；
+     ③ 失败转移按**条**做：节点打不通 → 整批换下一个节点；节点答了但某条是 revert → 那条直接报错
+     （换节点也是同样答案）；其它错误（limit exceeded 之类）→ 只把那几条送去下一个节点。
+     节点表里可以有相对地址（'/api/rpc'，同源中继），fetch 原样吃。 */
+  var rpcId = 0, rpcIdx = 0;
+  var RPC_TIMEOUT_MS = 8000, RPC_BATCH_MAX = 40;
+  var rpcPending = [], rpcFlushTimer = null;
+  /* 合并窗口：setTimeout(0) 能把同一轮事件循环里（含 await 之后）发出的调用都收进一批；
+     没有 setTimeout 的环境（自检的 vm 沙箱）退到微任务，语义一样只是窗口更窄。 */
+  var rpcDefer = (typeof setTimeout === 'function')
+    ? function (f) { return setTimeout(f, 0); }
+    : function (f) { Promise.resolve().then(f); return 1; };
+  function rpc(method, params) {
+    return new Promise(function (resolve, reject) {
+      rpcPending.push({ method: method, params: params || [], resolve: resolve, reject: reject });
+      if (!rpcFlushTimer) rpcFlushTimer = rpcDefer(rpcFlush);
+    });
+  }
+  function rpcFlush() {
+    rpcFlushTimer = null;
+    var batch = rpcPending.splice(0, RPC_BATCH_MAX);
+    if (rpcPending.length) rpcFlushTimer = rpcDefer(rpcFlush);
+    if (batch.length) rpcSend(batch, 0);
+  }
+  function rpcFetch(url, payload) {
+    var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = (ctl && typeof setTimeout === 'function') ? setTimeout(function () { ctl.abort(); }, RPC_TIMEOUT_MS) : null;
+    var opt = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) };
+    if (ctl) opt.signal = ctl.signal;
+    return fetch(url, opt).then(function (r) {
+      if (!r.ok) throw new Error('RPC HTTP ' + r.status);
+      return r.json();
+    }).then(function (j) { if (timer) clearTimeout(timer); return j; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+  function rpcErr(e) {
+    var er = new Error((e && e.message) || T('RPC 出错'));
+    er.rpc = true; er.rpcCode = e && e.code; er.rpcData = e && e.data;
+    return er;
+  }
+  /* revert 是节点**答了**的错：换节点也是同样答复，不转移 */
+  function rpcIsRevert(e) {
+    return !!e && (e.code === 3 || /execution reverted|revert/i.test(String(e.message || '')));
+  }
+  function rpcSend(batch, n) {
+    var tries = CHAIN.rpc.length;
+    var url = CHAIN.rpc[(rpcIdx + n) % tries];
+    var single = batch.length === 1;
+    var payload = batch.map(function (it) {
+      it.id = ++rpcId;
+      return { jsonrpc: '2.0', id: it.id, method: it.method, params: it.params };
+    });
+    rpcFetch(url, single ? payload[0] : payload).then(function (j) {
+      if (!single && !Object.prototype.toString.call(j).match(/Array/)) throw new Error('节点不接批量');
+      var arr = single ? [j] : j;
+      var byId = {}, k;
+      for (k = 0; k < arr.length; k++) if (arr[k] && arr[k].id != null) byId[arr[k].id] = arr[k];
+      if (single && arr[0] && !byId[batch[0].id]) byId[batch[0].id] = arr[0];   // 单条答复可以不带 id
+      rpcIdx = (rpcIdx + n) % tries;                       // 记住这个能用的节点
+      var retry = [];
+      batch.forEach(function (it) {
+        var r = byId[it.id];
+        if (!r) { retry.push(it); return; }                // 节点少答了这条：换节点再问
+        if (r.error) {
+          if (rpcIsRevert(r.error)) it.reject(rpcErr(r.error));
+          else { it.lastErr = r.error; retry.push(it); }
+          return;
+        }
+        it.resolve(r.result);
+      });
+      if (retry.length) {
+        if (n + 1 < tries) rpcSend(retry, n + 1);
+        else retry.forEach(function (it) { it.reject(rpcErr(it.lastErr || { message: 'RPC 没回这一条' })); });
+      }
+    }).catch(function (e) {
+      if (n + 1 < tries) return rpcSend(batch, n + 1);     // 这个节点打不通，整批换下一个
+      /* 所有节点都没接住这一批：拆成单条再走一遍（有的节点不吃批量；单条这条路自己会到头就拒） */
+      if (!single) { batch.forEach(function (it) { rpcSend([it], 0); }); return; }
+      batch[0].reject(rpcErr({ message: e && e.message }));
+    });
+  }
+  /* 读不到时记一笔原因：节点没答（网络 / 全挂）与节点答了但对不上，横幅要分开说。 */
+  function ethCall(to, data) {
+    if (!to) return Promise.resolve(null);
+    return rpc('eth_call', [{ to: to, data: data }, 'latest']).then(
+      function (r) { S.rpcDown = false; return r; },
+      function (e) { S.rpcDown = !(e && e.rpc && rpcIsRevert({ code: e.rpcCode, message: e.message })); return null; });
+  }
+
+  /* ============================================================ ABI 编解码（手写，同 bnb-chain.js） */
+  function pad(h) { return String(h).replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
+  function encUint(v) { return pad(BigInt(v).toString(16)); }
+  function encAddr(a) { return pad(String(a || '').replace(/^0x/, '')); }
+  function encBool(b) { return encUint(b ? 1 : 0); }
+  /* 动态 string 的尾部编码：长度字 + 右侧补零到 32 的倍数。
+     头部那个偏移量由调用处自己写（不同函数的头槽数不一样）。
+     名字限死在 ASCII（合约那边任何 ≥ 0x80 的字节都拒），所以这里按 UTF-8 编码
+     出来的长度就是字符数；真有人粘进中文，长度会对不上——那正是合约要拒的那一类，
+     让它照常发上去被拒，好过前端偷偷截断成另一个名字。 */
+  function encStr(s) {
+    var u = unescape(encodeURIComponent(String(s == null ? '' : s))), h = '', i;
+    for (i = 0; i < u.length; i++) h += ('0' + u.charCodeAt(i).toString(16)).slice(-2);
+    if (!u.length) return encUint(0);
+    while (h.length % 64) h += '0';
+    return encUint(u.length) + h;
+  }
+  function word(hex, i) {
+    var b = String(hex || '').replace(/^0x/, '');
+    if (b.length < (i + 1) * 64) return null;
+    return b.substr(i * 64, 64);
+  }
+  function uw(hex, i) { var w = word(hex, i); return w === null ? null : BigInt('0x' + w); }
+  function nw(hex, i) { var v = uw(hex, i); return v === null ? null : Number(v); }
+  function aw(hex, i) { var w = word(hex, i); return w === null ? null : '0x' + w.slice(24); }
+  function bw(hex, i) { var w = word(hex, i); return w === null ? null : '0x' + w; }
+  function words(hex) { var b = String(hex || '').replace(/^0x/, ''); return Math.floor(b.length / 64); }
+  function decString(hex) {
+    var body = String(hex || '').replace(/^0x/, '');
+    if (body.length < 128) return '';
+    var off = Number(BigInt('0x' + body.substr(0, 64))) * 2;
+    var len = Number(BigInt('0x' + body.substr(off, 64)));
+    var data = body.substr(off + 64, len * 2);
+    var out = '';
+    for (var i = 0; i < len; i++) out += String.fromCharCode(parseInt(data.substr(i * 2, 2), 16));
+    return out;                      // tokenURI 全是 ASCII（base64），不用管 UTF-8
+  }
+  function isZero32(h) { return !h || /^0x0{64}$/i.test(h); }
+
+  /* 并发限流：公开节点对突发请求不友好，一次最多 6 个在飞 */
+  function mapLimit(items, limit, fn) {
+    return new Promise(function (resolve) {
+      var out = new Array(items.length), i = 0, done = 0;
+      if (!items.length) return resolve(out);
+      function next() {
+        if (i >= items.length) return;
+        var k = i++;
+        Promise.resolve().then(function () { return fn(items[k], k); })
+          .then(function (v) { out[k] = v; }, function () { out[k] = null; })
+          .then(function () { done++; if (done === items.length) resolve(out); else next(); });
+      }
+      for (var j = 0; j < Math.min(limit, items.length); j++) next();
+    });
+  }
+
+  /* ============================================================ 数值
+     链上的两种钱都是 18 位小数，**换算一律用写死的 1e18，不猜数量级**：
+       tBNB —— 原生币，定义如此
+       BANG —— contracts/src/BangToken.sol 里 `uint8 public constant decimals = 18`
+     旧版市场页按数值大小去猜缩放倍数，遇到"衰减到只剩粉尘"的真实小额会猜错，
+     把只剩 1e-16% 的东西显示成 100% 满 —— 这种 bug 在市场页是诚信问题，不是显示问题。 */
+  var ONE = 1000000000000000000n;    // 1e18，两种单位共用
+  function fmtBNB(wei) {
+    var v = BigInt(wei || 0);
+    var whole = v / ONE;
+    var frac = (v % ONE).toString().padStart(18, '0').replace(/0+$/, '');
+    if (frac.length > 6) frac = frac.slice(0, 6);
+    return whole.toString() + (frac ? '.' + frac : '');
+  }
+  function toWei(s) {
+    s = String(s == null ? '' : s).trim();
+    if (!/^\d*(\.\d*)?$/.test(s) || s === '' || s === '.') return null;
+    var p = s.split('.'), whole = p[0] || '0', frac = (p[1] || '').slice(0, 18);
+    while (frac.length < 18) frac += '0';
+    return BigInt(whole) * ONE + BigInt(frac || '0');
+  }
+  function group(s) { return String(s).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  /* BANG 的显示：整数部分打千分位；不足 1 枚时给 6 位小数（免得真金白银的小额显示成 0）。 */
+  function fmtBang(v) {
+    v = BigInt(v || 0);
+    if (v === 0n) return '0';
+    var whole = v / ONE, frac = v % ONE;
+    if (whole === 0n) {
+      var f = frac.toString().padStart(18, '0').slice(0, 6).replace(/0+$/, '');
+      // 不足 1e-6 枚也**不能显示成 0**：它是真的有一点，写成 0 就是在骗人
+      return f ? '0.' + f : '<0.000001';
+    }
+    var s = group(whole.toString());
+    var f2 = (frac * 100n / ONE).toString();
+    return f2 === '0' ? s : s + '.' + f2.padStart(2, '0');
+  }
+  function shortAddr(a) { a = String(a || ''); return a.slice(0, 6) + '…' + a.slice(-4); }
+  function shortHash(h) { h = String(h || ''); return h.length > 18 ? h.slice(0, 10) + '…' + h.slice(-6) : h; }
+  function ymd(sec) {
+    if (!sec) return '';
+    var d = new Date(Number(sec) * 1000);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ============================================================ 状态 */
+  var S = {
+    account: null,
+    supply: 0,
+    mine: [],           // 我持有的、盖过章的宇宙
+    mineHidden: 0,      // 我持有但没盖章的枚数（不显示，只报个数）
+    /* 三态：undefined = 还没读到（首屏，显示"正在读取"），null = 读了但失败（横幅 / 读不到），数组 = 读到了。
+       2026-09-02 之前 null 身兼"加载中"与"失败"，首屏那几秒就会先弹一句"地址填错了"——用户截图看到的就是它。 */
+    listings: undefined,
+    rpcDown: false,     // 最近一次 eth_call 是不是「节点没答」（横幅按这个分因由）
+    recent: [],         // 最近铸造的（盖过章的）tokenId
+    meta: {},           // tokenId -> {img,outcome,blockHash,blockNumber,minter}
+    /* 来源（specs/btcbang-v1.md §1.1 / §五）：tokenId -> 'btc' | 'bnb'。**只信服务端索引**
+       （/api/market/listings 与 /api/market/owned 的条目带 origin），前端不按前导零猜 ——
+       早期比特币块只有 8 个零，而 1.2 亿个 BNB 块里出 8 个前导零的概率约 3%。
+       读不到就不标（uniNo 退回裸 #N）。两站共用一个市场，两站都要能分辨来源。 */
+    origin: {},
+    card: {},           // tokenId -> cardOf（bytes32 十六进制串）
+    value: {},          // tokenId -> {burned, rescuedAt, fromOutcome, steps}
+    rar: {},            // tokenId -> 0..4，来自 Minted 事件
+    rarErr: null,       // 读不到事件时的原因（公开节点的日志窗口很窄）
+    rarWindow: null,    // 实际读到的日志窗口（块数；0 = 全量）
+    bang: undefined,         // 我的 BANG 余额（BigInt）
+    totalBurned: undefined,  // 全网累计销毁（干预那条通路，MirrorUniverse.totalBurned）
+    name: {},           // tokenId -> 名字（''= 没命名过）。来自 BangNames.nameOf
+    cname: {},          // 造物 tokenId -> 名字。来自 BangNames2.nameOf —— **另一张表**：
+                        // 两个系列的 tokenId 是两个编号空间，混一张表就是张冠李戴
+    namesBurned: undefined,  // 全站为命名烧掉的量（BangNames.totalBurnedForNames）
+    naming: null,       // 命名弹窗的状态，见 openName()
+    approved: null,     // NFT 是否已授权给市场
+    /* ---- 物理参数（specs/market-physics-filter.md）。**全部由服务端算好发下来**：
+       维度、常数、与我们宇宙的偏离度，前端一个数都不推（基准值只在服务端）。
+       key 是**挂单号 listingId**（不是 tokenId）：索引按挂单发，同一枚 NFT
+       撤单重挂就是另一个挂单号，跟着换一条记录正好。 */
+    phys: {},           // listingId -> {dim,fractional,constants,ratios,deviation,devBand}
+    physSel: null,      // 当前这套物理筛选/排序的服务端答复，见 physEnsure()
+    physSeq: 0,         // 请求序号：筛选改得比网络快时，只认最后一次发出去的那份
+    /* ---- 造物系列（全部只在 ADDR.crafted 非空时才会被写）。
+       **两套 tokenId 是两个编号空间**（原生 #3 和造物 #3 是两个东西），
+       所以造物的数据一律放独立的 c 前缀字段，绝不与上面按 id 混在一张表里。 */
+    csupply: 0,         // crafted.totalSupply
+    cmine: [],          // 我持有的造物（cardOf 读到了才算）
+    ccard: {},          // 造物 tokenId -> 解出的 Card（7 槽）或 null（读不到）
+    capproved: null,    // 造物系列是否已授权给市场（与 approved 分开：两个合约各批各的）
+    craftBps: null,     // crafted.burnBps 当前值（BigInt bps）——投入里销毁份额按它折算
+    uniFilter: 'all',   // 市场 tab 的系列筛选：all / native / crafted
+    busy: false
+  };
+  function stamped(id) { return !isZero32(S.card[id]); }
+  /* 造物的"盖章"判据：cardOf 读到了且 cardHash 非零。合约里 cardHash 为零根本
+     铸不出来，所以 false 只会来自"这次没读到"—— 和原生一样，读不到就不显示。 */
+  function cstamped(id) { var c = S.ccard[id]; return !!(c && c.cardHash && !isZero32(c.cardHash)); }
+
+  /* ============================================================ 链上读 */
+  function loadSupply() {
+    if (!ADDR.universe) return Promise.resolve(0);
+    return ethCall(ADDR.universe, SEL.totalSupply).then(function (r) {
+      var n = uw(r, 0);
+      S.supply = n === null ? 0 : Number(n);
+      return S.supply;
+    });
+  }
+
+  /* 盖章与否是**上架的唯一闸门**（economy-v4.md §4）：cardOf == 0 表示这枚 NFT
+     没走服务端、没有参数卡，一律不显示。所以它是第一个读、也是过滤别的读取的那一步。 */
+  function loadCard(id) {
+    if (S.card[id] !== undefined) return Promise.resolve(S.card[id]);
+    return ethCall(ADDR.universe, SEL.cardOf + encUint(id)).then(function (r) {
+      var h = bw(r, 0);
+      S.card[id] = h || '';
+      return S.card[id];
+    });
+  }
+
+  function loadMeta(id) {                       // 缩略图 + 结局
+    if (S.meta[id]) return Promise.resolve(S.meta[id]);
+    return Promise.all([
+      ethCall(ADDR.universe, SEL.tokenURI + encUint(id)),
+      ethCall(ADDR.universe, SEL.universeOf + encUint(id))
+    ]).then(function (r) {
+      var m = { img: null, outcome: null, blockHash: null, blockNumber: null,
+                minter: null, verified: null, rarity: null, dim: null };
+      /* universeOf →
+         (bytes32 blockHash, uint64 blockNumber, uint64 mintedAt, address minter,
+          uint8 outcome, bool verified, uint8 rarity)
+         **rarity 就在第 7 个字段**，直接读得到，不用查日志。合约当初把它从事件
+         挪进结构体，正是因为公开 RPC 普遍不让查全量日志，窗口之外的老 token
+         在这一页上永远是「? 档」。 */
+      if (r[1] && words(r[1]) >= 5) {
+        m.blockHash = bw(r[1], 0);
+        m.blockNumber = nw(r[1], 1);
+        m.minter = aw(r[1], 3);
+        m.outcome = nw(r[1], 4);
+      }
+      if (r[1] && words(r[1]) >= 7) {
+        m.verified = nw(r[1], 5) === 1;
+        var rr = nw(r[1], 6);
+        // 5 = 未知：走 bang() 不带签名铸的那条路没有稀有度，合约统一记 5
+        m.rarity = (rr !== null && rr <= 4) ? rr : null;
+        /* 稀有度走 S.rar。元数据里另有一个 Tier 属性（弦气扰动强度）——
+           那是数据轴，界面不再显示它，别把它和稀有度混起来。 */
+        if (m.rarity !== null) S.rar[id] = m.rarity;
+      }
+
+      function absorb(j) {
+        if (!j) return;
+        m.img = j.image || j.image_url || null;
+        /* 列表里的缩略图向服务端要小图档（?t=1）。
+           全尺寸那张 SVG 有 498 KB，其中 99.3% 是内嵌的底图，而这个格子实际
+           只显示 300 像素左右 —— 换成 400 的底图后整张 60 KB，是原来的 12%。
+           只对自家的出图端点加，别去改别人的 image URL。 */
+        if (m.img && m.img.indexOf('/api/art/') >= 0 && m.img.indexOf('t=1') < 0) {
+          m.img += (m.img.indexOf('?') >= 0 ? '&' : '?') + 't=1';
+        }
+        if (j.attributes) {
+          for (var i = 0; i < j.attributes.length; i++) {
+            /* 维度只在服务端元数据里（链上算不出来），但它是**区分宇宙最有用的一个数**：
+               同一批 NFT 结局常常都是「无稳定轨道」，光看结局几个选项长得一模一样，
+               维度才分得开（12.5 / 8.5 / 3）。 */
+            if (j.attributes[i].trait_type === 'Spatial dimension') m.dim = j.attributes[i].value;
+          }
+        }
+      }
+
+      if (!r[0]) { S.meta[id] = m; return m; }
+      var uri = decString(r[0]), pre = 'data:application/json;base64,';
+
+      if (uri.indexOf(pre) === 0) {
+        // 老合约把整份元数据内联在 tokenURI 里
+        try { absorb(JSON.parse(atob(uri.slice(pre.length)))); }
+        catch (e) { /* 元数据坏了不影响别的：图就空着 */ }
+        S.meta[id] = m;
+        return m;
+      }
+
+      /* baseURI 非空时 tokenURI 返回的是一个 **http 地址**，要去取。
+         这里原来只认 data: URI，于是 baseURI 一设，每张卡的缩略图都成了
+         「图还没读到」—— 页面照着旧合约写的，没跟上。 */
+      if (/^https?:\/\//i.test(uri)) {
+        return fetch(uri).then(function (resp) {
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return resp.json();
+        }).then(function (j) {
+          absorb(j);
+          S.meta[id] = m;
+          return m;
+        }).catch(function () {
+          // 取不到就让缩略图空着，别把整张卡连同链上数据一起废掉
+          S.meta[id] = m;
+          return m;
+        });
+      }
+
+      S.meta[id] = m;
+      return m;
+    });
+  }
+
+  /* 价值锚：这枚 token 烧掉多少 BANG、有没有被救活过。
+     干预会改这两个，所以每次刷新都重读（meta 是死的，可以一直留着）。 */
+  function loadValue(id) {
+    return Promise.all([
+      ethCall(ADDR.universe, SEL.burnedOn + encUint(id)),
+      ethCall(ADDR.universe, SEL.rescueOf + encUint(id))
+    ]).then(function (r) {
+      var v = { burned: uw(r[0], 0), rescuedAt: null, fromOutcome: null, steps: null };
+      // rescueOf → (uint64 at, uint8 fromOutcome, uint8 steps)；at != 0 就是救活过
+      if (r[1] && words(r[1]) >= 3) {
+        var at = nw(r[1], 0);
+        if (at) { v.rescuedAt = at; v.fromOutcome = nw(r[1], 1); v.steps = nw(r[1], 2); }
+        else { v.steps = nw(r[1], 2); }
+      }
+      S.value[id] = v;
+      return v;
+    });
+  }
+
+  /* --- 稀有度 ---------------------------------------------------------------
+     **直接从 universeOf 的第 7 个字段读**（见 loadMeta）。
+
+     这里原来打的是 eth_getLogs 扫 Minted 事件，注释写着"合约没有 rarity 的 view"——
+     那是老合约的事实。合约后来把 rarity 挪进了 Universe 结构体，**动机正是这个**：
+     公开节点普遍不让查全量日志（data-seed 报 limit exceeded、publicnode 限 5 万块），
+     只靠事件的话，窗口之外的老 token 在这一页上永远是「? 档」。
+     结构体读得到，就没有窗口问题，也少一次很容易失败的 RPC。
+
+     留着这个空函数是为了不动上面那串 Promise.all 的形状。 */
+  function loadRarities() { return Promise.resolve(); }
+
+  /* BANG 余额（连了钱包才有）与全网累计销毁量。两个都是 18 位小数，除以写死的 1e18。 */
+  function loadBang() {
+    S.bang = undefined;
+    var jobs = [];
+    if (ADDR.bang && S.account) {
+      jobs.push(ethCall(ADDR.bang, SEL.balanceOf + encAddr(S.account)).then(function (r) {
+        S.bang = uw(r, 0);
+      }));
+    }
+    if (ADDR.universe) {
+      jobs.push(ethCall(ADDR.universe, SEL.totalBurned).then(function (r) {
+        S.totalBurned = uw(r, 0);
+      }));
+    }
+    /* 命名销毁量单独一个数，**不能和上面那个加在一起**：
+       上面那个是干预烧的（记在 MirrorUniverse.burnedOn/totalBurned 上，
+       决定 NFT 的"含金量"），这个是命名烧的，记在另一个合约里。
+       加起来的话，NFT 卡片上那句"这枚烧过多少"就会掺进和它无关的量。 */
+    S.namesBurned = undefined;
+    if (ADDR.names) {
+      jobs.push(ethCall(ADDR.names, SEL.totalBurnedForNames).then(function (r) {
+        S.namesBurned = uw(r, 0);
+      }));
+    }
+    return Promise.all(jobs);
+  }
+
+  /* 这枚宇宙的名字。没部署命名合约、没命名过、读不到 —— 三种都落成空串：
+     名字是装饰性的附加层，缺了不该让卡片显示"读不到"（那是 burnedOn 那种
+     真要紧的字段才配用的措辞）。 */
+  function loadName(id) {
+    if (!ADDR.names) { S.name[id] = ''; return Promise.resolve(''); }
+    return ethCall(ADDR.names, SEL.nameOf + encUint(id)).then(function (r) {
+      S.name[id] = decString(r) || '';
+      return S.name[id];
+    }, function () { S.name[id] = ''; return ''; });
+  }
+
+  /* 造物的名字（BangNames2）。与 loadName 同形，只换合约与落表 —— 两套名册独立，
+     所以**绝不能**共用 S.name：造物 #1 和原生 #1 是两个东西。 */
+  function loadCName(id) {
+    if (!ADDR.cnames) { S.cname[id] = ''; return Promise.resolve(''); }
+    return ethCall(ADDR.cnames, SEL.nameOf + encUint(id)).then(function (r) {
+      S.cname[id] = decString(r) || '';
+      return S.cname[id];
+    }, function () { S.cname[id] = ''; return ''; });
+  }
+
+  /* ---- 造物系列的链上读 -----------------------------------------------------
+     全部第一行就挡 ADDR.crafted：没配时一次 RPC 都不多打（照 bangNames 的先例）。 */
+  function loadCraftedSupply() {
+    if (!ADDR.crafted) return Promise.resolve(0);
+    return ethCall(ADDR.crafted, SEL.totalSupply).then(function (r) {
+      var n = uw(r, 0);
+      S.csupply = n === null ? 0 : Number(n);
+      return S.csupply;
+    });
+  }
+  /* crafted.cardOf(id) → Card 结构体。**字段序照合约源码**
+     （contracts/src/MirrorCrafted.sol 的 struct Card，别按感觉排）：
+       0 originHash  bytes32   起源区块哈希
+       1 opsHash     bytes32   keccak256(规范化的操作序列 JSON)
+       2 cardHash    bytes32   最终参数卡哈希 —— 去重的钥匙，也是图的索引
+       3 outcome     uint8     结局（与 OUTCOMES 同序）
+       4 rarity      uint8     0..4 = S/A/B/C/D（合约铸造时就校验过 ≤4）
+       5 originBlock uint64    哈希来自哪个区块
+       6 paid        uint256   铸造总费用（20/80 分账**之前**的数）
+       7 burned      uint256   铸造当时真烧掉的量（8 槽）。旧字节码只有 7 槽，没有这一项。
+     与 server/marketindex.parseCraftedCard 同口径：8 槽取槽 7；7 槽 burned=null，不报错。
+     Card 铸完就没人能改（owner 没有任何写 cardOf 的函数），所以这份缓存
+     跨 refresh 留着没问题 —— 和 meta 一样是死数据。 */
+  function loadCCard(id) {
+    if (S.ccard[id] !== undefined) return Promise.resolve(S.ccard[id]);
+    return ethCall(ADDR.crafted, SEL.cardOf + encUint(id)).then(function (r) {
+      var n = words(r);
+      if (!r || n < 7) { S.ccard[id] = null; return null; }
+      var c = {
+        originHash: bw(r, 0), opsHash: bw(r, 1), cardHash: bw(r, 2),
+        outcome: nw(r, 3), rarity: nw(r, 4), originBlock: nw(r, 5), paid: uw(r, 6),
+        burned: n >= 8 ? uw(r, 7) : null
+      };
+      S.ccard[id] = isZero32(c.cardHash) ? null : c;
+      return S.ccard[id];
+    });
+  }
+  /* 我持有哪些造物：与 loadOwned 同一套倒扫（crafted 同样没有 Enumerable）。 */
+  function loadCraftedOwned() {
+    if (!S.account || !ADDR.crafted || !S.csupply) return Promise.resolve([]);
+    var ids = [], top = S.csupply, bottom = Math.max(1, S.csupply - SCAN_CAP + 1);
+    for (var i = top; i >= bottom; i--) ids.push(i);
+    return mapLimit(ids, 6, function (id) {
+      return ethCall(ADDR.crafted, SEL.ownerOf + encUint(id)).then(function (r) {
+        var o = aw(r, 0);
+        return (o && o.toLowerCase() === S.account.toLowerCase()) ? id : null;
+      });
+    }).then(function (res) {
+      return res.filter(function (x) { return x; });
+    });
+  }
+  /* 当前的销毁比例（bps）。owner 可调（夹死在 [1,5000]），所以**每次刷新现读**，
+     不写死 2000 —— 卡片上"其中多少已销毁"按它折算。读不到就落 null，
+     界面只给总投入、不猜份额。 */
+  function loadCraftedBps() {
+    S.craftBps = null;
+    if (!ADDR.crafted) return Promise.resolve();
+    return ethCall(ADDR.crafted, SEL.burnBps).then(function (r) {
+      var v = uw(r, 0);
+      S.craftBps = (v !== null && v <= 10000n) ? v : null;
+    });
+  }
+
+  /* 我持有哪些宇宙：合约没有 Enumerable 扩展，只能从最新的 tokenId 往回挨个 ownerOf。 */
+  function loadOwned() {
+    if (!S.account || !ADDR.universe || !S.supply) return Promise.resolve([]);
+    var ids = [], top = S.supply, bottom = Math.max(1, S.supply - SCAN_CAP + 1);
+    for (var i = top; i >= bottom; i--) ids.push(i);
+    return mapLimit(ids, 6, function (id) {
+      return ethCall(ADDR.universe, SEL.ownerOf + encUint(id)).then(function (r) {
+        var o = aw(r, 0);
+        return (o && o.toLowerCase() === S.account.toLowerCase()) ? id : null;
+      });
+    }).then(function (res) {
+      return res.filter(function (x) { return x; });
+    });
+  }
+
+  /* --- 挂单簿 ---------------------------------------------------------------
+     实装的 MirrorMarket 是三返回值：
+       activeListings(offset, limit) → (uint256[] ids, Listing[] items, uint256 nextOffset)
+     头三槽依次是 ids 偏移(0x60)、items 偏移、nextOffset。这是主路径，翻页也靠 nextOffset。
+     另外两种形状也认（合约万一改了返回类型也不至于白屏）：
+       b) 单个 Listing[]（头槽 0x20）
+       c) 单个 uint256[] 的挂单 id 数组 → 再逐个 listings(id)
+     全对不上就退回 listingCount() + listings(i) 逐个扫；再不行就明说"读不到"。 */
+  function decListingStruct(hex, base, id) {
+    var seller = aw(hex, base + 0), token = aw(hex, base + 1);
+    if (!seller || !token) return null;
+    /* 结构体第 6 槽是 is1155。资源没了，市场页只认 ERC-721，但**这个字段还在链上的
+       结构体里**，不解它就找不到后面的 active，所以照读，只用来把非 721 的单子筛掉。 */
+    var is1155 = uw(hex, base + 5), active = uw(hex, base + 6), inBang = uw(hex, base + 7);
+    if (is1155 === null || active === null || inBang === null) return null;
+    if (is1155 > 1n || active > 1n || inBang > 1n) return null;  // 字段顺序对不上
+    if (/^0x0{40}$/.test(seller)) return null;
+    return {
+      id: id,
+      seller: seller,
+      token: token,
+      tokenId: uw(hex, base + 2),
+      amount: uw(hex, base + 3),
+      price: uw(hex, base + 4),
+      is1155: is1155 === 1n,
+      active: active === 1n,
+      inBang: inBang === 1n            // true = BANG 计价，false = tBNB
+    };
+  }
+  /** 解一页 activeListings 的返回。认不出来返回 null（上层退回逐个扫）。 */
+  function decActivePage(hex) {
+    if (!hex || words(hex) < 2) return null;
+    var head = uw(hex, 0), k, out = [], one;
+    if (head === 96n) {                                          // a) (ids, items, nextOffset)
+      var oIds = 3, oItems = Number(uw(hex, 1)) / 32, next = Number(uw(hex, 2));
+      var nIds = Number(uw(hex, oIds)), nItems = Number(uw(hex, oItems));
+      if (!isFinite(oItems) || !isFinite(nIds) || !isFinite(nItems) || nIds !== nItems) return null;
+      /* 结构体步长是 8：v5 在末尾加了 inBang。前 7 个字段的下标没变，只有步长变了。 */
+      if (words(hex) < oItems + 1 + nItems * 8) return null;
+      for (k = 0; k < nItems; k++) {
+        one = decListingStruct(hex, oItems + 1 + k * 8, Number(uw(hex, oIds + 1 + k)));
+        if (one) out.push(one);
+      }
+      return { items: out, next: next };
+    }
+    if (head !== 32n) return null;
+    var len = Number(uw(hex, 1)), rest = words(hex) - 2;
+    if (!isFinite(len) || len < 0) return null;
+    if (len === 0) return { items: [], next: null };
+    if (rest >= len * 8) {                                       // b) Listing[]，没带 id
+      for (k = 0; k < len; k++) {
+        one = decListingStruct(hex, 2 + k * 8, k);
+        if (one) out.push(one);
+      }
+      if (out.length) return { items: out, next: null, needIds: true };
+    }
+    if (rest >= len) {                                           // c) uint256[] 挂单 id
+      var ids = [];
+      for (k = 0; k < len; k++) ids.push(Number(uw(hex, 2 + k)));
+      return { ids: ids, next: null };
+    }
+    return null;
+  }
+
+  function loadListings() {
+    S.listings = undefined;                                  // 加载中；失败才落成 null
+    if (!ADDR.market) return Promise.resolve(null);
+    var acc = [], guard = 0;
+    function page(offset) {
+      return ethCall(ADDR.market, SEL.activeListings + encUint(offset) + encUint(100))
+        .then(function (r) {
+          var got = decActivePage(r);
+          if (!got) return null;
+          if (got.ids) {                                         // c) 只拿到 id，再逐个取内容
+            return mapLimit(got.ids, 6, fetchListing).then(function (l) {
+              return l.filter(function (x) { return x && x.active; });
+            });
+          }
+          if (got.needIds) return fixIds(got.items);             // b) 没有 id 就买不了，得补
+          acc = acc.concat(got.items);
+          if (got.next != null && got.next > offset && acc.length < LIST_CAP && ++guard < 8) return page(got.next);
+          return acc;
+        });
+    }
+    return page(0)
+      .then(function (l) { return l ? l : byCount(); })
+      .then(withStatus)
+      .then(function (l) { S.listings = l; return l; })
+      .catch(function () { S.listings = null; return null; });
+  }
+  /* 挂单还买得成吗：卖家可能挂完就把东西转走了，或者撤了授权。
+     checkListing 0=可买 1=已取消/售出 2=卖家已不持有 3=撤了授权。
+     读不到就当可买（不因为一个附加检查读不到就把整个市场标成失效）。 */
+  function withStatus(list) {
+    if (!list || !list.length) return list;
+    return mapLimit(list.slice(0, 60), 6, function (l) {
+      return ethCall(ADDR.market, SEL.checkListing + encUint(l.id)).then(function (r) {
+        var v = uw(r, 0);
+        l.status = (v === null) ? 0 : Number(v);
+        return l;
+      });
+    }).then(function () { return list; });
+  }
+  /* b) 那条路解出来的结构体没带 id，成交要用 id —— 用 listingCount 逐个核对拿真 id。 */
+  function fixIds(out) {
+    return ethCall(ADDR.market, SEL.listingCount).then(function (r) {
+      var n = uw(r, 0);
+      if (n === null || n > 400n) return out;
+      var ids = [];
+      for (var i = 0; i < Number(n); i++) ids.push(i);
+      return mapLimit(ids, 6, fetchListing).then(function (all) {
+        var real = all.filter(function (x) { return x && x.active; });
+        return real.length ? real : out;
+      });
+    }).catch(function () { return out; });
+  }
+  function fetchListing(id) {
+    return ethCall(ADDR.market, SEL.listings + encUint(id)).then(function (r) {
+      if (!r || words(r) < 7) return null;
+      return decListingStruct(r, 0, id);
+    });
+  }
+  function byCount() {
+    return ethCall(ADDR.market, SEL.listingCount).then(function (r) {
+      var n = uw(r, 0);
+      if (n === null) return null;
+      var ids = [], cap = Math.min(Number(n), LIST_CAP);
+      for (var i = 0; i < cap; i++) ids.push(i);
+      return mapLimit(ids, 6, fetchListing).then(function (l) {
+        return l.filter(function (x) { return x && x.active; });
+      });
+    }).catch(function () { return null; });
+  }
+
+  /* 授权状态。**两个合约各批各的**：setApprovalForAll 只对被调的那个 721 生效，
+     原生批过不等于造物批过 —— 所以 approved / capproved 分开读、分开存，
+     卖单下拉选到谁，syncApproveState 就看谁的。 */
+  function loadApprovals() {
+    S.approved = null;
+    S.capproved = null;
+    if (!S.account || !ADDR.market) return Promise.resolve();
+    var jobs = [];
+    if (ADDR.universe) {
+      jobs.push(ethCall(ADDR.universe, SEL.isApprovedForAll + encAddr(S.account) + encAddr(ADDR.market))
+        .then(function (r) { var v = uw(r, 0); S.approved = v === null ? null : v === 1n; }));
+    }
+    if (ADDR.crafted) {
+      jobs.push(ethCall(ADDR.crafted, SEL.isApprovedForAll + encAddr(S.account) + encAddr(ADDR.market))
+        .then(function (r) { var v = uw(r, 0); S.capproved = v === null ? null : v === 1n; }));
+    }
+    return Promise.all(jobs);
+  }
+
+  /* ============================================================ 渲染：公用零件 */
+  function elNotice(host, html, cls) {
+    var el = $(host);
+    if (!el) return;
+    if (!html) { el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="notice ' + (cls || '') + '" style="margin-bottom:10px">' + html + '</div>';
+  }
+  function undeployed(which) {
+    return '<b>' + TF('{0}合约还没部署。', T(which)) + '</b> '
+      + T('这一块的合约还没接上 —— 页面其余部分照常能用。');
+  }
+  function thumb(m) {
+    if (m && m.img) {
+      /* data-view = 去掉 ?t=1 的原图 URL —— 点图开灯箱看大图（specs/share-referral-v1.md §二） */
+      return '<img class="uthumb" alt="' + esc(T('宇宙缩略图')) + '" src="' + esc(m.img)
+        + '" data-view="' + esc(fullImg(m.img)) + '">';
+    }
+    return '<div class="uthumb ph">' + esc(T('图还没读到')) + '</div>';
+  }
+  /** 缩略图 URL → 原图 URL：把 t=1 摘掉，其余参数原样保留 */
+  function fullImg(u) {
+    return String(u || '').replace(/([?&])t=1(&|$)/, function (m0, pre, post) {
+      return post === '&' ? pre : '';
+    }).replace(/[?&]$/, '');
+  }
+  function outcomeName(o) { return (o == null || o < 0 || o > 11) ? T('结局未知') : T(OUTCOMES[o]); }
+  /** 徽标行：已验证（列表里每条都有，因为没验证的根本进不来）+ 稀有度 + 救活 */
+  function badges(id) {
+    var v = S.value[id] || {}, r = S.rar[id];
+    var out = '<span class="badge b-stamp" title="' + esc(T('cardOf 非零：这枚 NFT 走过服务端，参数指纹已写进合约')) + '">'
+      + esc(T('已验证')) + '</span>';
+    if (r != null && RAR[r]) {
+      out += '<span class="badge b-rar r-' + r + '" title="' + esc(TF('{0} · 全链约 {1}', T(RAR[r].why), RAR[r].pct)) + '">'
+        + esc(TF('{0} 档', RAR[r].k)) + '</span>';
+    } else {
+      out += '<span class="badge b-rar r-x" title="' + esc(T('没有稀有度：要么是直接调 bang() 铸的（合约记 5 = 未知），要么这一枚的 universeOf 这次没读到')) + '">'
+        + esc(TF('{0} 档', '?')) + '</span>';
+    }
+    if (v.rescuedAt) out += '<span class="badge b-rescue" title="' + esc(T('救活过：这是全场最稀缺的一档')) + '">★ ' + esc(T('已救活')) + '</span>';
+    return '<div class="badges">' + out + '</div>';
+  }
+  /** 销毁量（新的价值锚）+ 救活记录。读不到就写"读不到"，绝不默认写 0。 */
+  function valueBox(id) {
+    var v = S.value[id];
+    var burned = v ? v.burned : null;
+    var has = burned !== null && burned !== undefined && BigInt(burned) > 0n;
+    var txt = (burned === null || burned === undefined) ? T('读不到') : fmtBang(burned);
+    var note = (burned === null || burned === undefined)
+      ? T('链上读不到 burnedOn')
+      : (has ? T('烧掉的币不会回来 —— 这个数字是这枚 NFT 的成本证明') : T('还没有人为它烧过币'));
+    var html = '<div class="burnbox">'
+      + '<div class="statlab">' + esc(T('已烧掉')) + '</div>'
+      + '<div class="burnval ' + (has ? 'burned' : 'noburn') + '">' + esc(txt)
+      + (burned === null || burned === undefined ? '' : '<span class="unit">BANG</span>') + '</div>'
+      + '<div class="statnote">' + esc(note) + '</div></div>';
+    if (v && v.rescuedAt) {
+      html += '<div class="rescuebox"><b>★ ' + esc(T('救活过')) + '</b> · '
+        + esc(TF('从「{0}」推回可能诞生观察者', outcomeName(v.fromOutcome)))
+        + (v.steps ? ' · ' + esc(TF('干预 {0} 次', v.steps)) : '')
+        + (ymd(v.rescuedAt) ? ' · ' + ymd(v.rescuedAt) : '') + '</div>';
+    }
+    return html;
+  }
+  /* 宇宙的编号 = **区块号**，不是 tokenId。
+     tokenId 只是铸造顺序；参数、结局、稀有度全从那个区块的哈希派生，
+     所以"哪个区块"才是身份。区块号也唯一（tokenOfHash 不让同一个哈希被引爆两次）。
+     统一走这个函数 —— 编号在卡片、下拉、表格三处都出现过，
+     散着写就会像上次那样只改了两处、卡片上还挂着 #4。 */
+  function uniNo(id) {
+    var m = S.meta[id];
+    return originTag(id) + ((m && m.blockNumber != null) ? '#' + m.blockNumber : '#' + id);
+  }
+  /* 来源标签（specs/btcbang-v1.md §三）：BTC 宇宙两站都写「₿ #N」；BNB 宇宙在 BTCBANG 站写「BNB #N」
+     （那里 ₿ 才是默认，BNB 反而是客人），在 bnbbang.com 上照旧裸「#N」。来源未知（索引没给）一律裸 #N。 */
+  var SITE = String(CFG.site || 'bnb');
+  function originTag(id) {
+    var o = S.origin[id];
+    if (o === 'btc') return '₿ ';
+    if (o === 'bnb' && SITE === 'btc') return 'BNB ';
+    return '';
+  }
+  /** 把服务端索引条目里的来源收进 S.origin（listings / owned 两条路共用）。造物没有来源，只收原生 */
+  function absorbOrigin(it) {
+    if (!it || it.tokenId == null) return;
+    if (it.series && it.series !== 'native') return;
+    if (!it.series && ADDR.universe && it.token && String(it.token).toLowerCase() !== ADDR.universe) return;
+    var o = it.origin || (it.meta && it.meta.origin);
+    if (o === 'btc' || o === 'bnb') S.origin[String(Number(it.tokenId))] = o;
+  }
+  function originCount() { var n = 0; for (var k in S.origin) if (S.origin.hasOwnProperty(k)) n++; return n; }
+  /* 名下持仓的来源：/api/market/owned?addr= 的 native 条目带 origin。链上直读那条路（loadMine）不知道来源，
+     所以连上钱包后单独问一次；问不到就不标，页面照常。 */
+  var originOwnedFor = null;
+  function loadOriginsOwned() {
+    var a = S.account;
+    if (!a || originOwnedFor === a) return;
+    originOwnedFor = a;
+    fetch((CFG.apiBase || '/api') + '/market/owned?addr=' + encodeURIComponent(a), { headers: { accept: 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || S.account !== a) return;
+        var before = originCount();
+        (j.native || []).forEach(absorbOrigin);
+        if (originCount() !== before) { renderMine(); renderUniverses(); }
+      })
+      .catch(function () { originOwnedFor = null; /* 下次连上再试 */ });
+  }
+  /* 一句话简介：编号 · 维度 · 结局。
+     维度排在结局前面，因为它区分度更高 —— 一屏里结局常常全是「无稳定轨道」，
+     四个选项长得一模一样，维度（12.5 / 8.5 / 3）才分得开。
+     读不到就不写，不编一个。 */
+  function uniBrief(id) {
+    var m = S.meta[id] || {};
+    /* 有名字就让名字打头，编号退到它后面 —— 但**不能把编号删掉**：
+       名字是持有人取的、可以改的，编号（区块号）才是这个宇宙不变的身份，
+       出问题时要靠它把一枚 NFT 对回链上那条记录。 */
+    var nm = S.name[id];
+    var bits = [nm ? nm + ' · ' + uniNo(id) : TF('宇宙 {0}', uniNo(id))];
+    if (m.dim != null && m.dim !== '') bits.push('D=' + m.dim);
+    bits.push(outcomeName(m.outcome));
+    return bits.join(' · ');
+  }
+  /* 一行式的标题：优先名字，没名字就用编号。卡片、挂单表格都走它。 */
+  function uniLabel(id) {
+    return S.name[id] ? S.name[id] : TF('宇宙 {0}', uniNo(id));
+  }
+
+  /* 卡底动作行追加的紧凑图标钮（specs/share-referral-v1.md §二）：
+     引爆（原生 =「再引爆看看」，造物 =「看它的起源宇宙」）+ 广播。
+     SVG 描边走 currentColor，主题切换不用管它。 */
+  var ICON_BOOM = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 1.5 4 9h3.2L6 14.5 12 7H8.6z"/></svg>';
+  var ICON_SHARE = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-6"/><path d="M8 10V1.8"/><path d="m5 4.5 3-3 3 3"/></svg>';
+  function cardActBtns(kind, id) {
+    var out = '', deto = null, title = '';
+    if (kind === 'c') {
+      var c = S.ccard[id] || {};
+      if (c.originHash && !isZero32(c.originHash)) { deto = 'c:' + id; title = T('看它的起源宇宙'); }
+    } else {
+      var m = S.meta[id] || {};
+      if (m.blockHash && !isZero32(m.blockHash)) { deto = String(id); title = T('再引爆看看'); }
+    }
+    if (deto != null) {
+      out += '<button class="sm icon" data-act="deto" data-id="' + deto + '" title="' + esc(title)
+        + '" aria-label="' + esc(title) + '">' + ICON_BOOM + '</button>';
+    }
+    out += '<button class="sm icon" data-act="share" data-id="' + (kind === 'c' ? 'c:' + id : id)
+      + '" title="' + esc(T('广播')) + '" aria-label="' + esc(T('广播')) + '">' + ICON_SHARE + '</button>';
+    return out;
+  }
+
+  /** 一张宇宙卡。救活过的整张换金边。 */
+  function uCard(id, extraRows, btns) {
+    var m = S.meta[id] || {}, v = S.value[id] || {}, nm = S.name[id];
+    btns = (btns || '') + cardActBtns('n', id);      // 每张卡都有：引爆 + 广播（§二）
+    return '<div class="ucard' + (v.rescuedAt ? ' rescued' : '') + '">' + thumb(m)
+      /* 命名过的：名字单独占一行当主标题，编号缩成它下面那一行的次要信息。
+         编号不删 —— 名字可以改，区块号不能，出问题时要靠它对回链上。 */
+      + (nm ? '<div class="unamerow"><span class="uname" title="'
+              + esc(T('持有人烧 BANG 给它取的名字。在原生系列内唯一，链上可查')) + '">' + esc(nm) + '</span></div>' : '')
+      + '<div class="urow"><span class="uid' + (nm ? ' sub' : '') + '" title="'
+      + esc(TF('区块号 —— 这个宇宙的身份。token {0}', id)) + '">'
+      + esc(uniNo(id)) + '</span>'
+      + '<span class="uhash" title="' + esc(T('cardOf：服务端算过并签过名的参数指纹')) + '">' + esc(shortHash(S.card[id])) + '</span></div>'
+      + badges(id)
+      + '<div class="uout">' + esc(outcomeName(m.outcome)) + '</div>'
+      + valueBox(id)
+      + (extraRows || '')
+      + (btns ? '<div class="ubtns">' + btns + '</div>' : '')
+      + '</div>';
+  }
+
+  /* ============================================================ 造物卡片
+     与 uCard 并列的第二套渲染：数据全部来自 crafted.cardOf 解出的 8 槽
+     （旧 7 槽兼容，S.ccard），不碰 meta/value/name 那些按原生 id 索引的表。
+     **没有「取个名字」按钮**：BangNames 的 universe 指针是 immutable，
+     只认原生系列，造物命名不了 —— 摆一个必失败的按钮是骗人。 */
+  function craftImg(c) {
+    /* 图按 cardHash 找服务端（specs/crafted-v1.md）：干预后参数变了，
+       不能再按 blockHash 索引。?t=1 = 缩略图档，与原生列表同一口径（见 loadMeta）。 */
+    return (CFG.apiBase || '/api') + '/art/card/' + c.cardHash + '.svg?t=1';
+  }
+  function cBadges(c) {
+    var out = '<span class="badge b-stamp" title="'
+      + esc(T('造物必经服务端复算与签名才铸得出来，参数卡哈希已写进合约')) + '">'
+      + esc(T('已验证')) + '</span>';
+    var r = c.rarity;
+    if (r != null && RAR[r]) {
+      out += '<span class="badge b-rar r-' + r + '" title="' + esc(TF('{0} · 全链约 {1}', T(RAR[r].why), RAR[r].pct)) + '">'
+        + esc(TF('{0} 档', RAR[r].k)) + '</span>';
+    }
+    out += '<span class="badge b-craft" title="'
+      + esc(T('造物系列：沙盒里干预后的宇宙。参数 = 起源区块哈希 + 干预操作序列，任何人可复算')) + '">'
+      + esc(T('造物')) + '</span>';
+    return '<div class="badges">' + out + '</div>';
+  }
+  /* 铸造投入。**绝不把 paid 标成「已烧掉」**：paid 是铸造总费用，其中只有
+     一部分真的销毁，其余进国库 —— 原生 burnedOn 那套 100% 全烧的口径不适用这里。
+     销毁量：8 槽用 cardOf.burned（铸造当时写入，精确）；7 槽 burned 未知，
+     才按当前 burnBps 折 paid，并标明是折算。与 server/art.js craftedBurnOf 同口径。 */
+  function cPaidBox(c) {
+    var paid = c.paid;
+    var html = '<div class="burnbox"><div class="statlab">' + esc(T('铸造投入')) + '</div>';
+    if (paid === null || paid === undefined) {
+      html += '<div class="burnval noburn">' + esc(T('读不到')) + '</div>'
+        + '<div class="statnote">' + esc(T('链上读不到 cardOf 的 paid')) + '</div>';
+    } else {
+      html += '<div class="burnval ' + (BigInt(paid) > 0n ? 'burned' : 'noburn') + '">'
+        + esc(fmtBang(paid)) + '<span class="unit">BANG</span></div>';
+      var note;
+      if (c.burned !== null && c.burned !== undefined) {
+        note = TF('其中 {0} BANG 已销毁（铸造当时写入），其余进了国库', fmtBang(c.burned));
+      } else {
+        var bps = S.craftBps;
+        note = (bps === null || bps === undefined)
+          ? T('销毁比例读不到（burnBps）—— 只给总投入，不猜销毁份额')
+          : TF('其中约 {0} BANG 已销毁（按当前费率 {1}% 折算，链上 burned 未知），其余进了国库',
+               fmtBang(BigInt(paid) * bps / 10000n), fmtBps(bps));
+      }
+      html += '<div class="statnote">' + esc(note) + '</div>';
+    }
+    return html + '</div>';
+  }
+  function fmtBps(bps) {
+    var n = Number(bps) / 100;                      // 2000 bps → 20（%）
+    return String(Math.round(n * 100) / 100);
+  }
+  /** 一张造物卡。编号 = 铸造序号（造物宇宙 #tokenId），副行是起源区块号。 */
+  function cCard(id, extraRows, btns) {
+    var c = S.ccard[id] || {}, nm = S.cname[id];
+    btns = (btns || '') + cardActBtns('c', id);      // 引爆（看起源）+ 广播（§二）
+    return '<div class="ucard">'
+      + '<img class="uthumb" alt="' + esc(T('造物缩略图')) + '" src="' + esc(craftImg(c))
+      + '" data-view="' + esc(fullImg(craftImg(c))) + '">'
+      /* 命名过的造物：名字当主标题，铸造序号退成下面那一行的小字 —— 与原生卡同形。
+         提示语写的是「造物系列内唯一」，不是「全站唯一」：名字在两套名册里各占一次。 */
+      + (nm ? '<div class="unamerow"><span class="uname" title="'
+              + esc(T('持有人烧 BANG 给它取的名字。在造物系列内唯一，链上可查')) + '">' + esc(nm) + '</span></div>' : '')
+      + '<div class="urow"><span class="uid' + (nm ? ' sub' : '') + '" title="'
+      + esc(T('铸造序号 —— 造物的身份是参数卡哈希（右边那串），起源区块在下面')) + '">'
+      + esc(TF('造物宇宙 #{0}', id)) + '</span>'
+      + '<span class="uhash" title="'
+      + esc(T('参数卡哈希（cardHash）：拿起源哈希和干预操作序列跑开源引擎，能复算出同一张卡')) + '">'
+      + esc(shortHash(c.cardHash)) + '</span></div>'
+      + '<div class="urow"><span class="dim tiny">' + esc(T('起源区块')) + '</span><span class="mono">'
+      + esc(c.originBlock != null ? '#' + c.originBlock : '—') + '</span></div>'
+      + cBadges(c)
+      + '<div class="uout">' + esc(outcomeName(c.outcome)) + '</div>'
+      + cPaidBox(c)
+      + (extraRows || '')
+      + (btns ? '<div class="ubtns">' + btns + '</div>' : '')
+      + '</div>';
+  }
+  /* 卖单下拉里造物那一行的一句话简介。前缀「造物 #」，与「宇宙 #区块号」区分两套编号空间。 */
+  function craftBrief(id) {
+    var c = S.ccard[id] || {};
+    return TF('造物宇宙 #{0}', id) + ' · ' + outcomeName(c.outcome);
+  }
+
+  /* ============================================================ 1. 我的宇宙 */
+  function renderMine() {
+    var box = $('mineList');
+    if (!ADDR.universe) {
+      elNotice('mineNotice', undeployed('宇宙 NFT', 'contract'));
+      box.innerHTML = '';
+      $('mineNote').textContent = '';
+      $('mineFil').innerHTML = '';
+      return;
+    }
+    elNotice('mineNotice', S.mineHidden
+      ? TF('你名下还有 {0} 枚没盖章的宇宙没有列出来：它们的 {1} 是 0，没走服务端引爆，没有参数卡，市场不上架。',
+           '<b>' + S.mineHidden + '</b>', '<span class="mono">cardOf</span>')
+      : '');
+    if (!S.account) {
+      box.innerHTML = '<div class="empty">' + esc(T('还没连钱包。点右上角「连接钱包」看你手里的宇宙 —— 在那之前这一页也能随便逛，市场和挂单都是公开读的。')) + '</div>';
+      $('mineNote').textContent = '';
+      $('mineFil').innerHTML = '';
+      return;
+    }
+    $('mineNote').textContent = TF('链上共 {0} 枚', S.supply)
+      + (S.supply > SCAN_CAP ? TF('，只扫了最新的 {0} 枚', SCAN_CAP) : '')
+      + (ADDR.crafted ? TF('；造物链上共 {0} 枚', S.csupply) : '');
+    /* 造物持仓与原生**并列在同一张网格里**（原生在前）。ADDR.crafted 没配时
+       造物那一半恒为空，下面每一行都和从前逐字一致。
+       造物卡上没有 nameBtn：BangNames 只认原生系列（universe 指针 immutable）。 */
+    var entries = S.mine.map(function (id) { return { kind: 'n', id: id }; })
+      .concat((ADDR.crafted ? S.cmine : []).map(function (id) { return { kind: 'c', id: id }; }));
+    if (!entries.length) {
+      $('mineFil').innerHTML = '';
+      box.innerHTML = '<div class="empty">' + esc(T('这个地址名下还没有带参数的宇宙。')
+        + (S.supply ? '' : T('事实上链上一枚都还没有 —— 去模拟器里引爆一个。'))) + '</div>';
+      return;
+    }
+    /* 筛选与排序只动**已拉取**的这份持仓。排序在原生/造物两组**各自内部**进行、
+       原生仍排在前 —— 两套 tokenId 是两个编号空间，混在一起排就是拿造物 #1 去比原生 #1。 */
+    var f = FIL.mine;
+    var kept = entries.filter(function (e) { return passFil(f, e.kind, e.id, null); });
+    kept.sort(function (a, b) {
+      var ga = a.kind === 'c' ? 1 : 0, gb = b.kind === 'c' ? 1 : 0;
+      if (ga !== gb) return ga - gb;
+      if (f.sort === 'no') return noKeyOf(a.kind, a.id) - noKeyOf(b.kind, b.id);
+      return Number(b.id) - Number(a.id);                      // new：tokenId 越大铸得越晚
+    });
+    renderFilBar('mine', kept.length, entries.length);
+    if (!kept.length) {
+      box.innerHTML = '<div class="empty">' + esc(T('没有符合筛选的宇宙 —— 点「清空筛选」看全部。')) + '</div>';
+      return;
+    }
+    box.innerHTML = '<div class="ugrid">' + kept.map(function (e) {
+      if (e.kind === 'c') {
+        return cCard(e.id, '', cNameBtn(e.id) + (ADDR.market
+          ? '<button class="sm" data-act="tolist" data-id="c:' + e.id + '">' + esc(TV('挂单')) + '</button>' : ''));
+      }
+      return uCard(e.id, '', rescueBtn(e.id) + nameBtn(e.id)
+        + (ADDR.market ? '<button class="sm" data-act="tolist" data-id="' + e.id + '">' + esc(TV('挂单')) + '</button>' : ''));
+    }).join('') + '</div>';
+  }
+  /* 命名入口。没部署命名合约就整个不出现 —— 摆一个按下去报错的按钮比没有按钮更糟。
+     没名字是「取个名字」（邀请），有名字是「改名」（后者要贵一倍，弹窗里会说）。 */
+  function nameBtn(id) {
+    if (!ADDR.names) return '';
+    var has = !!S.name[id];
+    return '<button class="sm' + (has ? '' : ' name') + '" data-act="name" data-id="' + id + '" title="'
+      + esc(has ? T('改名要烧掉上一次的两倍 —— 这是为了让名字不能被反复铲走')
+                : T('烧掉 BANG，把这组创世参数记下来')) + '">'
+      + esc(has ? T('改名') : T('取个名字')) + '</button>';
+  }
+  /* 造物卡的命名入口（BangNames2，specs/crafted-names-v1.md §四）。与 nameBtn 同形，
+     只是 data-id 带 'c:' 前缀（和广播/引爆那两颗一样的写法），弹窗据此换合约与名字表。
+     craftedNames 没配就整个不出现 —— 摆一颗必失败的按钮比没有按钮更糟。 */
+  function cNameBtn(id) {
+    if (!ADDR.cnames) return '';
+    var has = !!S.cname[id];
+    return '<button class="sm' + (has ? '' : ' name') + '" data-act="name" data-id="c:' + id + '" title="'
+      + esc(has ? T('改名要烧掉上一次的两倍 —— 这是为了让名字不能被反复铲走')
+                : T('烧掉 BANG，把这组创世参数记下来')) + '">'
+      + esc(has ? T('改名') : T('取个名字')) + '</button>';
+  }
+  /* 「拯救」入口（specs/rescue-entry.md §1）。**带字，不是图标**：卡底原来跟拯救
+     沾边的只有那颗闪电图标，title 写的还是「再引爆看看」—— 用户实测时以为拯救坏了，
+     其实是根本没找到门。这颗按钮直达 app.html?bang=…&fix=1，落地那边自动开沙盒。
+
+     两道闸：
+       - cardOf 为 0 的老 NFT 不给（服务端复算不出参数，救不了）。S.mine 本来就
+         只收盖过章的，这里再挡一次是防以后有人放宽那条过滤。
+       - blockHash 读不到不给：深链没哈希可带，点了只会落到一个空的起爆页。
+     造物卡不出现 —— cCard 根本不调这个函数（造物没有拯救通路）。 */
+  function rescueBtn(id) {
+    if (isZero32(S.card[id])) return '';
+    var m = S.meta[id] || {};
+    if (!m.blockHash || isZero32(m.blockHash)) return '';
+    return '<button class="sm fix" data-act="fix" data-id="' + id + '" title="'
+      + esc(T('烧 BANG 改写它的参数，销毁量记进这枚 NFT')) + '">'
+      + esc(T('拯救')) + '</button>';
+  }
+
+  /* ============================================================ 2. 宇宙市场 */
+  /* 系列筛选（全部 / 原生 / 造物）。**只在 ADDR.crafted 配了时才画**：
+     没配时容器保持空，页面与从前逐像素一致。样式借本页现成的 .tabs/.tab
+     （nav.js 那套 .seg/.segbtn 都锁在 #siteNav 底下，页身用不上）。 */
+  function renderUniSeg() {
+    var el = $('uniSeg');
+    if (!el) return;
+    if (!ADDR.crafted) { el.innerHTML = ''; return; }
+    var FIL = [['all', '全部'], ['native', '原生'], ['crafted', '造物']];
+    el.innerHTML = '<nav class="tabs" aria-label="' + esc(T('按系列筛选')) + '" style="margin:0 0 14px">'
+      + FIL.map(function (p) {
+        return '<button class="tab' + (S.uniFilter === p[0] ? ' on' : '') + '" type="button" data-fil="'
+          + p[0] + '">' + esc(T(p[1])) + '</button>';
+      }).join('') + '</nav>';
+  }
+  function renderUniverses() {
+    var box = $('uniList');
+    var rarNote = rarNoteText();
+    renderUniSeg();
+    if (!ADDR.market) {
+      elNotice('uniNotice', undeployed('市场', 'market')
+        + (S.recent.length ? ' ' + T('下面是链上最近铸造的宇宙，先看着。') : '') + (rarNote ? ' ' + rarNote : ''));
+      box.innerHTML = '';
+      $('uniFil').innerHTML = '';
+    } else if (S.listings === undefined) {
+      /* 首屏还没读到：这不是错误，别给红横幅 */
+      elNotice('uniNotice', T('正在读取挂单…'));
+      box.innerHTML = '';
+      $('uniFil').innerHTML = '';
+    } else if (S.listings === null && S.rpcDown) {
+      /* 节点没答 —— 不是地址的错，别把人往「填错了」引；页面自己会再刷。 */
+      elNotice('uniNotice', T('链上节点暂时没响应，正在换节点重试 —— 几秒后会自动刷新。'), 'warn');
+    } else if (S.listings === null) {
+      elNotice('uniNotice', TF('市场合约地址填了，但读不到挂单 —— 地址填错了，或者合约的 {0} 和规格对不上。',
+        '<span class="mono">activeListings/listingCount</span>'), 'bad');
+      box.innerHTML = '';
+      $('uniFil').innerHTML = '';
+    } else {
+      elNotice('uniNotice', rarNote);
+      var ls = marketListings().filter(function (l) {
+        if (S.uniFilter === 'native') return !isCraftListing(l);
+        if (S.uniFilter === 'crafted') return isCraftListing(l);
+        return true;
+      });
+      /* 筛选/排序与系列分段组合生效（追加需求）：分段先筛系列，这里再筛与排。
+         稀有度那四组只动已拉取的 S.listings；物理那两组问服务端要答案（physEnsure），
+         拿回来的是「哪些挂单号符合」和「按维度该怎么排」，两层叠着用。 */
+      var f = FIL.uni, total = ls.length;
+      ls = ls.filter(function (l) {
+        return passFil(f, isCraftListing(l) ? 'c' : 'n', Number(l.tokenId), l);
+      });
+      var pstate = physEnsure(f);            // 'off' | 'wait' | 'ok' | 'err'（答复到了会自己再画一遍）
+      if (pstate === 'ok' && physFilterOn(f)) {
+        /* 索引里没有的挂单**筛掉**，与服务端一个口径：物理量读不出来就是「未知」，
+           未知不算符合 —— 当成 D=0 会被「D<3」误捞（服务端 dimPass 同一条注释）。 */
+        ls = ls.filter(function (l) { return !!physPos(l); });
+      }
+      ls = sortListings(f, ls);
+      renderFilBar('uni', ls.length, total, pstate);
+      if (pstate === 'err' && physFilterOn(f)) {
+        /* 读不到就明说读不到。**绝不把没筛过的一屏当成筛过的结果发出去** */
+        box.innerHTML = '<div class="empty">'
+          + esc(T('读不到服务端的物理索引，维度 / 常数 / 偏离度这几项这会儿筛不了 —— 点「清空筛选」看全部。')) + '</div>';
+      } else if (!ls.length) {
+        box.innerHTML = '<div class="empty">' + esc(total && filActive(f)
+          ? (physFilterOn(f)
+              ? T('没有符合这些物理条件的宇宙 —— 换一档维度，或者点「清空筛选」看全部。')
+              : T('没有符合筛选的宇宙 —— 点「清空筛选」看全部。'))
+          : (S.uniFilter === 'crafted'
+              ? T('现在没有造物在售。')
+              : T('现在没有带参数的宇宙在售。') + T('（市场刚开张，没人挂单不是故障 —— 需求得自己长出来。）'))) + '</div>';
+      } else {
+        box.innerHTML = ls.map(function (l) {
+          return isCraftListing(l) ? craftListingCard(l) : uniListingCard(l);
+        }).join('');
+      }
+    }
+    /* 最近铸造：作为浏览兜底，永远只是"看"，明确标着不在售 */
+    var rc = $('recentCard');
+    if (!S.recent.length) { rc.hidden = true; return; }
+    rc.hidden = false;
+    $('recentList').innerHTML = S.recent.map(function (id) {
+      var m = S.meta[id] || {};
+      return uCard(id, '<div class="urow"><span class="dim tiny">' + esc(T('引爆者')) + '</span><span class="mono">'
+        + esc(shortAddr(m.minter)) + '</span></div>', '');
+    }).join('');
+  }
+  /* 稀有度这一栏的实话：只在真的有卡片显示「? 档」时才解释一句，别无差别地刷提示。
+     只看**原生**的 id：S.rar 按原生 tokenId 索引，造物的稀有度直接在 Card 里、
+     永远有值，把造物 id 混进来查 S.rar 只会误报「? 档」。 */
+  function rarNoteText() {
+    var ids = S.recent.concat(S.mine).concat(nativeListings().map(function (l) { return Number(l.tokenId); }));
+    var miss = ids.some(function (id) { return S.rar[id] == null; });
+    if (!miss) return '';
+    /* 稀有度直接从链上结构体读，不存在"窗口太窄读不到"这回事。
+       还显示「? 档」只有一个原因：那几枚是走 <span class="mono">bang()</span>
+       铸的，没走服务端签名，合约把 rarity 统一记成 5 = 未知。 */
+    return TF('显示「{0} 档」的那几枚：是直接调 {1} 铸的，没走服务端引爆，本来就没有稀有度（合约里记的是 5 = 未知）。',
+              '?', '<span class="mono">bang()</span>')
+      + TF('稀有度由服务端算并签进摘要，只有 {0} 那条路才有。', '<span class="mono">bangSigned()</span>');
+  }
+
+  /* 市场上能显示的挂单：本站的两个 721（原生宇宙 + 造物），且各自盖过章。
+     is1155 那一档是资源留下的，资源已废弃，直接筛掉（合约结构体里字段还在，见 decListingStruct）。
+     l.token 两个都不是的（别人往合约里挂的任意 721）→ 照旧跳过。
+     **两个系列分开给**：tokenId 是两个编号空间，rarNoteText / refresh 里排除
+     「最近铸造」用的都必须是原生那份，混着用就会拿造物 #1 去挡原生 #1。 */
+  function isCraftListing(l) { return !!ADDR.crafted && l.token.toLowerCase() === ADDR.crafted; }
+  function nativeListings() {
+    return (S.listings || []).filter(function (l) {
+      return !l.is1155 && ADDR.universe && l.token.toLowerCase() === ADDR.universe && stamped(Number(l.tokenId));
+    });
+  }
+  function craftedListings() {
+    if (!ADDR.crafted) return [];
+    return (S.listings || []).filter(function (l) {
+      return !l.is1155 && l.token.toLowerCase() === ADDR.crafted && cstamped(Number(l.tokenId));
+    });
+  }
+  function marketListings() { return nativeListings().concat(craftedListings()); }
+  /* 价格永远带着自己的单位走。挂单簿里两种币并存，光标数字等于让人拿 5000 BANG
+     的单当成 5000 BNB —— 单位错误在市场页是诚信问题。 */
+  function fmtPrice(l) { return l.inBang ? fmtBang(l.price) + ' BANG' : fmtBNB(l.price) + ' ' + CUR; }
+  /* 挂单卡的公共几行（维度与偏离度 / 卖家 / 状态 / 价格 + 买入或撤单）——两个系列同一份。
+     物理那一行排在这几行的最前面，紧挨着价格：一屏挂单里结局常常都一样，维度才分得开
+     （与 uniBrief 同一条理由）。它**只出现在挂单卡上** —— 数据按挂单号来自服务端索引，
+     「我的宇宙」那一栏列的是持仓，没有挂单号，对不上。 */
+  function listingRows(l) {
+    return physRow(l)
+      + '<div class="urow"><span class="dim tiny">' + esc(T('卖家')) + '</span><span class="mono">' + esc(shortAddr(l.seller)) + '</span></div>'
+      + (statusNote(l) ? '<div class="tiny warn">' + esc(statusNote(l)) + '</div>' : '')
+      + '<div class="urow"><b class="mono" style="font-size:14px">' + fmtPrice(l) + '</b>' + tradeBtn(l) + '</div>';
+  }
+  function uniListingCard(l) {
+    return uCard(Number(l.tokenId), listingRows(l), '');
+  }
+  /* 造物的挂单：卡身走造物样式（造物徽标 + 起源区块 + 铸造投入），交易行同一份。 */
+  function craftListingCard(l) {
+    return cCard(Number(l.tokenId), listingRows(l), '');
+  }
+  function isMine(a) { return !!S.account && String(a).toLowerCase() === S.account.toLowerCase(); }
+  /* 卖家挂完单又把东西转走 / 撤了授权时，买入会 revert —— 与其让人白撞一次，不如提前标灰 */
+  function statusNote(l) {
+    if (!l || !l.status) return '';
+    if (l.status === 1) return T('这一单已经取消或卖掉了');
+    if (l.status === 2) return T('卖家已经不持有这份资产了，买不成');
+    if (l.status === 3) return T('卖家撤了对市场的授权，买不成');
+    return T('现在买不成');
+  }
+  function tradeBtn(l) {
+    if (isMine(l.seller)) return '<button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button>';
+    if (l.status) return '<button class="sm" disabled title="' + esc(statusNote(l)) + '">' + esc(T('买不成')) + '</button>';
+    return '<button class="sm primary" data-act="buy" data-lid="' + l.id + '">' + esc(T('买入')) + '</button>';
+  }
+
+  /* ============================================================ 3. 挂单 */
+  function renderListForm() {
+    var sel = $('fAsset'), opts = '';
+    if (!ADDR.market) {
+      elNotice('listNotice', undeployed('市场', 'market') + ' ' + T('表单先摆在这里，填不了。'));
+    } else if (!S.account) {
+      elNotice('listNotice', T('挂单要签名，先连钱包。'), 'plain');
+    } else {
+      elNotice('listNotice', '');
+    }
+    S.mine.forEach(function (id) {
+      var m = S.meta[id] || {};
+      /* 编号用**区块号**，不是 tokenId —— tokenId 只是铸造顺序，
+         而"哪个区块"才是这个宇宙的身份。区块号读不到时才退回 tokenId。 */
+      opts += '<option value="' + id + '">' + esc(uniBrief(id)) + '</option>';
+    });
+    /* 造物持仓也进下拉。**value 带 c: 前缀**（c:5 = 造物 #5）：两套 tokenId 是
+       两个编号空间，光凭数字分不出卖的是哪个合约；currentAsset() 按前缀
+       还原出 token 地址，approve 与 list 都打到对的合约上。
+       有造物可卖时用 <optgroup> 分「宇宙 / 造物」两组；没有时下拉与从前逐字一致。 */
+    var copts = '';
+    if (ADDR.crafted) {
+      S.cmine.forEach(function (id) {
+        copts += '<option value="c:' + id + '">' + esc(craftBrief(id)) + '</option>';
+      });
+    }
+    if (copts) {
+      opts = (opts ? '<optgroup label="' + esc(T('宇宙')) + '">' + opts + '</optgroup>' : '')
+        + '<optgroup label="' + esc(T('造物宇宙')) + '">' + copts + '</optgroup>';
+    }
+    if (!opts) opts = '<option value="">' + esc(S.account ? T('你名下没有可卖的宇宙') : T('先连钱包')) + '</option>';
+    var keep = sel.value;
+    sel.innerHTML = opts;
+    if (keep) sel.value = keep;
+    syncApproveState();
+
+    /* 我挂着的单 */
+    var box = $('myListings');
+    var mine = (S.listings || []).filter(function (l) { return isMine(l.seller); });
+    $('myListNote').textContent = S.account ? TF('{0} 单在挂', mine.length) : '';
+    if (!ADDR.market) { box.innerHTML = '<div class="empty">' + esc(T('市场合约未部署。')) + '</div>'; return; }
+    if (!S.account) { box.innerHTML = '<div class="empty">' + esc(T('连钱包后这里显示你挂出去的单。')) + '</div>'; return; }
+    if (!mine.length) { box.innerHTML = '<div class="empty">' + esc(T('你还没挂单。')) + '</div>'; return; }
+    /* 数字列右对齐 + tabular-nums（.num.r），见 §3.6。窄屏靠 .tablewrap 自己横滚。 */
+    box.innerHTML = '<div class="tablewrap"><table><thead><tr><th>#</th><th>' + esc(T('资产')) + '</th>'
+      + '<th class="r">' + esc(T('价格')) + '</th><th></th></tr></thead><tbody>'
+      + mine.map(function (l) {
+        // 命名过的优先显示名字，编号退成后面那一截灰字
+        var tid = Number(l.tokenId);
+        /* 造物的单：标「造物 #tokenId」。不能走 uniLabel —— 那是按原生 id
+           查区块号和名字的，拿造物的 tokenId 去查只会张冠李戴。 */
+        var lbn = isCraftListing(l)
+          ? esc(TF('造物宇宙 #{0}', tid))
+          : esc(uniLabel(tid))
+            + (S.name[tid] ? '<span class="dim"> · ' + esc(uniNo(tid)) + '</span>' : '')
+            + '<span class="dim"> · token ' + esc(String(l.tokenId)) + '</span>';
+        return '<tr><td class="num">' + l.id + '</td><td>' + lbn + '</td>'
+          + '<td class="num r">' + fmtPrice(l) + '</td>'
+          + '<td class="r"><button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  function currentAsset() {
+    var v = ($('fAsset').value || '').trim();
+    /* c:5 = 造物 #5（见 renderListForm）。token 换成造物合约地址之后，
+       下面 btnApprove / btnList 一行不用改 —— 它们本来就打到 a.token 上。 */
+    var cm = /^c:(\d+)$/.exec(v);
+    if (cm) return ADDR.crafted ? { id: Number(cm[1]), token: ADDR.crafted, crafted: true } : null;
+    if (!/^\d+$/.test(v)) return null;
+    return { id: Number(v), token: ADDR.universe };
+  }
+  function syncApproveState() {
+    var a = currentAsset(), el = $('approveState');
+    // 授权是**按合约**记的：选到造物就看 capproved，选到原生看 approved
+    var ok = (a && a.crafted) ? S.capproved : S.approved;
+    $('btnApprove').disabled = !a || !ADDR.market || ok === true;
+    $('btnList').disabled = !a || !ADDR.market;
+    el.className = 'tiny ' + (ok === true ? 'ok' : 'dim');
+    el.textContent = !a ? '' : (ok === true ? T('已授权') : (ok === false ? T('还没授权') : T('授权状态读不到')));
+  }
+
+  /* ============================================================ BANG 数字条 */
+  function renderBangBar() {
+    var bal, note;
+    if (!ADDR.bang) { bal = T('未部署'); note = T('BANG 代币还没接上'); }
+    else if (!S.account) { bal = '—'; note = T('连钱包后显示这个地址的余额'); }
+    else if (S.bang === undefined) { bal = '…'; note = T('正在读取链上数据…'); }
+    else if (S.bang === null) { bal = T('读不到'); note = T('地址填错了，或者合约还没上线'); }
+    else { bal = fmtBang(S.bang); note = T('铸造 NFT 时发放，修正宇宙和命名时销毁；团队 / 上交易所费用 / 返利另有三个一次性池'); }
+
+    var tb, tbnote;
+    if (!ADDR.universe) { tb = '—'; tbnote = T('NFT 合约未部署'); }
+    else if (S.totalBurned === undefined) { tb = '…'; tbnote = T('正在读取链上数据…'); }
+    else if (S.totalBurned === null) { tb = T('读不到'); tbnote = T('链上读不到 totalBurned'); }
+    else { tb = fmtBang(S.totalBurned); tbnote = T('全网累计销毁，只增不减 —— 这是所有 NFT 价值的总来源'); }
+
+    /* 命名销毁量单列一栏，**紧挨着上面那个全网销毁**，但绝不并进去：
+       两条通路各记各的（干预记在 MirrorUniverse，命名记在 BangNames），
+       并起来就分不清一枚 NFT 的"含金量"里有多少其实是别人取名字烧的。
+       合约没部署时整栏不出现 —— 摆一个永远写着"未部署"的大数字没有意义。 */
+    var nameStat = '';
+    if (ADDR.names) {
+      var nb = S.namesBurned === undefined ? '…' : (S.namesBurned === null ? T('读不到') : fmtBang(S.namesBurned));
+      nameStat = '<div class="stat"><div class="statlab">' + esc(T('命名已销毁')) + '</div>'
+        + '<div class="statval">' + esc(nb) + (S.namesBurned != null ? '<span class="unit">BANG</span>' : '') + '</div>'
+        + '<div class="statnote">' + esc(S.namesBurned === undefined
+            ? T('正在读取链上数据…')
+            : S.namesBurned === null
+              ? T('链上读不到 totalBurnedForNames')
+              : T('给宇宙取名字烧掉的量。这是第二条销毁通路，和干预分开记')) + '</div></div>';
+    }
+
+    $('bangbar').innerHTML =
+      '<div class="stat"><div class="statlab">' + esc(T('我的 BANG 余额')) + '</div>'
+      + '<div class="statval">' + esc(bal) + (ADDR.bang && S.bang != null && S.account ? '<span class="unit">BANG</span>' : '') + '</div>'
+      + '<div class="statnote">' + esc(note) + '</div></div>'
+      + '<div class="stat"><div class="statlab">' + esc(T('全网已销毁')) + '</div>'
+      + '<div class="statval">' + esc(tb) + (S.totalBurned != null ? '<span class="unit">BANG</span>' : '') + '</div>'
+      + '<div class="statnote">' + esc(tbnote) + '</div></div>'
+      + nameStat;
+  }
+
+  /* ============================================================ 命名弹窗
+     一次 check() 把"能不能用、被谁占了、烧多少"全问清楚（选择器那一段有原因），
+     所以这里没有任何一条名字规则的 JS 副本 —— 规则只在合约里。 */
+
+  /* 合约 check() 的状态码。**顺序和 BangNames.sol 里的常量必须一致**，
+     改了那边就要改这里；对不上的表现是提示词串台（说"太长"其实是"被占了"）。 */
+  var NST = { OK: 0, SHORT: 1, LONG: 2, CHAR: 3, EDGE: 4, TAKEN: 5, SAME: 6 };
+
+  /* 这个弹窗对**两套名册**通用：原生走 BangNames（ADDR.names），造物走 BangNames2
+     （ADDR.cnames）。BangNames2 的 ABI 与 BangNames 逐字节同形，所以下面的选择器、
+     编码、check() 查重一个字都没改，换的只有「打到哪个合约」和「名字记在哪张表」。
+     idSpec：'5' = 原生 #5，'c:5' = 造物 #5（与广播/引爆两颗按钮同一套写法）。 */
+  function nameKindOf(idSpec) {
+    var m = /^c:(\d+)$/.exec(String(idSpec));
+    return m ? { kind: 'c', id: Number(m[1]) } : { kind: 'n', id: Number(idSpec) };
+  }
+  function nameRegOf(kind) { return kind === 'c' ? ADDR.cnames : ADDR.names; }
+  function nameTableOf(kind) { return kind === 'c' ? S.cname : S.name; }
+  /** 弹窗副标题里那个「它是谁」。造物用铸造序号，原生用区块号 —— 两个编号空间，别混。 */
+  function nameSubject(kind, id) {
+    var nm = nameTableOf(kind)[id];
+    var no = kind === 'c' ? TF('造物宇宙 #{0}', id) : null;
+    if (kind === 'c') return (nm || no) + (nm ? ' · ' + no : '');
+    return uniLabel(id) + (nm ? ' · ' + uniNo(id) : '');
+  }
+  /** 两套名册各自独立这件事**必须写在弹窗里**：不写的话，有人给造物取名成功后会
+      以为抢到了全站唯一，拿去二级市场按唯一性叫价——那误解是我们造成的。 */
+  var DUAL_REG_NOTE = '原生宇宙与造物宇宙是两套独立名册：同一个名字在两边可以各占一次，查重也只在本系列内进行。';
+  function openName(idSpec) {
+    var k = nameKindOf(idSpec), kind = k.kind, id = k.id;
+    var reg = nameRegOf(kind), tbl = nameTableOf(kind);
+    if (!reg) return;
+    S.naming = { id: id, kind: kind, reg: reg, cost: null, status: null, detail: 0, heldBy: 0, allow: null, checking: false, seq: 0 };
+    $('nameTitle').textContent = tbl[id] ? T('给宇宙改名') : T('给宇宙命名');
+    $('nameFor').textContent = nameSubject(kind, id);
+    $('fName').value = tbl[id] || '';
+    $('nameMsg').textContent = '';
+    $('nameMsg').className = 'msg';
+    $('nameDual').textContent = T(DUAL_REG_NOTE);
+    $('nameRules').textContent = T('名字只能用 a-z A-Z 0-9 和连字符，1 到 32 个字符，首尾不能是连字符。不收 Unicode —— 全角的「Ｅ」和「E」看起来一样，收了就有人拿它冒充别人的名字。大小写不区分；O 和 0、I i L l 和 1 也当作同一个字符，理由同上。');
+    $('namePop').hidden = false;
+    closePops();
+    /* 焦点进输入框，并把已有的名字选中 —— 改名时最常见的动作是整个换掉 */
+    var f = $('fName');
+    f.focus();
+    if (f.value) f.select();
+    runNameCheck();
+  }
+  function closeName() {
+    $('namePop').hidden = true;
+    S.naming = null;
+  }
+
+  /** 查重 + 报价。**永远不把"读不到"显示成"可以用"**：读不到就把按钮关掉。 */
+  function runNameCheck() {
+    var n = S.naming;
+    if (!n) return;
+    var raw = $('fName').value.trim();
+    var seq = ++n.seq;                       // 打字快时后发的请求可能先回来，靠它丢弃旧的
+    n.cost = null; n.status = null; n.detail = 0; n.heldBy = 0;
+
+    if (!raw) {
+      n.status = NST.SHORT;
+      paintName(T('先起个名字'), 'wait');
+      return;
+    }
+    n.checking = true;
+    paintName(T('查重中…'), 'wait');
+
+    /* n.reg = 这次要打的命名合约（原生 BangNames / 造物 BangNames2）。
+       选择器与编码两边通用 —— 两份 ABI 逐字节同形。 */
+    var jobs = [ethCall(n.reg, SEL.check + encUint(n.id) + encUint(64) + encStr(raw))];
+    // 顺便读一次授权额度：够不够决定第 ① 步要不要走。授权也是给**这一个**合约的
+    if (ADDR.bang && S.account) {
+      jobs.push(ethCall(ADDR.bang, SEL.allowance + encAddr(S.account) + encAddr(n.reg)));
+    }
+    Promise.all(jobs).then(function (r) {
+      if (!S.naming || S.naming.seq !== seq) return;      // 已经又敲了几个字，这次结果作废
+      n.checking = false;
+      n.allow = r[1] ? uw(r[1], 0) : null;
+      if (words(r[0]) < 4) { paintName(T('查不了 —— 命名合约地址可能填错了'), 'bad'); return; }
+      n.status = nw(r[0], 0);
+      n.detail = nw(r[0], 1);
+      n.heldBy = nw(r[0], 2);
+      n.cost = uw(r[0], 3);
+      paintName(nameStatusText(n, raw), n.status === NST.OK ? 'free' : 'bad');
+    }).catch(function (e) {
+      if (!S.naming || S.naming.seq !== seq) return;
+      n.checking = false;
+      n.status = null;
+      paintName(TF('查重没成：{0}', (e && e.message ? e.message : String(e))), 'bad');
+    });
+  }
+
+  /** 状态码 → 人话。每一条都要说清**为什么**，不然用户只会反复试 */
+  function nameStatusText(n, raw) {
+    if (n.status === NST.OK) return TF('「{0}」还没人用，可以命名', raw);
+    if (n.status === NST.TAKEN) return TF('「{0}」已经被 {1} 占了 —— 名字在本系列内唯一，先到先得', raw, '#' + n.heldBy);
+    if (n.status === NST.SAME) return T('这就是它现在的名字（大小写、O/0、I/1 都算同一个），不用改');
+    if (n.status === NST.SHORT) return T('名字不能是空的');
+    if (n.status === NST.LONG) return T('最多 32 个字符');
+    // detail 是**从 0 数的字节下标**，说给人听要加 1，不然 '第 0 个字符' 没人看得懂
+    if (n.status === NST.CHAR) return TF('第 {0} 个字符不能用 —— 只收 a-z A-Z 0-9 和连字符', (n.detail || 0) + 1);
+    if (n.status === NST.EDGE) return T('首尾不能是连字符');
+    return T('查不了这个名字');
+  }
+
+  /** 把查重结果画到弹窗上：状态行、价格、两个按钮的可用性 */
+  function paintName(text, cls) {
+    var n = S.naming;
+    if (!n) return;
+    var st = $('nameStat');
+    st.className = 'namestat ' + (cls || '');
+    st.textContent = text;
+
+    var ok = n.status === NST.OK && n.cost != null;
+    var box = $('nameCost');
+    if (!ok) {
+      box.innerHTML = '<span class="dim">' + esc(T('价格要等名字合法才算得出来 —— 短名更贵，改名比上一次贵一倍')) + '</span>';
+    } else {
+      var need = n.allow === null || n.allow === undefined || BigInt(n.allow) < BigInt(n.cost);
+      box.innerHTML = '<div>' + esc(T('这一步要烧掉')) + ' <b>' + esc(fmtBang(n.cost))
+        + '<span class="unit">BANG</span></b></div>'
+        /* **授权多少必须写出来**：这个合约只会 burnFrom，不需要无限额度，
+           所以 ① 授权的就是这一笔的数，一分不多。 */
+        + '<div class="dim" style="margin-top:3px">' + esc(need
+            ? TF('① 只授权这一笔的 {0} BANG，不做无限授权', fmtBang(n.cost))
+            : TF('已授权 {0} BANG，够这一笔，直接点 ②', fmtBang(n.allow))) + '</div>'
+        + '<div class="dim" style="margin-top:3px">' + esc(T('烧掉的币不会回来。名字跟着这枚 NFT 走，转手一起转')) + '</div>';
+    }
+    var need2 = ok && (n.allow === null || n.allow === undefined || BigInt(n.allow) < BigInt(n.cost));
+    $('btnNameApprove').disabled = !ok || !S.account || !need2;
+    $('btnNameGo').disabled = !ok || !S.account || need2;
+    if (!S.account) {
+      st.className = 'namestat bad';
+      st.textContent = T('命名要发交易，先连钱包');
+    }
+  }
+
+  /* ============================================================ 写链（钱包） */
+  /* 走 web/wallet.js 选中的那个 provider，退路才是 window.ethereum ——
+     与 bnb-chain.js 的 eth() 同一个口径：连的是币安钱包，发交易就得对币安钱包说。 */
+  function eth() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum; }
+  /* 切链 / 加链的实现在 web/wallet.js（MirrorWallet.ensureChain，本页第 82 行就载了它）：
+     按最严的钱包清洗参数、加完重核 chainId、失败给人话。链参数从本页的 CHAIN 现读传过去。
+     那一份不在时走下面原样保留的退路（离线打开单页的情况）。 */
+  function ensureChain() {
+    var W = window.MirrorWallet;
+    if (W && W.ensureChain) {
+      return W.ensureChain(eth(), {
+        hex: CHAIN.hex, id: CH.id, name: CHAIN.name, label: chainName(),
+        currency: CHAIN.currency, rpcUrls: CHAIN.rpc, explorer: CHAIN.explorer
+      });
+    }
+    return ensureChainLegacy();
+  }
+  function ensureChainLegacy() {
+    return eth().request({ method: 'eth_chainId' }).then(function (id) {
+      if (String(id).toLowerCase() === CHAIN.hex) return true;
+      return eth().request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN.hex }] })
+        .then(function () { return true; })
+        .catch(function (e) {
+          if (e && (e.code === 4902 || e.code === -32603)) {
+            return eth().request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: CHAIN.hex, chainName: CHAIN.name, nativeCurrency: CHAIN.currency,
+                /* 给钱包的必须是绝对地址：节点表里的 '/api/rpc' 是同源中继，钱包用不了 */
+              rpcUrls: [CHAIN.rpc.filter(function (u) { return /^https?:/i.test(u); })[0] || CHAIN.rpc[0]], blockExplorerUrls: [CHAIN.explorer]
+              }]
+            }).then(function () { return true; });
+          }
+          throw e;
+        });
+    });
+  }
+  function connect() {
+    if (!eth()) return Promise.reject(new Error(T('没有检测到小狐狸（MetaMask）')));
+    return eth().request({ method: 'eth_requestAccounts' })
+      .then(function (a) { return ensureChain().then(function () { return (a && a[0]) || null; }); });
+  }
+  function sendTx(to, data, valueWei) {
+    if (!eth()) return Promise.reject(new Error(T('没有检测到小狐狸（MetaMask）')));
+    return connect().then(function (from) {
+      var tx = { from: from, to: to, data: data };
+      if (valueWei) tx.value = '0x' + BigInt(valueWei).toString(16);
+      return eth().request({ method: 'eth_sendTransaction', params: [tx] });
+    });
+  }
+  function waitTx(hash) {
+    var t0 = Date.now();
+    return new Promise(function (resolve, reject) {
+      (function poll() {
+        rpc('eth_getTransactionReceipt', [hash]).then(function (r) {
+          if (r) return resolve(r);
+          if (Date.now() - t0 > 180000) return reject(new Error(T('等待回执超时')));
+          setTimeout(poll, 3000);
+        }).catch(function () {
+          if (Date.now() - t0 > 180000) return reject(new Error(T('等待回执超时')));
+          setTimeout(poll, 3000);
+        });
+      })();
+    });
+  }
+  function say(text, cls) {
+    var el = $('listMsg');
+    el.className = 'msg ' + (cls || '');
+    el.textContent = text || '';
+  }
+  /* #acct 那一行。**text 可以是一个返回字符串的函数** —— 切语言时要用新语言把同一句话
+     再讲一遍，而字符串在拼出来的那一刻语言就定死了。最后一句记在 lastToast 里，
+     retoast() 原样重跑它（连 cls 一起），所以「已连接 0x…」切完还是「Connected 0x…」。 */
+  var lastToast = null;
+  function toast(text, cls) {
+    lastToast = { text: text, cls: cls };
+    var el = $('acct');
+    el.className = 'mono ' + (cls || 'dim');
+    el.textContent = (typeof text === 'function') ? text() : text;
+  }
+  function retoast() { if (lastToast) toast(lastToast.text, lastToast.cls); }
+  /* 第二个参数是**发交易的函数**，不是已经发出去的 promise。
+     原来收的是 promise —— 而实参在进函数之前就求值了，于是 `if (S.busy) return`
+     只拦得住页面，拦不住钱包：连点两下「买入」，两笔 eth_sendTransaction
+     都已经递到小狐狸了（实测 txSent=2，两个确认弹窗），第二笔的结果却被丢掉：
+     不显示状态、不刷新，用户在弹窗里点拒绝还会甩出一个 unhandled rejection。
+     收函数，busy 时就根本不调用它。
+
+     label 同理收**函数**（'撤单 #3' 这种带编号的标签）：切语言时 retoast() 会重跑
+     它，字符串的话就永远停在发交易那一刻的语言上。 */
+  /* after（可选）：交易落地并且 refresh() 跑完之后再调，参数是这一笔成没成。
+     命名那两步要用它 —— 授权成功后得重新查一次额度，命名成功后得关掉弹窗。
+     **必须排在 refresh() 之后**：排前面的话，重新查重读到的还是旧的链上状态。 */
+  function runTx(label, make, after) {
+    var L = function () { return (typeof label === 'function') ? label() : label; };
+    if (S.busy) { toast(function () { return T('上一笔还没落地，等它出结果再点'); }, 'warn'); return; }
+    S.busy = true;
+    toast(function () { return TF('{0}：在钱包里确认…', L()); });
+    var p;
+    try { p = Promise.resolve(make()); }
+    catch (e) { S.busy = false; toast(function () { return TF('{0}失败：{1}', L(), (e && e.message ? e.message : String(e))); }, 'err'); return; }
+    p.then(function (hash) {
+      toast(function () { return TF('{0}：已发出，等上链… {1}', L(), String(hash).slice(0, 14) + '…'); });
+      return waitTx(hash);
+    }).then(function (r) {
+      var ok = !r || r.status === undefined || BigInt(r.status || 0) === 1n;
+      toast(function () { return ok ? TF('{0}：成功', L()) : TF('{0}：交易被链上回滚了', L()); }, ok ? 'ok' : 'err');
+      S.busy = false;
+      return refresh().then(function () { if (after) after(ok); });
+    }).catch(function (e) {
+      toast(function () { return TF('{0}失败：{1}', L(), (e && e.message ? e.message : String(e))); }, 'err');
+      S.busy = false;
+      if (after) after(false);
+    });
+  }
+
+  /* ============================================================ 灯箱与广播（specs/share-referral-v1.md §二/§三） */
+  /** 多占位符版 TF（{0}{1}{2}{3}）。广播文案是长句，中英语序不同，整句进词典 */
+  function TX(zh) {
+    var s = T(zh);
+    for (var i = 1; i < arguments.length; i++) s = s.split('{' + (i - 1) + '}').join(String(arguments[i]));
+    return s;
+  }
+  function openLightbox(full) {
+    var box = $('lbox');
+    $('lboxImg').src = full;
+    $('lboxOpen').href = full;
+    box.hidden = false;
+  }
+  function closeLightbox() { $('lbox').hidden = true; $('lboxImg').src = ''; }
+  $('lboxX').addEventListener('click', closeLightbox);
+  $('lbox').addEventListener('click', function (ev) {
+    // 点图片本体不关，点遮罩（含图外空白）关
+    if (ev.target === $('lbox')) closeLightbox();
+  });
+
+  /** 从 data-id 反查广播/引爆要用的现场。'c:5' = 造物宇宙 #5，其余是原生 tokenId */
+  function shareDataOf(idSpec) {
+    var cm = /^c:(\d+)$/.exec(String(idSpec));
+    if (cm) {
+      var cid = Number(cm[1]), c = S.ccard[cid] || {};
+      if (!c.originHash || isZero32(c.originHash)) return null;
+      /* no = 起源区块号（链接优先用它，见 shareLink）；cardHash = 分享图的索引 ——
+         造物干预过，参数已经不是起源区块那一套，图必须按 cardHash 找。
+         两个都可能读不到（老卡、没解全），缺了各自有退路。 */
+      return { kind: 'c', hash: c.originHash, id: cid,
+               no: (c.originBlock != null && isFinite(c.originBlock)) ? c.originBlock : null,
+               cardHash: (c.cardHash && !isZero32(c.cardHash)) ? c.cardHash : null,
+               outcome: outcomeName(c.outcome), rar: (RAR[c.rarity] || {}).k || '?' };
+    }
+    var id = Number(idSpec), m = S.meta[id] || {};
+    if (!m.blockHash || isZero32(m.blockHash)) return null;
+    return { kind: 'n', hash: m.blockHash,
+             no: m.blockNumber != null ? m.blockNumber : id, outcome: outcomeName(m.outcome) };
+  }
+
+  /* 站点根地址。`/s/<区块号>` 是**挂在站点根上**的一条服务端路由（分享落地页：
+     带 og 标签给爬虫，随后把人跳到 app.html），所以这里要的是 origin，
+     不是当前页面所在的目录。取不到就返回空串，调用方据此退回老的
+     app.html?bang=… 形式 —— 那条路在任何部署下都成立（file://、localhost、子目录）。
+     和 web/bnb-ui.js 的 siteRoot() 同一口径；本页是自带脚本的独立单文件，
+     所以各留一份（理由见页头说明）。 */
+  function siteRoot() {
+    if (CFG.siteBase) return String(CFG.siteBase).replace(/\/+$/, '');
+    var o = String(location.origin || '');
+    if (!/^https?:/.test(o)) return '';
+    if (/localhost|127\.0\.0\.1|\[::1\]/.test(o)) return '';
+    if (String(location.pathname).replace(/[^/]*$/, '') !== '/') return '';
+    return o;
+  }
+  /** 广播链接（specs/broadcast-v2.md §一）。两头都砍：
+        bang 用**区块号**代替 66 字符的哈希（拿不到区块号才退回哈希）；
+        ref  用**8 位短码**代替 42 字符的地址（拿不到短码才退回地址）。
+          https://bnbbang.com/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
+      老形式的链接**仍然有效**：落地页 /s/ 两种 token 都认，?ref= 两种格式也都认。
+      连了钱包才带 ref；没连就不带，照常能广播（§二）。 */
+  function shareLink(d, ref) {
+    var token = (d && d.no != null && isFinite(d.no)) ? String(d.no) : String((d && d.hash) || '');
+    var site = siteRoot();
+    if (site) return site + '/s/' + token + (ref ? '?ref=' + encodeURIComponent(ref) : '');
+    var base = String(location.href).split(/[?#]/)[0].replace(/[^\/]*$/, '') + 'app.html';
+    return base + '?bang=' + token + (ref ? '&ref=' + encodeURIComponent(ref) : '');
+  }
+  /** 分享图（PNG）。**多数平台不认 SVG**（X 明确不支持，微信也不认），
+      所以广播这条路一律走 .png，不是卡片列表里那条 .svg（specs/broadcast-v2.md §2.1）。 */
+  function shareImg(d) {
+    var A = (CFG.apiBase || '/api');
+    if (d && d.cardHash) return A + '/art/card/' + String(d.cardHash).toLowerCase() + '.png';
+    if (d && d.hash) return A + '/art/' + String(d.hash).toLowerCase() + '.png?p=1';
+    return '';
+  }
+
+  /* 推广短码：8 位定长，字符集去掉 O/0/I/1（specs/share-referral-v1.md §8）。
+     **拿不到就退回地址** —— 链接长一点，但一定能用。一次会话只问一次：
+     短码是幂等生成的，问十次也是同一个，但每次都问会把服务端那道
+     「生成短码」的 IP 闸白白吃掉。 */
+  var CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/;
+  var RC_KEY = 'bnbbang.refcode.v1';
+  var rcCache = {};
+  function myRefCode(a) {
+    a = String(a || '').toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(a)) return Promise.resolve(null);
+    if (rcCache[a]) return Promise.resolve(rcCache[a]);
+    try {
+      var o = JSON.parse(sessionStorage.getItem(RC_KEY) || 'null');
+      if (o && o.addr === a && CODE_RE.test(o.code || '')) { rcCache[a] = o.code; return Promise.resolve(o.code); }
+    } catch (e) { /* 隐私模式：不缓存，每次现问 */ }
+    var p = fetch((CFG.apiBase || '/api') + '/refcode?addr=' + encodeURIComponent(a))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var c = (j && j.code) ? String(j.code).toUpperCase() : '';
+        if (!CODE_RE.test(c)) return null;
+        rcCache[a] = c;
+        try { sessionStorage.setItem(RC_KEY, JSON.stringify({ addr: a, code: c })); } catch (e2) { /* ignore */ }
+        return c;
+      })
+      .catch(function () { return null; });
+    /* **不许把浮层挂在这条请求上**：服务端慢的时候广播浮层也得照常打开，
+       超时就当没有短码，链接退回 ?ref=<地址>。 */
+    return new Promise(function (done) {
+      var fired = false;
+      var t = setTimeout(function () { if (!fired) { fired = true; done(null); } }, 4000);
+      p.then(function (v) { if (!fired) { fired = true; clearTimeout(t); done(v); } },
+             function () { if (!fired) { fired = true; clearTimeout(t); done(null); } });
+    });
+  }
+
+  /* 「复制文案和图片」（specs/broadcast-v2.md §三）。剪贴板能同时装文本和图片，
+     复制完在微信里 Ctrl+V 就是连图带字一条消息 —— 这条比二维码实用。
+     两条纪律：
+       1. **必须降级**：Safari 和一部分浏览器没有 ClipboardItem、或者装不下 image/png，
+          那就只复制文案，并且**明说图片没进去**，别让人以为图丢在哪儿了；
+       2. PNG 第一次是服务端现渲的（约 3 秒），按钮期间要说「正在准备图片…」，
+          否则看起来就是卡死。
+     ClipboardItem 收 Promise<Blob>：这是唯一能跨过"必须在用户手势里写剪贴板"
+     那道闸的写法，所以图片的 fetch **直接当值传进去**，不要先等它再构造。
+     与 web/bnb-ui.js 里那份同一口径（本页是独立单文件，各留一份）。 */
+  function copyTextAndImage(text, imgUrl) {
+    var nc = navigator.clipboard, CI = window.ClipboardItem;
+    if (!nc) return Promise.reject(new Error('no-clipboard'));
+    var textOnly = function () { return nc.writeText(text).then(function () { return { image: false }; }); };
+    if (!CI || !nc.write || !imgUrl) return textOnly();
+    var img = fetch(imgUrl).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    }).then(function (b) {
+      // 类型对不上时 ClipboardItem 会直接拒收，所以重新贴一层 image/png
+      return (b && b.type === 'image/png') ? b : new Blob([b], { type: 'image/png' });
+    });
+    var item;
+    try {
+      item = new CI({ 'text/plain': new Blob([text], { type: 'text/plain' }), 'image/png': img });
+    } catch (e) { return textOnly(); }
+    return nc.write([item]).then(function () { return { image: true }; }, textOnly);
+  }
+
+  /* ============================================================ 二维码（纯前端，零外部请求）
+     specs/broadcast-v2.md §4：微信没有网页分享 API，能给的只有二维码。
+     **不许调第三方二维码 API** —— 那等于把用户的推广链接发到别人的服务器上，
+     而且破了离线包「零外部请求」那条红线。所以这里自己编码。
+
+     实现范围**刻意收窄**，只够装下一条分享链接：
+       · 字节模式（UTF-8）；纠错级 M（约 15% 冗余）——
+         微信扫码是隔着屏幕拍的，级别 L 太脆
+       · 版本 1..10（最多 213 字节）：新的短链 ≈ 45 字符落在版本 3，
+         老的长链接（哈希 + 地址 ≈ 160 字符）落在版本 9，都在范围内；
+         再长就返回 null，调用方退回「只给链接文字」。
+     算法照 ISO/IEC 18004：分块 RS 纠错 → 交织 → 锯齿排布 → 八种掩模取罚分最低。
+     返回 { size, version, mask, rows }，rows[r][c] 为 1 表示黑。
+
+     ⚠ web/bnb-ui.js 里有**逐字相同的一份**。本页是自带脚本的独立单文件
+     （理由见页头说明），而 web/build-web.js 的文件清单是写死的，
+     新开一个 web/qr.js 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
+  function qrEncode(text) {
+    var i, j, k;
+    /* ---- GF(256)，本原多项式 0x11d（QR 规定的那一个） ---- */
+    var EXP = [], LOG = [], x = 1;
+    for (i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+    for (i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+    function gmul(a, b) { return (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]]; }
+
+    /* 版本 1..10 在纠错级 M 下的分块表（ISO/IEC 18004 表 9）：
+       [每块纠错码字, 组1块数, 组1数据码字, 组2块数, 组2数据码字] */
+    var RS = [null,
+      [10, 1, 16, 0, 0], [16, 1, 28, 0, 0], [26, 1, 44, 0, 0], [18, 2, 32, 0, 0],
+      [24, 2, 43, 0, 0], [16, 4, 27, 0, 0], [18, 4, 31, 0, 0], [22, 2, 38, 2, 39],
+      [22, 3, 36, 2, 37], [26, 4, 43, 1, 44]];
+    // 对齐图案的中心坐标（版本 1 没有）
+    var ALIGN = [null, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34],
+      [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50]];
+    function dataCW(v) { var r = RS[v]; return r[1] * r[2] + r[3] * r[4]; }
+
+    /* ---- UTF-8。链接是 ASCII，但万一有人拿它编中文也不该炸 ---- */
+    var bytes = [];
+    for (i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      if (c < 0x80) bytes.push(c);
+      else if (c < 0x800) bytes.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      else if (c >= 0xd800 && c <= 0xdbff && i + 1 < text.length) {
+        var cp = 0x10000 + ((c - 0xd800) << 10) + (text.charCodeAt(i + 1) - 0xdc00); i++;
+        bytes.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+      } else bytes.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+
+    /* ---- 挑最小的装得下的版本。装不下就认输（返回 null），不硬塞 ---- */
+    var ver = 0;
+    for (i = 1; i <= 10; i++) {
+      if (dataCW(i) * 8 - (4 + (i >= 10 ? 16 : 8)) >= bytes.length * 8) { ver = i; break; }
+    }
+    if (!ver) return null;
+
+    /* ---- 位流：模式(0100) + 长度 + 数据 + 结束符 + 补齐 + 填充码字 ---- */
+    var bits = [];
+    function put(v, n) { for (var q = n - 1; q >= 0; q--) bits.push((v >>> q) & 1); }
+    put(4, 4);
+    put(bytes.length, ver >= 10 ? 16 : 8);
+    for (i = 0; i < bytes.length; i++) put(bytes[i], 8);
+    var cap = dataCW(ver) * 8;
+    for (i = 0; i < 4 && bits.length < cap; i++) bits.push(0);
+    while (bits.length % 8) bits.push(0);
+    var cw = [];
+    for (i = 0; i < bits.length; i += 8) {
+      var v8 = 0;
+      for (j = 0; j < 8; j++) v8 = (v8 << 1) | bits[i + j];
+      cw.push(v8);
+    }
+    var PAD = [0xec, 0x11], pi = 0;
+    while (cw.length < dataCW(ver)) cw.push(PAD[pi++ & 1]);
+
+    /* ---- Reed-Solomon：生成多项式与余式 ---- */
+    function genPoly(n) {
+      var g = [1];
+      for (var a = 0; a < n; a++) {
+        var ng = [];
+        for (var b = 0; b <= g.length; b++) {
+          ng[b] = (b < g.length ? g[b] : 0) ^ (b > 0 ? gmul(g[b - 1], EXP[a]) : 0);
+        }
+        g = ng;
+      }
+      return g;
+    }
+    function ecOf(block, n) {
+      var g = genPoly(n), r = block.slice(), a, b;
+      for (a = 0; a < n; a++) r.push(0);
+      for (a = 0; a < block.length; a++) {
+        var f = r[a];
+        if (!f) continue;
+        for (b = 1; b < g.length; b++) r[a + b] ^= gmul(g[b], f);
+      }
+      return r.slice(block.length);
+    }
+
+    /* ---- 分块 + 交织（数据按列取，纠错码字整段跟在后面） ---- */
+    var R = RS[ver], ecN = R[0], blocks = [], ecs = [], p = 0, blk;
+    for (i = 0; i < R[1]; i++) { blk = cw.slice(p, p + R[2]); p += R[2]; blocks.push(blk); ecs.push(ecOf(blk, ecN)); }
+    for (i = 0; i < R[3]; i++) { blk = cw.slice(p, p + R[4]); p += R[4]; blocks.push(blk); ecs.push(ecOf(blk, ecN)); }
+    var seq = [], maxD = Math.max(R[2], R[4]);
+    for (i = 0; i < maxD; i++) for (j = 0; j < blocks.length; j++) if (i < blocks[j].length) seq.push(blocks[j][i]);
+    for (i = 0; i < ecN; i++) for (j = 0; j < ecs.length; j++) seq.push(ecs[j][i]);
+
+    /* ---- 功能图案 ---- */
+    var size = ver * 4 + 17;
+    var m = [], fn = [];
+    for (i = 0; i < size; i++) {
+      m.push([]); fn.push([]);
+      for (j = 0; j < size; j++) { m[i][j] = 0; fn[i][j] = 0; }
+    }
+    function setF(r, c, v) {
+      if (r < 0 || c < 0 || r >= size || c >= size) return;
+      m[r][c] = v ? 1 : 0; fn[r][c] = 1;
+    }
+    // 定位图案 7×7 + 一圈分隔用的浅色（所以从 -1 扫到 7）
+    function finder(r0, c0) {
+      for (var dr = -1; dr <= 7; dr++) for (var dc = -1; dc <= 7; dc++) {
+        var inner = dr >= 0 && dr <= 6 && dc >= 0 && dc <= 6;
+        var d = Math.max(Math.abs(dr - 3), Math.abs(dc - 3));
+        setF(r0 + dr, c0 + dc, inner && d !== 2 ? 1 : 0);
+      }
+    }
+    finder(0, 0); finder(0, size - 7); finder(size - 7, 0);
+    for (i = 8; i < size - 8; i++) { setF(6, i, i % 2 === 0 ? 1 : 0); setF(i, 6, i % 2 === 0 ? 1 : 0); }
+    var AP = ALIGN[ver];
+    for (i = 0; i < AP.length; i++) for (j = 0; j < AP.length; j++) {
+      // 三个角上被定位图案占了的不放；其余都要放，**哪怕压在定时图案上**
+      if ((i === 0 && j === 0) || (i === 0 && j === AP.length - 1) || (i === AP.length - 1 && j === 0)) continue;
+      for (var ar = -2; ar <= 2; ar++) for (var ac = -2; ac <= 2; ac++) {
+        setF(AP[i] + ar, AP[j] + ac, Math.max(Math.abs(ar), Math.abs(ac)) === 1 ? 0 : 1);
+      }
+    }
+    // 格式信息区先占位（掩模定了才写真值），外加那一枚永远是黑的模块
+    for (i = 0; i <= 8; i++) if (i !== 6) { setF(8, i, 0); setF(i, 8, 0); }
+    for (i = 0; i < 8; i++) { setF(8, size - 1 - i, 0); setF(size - 1 - i, 8, 0); }
+    setF(size - 8, 8, 1);
+    // 版本信息（版本 7 起才有），两处对称各一份
+    if (ver >= 7) {
+      var vr = ver;
+      for (i = 0; i < 12; i++) vr = (vr << 1) ^ (((vr >>> 11) & 1) * 0x1f25);
+      var vbits = (ver << 12) | (vr & 0xfff);
+      for (i = 0; i < 18; i++) {
+        var vb = (vbits >>> i) & 1, va = size - 11 + (i % 3), vc = Math.floor(i / 3);
+        setF(vc, va, vb); setF(va, vc, vb);
+      }
+    }
+
+    /* ---- 数据锯齿排布：右下角起，每次两列蛇形上下走，跳过第 6 列（定时图案）。
+           数据位排完之后剩下的（余数位）保持浅色，规范就是这么定的。 ---- */
+    var bi = 0;
+    for (var right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (var vert = 0; vert < size; vert++) {
+        for (j = 0; j < 2; j++) {
+          var col = right - j, up = ((right + 1) & 2) === 0;
+          var row = up ? size - 1 - vert : vert;
+          if (fn[row][col] || bi >= seq.length * 8) continue;
+          m[row][col] = (seq[bi >>> 3] >>> (7 - (bi & 7))) & 1;
+          bi++;
+        }
+      }
+    }
+
+    /* ---- 格式信息（纠错级 M = 00 与掩模号，BCH(15,5) 后异或 0x5412） ---- */
+    function writeFormat(g, msk) {
+      var d = msk, rem = d;                       // 纠错级 M 的两位是 00，所以 d 就是掩模号
+      for (var q = 0; q < 10; q++) rem = (rem << 1) ^ (((rem >>> 9) & 1) * 0x537);
+      var fb = ((d << 10) | (rem & 0x3ff)) ^ 0x5412;
+      function bit(n) { return (fb >>> n) & 1; }
+      for (var t = 0; t <= 5; t++) g[t][8] = bit(t);
+      g[7][8] = bit(6); g[8][8] = bit(7); g[8][7] = bit(8);
+      for (t = 9; t < 15; t++) g[8][14 - t] = bit(t);
+      for (t = 0; t < 8; t++) g[8][size - 1 - t] = bit(t);
+      for (t = 8; t < 15; t++) g[size - 15 + t][8] = bit(t);
+      g[size - 8][8] = 1;
+    }
+
+    /* ---- 八种掩模各算一次罚分，取最低（ISO 表 11 的四条规则） ---- */
+    function maskOn(msk, r, c) {
+      switch (msk) {
+        case 0: return (r + c) % 2 === 0;
+        case 1: return r % 2 === 0;
+        case 2: return c % 3 === 0;
+        case 3: return (r + c) % 3 === 0;
+        case 4: return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0;
+        case 5: return (r * c) % 2 + (r * c) % 3 === 0;
+        case 6: return ((r * c) % 2 + (r * c) % 3) % 2 === 0;
+        default: return ((r + c) % 2 + (r * c) % 3) % 2 === 0;
+      }
+    }
+    var P1 = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0], P2 = [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1];
+    function penalty(g) {
+      var s = 0, r, c, run, dark = 0, a, b;
+      // 规则 1：一行/一列里连着 5 个以上同色
+      for (r = 0; r < size; r++) {
+        run = 1;
+        for (c = 1; c < size; c++) {
+          if (g[r][c] === g[r][c - 1]) { run++; if (run === 5) s += 3; else if (run > 5) s += 1; }
+          else run = 1;
+        }
+      }
+      for (c = 0; c < size; c++) {
+        run = 1;
+        for (r = 1; r < size; r++) {
+          if (g[r][c] === g[r - 1][c]) { run++; if (run === 5) s += 3; else if (run > 5) s += 1; }
+          else run = 1;
+        }
+      }
+      // 规则 2：2×2 同色
+      for (r = 0; r + 1 < size; r++) for (c = 0; c + 1 < size; c++) {
+        var v0 = g[r][c];
+        if (v0 === g[r][c + 1] && v0 === g[r + 1][c] && v0 === g[r + 1][c + 1]) s += 3;
+      }
+      // 规则 3：1:1:3:1:1 那个像定位图案的序列（连同它一侧的四格浅色区）
+      for (r = 0; r < size; r++) for (c = 0; c + 10 < size; c++) {
+        a = true; b = true;
+        for (k = 0; k < 11; k++) {
+          if (g[r][c + k] !== P1[k]) a = false;
+          if (g[r][c + k] !== P2[k]) b = false;
+        }
+        if (a) s += 40;
+        if (b) s += 40;
+      }
+      for (c = 0; c < size; c++) for (r = 0; r + 10 < size; r++) {
+        a = true; b = true;
+        for (k = 0; k < 11; k++) {
+          if (g[r + k][c] !== P1[k]) a = false;
+          if (g[r + k][c] !== P2[k]) b = false;
+        }
+        if (a) s += 40;
+        if (b) s += 40;
+      }
+      // 规则 4：黑模块占比偏离 50%，每偏 5% 加 10 分
+      for (r = 0; r < size; r++) for (c = 0; c < size; c++) if (g[r][c]) dark++;
+      s += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+      return s;
+    }
+    var best = null, bestMask = 0;
+    for (var msk = 0; msk < 8; msk++) {
+      var g3 = [];
+      for (i = 0; i < size; i++) {
+        g3.push([]);
+        for (j = 0; j < size; j++) g3[i][j] = (!fn[i][j] && maskOn(msk, i, j)) ? (m[i][j] ^ 1) : m[i][j];
+      }
+      // 罚分要在格式信息**已经写好**的图上算，否则算的不是解码器看到的那张
+      writeFormat(g3, msk);
+      var sc = penalty(g3);
+      if (best === null || sc < best.s) { best = { s: sc, g: g3 }; bestMask = msk; }
+    }
+    return { size: size, version: ver, mask: bestMask, rows: best.g };
+  }
+
+  /** 把矩阵画成一张内联 SVG。**黑白写死**：二维码要的是高对比，
+      跟着深色主题反过来的话不少相机就认不出来了 —— 全站少有的不走令牌的地方，
+      理由就是它必须被摄像头认出来。四格静区（quiet zone）是规范要求的，不能省。
+      画不出来（内容超过版本 10）返回 null，调用方退回「只给链接文字」。 */
+  function qrSvg(text, px) {
+    var q = qrEncode(String(text));
+    if (!q) return null;
+    var n = q.size, pad = 4, w = n + pad * 2, d = [], r, c;
+    for (r = 0; r < n; r++) for (c = 0; c < n; c++) {
+      if (q.rows[r][c]) d.push('M' + (c + pad) + ' ' + (r + pad) + 'h1v1h-1z');
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + w + '"'
+      + ' width="' + px + '" height="' + px + '" shape-rendering="crispEdges" aria-hidden="true">'
+      + '<rect width="' + w + '" height="' + w + '" fill="#fff"/>'
+      + '<path d="' + d.join('') + '" fill="#000"/></svg>';
+  }
+
+  function shareTextOf(d, link) {
+    if (d.kind === 'c') {
+      return TX('我把一个死宇宙救成了「{0}」（{1} 档造物宇宙 #{2}）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{3}',
+                d.outcome, d.rar, d.id, link).replace(/\s+$/, '');
+    }
+    return TX('我在 BNBBANG 引爆了宇宙 {0}：{1}。每个 BNB 区块哈希都是一套物理定律——来引爆你自己的，前 100 万枚每地址 10 次免费，之后 0.01 BNB。{2}',
+              '#' + d.no, d.outcome, link).replace(/\s+$/, '');
+  }
+  var SHARE_OF = null;                 // 浮层现在摆的是哪张卡（异步回填时要认它）
+  function openShare(idSpec) {
+    var d = shareDataOf(idSpec);
+    if (!d) { toast(function () { return T('这张卡还没读全，稍等一下再广播'); }, 'warn'); return; }
+    var me = S.account ? String(S.account).toLowerCase() : null;
+    /* **先按地址那版把浮层摆满**（地址一定拿得到，不用等网络），再等短码回来换成短的。
+       不这么做的话：短码那条请求最长要 4 秒，这 4 秒里浮层摆的还是**上一张卡**的文案 ——
+       用户关掉 A 打开 B，看到的是 A 的链接，复制走就是错的。 */
+    SHARE_OF = String(idSpec);
+    $('shareWxBox').hidden = true;     // 换一张卡就把二维码那块收回去，从头来
+    fillShare(d, me);
+    /* 上一次关闭的 160ms 收场可能还没走完 —— 先把它掐掉，别让残余的定时器
+       把刚打开的浮层又藏回去。 */
+    clearTimeout(SHARE_CLOSE_T);
+    $('sharePop').classList.remove('closing');
+    $('sharePop').hidden = false;
+    /* 键盘可达：焦点先落在对话框上（tabindex=-1），Esc 关、Tab 顺着往下走 */
+    try { $('sharePop').querySelector('.modalbox').focus({ preventScroll: true }); }
+    catch (e) { try { $('sharePop').querySelector('.modalbox').focus(); } catch (e2) { /* 老浏览器：不聚焦也能用 */ } }
+    myRefCode(me).then(function (code) {
+      // 换成短码前先确认浮层还开着、而且还是同一张卡
+      if (code && !$('sharePop').hidden && SHARE_OF === String(idSpec)) fillShare(d, code);
+    });
+  }
+  function fillShare(d, ref) {
+    var link = shareLink(d, ref);
+    var img = shareImg(d);
+    var full = shareTextOf(d, link);
+    var noLink = shareTextOf(d, '');
+    $('sharePreview').textContent = full;
+    /* 附图预览（用户 2026-08-21）：**懒加载** —— fillShare 只在浮层打开时跑，
+       所以 src 到这一刻才填，列表页滚动不会白拉一堆 PNG。短码回来会再进一次
+       fillShare：src 没变就不重设，别让已经显出来的图闪一下。
+       显隐交给 load/error（监听器在下面一次性挂好）：404 = 图还没生成，整块收起。 */
+    var sb = $('shareShot'), si = $('shareShotImg');
+    si.alt = T('广播附图');
+    si.title = T('点开看大图');
+    $('shareShotTag').textContent = T('卡面图');
+    if (img) {
+      if (si.getAttribute('src') !== img) { sb.hidden = true; si.src = img; }
+    } else {
+      sb.hidden = true;
+      si.removeAttribute('src');
+    }
+    /* 渠道链接（全部纯 intent URL、零 SDK、点击前零对外请求；一律普通新标签页，
+       与 web/bnb-ui.js 的 openShare 同一张表 —— 改一处连另一处一起改）：
+         X        https://x.com/intent/tweet?text=<正文含链接>
+                  （x.com 就是「浏览器的 X」——twitter.com 那个域只是多一跳重定向）
+         Telegram https://t.me/share/url?url=&text=（正文不带链接，链接单独给）
+         微博     https://service.weibo.com/share/share.php?url=&title=
+         Facebook https://www.facebook.com/sharer/sharer.php?u=（它只收 u，正文靠 og 标签）
+         Reddit   https://www.reddit.com/submit?url=&title=
+         WhatsApp https://api.whatsapp.com/send?text=<正文含链接> */
+    $('shareTw').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(full);
+    $('shareTg').href = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(noLink);
+    $('shareWb').href = 'https://service.weibo.com/share/share.php?url=' + encodeURIComponent(link) + '&title=' + encodeURIComponent(noLink);
+    $('shareFb').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link);
+    $('shareRd').href = 'https://www.reddit.com/submit?url=' + encodeURIComponent(link) + '&title=' + encodeURIComponent(noLink);
+    $('shareWa').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(full);
+    /* 激励口径（specs §一，2026-08-21 定稿）：说费率、说人工核对、说专款与反女巫。
+       不说"自动到账/立即到账" —— 那是空头支票。 */
+    $('shareNote').textContent =
+      (S.account
+        ? T('链接已带上你的推广地址。邀请好友引爆宇宙：好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。')
+        : T('未连接钱包：链接不带推广地址，照常能广播。连接钱包再广播，好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。'))
+      + ' ' + T('邀请返利专款 2 亿 BANG。')
+      + T('女巫账户（自邀、批量小号、刷量）经人工核对一律不予发放。');
+    var msg = $('shareMsg');
+    function say(text, warn) {
+      msg.hidden = !text;
+      msg.className = 'share-msg' + (warn ? ' warn' : '');
+      msg.textContent = text || '';
+    }
+    say('');
+    /* 复制文案 + 图片（specs/broadcast-v2.md §三）。剪贴板能同时装文本和图片，
+       复制完在微信里 Ctrl+V 就是连图带字一条消息。降级与「正在准备图片…」
+       都在 copyTextAndImage 那边说明了。 */
+    /* 按钮里现在带图标 SVG，文字都写在 <span> 里 —— 改字只动 span，别用
+       textContent 把图标一起抹掉。 */
+    var cp = $('shareCopy'), cpSpan = cp.querySelector('span');
+    cp.disabled = false;
+    cpSpan.textContent = T('复制文案和图片');
+    cp.onclick = function () {
+      if (cp.disabled) return;
+      cp.disabled = true;
+      cpSpan.textContent = img ? T('正在准备图片…') : T('复制中…');
+      say('');
+      copyTextAndImage(full, img).then(function (r) {
+        cp.disabled = false;
+        cpSpan.textContent = T('已复制 ✓');
+        if (!r.image) say(T('图片没能复制（这个浏览器不支持），文案已经进剪贴板了 —— 图片可以在卡片上右键另存。'), true);
+      }, function () {
+        cp.disabled = false;
+        cpSpan.textContent = T('复制不了 —— 手动选中上面的文案');
+      });
+    };
+    /* 复制链接：只复制链接本身（发群、发评论区用）。失败走同一条退路提示 ——
+       链接就在二维码块和预览文案里，手动选中也能复制。 */
+    var lk = $('shareLnk'), lkSpan = lk.querySelector('span');
+    lk.classList.remove('ok');
+    lkSpan.textContent = T('复制链接');
+    lk.onclick = function () {
+      var nc = navigator.clipboard;
+      function okd() {
+        lk.classList.add('ok');
+        lkSpan.textContent = T('已复制 ✓');
+        clearTimeout(lk.__t);
+        lk.__t = setTimeout(function () { lk.classList.remove('ok'); lkSpan.textContent = T('复制链接'); }, 1500);
+      }
+      function bad() { say(T('复制不了 —— 手动选中上面的文案'), true); }
+      if (nc && nc.writeText) nc.writeText(link).then(okd, bad); else bad();
+    };
+    /* 微信：没有网页分享 API，能给的只有二维码（§四）。二维码**本地算**，
+       不调任何第三方二维码接口 —— 那等于把用户的推广链接发到别人的服务器上。 */
+    var wxBtn = $('shareWx'), wxBox = $('shareWxBox'), slot = $('shareQr');
+    function drawQr() {
+      var svg = qrSvg(link, 168);
+      if (svg) slot.innerHTML = svg;
+      else slot.textContent = T('这条链接太长，二维码画不下 —— 直接复制下面的链接吧');
+    }
+    /* 短码回来后会再调一次 fillShare。二维码那块**已经打开的话就地重画**，
+       别收回去 —— 用户正举着手机对着它扫。 */
+    var wasOpen = !wxBox.hidden;
+    slot.innerHTML = '';
+    $('shareQrLink').textContent = link;
+    wxBtn.classList.toggle('on', wasOpen);
+    wxBtn.setAttribute('aria-expanded', wasOpen ? 'true' : 'false');
+    if (wasOpen) drawQr();
+    wxBtn.onclick = function () {
+      var show = wxBox.hidden;
+      wxBox.hidden = !show;
+      wxBtn.classList.toggle('on', show);
+      wxBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
+      if (!show || slot.firstChild) return;
+      drawQr();
+    };
+  }
+  /* 关闭带 150ms 收场过渡（与 web/bnb-ui.js 的 closeShare 同款）；
+     prefers-reduced-motion（或老浏览器没有 matchMedia）直切。
+     定时器句柄留着给 openShare 掐 —— 收场没走完就再开一张卡时不许把新浮层藏掉。 */
+  var SHARE_CLOSE_T = null;
+  function closeShare() {
+    var pop = $('sharePop');
+    if (pop.hidden || pop.classList.contains('closing')) return;
+    var still = true;
+    try { still = !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch (e) { still = true; }
+    if (still) { pop.hidden = true; return; }
+    pop.classList.add('closing');
+    SHARE_CLOSE_T = setTimeout(function () { pop.classList.remove('closing'); pop.hidden = true; }, 160);
+  }
+  $('shareX').addEventListener('click', closeShare);
+  $('sharePop').addEventListener('click', function (ev) { if (ev.target === $('sharePop')) closeShare(); });
+  /* 附图预览的显隐与放大（一次性挂在元素上，fillShare 只管填 src）：
+     load → 显出来；error（404 = 艺术图还没生成）→ 整块收起；点图 → 走既有灯箱看大图
+     （#lbox 的 z=150 压过浮层的 z=120，Esc 的次序上面那个 keydown 已经排好：先灯箱后浮层）。 */
+  $('shareShotImg').addEventListener('load', function () { $('shareShot').hidden = false; });
+  $('shareShotImg').addEventListener('error', function () { $('shareShot').hidden = true; });
+  $('shareShotImg').addEventListener('click', function () {
+    var s = $('shareShotImg').getAttribute('src');
+    if (s) openLightbox(s);
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    if (!$('lbox').hidden) { closeLightbox(); return; }
+    if (!$('sharePop').hidden) closeShare();
+  });
+  // 点卡片图片 → 灯箱看大图。图不是按钮，走单独的委托
+  document.addEventListener('click', function (ev) {
+    var img = ev.target.closest ? ev.target.closest('img.uthumb[data-view]') : null;
+    if (img) openLightbox(img.getAttribute('data-view'));
+  });
+  function gotoOrigin(idSpec) {
+    var d = shareDataOf(idSpec);
+    if (!d) { toast(function () { return T('这张卡还没读全，稍等一下再试'); }, 'warn'); return; }
+    // 深链不带 ref：这是自己去看，不是广播出去
+    var base = String(location.href).split(/[?#]/)[0].replace(/[^\/]*$/, '') + 'app.html';
+    location.href = base + '?bang=' + d.hash;
+  }
+
+  /* 「拯救」直达（specs/rescue-entry.md §1/§2）：和「再引爆」同一条深链、同一个
+     参数名，只多一个 fix=1 —— 落地那边（web/bnb-ui.js 的 deepLink）看到它就把
+     干预沙盒直接开出来，省掉「自己进 3D、在 HUD 上找那颗按钮」这两步。
+     一样不带 ref：这是自己去救自己的宇宙，不是广播。 */
+  function gotoRescue(idSpec) {
+    var d = shareDataOf(idSpec);
+    if (!d) { toast(function () { return T('这张卡还没读全，稍等一下再试'); }, 'warn'); return; }
+    var base = String(location.href).split(/[?#]/)[0].replace(/[^\/]*$/, '') + 'app.html';
+    location.href = base + '?bang=' + d.hash + '&fix=1';
+  }
+
+  /* ============================================================ 筛选与排序（追加需求，2026-08-21）
+     稀有度 / 结局 / 币种 / 命名这四组只在**已拉取**的数据上做，不改拉取策略。
+     物理参数那两组（维度 / 卡面常数）不一样：**筛与排都在服务端**，见下面 physEnsure()。
+     状态存 sessionStorage，切 tab 回来不丢。 */
+  /* 维度这一组给的是人话，不是让人填数字。值就是 /api/market/listings 的 dim= 参数，
+     一个字都不在前端翻译成别的意思（'3' 精确、'int' 整数维、'frac' 分数维、'>3' 严格大于）。 */
+  var DIM_OPTS = [
+    ['all',  '全部'],
+    ['3',    'D=3（能长出结构的）'],
+    ['int',  '整数维'],
+    ['frac', '分数维'],
+    ['>3',   'D>3']
+  ];
+  /* 能按区间筛的常数 = **卡面上印着的那几个**（server/art.js：c / h / e / G 四格 + 脚注里的 α⁻¹）。
+     引擎那 21 个输入参数一个都不摆出来 —— 卡面上没有它们，用户也无从对照。
+     键名照服务端的 CONST_KEYS，别在这边另起一套写法。 */
+  var CONST_OPTS = [
+    ['c',        '光速 c',            'm/s'],
+    ['h',        '普朗克常数 h',      'J·s'],
+    ['e',        '基本电荷 e',        'C'],
+    ['G',        '引力常数 G',        'm³/(kg·s²)'],
+    ['alphaInv', '精细结构常数倒数 α⁻¹', '']
+  ];
+  /* 偏离度档位：服务端算好的 dev=low|high，**前端不算**（基准值只在那边）。 */
+  var DEV_OPTS = [['all', '全部'], ['low', '接近我们的宇宙'], ['high', '差得很远']];
+  function inOpts(opts, v) { return opts.some(function (p) { return p[0] === v; }); }
+  var FIL_KEY = 'bnbbang.mktfil.v1';
+  function filDefault() {
+    return { sort: 'new', rar: [], out: 'all', cur: 'all', named: 'all', src: 'all',
+             dim: 'all', ck: '', cmin: '', cmax: '', dev: 'all', adv: false };
+  }
+  /* 来源筛选（specs/btcbang-v1.md §三）：全部 / ₿ 比特币 / BNB。只在已拉取的数据上筛，来源由服务端索引给 */
+  var SRC_OPTS = [['all', '全部来源'], ['btc', '₿ 比特币'], ['bnb', 'BNB']];
+  var FIL = (function () {
+    var d = { mine: filDefault(), uni: filDefault() };
+    try {
+      var o = JSON.parse(sessionStorage.getItem(FIL_KEY) || 'null');
+      if (o) ['mine', 'uni'].forEach(function (k) {
+        if (o[k]) ['sort', 'out', 'cur', 'named'].forEach(function (f) { if (o[k][f] != null) d[k][f] = o[k][f]; });
+        if (o[k] && inOpts(SRC_OPTS, o[k].src)) d[k].src = o[k].src;
+        if (o[k] && Array.isArray(o[k].rar)) d[k].rar = o[k].rar.filter(function (n) { return n >= 0 && n <= 4; });
+        /* 物理这几项存进来的值会直接拼进请求串，所以**逐个核对是不是自己给的那几个**，
+           不认识的一律退回默认。上一版存的对象没有这几个键，也走这一条退回默认。 */
+        if (o[k]) {
+          if (inOpts(DIM_OPTS, o[k].dim)) d[k].dim = o[k].dim;
+          if (inOpts(DEV_OPTS, o[k].dev)) d[k].dev = o[k].dev;
+          if (o[k].ck === '' || inOpts(CONST_OPTS, o[k].ck)) d[k].ck = o[k].ck || '';
+          ['cmin', 'cmax'].forEach(function (f) {
+            if (typeof o[k][f] === 'string' && (o[k][f] === '' || numOk(o[k][f]))) d[k][f] = o[k][f];
+          });
+          d[k].adv = !!o[k].adv;
+        }
+      });
+    } catch (e) { /* 隐私模式：不存了 */ }
+    return d;
+  })();
+  function saveFil() { try { sessionStorage.setItem(FIL_KEY, JSON.stringify(FIL)); } catch (e) { /* ignore */ } }
+  /* adv 只是「进阶那一栏开着没开」，不是筛选条件，所以不进这个判断 —— 否则
+     只是点开看一眼，界面就会报「有筛选生效」。 */
+  function filActive(f) {
+    return f.rar.length > 0 || f.out !== 'all' || f.cur !== 'all' || f.named !== 'all' || f.src !== 'all' || physFilterOn(f);
+  }
+  function entryRar(kind, id) {
+    if (kind === 'c') { var c = S.ccard[id] || {}; return (c.rarity != null && c.rarity >= 0 && c.rarity <= 4) ? Number(c.rarity) : null; }
+    var r = S.rar[id];
+    return (r != null && r >= 0 && r <= 4) ? Number(r) : null;   // 5 = 未知（直接调 bang() 铸的）
+  }
+  function entryOutcome(kind, id) {
+    var o = kind === 'c' ? (S.ccard[id] || {}).outcome : (S.meta[id] || {}).outcome;
+    return o == null ? null : Number(o);
+  }
+  function passFil(f, kind, id, l) {
+    if (f.rar.length) { var r = entryRar(kind, id); if (r == null || f.rar.indexOf(r) < 0) return false; }
+    if (f.out !== 'all' && entryOutcome(kind, id) !== Number(f.out)) return false;
+    if (l && f.cur !== 'all' && ((f.cur === 'bang') !== !!l.inBang)) return false;
+    if (f.named !== 'all') {
+      // 两套名册各查各的表（BangNames / BangNames2），别拿造物 id 去查原生那张
+      var named = kind === 'c' ? !!S.cname[id] : !!S.name[id];
+      if ((f.named === 'yes') !== named) return false;
+    }
+    /* 来源：造物没有来源（它从原生宇宙干预而来），按来源筛时一律不出现；
+       原生的来源未知（索引没给）也不算符合 —— 未知不是「BNB」，别把没读到当成判定。 */
+    if (f.src !== 'all') {
+      if (kind === 'c') return false;
+      if ((S.origin[String(id)] || null) !== f.src) return false;
+    }
+    return true;
+  }
+  /* ---------------------------------------------------------- 物理参数筛选与排序
+     specs/market-physics-filter.md 第三节。**三件事，全部只是"套用服务端的答复"**：
+       1) 把筛选条上的选择拼成 /api/market/listings 的查询串；
+       2) 把它回的 listingId 集合与顺序，套到链上读来的挂单上；
+       3) 显示它算好的 dim / devBand。
+     偏离度、基准值、维度推导一律**不在前端算**（规格第四节：那是整套推导里唯一藏得住的
+     东西）。链上那份仍是价格与"还买不买得到"的唯一真相，索引只回答"哪些符合物理条件"。 */
+  var PHYS_PAGE = 100;       // 服务端 size 上限就是 100
+  var PHYS_PAGES = 3;        // 最多翻这么多页（300 条），与链上 LIST_CAP 同量级
+  /* 常数区间的输入：只认十进制数与科学计数法（3e8 这种）。认不出来的**不发出去**，
+     而不是发一个 NaN 让服务端替我们猜 —— 猜错的后果是用户以为自己筛了。 */
+  var NUM_RE = /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i;
+  function numOk(v) { return typeof v === 'string' && NUM_RE.test(v.trim()) && isFinite(Number(v.trim())); }
+  function numBad(v) { return typeof v === 'string' && v.trim() !== '' && !numOk(v); }
+  function constUnit(k) {
+    var u = '';
+    CONST_OPTS.forEach(function (p) { if (p[0] === k) u = p[2]; });
+    return u;
+  }
+  function physConstOn(f) { return !!(f.ck && (numOk(f.cmin) || numOk(f.cmax))); }
+  function physFilterOn(f) { return f.dim !== 'all' || f.dev !== 'all' || physConstOn(f); }
+  function physSortOn(f) { return f.sort === 'dimAsc' || f.sort === 'dimDesc'; }
+  /** 拼查询串。返回 null = 这一套选择根本不用问服务端。串本身同时当缓存键。 */
+  function physQuery(f) {
+    if (!physFilterOn(f) && !physSortOn(f)) return null;
+    var q = ['size=' + PHYS_PAGE];
+    if (f.dim !== 'all') q.push('dim=' + encodeURIComponent(f.dim));
+    if (f.dev !== 'all') q.push('dev=' + encodeURIComponent(f.dev));
+    if (physConstOn(f)) {
+      q.push('const=' + encodeURIComponent(f.ck));
+      if (numOk(f.cmin)) q.push('min=' + encodeURIComponent(f.cmin.trim()));
+      if (numOk(f.cmax)) q.push('max=' + encodeURIComponent(f.cmax.trim()));
+    }
+    if (physSortOn(f)) q.push('sort=' + (f.sort === 'dimAsc' ? 'dim_asc' : 'dim_desc'));
+    return q.join('&');
+  }
+  function physGet(qs, page) {
+    return fetch((CFG.apiBase || '/api') + '/market/listings?' + qs + (page ? '&page=' + page : ''),
+                 { headers: { accept: 'application/json' } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      });
+  }
+  /** 把一页答复里的物理数据收进 S.phys，并按顺序吐出这一页的挂单号 */
+  function physAbsorb(j) {
+    var ids = [];
+    ((j && j.items) || []).forEach(function (it) {
+      if (!it || it.listingId == null) return;
+      var k = String(it.listingId);
+      if (it.phys) S.phys[k] = it.phys;      // 原样存：dim / fractional / constants / ratios / deviation / devBand
+      absorbOrigin(it);                      // 来源标签（₿ #N / BNB #N）也从这份索引来
+      ids.push(k);
+    });
+    return ids;
+  }
+  /** 把一套查询翻完（最多 PHYS_PAGES 页），保住服务端给的先后顺序 */
+  function physCollect(qs) {
+    var m = { order: [], total: 0, examined: 0, partial: false, stale: false };
+    function step(page) {
+      return physGet(qs, page).then(function (j) {
+        m.total = Number(j.total) || 0;          // 符合条件的条数
+        m.examined = Number(j.examined) || 0;    // 它一共考察了多少条候选（partial 时才有意义）
+        m.partial = !!j.partial;                 // 服务端只考察了前一段候选
+        m.stale = !!j.stale;                     // 索引正在重扫
+        var got = physAbsorb(j);
+        m.order = m.order.concat(got);
+        return (got.length && m.order.length < m.total && page + 1 < PHYS_PAGES) ? step(page + 1) : m;
+      });
+    }
+    return step(0);
+  }
+  /* 打底那一发：不带任何物理条件，纯粹为了让**每张卡**都有维度和偏离度可显示。
+     读不到就什么都不显示（卡上不出现物理行），绝不为了"有个数"去自己推一个。 */
+  function loadPhysBase() {
+    return physCollect('size=' + PHYS_PAGE).then(function () { return true; }, function () { return false; });
+  }
+  /**
+   * 当前这套筛选要不要问服务端、问到了没有。返回：
+   *   'off'  不用问（没有物理条件、也不按维度排）
+   *   'wait' 正在问
+   *   'ok'   问到了，S.physSel.ids / order 可用
+   *   'err'  问不到（服务端读不到）——**不假装筛过**，由调用方明说一句
+   */
+  function physEnsure(f) {
+    var q = physQuery(f);
+    if (!q) { S.physSel = null; return 'off'; }
+    var sel = S.physSel;
+    if (sel && sel.key === q) return sel.err ? 'err' : (sel.pending ? 'wait' : 'ok');
+    var seq = ++S.physSeq;
+    S.physSel = { key: q, pending: true };       // 先占位：同一套条件不会被重复发出去
+    physCollect(q).then(function (m) {
+      if (seq !== S.physSeq) return;             // 期间又改了筛选，这份答复已经过时
+      var ids = {};
+      m.order.forEach(function (k, i) { ids[k] = i + 1; });   // 1 起步：0 留给"不在结果里"
+      S.physSel = { key: q, ids: ids, order: m.order, total: m.total,
+                    examined: m.examined, partial: m.partial, stale: m.stale };
+      renderUniverses();
+    }, function () {
+      if (seq !== S.physSeq) return;
+      S.physSel = { key: q, err: true };
+      renderUniverses();
+    });
+    return 'wait';
+  }
+  /** 服务端答复里这一单的位次（0 = 不在结果里） */
+  function physPos(l) {
+    var ids = (S.physSel && S.physSel.ids) || null;
+    return ids ? (ids[String(l.id)] || 0) : 0;
+  }
+  /* ---- 卡片上的物理行 ----
+     维度与偏离度都直接印服务端发下来的那份。**一个数都不在这儿算** */
+  var DEV_WORD = { low: '接近我们的宇宙', mid: '和我们差着一截', high: '差得很远' };
+  /** 维度只做显示格式化：整数写 3，分数写 2.618（尾零去掉）。不改值、不四舍五入到别的位数 */
+  function fmtDim(d) {
+    if (d == null || !isFinite(Number(d))) return '?';
+    var n = Number(d);
+    if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+    return String(Number(n.toFixed(3)));
+  }
+  function physRow(l) {
+    var p = S.phys[String(l.id)];
+    if (!p) return '';                           // 索引里还没有它：不显示，也不编一个
+    var out = '<span class="pchip pdim" title="' + esc(p.fractional
+        ? T('分数维：维数不是整数。这种空间里长不出我们熟悉的轨道和场')
+        : T('空间维数 —— 服务端从这张卡的参数推出来的')) + '">'
+      + esc('D = ' + fmtDim(p.dim))
+      + (p.fractional ? '<i class="pfrac">' + esc(T('分数维')) + '</i>' : '') + '</span>';
+    if (p.devBand && DEV_WORD[p.devBand]) {
+      out += '<span class="pchip dev-' + esc(p.devBand) + '" title="'
+        + esc(p.deviation == null
+              ? T('与我们这个宇宙的偏离度，由服务端算')
+              : TF('与我们这个宇宙的偏离度 {0}（服务端算的，取各常数里偏得最狠的那一项）', p.deviation))
+        + '">' + esc(T(DEV_WORD[p.devBand])) + '</span>';
+    }
+    return '<div class="physrow">' + out + '</div>';
+  }
+  /** 编号排序键：原生按区块号（读不到退 tokenId），造物按铸造序号 —— 与卡面显示的编号一致 */
+  function noKeyOf(kind, id) {
+    if (kind === 'c') return Number(id);
+    var m = S.meta[id] || {};
+    return m.blockNumber != null ? Number(m.blockNumber) : Number(id);
+  }
+  /* 价格排序：挂单簿里原生币（tBNB / BNB）与 BANG 并存，跨币种比大小没有意义 ——
+     先按币种分组（原生币在前），组内再按 BigInt 价格排。单位错误在市场页是诚信问题。 */
+  function cmpPrice(a, b) {
+    var ga = a.inBang ? 1 : 0, gb = b.inBang ? 1 : 0;
+    if (ga !== gb) return ga - gb;
+    var pa = BigInt(a.price), pb = BigInt(b.price);
+    return pa < pb ? -1 : pa > pb ? 1 : 0;
+  }
+  function sortListings(f, ls) {
+    var arr = ls.slice();
+    if (f.sort === 'priceAsc') arr.sort(cmpPrice);
+    else if (f.sort === 'priceDesc') arr.sort(function (a, b) { return cmpPrice(b, a); });
+    else if (f.sort === 'no') arr.sort(function (a, b) {
+      return noKeyOf(isCraftListing(a) ? 'c' : 'n', Number(a.tokenId)) - noKeyOf(isCraftListing(b) ? 'c' : 'n', Number(b.tokenId));
+    });
+    else if (physSortOn(f)) arr.sort(function (a, b) {
+      /* 维度排序**照抄服务端给的次序**，不在这儿比大小：维度是它从参数推的，
+         前端手里只有它发下来的那份，自己排就是拿显示值当排序值。
+         它那边已经把"读不出维度的"排在最后了；索引里根本没有的挂单（刚挂出来还没
+         进索引）也一律垫底 —— 排到 D 最小那一头等于说它比一维还低，那是假话。 */
+      var pa = physPos(a), pb = physPos(b);
+      if (pa && pb) return pa - pb;
+      if (pa !== pb) return pa ? -1 : 1;
+      return Number(b.id) - Number(a.id);
+    });
+    else arr.sort(function (a, b) { return Number(b.id) - Number(a.id); });   // new：挂单 id 越大越新
+    return arr;
+  }
+  var SORT_OPTS = {
+    /* 维度那两档由服务端排（sort=dim_asc / dim_desc）。只给市场那一栏 ——
+       「我的宇宙」列的是持仓，没有挂单号，索引按挂单发数据，对不上号。 */
+    uni: [['new', '最新上架'], ['priceAsc', '价格从低到高'], ['priceDesc', '价格从高到低'], ['no', '编号'],
+          ['dimAsc', '维度↑'], ['dimDesc', '维度↓']],
+    mine: [['new', '最新铸造'], ['no', '编号']]
+  };
+  /* 维度这一组 + 进阶常数那一栏。**只给市场那一栏**（理由见 SORT_OPTS 的注释）。 */
+  function physBarHtml(f, pstate) {
+    var h = '<span class="flab">' + esc(T('维度')) + '</span>';
+    DIM_OPTS.forEach(function (p) {
+      var on = f.dim === p[0];
+      h += '<button type="button" class="fchip wide' + (on ? ' on' : '') + '" data-dim="' + esc(p[0])
+        + '" aria-pressed="' + on + '">' + esc(T(p[1])) + '</button>';
+    });
+    /* 规格第三节点名要的那一句：维度这一组下面必须有它 */
+    h += '<div class="fnote">' + esc(T('D=3 是我们这个宇宙的维数，也是唯一能长出稳定轨道的')) + '</div>';
+    h += '<details class="fadv"' + (f.adv ? ' open' : '') + '><summary>'
+      + esc(T('进阶：按卡面上的常数筛')) + '</summary><div class="fadvbody">'
+      + '<select data-f="ck"><option value="">' + esc(T('不按常数筛')) + '</option>'
+      + CONST_OPTS.map(function (p) {
+          return '<option value="' + p[0] + '"' + (f.ck === p[0] ? ' selected' : '') + '>' + esc(T(p[1])) + '</option>';
+        }).join('') + '</select>'
+      + '<input type="text" inputmode="decimal" class="' + (numBad(f.cmin) ? 'bad' : '') + '" data-f="cmin"'
+      + ' value="' + esc(f.cmin) + '" aria-label="' + esc(T('最小值')) + '" placeholder="' + esc(T('最小值')) + '">'
+      + '<span class="fdash" data-nolang>—</span>'
+      + '<input type="text" inputmode="decimal" class="' + (numBad(f.cmax) ? 'bad' : '') + '" data-f="cmax"'
+      + ' value="' + esc(f.cmax) + '" aria-label="' + esc(T('最大值')) + '" placeholder="' + esc(T('最大值')) + '">'
+      + (constUnit(f.ck) ? '<span class="funit" data-nolang>' + esc(constUnit(f.ck)) + '</span>' : '')
+      + '<span class="flab">' + esc(T('偏离度')) + '</span><select data-f="dev">'
+      + DEV_OPTS.map(function (p) {
+          return '<option value="' + p[0] + '"' + (f.dev === p[0] ? ' selected' : '') + '>'
+            + esc(p[0] === 'all' ? T('不看偏离度') : T(p[1])) + '</option>';
+        }).join('') + '</select>'
+      + '<div class="fnote">' + esc(T('常数按卡面上的单位填（SI），可以写 3e8 这种科学计数法；两头都留空就是不按它筛。'))
+      + '</div>';
+    if (numBad(f.cmin) || numBad(f.cmax)) {
+      h += '<div class="fnote warn">' + esc(T('区间只认数字（3e8 / 0.0073 这样），这一格先没算进筛选。')) + '</div>';
+    }
+    h += '</div></details>';
+    var note = physStateNote(f, pstate);
+    if (note) h += '<div class="fnote warn">' + esc(note) + '</div>';
+    return h;
+  }
+  /* 服务端那一头的状态，一句话说清楚。**不许闷着** —— 读不到却照样显示一屏结果，
+     用户会以为自己筛过了。 */
+  function physStateNote(f, pstate) {
+    if (pstate === 'wait') return T('正在按物理参数筛…');
+    if (pstate === 'err') {
+      return physFilterOn(f)
+        ? T('读不到服务端的物理索引，维度 / 常数 / 偏离度这几项这会儿筛不了。')
+        : T('读不到服务端的物理索引，没按维度排 —— 下面仍是按最新上架排的。');
+    }
+    if (pstate !== 'ok') return '';
+    var sel = S.physSel || {};
+    if (sel.partial) return TF('挂单太多，服务端只考察了前 {0} 条，条数统计的是这一段。', sel.examined);
+    if (sel.stale) return T('索引正在重扫，刚挂出来的那几单可能还没进去。');
+    return '';
+  }
+  function renderFilBar(sec, shown, total, pstate) {
+    var el = $(sec === 'mine' ? 'mineFil' : 'uniFil');
+    if (!el) return;
+    if (!total && !filActive(FIL[sec])) { el.innerHTML = ''; return; }
+    var f = FIL[sec];
+    /* 重画会把正在打字的那个输入框整个换掉 —— 先记住焦点落在哪个控件、光标在第几位，
+       画完再放回去。不记的话，填完"最小值"按 Tab 去填"最大值"，焦点会掉回页面顶上。 */
+    var act = document.activeElement;
+    var fkey = (act && el.contains(act) && act.getAttribute) ? act.getAttribute('data-f') : null;
+    var fpos = null;
+    if (fkey && act.selectionStart != null) { try { fpos = act.selectionStart; } catch (e) { fpos = null; } }
+    var h = '<div class="fbar" data-sec="' + sec + '">';
+    h += '<span class="flab">' + esc(T('排序')) + '</span><select data-f="sort">'
+      + SORT_OPTS[sec].map(function (p) {
+          return '<option value="' + p[0] + '"' + (f.sort === p[0] ? ' selected' : '') + '>' + esc(T(p[1])) + '</option>';
+        }).join('') + '</select>';
+    h += '<span class="flab">' + esc(T('稀有度')) + '</span>';
+    RAR.forEach(function (r, i) {
+      h += '<button type="button" class="fchip' + (f.rar.indexOf(i) >= 0 ? ' on' : '') + '" data-rar="' + i
+        + '" title="' + esc(T(r.why)) + '" aria-pressed="' + (f.rar.indexOf(i) >= 0) + '">' + r.k + '</button>';
+    });
+    h += '<select data-f="out"><option value="all">' + esc(T('全部结局')) + '</option>'
+      + OUTCOMES.map(function (o, i) {
+          return '<option value="' + i + '"' + (String(f.out) === String(i) ? ' selected' : '') + '>' + esc(T(o)) + '</option>';
+        }).join('') + '</select>';
+    if (sec === 'uni') {
+      h += '<select data-f="cur"><option value="all">' + esc(T('全部计价')) + '</option>'
+        + '<option value="bnb"' + (f.cur === 'bnb' ? ' selected' : '') + ' data-nolang>' + esc(CUR) + '</option>'
+        + '<option value="bang"' + (f.cur === 'bang' ? ' selected' : '') + ' data-nolang>BANG</option></select>';
+    }
+    h += '<select data-f="named"><option value="all">' + esc(T('已命名/未命名')) + '</option>'
+      + '<option value="yes"' + (f.named === 'yes' ? ' selected' : '') + '>' + esc(T('已命名')) + '</option>'
+      + '<option value="no"' + (f.named === 'no' ? ' selected' : '') + '>' + esc(T('未命名')) + '</option></select>';
+    /* 来源（specs/btcbang-v1.md §三）：全部 / ₿ 比特币 / BNB。两站都有 —— 两站共用一个市场。
+       「BNB」是专名，中英同形，data-nolang；「₿ 比特币」走词典。 */
+    h += '<select data-f="src" aria-label="' + esc(T('来源')) + '">'
+      + SRC_OPTS.map(function (p) {
+          return '<option value="' + p[0] + '"' + (f.src === p[0] ? ' selected' : '') + (p[0] === 'bnb' ? ' data-nolang' : '') + '>'
+            + esc(p[0] === 'bnb' ? p[1] : T(p[1])) + '</option>';
+        }).join('') + '</select>';
+    if (f.src !== 'all' && !originCount()) {
+      h += '<div class="fnote warn">' + esc(T('来源由服务端索引给出，这会儿还没读到 —— 按来源筛先出不了结果。')) + '</div>';
+    }
+    if (sec === 'uni') h += physBarHtml(f, pstate);
+    if (filActive(f)) {
+      h += '<span class="fcount">' + esc(TF('{0} 条符合 / 共 {1} 条', shown, total)) + '</span>'
+        + '<button type="button" class="sm fclear" data-fclear="1">' + esc(T('清空筛选')) + '</button>';
+    }
+    h += '</div>';
+    el.innerHTML = h;
+    if (fkey) {
+      var back = el.querySelector('[data-f="' + fkey + '"]');
+      if (back) {
+        back.focus();
+        if (fpos != null && back.setSelectionRange) { try { back.setSelectionRange(fpos, fpos); } catch (e) { /* select 不支持 */ } }
+      }
+    }
+  }
+  function filRerender(sec) {
+    saveFil();
+    if (sec === 'mine') renderMine(); else renderUniverses();
+  }
+  ['mineFil', 'uniFil'].forEach(function (boxId) {
+    var box = $(boxId), sec = boxId === 'mineFil' ? 'mine' : 'uni';
+    if (!box) return;
+    /* select 与常数区间的两个输入框走同一条：input 用 change（失焦/回车才发），
+       不用 input —— 每敲一个字符打一次服务端，「3e8」会打出四次请求。 */
+    box.addEventListener('change', function (ev) {
+      var s = ev.target.closest ? ev.target.closest('[data-f]') : null;
+      if (!s) return;
+      FIL[sec][s.getAttribute('data-f')] = s.value;
+      filRerender(sec);
+    });
+    /* 进阶那一栏开着没开也跟着存：不存的话，改一次筛选就被重画的 <details> 合上，
+       正在填区间的人要重新点开。**这一项不算筛选条件**（见 filActive）。 */
+    box.addEventListener('toggle', function (ev) {
+      var d = ev.target;
+      if (!d || d.tagName !== 'DETAILS' || !d.classList.contains('fadv')) return;
+      FIL[sec].adv = !!d.open;
+      saveFil();
+    }, true);
+    box.addEventListener('click', function (ev) {
+      var t = ev.target.closest ? ev.target.closest('[data-rar],[data-dim],[data-fclear]') : null;
+      if (!t) return;
+      if (t.getAttribute('data-fclear')) {
+        var keep = FIL[sec].sort, keepAdv = FIL[sec].adv;
+        FIL[sec] = filDefault(); FIL[sec].sort = keep;         // 清筛选不动排序：排序不是筛选
+        FIL[sec].adv = keepAdv;                                // 也不动"进阶栏开着没开"：那不是筛选
+      } else if (t.getAttribute('data-dim') != null) {
+        /* 维度是单选：再点一次亮着的那颗 = 退回「全部」，省得去够那颗「全部」 */
+        var d = t.getAttribute('data-dim');
+        FIL[sec].dim = (FIL[sec].dim === d) ? 'all' : d;
+      } else {
+        var i = Number(t.getAttribute('data-rar')), at = FIL[sec].rar.indexOf(i);
+        if (at >= 0) FIL[sec].rar.splice(at, 1); else FIL[sec].rar.push(i);
+      }
+      filRerender(sec);
+    });
+  });
+
+  /* ============================================================ 交互 */
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('button[data-act]') : null;
+    if (!b) return;
+    var act = b.getAttribute('data-act');
+    var id = b.getAttribute('data-id');
+    var lid = b.getAttribute('data-lid');
+    if (act === 'tolist') { showSec('list'); $('fAsset').value = String(id); syncApproveState(); }
+    else if (act === 'name') openName(id);      // 'c:5' = 造物 #5，其余是原生 tokenId
+    else if (act === 'buy') buy(lid);
+    else if (act === 'deto') gotoOrigin(id);
+    else if (act === 'fix') gotoRescue(id);
+    else if (act === 'share') openShare(id);
+    else if (act === 'cancel') runTx(function () { return T('撤单') + ' #' + lid; }, function () { return sendTx(ADDR.market, SEL.cancel + encUint(lid)); });
+  });
+
+  function buy(lid) {
+    var l = null;
+    (S.listings || []).forEach(function (x) { if (String(x.id) === String(lid)) l = x; });
+    if (!l) { toast(function () { return T('这一单读不到了，刷新看看'); }, 'err'); return; }
+    var doBuy = function (value) {
+      runTx(function () { return T('买入') + ' #' + lid; },
+            function () { return sendTx(ADDR.market, SEL.buy + encUint(lid), value); });
+    };
+    if (!l.inBang) { doBuy(l.price); return; }
+    /* BANG 单：**一分 BNB 都不能带** —— 合约 revert 掉带 msg.value 的调用，
+       因为市场没有提取 BNB 的通路，误收就是永久卡死；付款走 transferFrom，
+       所以先得有够额的 approve。授权不够就先发一笔，落地后自动接着买：
+       两次钱包确认，一次点击。授权只批这一单的数目，不批无限额度。 */
+    if (!S.account) { toast(function () { return T('先连钱包'); }, 'err'); return; }
+    if (!ADDR.bang) { toast(function () { return T('BANG 代币地址没配，买不了 BANG 计价的单'); }, 'err'); return; }
+    ethCall(ADDR.bang, SEL.allowance + encAddr(S.account) + encAddr(ADDR.market)).then(function (r) {
+      var have = uw(r, 0);
+      if (have !== null && have >= l.price) { doBuy(); return; }
+      runTx(function () { return T('授权 BANG'); },
+            function () { return sendTx(ADDR.bang, SEL.approveErc20 + encAddr(ADDR.market) + encUint(l.price)); },
+            function (ok) { if (ok) doBuy(); });
+    }, function () { toast(function () { return T('读不到 BANG 授权额度，稍后再试'); }, 'err'); });
+  }
+
+  $('btnApprove').addEventListener('click', function () {
+    var a = currentAsset();
+    if (!a || !a.token || !ADDR.market) return;
+    runTx(function () { return T('授权'); }, function () { return sendTx(a.token, SEL.setApprovalForAll + encAddr(ADDR.market) + encBool(true)); });
+  });
+  $('btnList').addEventListener('click', function () {
+    var a = currentAsset();
+    if (!a || !a.token || !ADDR.market) { say(T('先选一个要卖的宇宙'), 'err'); return; }
+    var wei = toWei($('fPrice').value);
+    if (wei === null || wei <= 0n) { say(T('价格填得不对，写成 0.02 这样'), 'err'); return; }
+    say('');
+    // ERC-721 的数量恒为 1（合约里 list() 对 721 也只接受 1），没有可填的量
+    runTx(function () { return TV('挂单'); }, function () {
+      var inBang = $('fCur') && $('fCur').value === 'bang';
+      return sendTx(ADDR.market, SEL.list + encAddr(a.token) + encUint(a.id) + encUint(1) + encUint(wei) + encBool(inBang));
+    });
+  });
+  $('fAsset').addEventListener('change', syncApproveState);
+  /* 币种切换时把标签和示例跟着换 —— 不换的话「总价（tBNB）」下面填 5000 BANG，
+     挂出去就是 5000 个 BNB 的天价单，撤单还要再花一次 gas。
+     语言切换会由 attrT 把 placeholder 刷回默认，所以 mirror:lang 之后再对一次。
+     单位名不写死：原生币那一档是 config.js 的 chain.currency（specs/mainnet-ready.md）。 */
+  function syncCurUI() {
+    var lab = $('fPriceLab'), inp = $('fPrice'), bang = $('fCur') && $('fCur').value === 'bang';
+    if (lab) lab.textContent = TF('总价（{0}）', bang ? 'BANG' : CUR);
+    if (inp) inp.placeholder = bang ? T('例如 5000') : T('例如 0.02');
+  }
+  if ($('fCur')) {
+    $('fCur').addEventListener('change', syncCurUI);
+    document.addEventListener('mirror:lang', syncCurUI);
+  }
+
+  /* ---------------------------------------------------------- 命名弹窗的交互 */
+  (function () {
+    var timer = null;
+    /* 打字防抖 300ms。不防的话每敲一个字母打一次公开 RPC，
+       "earth" 五个字母就是五次请求，而且回来的顺序不保证 —— 顺序由 seq 兜底，
+       次数由这里兜底。 */
+    $('fName').addEventListener('input', function () {
+      clearTimeout(timer);
+      paintName(T('查重中…'), 'wait');
+      timer = setTimeout(runNameCheck, 300);
+    });
+    // 回车 = 点第一个还能点的按钮，别让人非得去够鼠标
+    $('fName').addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      if (!$('btnNameApprove').disabled) $('btnNameApprove').click();
+      else if (!$('btnNameGo').disabled) $('btnNameGo').click();
+    });
+    $('btnNameClose').addEventListener('click', closeName);
+    // 点遮罩关闭；点弹窗本体不关（.modalbox 里的点击会被这一条挡住）
+    $('namePop').addEventListener('click', function (ev) {
+      if (ev.target === $('namePop')) closeName();
+    });
+
+    $('btnNameApprove').addEventListener('click', function () {
+      var n = S.naming;
+      if (!n || n.cost == null || !ADDR.bang || !n.reg) return;
+      /* **授权的就是这一笔的数**，不是 uint256 最大值。
+         这个合约只会 burnFrom，多给的额度只是白留一个永久的口子。 */
+      runTx(function () { return T('授权'); },
+        function () { return sendTx(ADDR.bang, SEL.approveErc20 + encAddr(n.reg) + encUint(n.cost)); },
+        function (ok) { if (ok && S.naming) runNameCheck(); });   // 重新读额度，② 才会亮
+    });
+
+    $('btnNameGo').addEventListener('click', function () {
+      var n = S.naming;
+      if (!n || !n.reg) return;
+      var raw = $('fName').value.trim();
+      if (!raw || n.status !== NST.OK) return;
+      var id = n.id, kind = n.kind;
+      runTx(function () { return TF('命名 {0}', kind === 'c' ? TF('造物宇宙 #{0}', id) : '#' + id); },
+        function () { return sendTx(n.reg, SEL.setName + encUint(id) + encUint(64) + encStr(raw)); },
+        function (ok) {
+          if (!ok) return;
+          closeName();
+          toast(function () { return TF('已经把它记下来了：{0}', raw); }, 'ok');
+        });
+    });
+  })();
+
+  /* 钱包状态只从这一个函数出。
+     按钮文字原来在三个地方各设一次（点击、启动探测、accountsChanged），
+     必然会和真实状态走散 —— 而且点击那处是**无条件**写"已连接"的：
+     connect() 返回 null 时提示说"没拿到账户"，按钮却显示已连接。
+     **画**的那一半（chip 两种形态、浮层里的完整地址/头像/浏览器链接）已经收进
+     web/nav.js 的 walletChip（原 avatarCss / fillWalletPop 整段搬走，四页同一份）；
+     这里只改状态，然后叫壳照 S.account 重画。 */
+  function setWallet(addr, keepPops) {
+    S.account = addr || null;
+    /* 断了还开着钱包浮层就成了空壳。keepPops 只有切语言那一条路会传 ——
+       那时用户正开着设置浮层在点，把它关掉纯属添乱。 */
+    if (!S.account && !keepPops) closePops(null);
+    if (WCHIP) WCHIP.refresh();
+    if (S.account) loadOriginsOwned();     // 名下持仓的来源标签（₿ #N / BNB #N），问不到就不标
+  }
+
+  /* ---------------------------------------------------------- 浮层（钱包 / 设置）
+     通用行为（点外部关闭、Esc 关闭且焦点还给触发按钮、aria-expanded、多个浮层互斥）
+     全在 web/nav.js 里，三页同一份实现 —— 本页原来那套 POPS / closePops / togglePop
+     和两个 document 监听已经删掉。
+     两个浮层都已经登记好：#settingsPop 由 mount() 登记（连 click 一起接管），
+     #walletPop 由 walletChip() 生成并登记 —— #btnConnect 的
+     「未连接点它=连接、连上之后点它=开浮层」这套判断也在壳里，行为经下面的
+     适配器（WCHIP）回到本页的 connect / disconnect / switchAccount。
+     下面两个薄封装只是让本页原有的调用点（openName / setWallet …）不用逐个改写。 */
+  function closePops() { if (window.MirrorNav) MirrorNav.pop.closeAll(); }
+  function togglePop(id) { if (window.MirrorNav) MirrorNav.pop.toggle(id); }
+  /* 命名弹窗的 Esc 单独留在这里：它盖在所有东西上面（.modal 的 z-index 压过顶栏），
+     Esc 该先关它。打开它的 openName() 已经把顶栏那两个浮层关掉了，所以这时
+     nav.js 那个 Esc 监听看到的 anyOpen() 是空的，不会跟这里抢。 */
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape' && ev.key !== 'Esc') return;
+    if (!$('namePop').hidden) { closeName(); return; }
+  });
+
+  /* 复制地址（连同 execCommand 退路和对勾反馈）已随壳搬进 web/nav.js 的
+     walletChip —— 本页原来那套 ICON_COPY / copyText / btnCopyAddr 监听整段删掉。 */
+
+  /* ---------------------------------------------------------- 切换账户
+     wallet_requestPermissions 才会让钱包重新弹账户选择；
+     钱包不支持就退回 eth_requestAccounts，再不行就老实说去钱包里手动切。 */
+  function switchAccount() {
+    var e = eth();
+    if (!e || !e.request) { toast(function () { return T('没检测到小狐狸（MetaMask）—— 只读浏览不受影响'); }, 'err'); return; }
+    var before = S.account;
+    e.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
+      .then(
+        function () { return e.request({ method: 'eth_accounts' }); },
+        function (er) {
+          /* **4001 = 用户在弹窗里点了取消，不能退回 eth_requestAccounts。**
+             站点已经授权过时那个方法不弹窗、立刻返回原来的账户，于是页面绿字报
+             「已切到 0x…」—— 而一个字都没换。这跟当初「connect() 返回 null
+             却显示已连接」是同一类错：话和状态对不上。
+             只有钱包**压根不支持**这个方法（4200 / -32601 之类）才退回。 */
+          if (er && er.code === 4001) throw er;
+          return e.request({ method: 'eth_requestAccounts' });
+        }
+      )
+      .then(function (a) {
+        if (a && a[0]) {
+          // 用户在弹窗里选了原来那个账户：也是"没换"，照实说，别报"已切到"
+          if (before && String(a[0]).toLowerCase() === String(before).toLowerCase()) {
+            toast(function () { return TF('账户没变，还是 {0}', a[0]); }, 'dim');
+            return;
+          }
+          setWallet(a[0]);
+          toast(function () { return TF('已切到 {0}', a[0]); }, 'ok');
+          return refresh();
+        }
+        toast(function () { return T('钱包没给账户 —— 请到 MetaMask 里手动切换账户'); }, 'warn');
+      })
+      .catch(function (er) {
+        if (er && er.code === 4001) { toast(function () { return T('取消了切换账户 —— 账户没变'); }, 'dim'); return; }
+        toast(function () {
+          return TF('切换账户没成：{0} —— 可以到 MetaMask 里手动切', (er && er.message ? er.message : String(er)));
+        }, 'err');
+      });
+  }
+
+  /* 断开。**网页没法真的"挂断"钱包** —— 连接是钱包那边授予这个站点的权限。
+     能做的有两件：把本页状态清掉（立刻见效），以及请钱包撤销授权
+     （wallet_revokePermissions，MetaMask 11 以后支持；不支持就忽略，
+     那时用户得自己去钱包的「已连接的网站」里移除）。 */
+  function disconnect() {
+    var e = eth();
+    var done = function () {
+      setWallet(null);
+      toast(function () { return T('已断开 · 只读浏览（走公开 RPC）'); }, 'dim');
+      refresh().catch(function () {});
+    };
+    if (e && e.request) {
+      e.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] })
+        .then(done, function () {
+          // 钱包不支持撤销：本页照样断开，但要说清钱包那边还留着授权
+          setWallet(null);
+          toast(function () { return T('本页已断开。钱包里的授权还在 —— 要彻底移除请到 MetaMask 的「已连接的网站」'); }, 'warn');
+          refresh().catch(function () {});
+        });
+    } else done();
+  }
+
+  /* ---------------------------------------------------------- 顶栏钱包 chip
+     壳在 web/nav.js（MirrorNav.walletChip）：chip 两种形态、浮层、复制反馈、
+     「未连接点它=连接、连上点它=开浮层」的判断全在壳里，四页同一份。
+     行为全是本页原有的函数，包成适配器交上去。报错走本页的 toast，
+     所以 connect 这个适配器**永不 reject** —— 壳那条「错误摆进浮层」的路
+     是给没有 toast 的页面（经济 / 首页）准备的。 */
+  var WCHIP = (window.MirrorNav && MirrorNav.walletChip) ? MirrorNav.walletChip({
+    account: function () { return S.account; },
+    connect: function () {
+      /* 连接前先过一遍钱包选择器（web/wallet.js 的 pick）：≥2 个钱包一定弹
+         （记住的那个只高亮、不静默直连）；只装一个的一次都看不到（零回归）；
+         一个都没装时它负责说明 —— 手机端给「在 Binance App 里打开」的深链，桌面端说去装扩展。 */
+      if (!eth()) {
+        if (window.MirrorWallet && window.MirrorWallet.pick) { window.MirrorWallet.pick({ force: true }); return null; }
+        toast(function () { return T('没检测到小狐狸（MetaMask）—— 只读浏览不受影响'); }, 'err'); return null;
+      }
+      var pre = (window.MirrorWallet && window.MirrorWallet.pick) ? window.MirrorWallet.pick() : Promise.resolve(null);
+      return pre.then(function (sel) {
+        if (sel === false) return null;      // 用户自己关掉了选择器：不是错误，别 toast
+        /* 下面这段就是原来挂在 #btnConnect click 上的那套，一字未改 */
+        return connect().then(function (a) {
+          if (!a) { setWallet(null); toast(function () { return T('没拿到账户 —— 钱包可能锁着，或者你在弹窗里拒绝了'); }, 'err'); return null; }
+          setWallet(a);
+          toast(function () { return TF('已连接 {0}', a); }, 'ok');
+          return refresh().then(function () { return a; }, function () { return a; });
+        }).catch(function (e) {
+          setWallet(null);                   // 失败必须回到未连接，别留个假的"已连接"
+          toast(function () { return TF('连接失败：{0}', (e && e.message ? e.message : String(e))); }, 'err');
+          return null;
+        });
+      });
+    },
+    /* 断开的话术（撤不掉授权时明说）都在 disconnect() 里，一个出处；
+       它自己 toast、自己 setWallet(null)，所以不给壳返回任何要展示的话。 */
+    disconnect: disconnect,
+    switchAccount: switchAccount,
+    explorer: function () { return S.account ? CHAIN.explorer + '/address/' + S.account : ''; },
+    onChange: function () { /* 本页的账户变更都从 setWallet() 过，它直接调 WCHIP.refresh() */ },
+    connectHint: function () { return T('连接钱包后可以看自己的宇宙、挂单、撤单'); }
+  }) : null;
+  $('btnRefresh').addEventListener('click', function () { refresh().catch(function () {}); });
+  $('btnTheme').addEventListener('click', function () {
+    var t = window.MirrorTheme.toggle();   // 全站唯一一份主题实现（ui/theme.js）
+    $('btnTheme').textContent = (t === 'dark') ? T('浅色') : T('深色');
+  });
+
+  /* 钱包浮层里的三个动作（复制 / 切换账户 / 断开）的 click 全归壳
+     （walletChip 生成那三个按钮时就绑好，回到上面适配器里的函数）——
+     这里不能再绑一次，绑两次就是一次点击跑两遍。
+     设置齿轮的 click 同理归 web/nav.js（mount() 里 registerPop('settingsPop','btnSettings')）。 */
+
+  /* ---------------------------------------------------------- 设置浮层：主题三选一（§3.5）
+     **本页不再自带主题实现**。读写偏好、首屏定 data-theme、跟随系统的实时变化、
+     跨标签页同步，全部在 ui/theme.js（全站唯一一份）；顶栏那三个单选按钮的
+     点击与高亮在 web/nav.js。原来这里那套 THEME_KEY / sysDark / themeMode /
+     applyThemeMode / syncThemeUI + themeSeg 监听 + matchMedia 监听已经整段删掉。
+
+     只剩一件本页独有的事：那颗不显示的旧 #btnTheme，文字要跟着主题走
+     （boot() 和它自己的 click 监听都按 id 抓它，所以元素不能删）。
+     用 MirrorNav.onTheme 订阅：右键菜单、别的标签页、系统主题变化走的都不是
+     顶栏那个 click，盯住 <html data-theme> 才全覆盖得到。 */
+  function syncThemeUI() {
+    var t = $('btnTheme');
+    if (t) t.textContent = (document.documentElement.getAttribute('data-theme') === 'dark') ? T('浅色') : T('深色');
+  }
+  if (window.MirrorNav) MirrorNav.onTheme(syncThemeUI);
+
+  /* ---------------------------------------------------------- 设置浮层：语言二选一
+     点击与高亮都归 web/nav.js（三页同一份）：本页原来那个 langSeg 监听已经删掉 ——
+     留着就是绑两次，切一次语言 MirrorI18n.set() 被调两回。
+     下面这个薄封装只是让本页原有的调用点（boot / mirror:lang）不用改写。 */
+  function syncLangUI() { if (window.MirrorNav) MirrorNav.syncLang(); }
+
+  /* ---------------------------------------------------------- 链名 / 单位 / 测试网提示
+     三处静态文字里原来写死着「BNB Smart Chain 测试网」「tBNB」「这是测试网。」，
+     现在全从 config.js 的 chain 块派生（specs/mainnet-ready.md）。
+     **两句都整句进词典**（带 {0}）—— 英文语序和中文不一样，在外面拼会拼错。
+     chain.isTestnet 为假时「这是 XX。」那半句**根本不渲染**：主网上说「测试」
+     比不说更糟。boot 一次，每次切语言再一次。 */
+  function renderChainText() {
+    var s = $('subLede');
+    if (s) s.textContent = TF('{0} · 只上架带参数的宇宙。没连钱包也能看。', chainName());
+    var o = $('fCurNative');
+    if (o) o.textContent = CUR;
+    var n = $('fChainNote');
+    if (n) {
+      n.textContent = CH.isTestnet
+        ? TF('这是 {0}。这里的一切都不是投资建议，也不构成任何价值承诺。', chainName())
+        : T('这里的一切都不是投资建议，也不构成任何价值承诺。');
+    }
+    syncCurUI();                 // 「总价（tBNB）」那个标签的单位也跟着换
+  }
+
+  /* 属性上的文字（title / aria-label / placeholder）DOM 遍历翻不到 —— 它只动文本节点。
+     所以这几处点名重设：boot 一次，每次切语言再一次。 */
+  function attrT(id, name, zh) { var el = $(id); if (el) el.setAttribute(name, T(zh)); }
+  function applyAttrs() {
+    attrT('btnRefresh', 'title', '刷新');
+    attrT('btnRefresh', 'aria-label', '刷新');
+    attrT('btnSettings', 'title', '设置');
+    attrT('btnSettings', 'aria-label', '设置');
+    attrT('btnCopyAddr', 'title', '复制地址');
+    attrT('btnCopyAddr', 'aria-label', '复制地址');
+    attrT('lnkExplorer', 'title', '在区块浏览器里打开');
+    attrT('lnkExplorer', 'aria-label', '在区块浏览器里打开');
+    attrT('fPrice', 'placeholder', '例如 0.02');
+    attrT('fName', 'placeholder', '例如 first-light');
+    attrT('namePop', 'aria-label', '给宇宙命名');
+    attrT('btnNameClose', 'title', '关闭');
+    attrT('btnNameClose', 'aria-label', '关闭');
+    attrT('walletPop', 'aria-label', '钱包');
+    attrT('settingsPop', 'aria-label', '设置');
+    attrT('themeSeg', 'aria-label', '主题');
+    var nav = document.querySelector('.pagenav');
+    if (nav) nav.setAttribute('aria-label', T('站点页面'));
+    document.title = T('镜像宇宙 · 市场');     // <title> 在 <head> 里，DOM 遍历只走 body
+  }
+
+  /* 切语言。静态文字 MirrorI18n 自己翻过了，这里管**另一半**：卡片、表格、下拉、
+     配置条、状态行、按钮文字全是 JS 拼的，不重画就还是旧语言。 */
+  document.addEventListener('mirror:lang', function () {
+    syncLangUI();
+    renderChainText();            // 链名跟着语言走（chain.name / chain.nameEn）
+    applyAttrs();
+    setWallet(S.account, true);   // 按钮文字只从 setWallet 出；true = 别关浮层（用户正开着设置在切）
+    syncThemeUI();
+    renderConfigBar();
+    renderAll();
+    retoast();                    // #acct 那行状态：用新语言把同一句再讲一遍
+    /* 命名弹窗开着的时候切语言：里面的状态行、价格说明、规则说明全是 JS 拼的，
+       不重画就停在旧语言。**输入框的值不能碰** —— 用户正打到一半。 */
+    if (!$('namePop').hidden && S.naming) {
+      var nmk = S.naming.kind || 'n';
+      $('nameTitle').textContent = nameTableOf(nmk)[S.naming.id] ? T('给宇宙改名') : T('给宇宙命名');
+      $('nameFor').textContent = nameSubject(nmk, S.naming.id);
+      $('nameDual').textContent = T(DUAL_REG_NOTE);
+      $('nameRules').textContent = T('名字只能用 a-z A-Z 0-9 和连字符，1 到 32 个字符，首尾不能是连字符。不收 Unicode —— 全角的「Ｅ」和「E」看起来一样，收了就有人拿它冒充别人的名字。大小写不区分；O 和 0、I i L l 和 1 也当作同一个字符，理由同上。');
+      runNameCheck();
+    }
+  });
+
+  var tabs = $('tabs');
+  tabs.addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('.tab') : null;
+    if (b) showSec(b.getAttribute('data-sec'));
+  });
+  /* 市场 tab 的系列筛选。监听挂在静态容器上：按钮每次 renderUniSeg 都重画，
+     直接绑按钮就得每次重绑。crafted 没配时容器是空的，这个监听永远不触发。 */
+  $('uniSeg').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('button[data-fil]') : null;
+    if (!b) return;
+    S.uniFilter = b.getAttribute('data-fil');
+    renderUniverses();
+  });
+  function showSec(name) {
+    ['mine', 'uni', 'list'].forEach(function (s) {
+      $('sec-' + s).hidden = (s !== name);
+    });
+    var all = tabs.querySelectorAll('.tab');
+    for (var i = 0; i < all.length; i++) {
+      all[i].className = 'tab' + (all[i].getAttribute('data-sec') === name ? ' on' : '');
+    }
+  }
+
+  /* ============================================================ 装配 */
+  function renderConfigBar() {
+    var rows = [
+      { k: '宇宙 NFT', v: ADDR.universe, key: 'contract' },
+      { k: 'BANG 代币', v: ADDR.bang, key: 'bangToken' },
+      { k: '市场', v: ADDR.market, key: 'market' },
+      /* 命名合约也列出来。没填地址时它就那么亮着"未部署"——那正是要说的话：
+         这一栏是给运维看的，缺哪一个一眼就知道要去 config.js 里补哪个键。 */
+      { k: '命名', v: ADDR.names, key: 'bangNames' }
+    ];
+    /* 造物那一枚 chip **只在配了地址时才出现** —— 与上面四个"没配也亮着未部署"
+       不同：造物没配时页面必须与从前逐像素一致（验收线），配了才有资格进这一栏。 */
+    if (ADDR.crafted) rows.push({ k: '造物', v: ADDR.crafted, key: 'crafted' });
+    /* 造物命名（BangNames2）同理：配了才出现。没配时造物卡上也没有命名按钮，
+       这一栏跟着一起不出现，两处口径一致。 */
+    if (ADDR.cnames) rows.push({ k: '造物命名', v: ADDR.cnames, key: 'craftedNames' });
+    $('cfgbar').innerHTML = rows.map(function (r) {
+      return '<span class="chip ' + (r.v ? 'on' : 'off') + '"><i class="dot"></i>' + esc(T(r.k))
+        + '<span class="val">' + (r.v ? esc(shortAddr(r.v)) : esc(T('未部署'))) + '</span></span>';
+    }).join('');
+    $('fContract').innerHTML = rows.map(function (r) {
+      return esc(T(r.k)) + ' ' + (r.v
+        ? '<a href="' + CHAIN.explorer + '/address/' + r.v + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">' + esc(r.v) + '</a>'
+        : esc(T('（未部署）')));
+    }).join(' · ');
+  }
+
+  function renderAll() {
+    renderBangBar();
+    renderMine();
+    renderUniverses();
+    renderListForm();
+  }
+
+  /* 一次完整刷新。任何一步失败都只让对应的块显示"读不到"，不把整页拖垮。
+
+     列表来源全部是 **totalSupply() 枚举 tokenId**，不是 eth_getLogs 扫最近的块：
+     BSC 0.45 秒一个块，公开节点只让查几千块 ≈ 37 分钟，靠日志列 NFT 的话
+     列表几乎永远是空的。日志在这里只用来补稀有度那一个徽标。 */
+  function refresh() {
+    S.card = {};         // cardOf 会被干预改写，每次刷新重读
+    S.value = {};        // burnedOn / rescueOf 同理
+    S.name = {};         // 名字会被改名改写，同理
+    S.cname = {};        // 造物那张名字表同理（BangNames2）
+    /* S.ccard **不清**：造物的 Card 铸完没人能改（owner 连写它的函数都没有），
+       与 meta 同一档的死数据。持仓与挂单每次照常重扫，所以买入/成交后
+       两个合约的持仓都会刷出来。 */
+    /* 物理索引：S.phys **不清**（同一个挂单号的参数卡不会变，成交撤单只会让这条不再用到），
+       但当前那套筛选的答复要作废重问 —— 买卖过后符合条件的挂单已经不是原来那批了。
+       打底那一发不进下面的 Promise.all：服务端读不到时，链上这一半照常出。 */
+    S.physSel = null;
+    S.physSeq++;
+    loadPhysBase().then(function () { renderUniverses(); });
+    return loadSupply()
+      .then(function () {
+        return Promise.all([loadListings(), loadOwned(), loadRarities(), loadBang(), loadApprovals(),
+          /* 造物：先量后扫，与原生同步跑。ADDR.crafted 没配时这两个函数
+             第一行就返回，等于没有这一项。 */
+          loadCraftedSupply().then(loadCraftedOwned), loadCraftedBps()]);
+      })
+      .then(function (r) {
+        var owned = r[1] || [];
+        var cOwned = r[5] || [];
+        /* 候选 id：我持有的 + 在售的 + 最新的一批（用来填"最近铸造"）。
+           先统一读 cardOf，没盖章的**在这里就被拦掉**，后面的元数据和销毁量都不用白读。
+           挂单里只挑**原生**的 tokenId 进这份候选 —— 造物的 tokenId 是另一个
+           编号空间，混进来就是拿造物 #1 的编号去读原生 #1 的卡。 */
+        var need = {}, i;
+        owned.forEach(function (id) { need[id] = 1; });
+        (S.listings || []).forEach(function (l) {
+          if (!l.is1155 && ADDR.universe && l.token.toLowerCase() === ADDR.universe) need[Number(l.tokenId)] = 1;
+        });
+        for (i = S.supply; i > 0 && i > S.supply - 40; i--) need[i] = 1;
+        var ids = Object.keys(need).map(Number).filter(function (id) { return id > 0; });
+        /* 造物的候选：我持有的 + 挂单里 token 等于造物合约的 */
+        var cneed = {}, cids = [];
+        if (ADDR.crafted) {
+          cOwned.forEach(function (id) { cneed[id] = 1; });
+          (S.listings || []).forEach(function (l) {
+            if (!l.is1155 && l.token.toLowerCase() === ADDR.crafted) cneed[Number(l.tokenId)] = 1;
+          });
+          cids = Object.keys(cneed).map(Number).filter(function (id) { return id > 0; });
+        }
+        return Promise.all([mapLimit(ids, 6, loadCard), mapLimit(cids, 6, loadCCard)]).then(function () {
+          S.mine = owned.filter(stamped);
+          S.mineHidden = owned.length - S.mine.length;
+          S.cmine = cOwned.filter(cstamped);
+          /* 「最近铸造」那一栏的标题写着**不在售**，所以正在挂着的那几枚要排掉 ——
+             否则同一个宇宙上面挂着「买入 1 tBNB」、下面又标着"不在售"，自相矛盾。
+             这里只认 nativeListings：那一栏列的全是原生 id。 */
+          var onSale = {};
+          nativeListings().forEach(function (l) { onSale[Number(l.tokenId)] = 1; });
+          S.recent = [];
+          for (i = S.supply; i > 0 && S.recent.length < RECENT_CAP; i--) {
+            if (S.card[i] !== undefined && stamped(i) && !onSale[i]) S.recent.push(i);
+          }
+          var show = ids.filter(stamped);
+          /* 造物的名字（BangNames2）。craftedNames 没配时 loadCName 第一行就返回，
+             一次 RPC 都不多打 —— 与 bangNames 那条路同一个待遇。 */
+          var cshow = cids.filter(cstamped);
+          return Promise.all([
+            mapLimit(show, 4, function (id) {
+              return Promise.all([loadMeta(id), loadValue(id), loadName(id)]);
+            }),
+            ADDR.cnames ? mapLimit(cshow, 4, loadCName) : Promise.resolve([])
+          ]);
+        });
+      })
+      .then(renderAll)
+      .catch(function (e) {
+        toast(function () { return TF('读链出了点问题：{0}', (e && e.message ? e.message : String(e))); }, 'err');
+        renderAll();
+      });
+  }
+
+  function boot() {
+    renderChainText();      // 链名、单位、测试网提示 —— 全从 config.js 的 chain 块来
+    applyAttrs();           // title / aria-label / placeholder / <title> 上的文字
+    syncLangUI();           // 设置浮层里的语言二选一，对上当前语言
+    syncThemeUI();          // 设置浮层里的三选一 + 那个不显示的旧切换按钮，一起对上当前主题
+    renderConfigBar();
+    renderAll();                                   // 先把空架子画出来，别让人对着白屏等 RPC
+    if (!window.BNBBANG_CONFIG) {
+      toast(function () { return T('站点配置没读到 —— 合约都还没接上，先用公开节点浏览'); }, 'warn');
+    }
+    if (eth() && eth().request) {
+      eth().request({ method: 'eth_accounts' }).then(function (a) {
+        /* eth_accounts 返回的是**这个站点已获授权**的账户，不会弹窗。
+           空数组 = 没授权或钱包锁着，两种都按未连接处理。 */
+        if (a && a[0]) { setWallet(a[0]); toast(function () { return TF('已连接 {0}', a[0]); }, 'ok'); }
+        else setWallet(null);
+      }).catch(function () { setWallet(null); });   // 钱包锁着就当没连
+      if (eth().on) {
+        eth().on('accountsChanged', function (a) {
+          setWallet((a && a[0]) || null);
+          toast(function () {
+            return S.account ? TF('已连接 {0}', S.account) : T('未连钱包 · 只读浏览（走公开 RPC）');
+          }, S.account ? 'ok' : 'dim');
+          refresh().catch(function () {});
+        });
+      }
+    }
+    if (!ADDR.universe && !ADDR.bang && !ADDR.market) return;   // 三个都没配就不打 RPC
+    refresh().catch(function () {});
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

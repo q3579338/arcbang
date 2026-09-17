@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- canonical / og:url / hreflang 里写的是**主站的占位域名**，不是笔误：web/build-web.js 的
+     siteify() 只改写 <title>/<meta>/<link> 与 ld+json，把那个占位域名整体换成 SITES.arc.base
+     （arcbang.xyz）、站名换成 ARCBANG、/assets/og/home.jpg 换成 SITES.arc.og。
+     域名只存在于 SITES 表那一处，换域那天不用回来改这些文件。
+     **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
+<title>ARCBANG 常见问题</title>
+<meta name="description" content="玩 ARCBANG 之前多半会问的十件事：要不要钱、要不要钱包、宇宙为什么死了、铸了能不能卖、为什么每个地址限 3 枚、跟别的 NFT 有什么不一样、图是不是画的、代码在哪、会不会发币。">
+<link rel="canonical" href="https://bnbbang.com/faq.html">
+<link rel="alternate" hreflang="zh-CN" href="https://bnbbang.com/faq.html">
+<link rel="alternate" hreflang="en" href="https://bnbbang.com/en/faq.html">
+<link rel="alternate" hreflang="x-default" href="https://bnbbang.com/en/faq.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://bnbbang.com/faq.html">
+<meta property="og:title" content="ARCBANG 常见问题">
+<meta property="og:description" content="要不要钱、宇宙为什么死了、铸了能不能卖、为什么限 3 枚、会不会发币。十条，都不长。">
+<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ARCBANG 常见问题">
+<meta name="twitter:description" content="要不要钱、宇宙为什么死了、铸了能不能卖、为什么限 3 枚、会不会发币。十条，都不长。">
+<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "url": "https://bnbbang.com/faq.html",
+  "inLanguage": "zh-CN",
+  "mainEntity": [
+    { "@type": "Question", "name": "玩这个要钱吗？", "acceptedAnswer": { "@type": "Answer", "text": "不要。引爆在你自己的浏览器里算，想看多少个宇宙都行，一分钱不花。" } },
+    { "@type": "Question", "name": "要连钱包吗？", "acceptedAnswer": { "@type": "Answer", "text": "光看不用。只有你想把某个宇宙留下来、铸成 NFT 的时候才需要钱包。" } },
+    { "@type": "Question", "name": "我这个宇宙怎么一下就死了？", "acceptedAnswer": { "@type": "Answer", "text": "多半是空间维数不对。D 是空间有几个方向，我们是 3；哈希常给出 9、14、18，维数一高行星和原子都稳不住，第一秒就结束了。九成多的块都是这个下场。" } },
+    { "@type": "Question", "name": "铸一枚多少钱？", "acceptedAnswer": { "@type": "Answer", "text": "前 387 枚不收钱，每个地址一枚，只出 gas。Arc 上 gas 就是 USDC，一次三厘钱左右。之后每枚 1 USDC，每个地址最多再拿 3 枚。全网一共 1,387 枚。" } },
+    { "@type": "Question", "name": "铸了能卖吗？", "acceptedAnswer": { "@type": "Answer", "text": "能。标准 ERC-721，挂 OpenSea 就行，版税 5%。站内也有个简单的挂单买卖。" } },
+    { "@type": "Question", "name": "为什么付费的也限 3 枚？", "acceptedAnswer": { "@type": "Answer", "text": "1 USDC 太便宜，不限的话一个脚本几分钟就能扫光，剩下的人只能去二级市场接盘。限 3 是为了让更多人能自己铸一枚。" } },
+    { "@type": "Question", "name": "跟别的 NFT 有什么不一样？", "acceptedAnswer": { "@type": "Answer", "text": "多数项目是先卖位置，图片后补。这里东西在你掏钱之前就已经存在，而且免费看。一个块哈希只能开出一个宇宙，被别人铸走就真没有了。" } },
+    { "@type": "Question", "name": "图是画的还是算的？", "acceptedAnswer": { "@type": "Answer", "text": "算的。没有画师，没有图层，没有素材库。每张图都是那个宇宙的参数跑出来的模拟结果，改一个常数画面就变。" } },
+    { "@type": "Question", "name": "代码开源吗？", "acceptedAnswer": { "@type": "Answer", "text": "开源，AGPL-3.0，在 github.com/q3579338/arcbang。任何一枚 NFT 都能自己在本地重算一遍再跟链上对。" } },
+    { "@type": "Question", "name": "以后会发币吗？", "acceptedAnswer": { "@type": "Answer", "text": "不会。没有代币，没有预售，没有空投，没有积分。只有这 1,387 个宇宙。" } }
+  ]
+}
+</script>
+<!-- 中文页在根路径、英文页在 /en/（与首页同一条规矩）。整个 <main> 与页脚都带 data-nolang：
+     两种语言各写一份静态页，不走运行时翻译，i18n 只管顶栏与钱包 chip 那一半。 -->
+<script>try{localStorage.setItem("mirror.lang","zh")}catch(e){}</script>
+<!-- 不挂 Google Fonts：国内访问会等它超时才渲染；字体栈全是系统字体。 -->
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="arc-doc.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">跳到主要内容</a>
+
+<div id="siteNavMount"></div>
+<script>MirrorNav.mount({ page: 'doc' });</script>
+
+<main id="main" data-nolang>
+<div class="ab-wrap">
+
+<header class="ad-head">
+  <h1 class="ad-h1">常见问题</h1>
+  <p class="ad-lede">被问得最多的十条。剩下的写在<a href="how-it-works.html">这是怎么回事</a>那一页，再剩下的在代码里。</p>
+  <div class="ad-cta">
+    <a class="ab-btn" href="app.html">去引爆一个区块</a>
+    <a class="ab-btn2" href="how-it-works.html">这是怎么回事</a>
+  </div>
+</header>
+
+<div class="ad-body">
+
+<nav class="ad-rail" aria-label="本页目录">
+  <p class="ad-railhead">这一页</p>
+  <ol>
+    <li><a href="#play"><span>玩</span></a></li>
+    <li><a href="#mint"><span>铸和卖</span></a></li>
+    <li><a href="#rest"><span>其他</span></a></li>
+  </ol>
+</nav>
+
+<div class="ad-main">
+
+<section class="ad-sec" id="play">
+<h2 class="ad-h2">玩</h2>
+
+<div class="ad-qa">
+  <article class="ad-q">
+    <p class="verdict">不要</p>
+    <div>
+      <h3>玩这个要钱吗？</h3>
+      <p>引爆是在你自己的浏览器里算的，想看多少个宇宙都行，一分钱不花。</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">看不用</p>
+    <div>
+      <h3>要连钱包吗？</h3>
+      <p>只有你想把某个宇宙留下来、铸成 NFT 的时候才需要。逛的时候不用。</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">多半是维数不对</p>
+    <div>
+      <h3>我这个宇宙怎么一下就死了？</h3>
+      <p>D 是空间维数，说白了就是空间有几个方向，我们这边是 3。哈希随手给出来的常是 9、14、18，维数一高，行星绕不住恒星，电子也绕不住原子核，第一秒就结束了。九成多的块都是这个下场，所以碰到一个能长出恒星的才有意思。</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">算的</p>
+    <div>
+      <h3>图是画的还是算的？</h3>
+      <p>没有画师，没有图层，没有素材库。每张图都是那组参数跑出来的模拟结果——同一个宇宙换个角度看是另一幅样子，改一个常数画面也跟着变。</p>
+    </div>
+  </article>
+</div>
+</section>
+
+<section class="ad-sec" id="mint">
+<h2 class="ad-h2">铸和卖</h2>
+
+<div class="ad-qa">
+  <article class="ad-q">
+    <p class="verdict">前 387 枚白送</p>
+    <div>
+      <h3>铸一枚多少钱？</h3>
+      <p>前 387 枚不收钱，每个地址一枚，只出 gas。Arc 上的 gas 就是 USDC，一次三厘钱左右，不用另备燃料币。之后每枚 1 USDC，每个地址最多再拿 3 枚。全网一共 1,387 枚，铸满就停。</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">能</p>
+    <div>
+      <h3>铸了能卖吗？</h3>
+      <p>标准 ERC-721，挂 OpenSea 就行，版税 5%。站内也有个简单的挂单买卖，手续费上限写死在合约里。</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">怕被扫光</p>
+    <div>
+      <h3>为什么付费的也限 3 枚？</h3>
+      <p>1 USDC 太便宜了。不限的话一个脚本几分钟就能全拿走，剩下的人只能去二级市场接盘，一级就死了。限 3 是想让更多人能自己铸一枚，不是拿来制造紧张感的。</p>
+    </div>
+  </article>
+</div>
+</section>
+
+<section class="ad-sec" id="rest">
+<h2 class="ad-h2">其他</h2>
+
+<div class="ad-qa">
+  <article class="ad-q">
+    <p class="verdict">东西先有，钱后付</p>
+    <div>
+      <h3>跟别的 NFT 有什么不一样？</h3>
+      <p>多数项目先卖位置，图后补。这里反过来：你想要的那个东西在掏钱之前就已经在屏幕上了，而且随便看。稀缺也不是我拍脑袋定的数——一个块哈希只开得出一个宇宙，被人铸走就真没有了。</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">开源</p>
+    <div>
+      <h3>代码在哪？</h3>
+      <p>引擎是 AGPL-3.0 开源的，在 <a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>。任何一枚 NFT 都能在本地重算一遍再跟链上对，两条命令，写在<a href="verify.html">自己验证</a>那页。</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">不会</p>
+    <div>
+      <h3>以后会发币吗？</h3>
+      <p>没有代币，没有预售，没有空投，没有积分任务。就这 1,387 个宇宙，卖完这事就算做完了。</p>
+    </div>
+  </article>
+</div>
+
+<div class="ad-end-cta">
+  <a class="ab-btn" href="app.html">去引爆一个区块</a>
+  <a class="ab-btn2" href="how-it-works.html">这是怎么回事</a>
+  <a class="ab-btn2" href="verify.html">自己验一遍</a>
+</div>
+</section>
+
+</div><!-- /.ad-main -->
+</div><!-- /.ad-body -->
+</div><!-- /.ab-wrap -->
+</main>
+
+<footer class="ab-foot" data-nolang>
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARC宇宙</div>
+      <nav class="ab-foot-lnk" aria-label="页脚">
+        <a href="/">首页</a>
+        <a href="app.html">模拟器</a>
+        <a href="how-it-works.html">怎么回事</a>
+        <a href="verify.html">自己验证</a>
+        <a href="/en/faq.html" hreflang="en">English</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">用区块哈希造宇宙。免费引爆，喜欢再铸。</p>
+    <div class="ab-legal">
+      <span>© 2026 ARCBANG</span>
+      <span>一件收藏品，一次实验，不是投资产品。</span>
+      <span><a href="https://github.com/q3579338/arcbang">引擎开源（AGPL-3.0）</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

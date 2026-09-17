@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>三维宇宙 · 可飞入观测（universe3d.js 演示）</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#c9cde0;font:13px/1.5 Consolas,"Microsoft YaHei",monospace;overflow:hidden}
+  #wrap{position:fixed;inset:0}
+  #c{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none}
+  #panel{position:fixed;right:12px;top:12px;width:300px;max-height:calc(100% - 24px);overflow:auto;background:rgba(6,8,16,.82);border:1px solid #1e2542;border-radius:4px;padding:10px 12px;z-index:30;backdrop-filter:blur(3px)}
+  #panel h1{font-size:14px;margin:0 0 6px;font-weight:500;color:#fff}
+  #panel label{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0}
+  #panel select,#panel input[type=number],#panel input[type=text]{background:#04050a;color:#e8ebf5;border:1px solid #2a3150;border-radius:3px;padding:2px 6px;font:inherit;width:150px}
+  #panel input[type=range]{width:150px}
+  #panel button{background:#141a30;color:#e8ebf5;border:1px solid #2a3150;border-radius:3px;padding:3px 8px;font:inherit;cursor:pointer;margin:2px 2px 2px 0}
+  #panel button:hover{background:#1e2745}
+  #panel .row{display:flex;flex-wrap:wrap;gap:2px;margin:4px 0}
+  #panel .sec{margin-top:8px;padding-top:6px;border-top:1px solid #1e2542;color:#9aa0b8;font-size:12px}
+  #stat{white-space:pre-wrap;color:#9fdcff;font-size:11px}
+  #diag{white-space:pre;color:#c9cde0;font-size:11px;max-height:160px;overflow:auto}
+  #pk{width:276px;height:120px;background:#04050a;border:1px solid #1e2542;display:block;margin-top:4px}
+  #toggle{position:fixed;right:12px;top:12px;z-index:31;display:none;background:#141a30;color:#fff;border:1px solid #2a3150;border-radius:3px;padding:3px 8px;font:inherit}
+  #starlog{color:#ffd28a;font-size:11px;white-space:pre-wrap;max-height:120px;overflow:auto}
+  .tag{display:inline-block;padding:0 6px;border-radius:2px;background:#1e2745;color:#bfe3ff;font-size:11px}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c" tabindex="0" aria-label="三维宇宙"></canvas></div>
+<button id="toggle">面板</button>
+<div id="panel">
+  <h1>三维宇宙 · 飞进去观测 <span class="tag" id="modeTag">…</span></h1>
+  <div id="stat">初始化…</div>
+  <div class="sec">参数（改动后点“重新生成”）</div>
+  <label>宇宙学 <select id="cosmo">
+    <option value="ours">我们的宇宙 #1207（引擎）</option>
+    <option value="crunch">大挤压（引擎预设 crunch）</option>
+    <option value="lambda">Λ 超过 Weinberg 上界</option>
+    <option value="lowq">涨落太小（引擎预设 lowQ）</option>
+    <option value="highq">黑洞主导 / 涨落偏大（引擎预设 highQ）</option>
+    <option value="plain">平坦 ΛCDM（不用引擎）</option>
+  </select></label>
+  <label>粒子档位 <select id="tier"><option value="auto">auto</option><option value="low">low</option><option value="mid">mid</option><option value="high">high</option><option value="ultra">ultra</option></select></label>
+  <label>盒长 Mpc/h <select id="box"><option>50</option><option>100</option><option selected>200</option><option>300</option><option>500</option></select></label>
+  <label>种子 <input id="seed" type="number" value="1207"></label>
+  <label>后端 <select id="force"><option value="">自动（WebGPU 优先）</option><option value="webgpu">强制 WebGPU</option><option value="webgl2">强制 WebGL2</option></select></label>
+  <label>数据层（#1207 本星系群/太阳/亮星） <input id="local" type="checkbox" checked></label>
+  <div class="row"><button id="regen">重新生成</button><button id="startBtn">▶ 演化</button><button id="pauseBtn">❚❚ 暂停</button><button id="stepBtn">单步</button></div>
+  <div class="sec">时间（重算不回放）</div>
+  <label>目标 a <input id="timeA" type="range" min="0.02" max="3" step="0.01" value="1"><span id="timeAV">1.00</span></label>
+  <div class="sec">观测</div>
+  <label>曝光 EV <input id="ev" type="range" min="-4" max="4" step="0.1" value="0"><span id="evV">0</span></label>
+  <div class="row"><button id="flyDense">飞到最密处 (H)</button><button id="flyRand">随机晕 (R)</button><button id="flyIn">飞入最近晕</button></div>
+  <div class="row"><button id="vol">体渲染 (V)</button><button id="labels">标签 (L)</button><button id="tiles">27 重平铺</button><button id="parts">粒子显隐</button><button id="cmode">颜色：密度/速度</button><button id="proper">共动/固有</button></div>
+  <div class="sec">诊断（对照引擎线性预测）<button id="anBtn">刷新分析</button></div>
+  <canvas id="pk" width="276" height="120"></canvas>
+  <div id="diag"></div>
+  <div class="sec">onEnterStar 回调</div>
+  <div id="starlog">（在星系层点击一颗恒星）</div>
+</div>
+<script src="../engine/params.js"></script>
+<script src="../engine/engine.js"></script>
+<!-- localdata.js 必须在 universe3d.js 之前：数据层（local）的每一个数值都从 MirrorLocalData 读 -->
+<script src="localdata.js"></script>
+<script src="universe3d.js"></script>
+<script>
+(function () {
+  var U = window.MirrorUniverse3D, E = window.MirrorEngine;
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $('c'), u = null;
+  var q = new URLSearchParams(location.search);
+  if (q.get('mode')) $('force').value = q.get('mode');
+  if (q.get('tier')) $('tier').value = q.get('tier');
+  if (q.get('box')) $('box').value = q.get('box');
+  if (q.get('seed')) $('seed').value = q.get('seed');
+  if (q.get('cosmo')) $('cosmo').value = q.get('cosmo');
+  if (q.get('local') === '0') $('local').checked = false;
+  var sup = U.isSupported();
+  function cosmologyFor(key) {
+    if (!E || key === 'plain') return { h: 0.674, omegaB: 0.049, omegaC: 0.26, omegaLambda: 0.69, omegaK: 0, ns: 0.965, sigma8: 0.81 };
+    // 引擎预设键：crunch / lambda / lowQ / highQ（参数表以 engine/params.js 为准）
+    var presetKey = { crunch: 'crunch', lambda: 'lambda', lowq: 'lowQ', highq: 'highQ' }[key];
+    var params = {};
+    if (presetKey && E.getPreset) { params = E.getPreset(presetKey) || {}; }   // getPreset 返回完整参数表
+    var r;
+    try { r = E.simulate(params, { register: false, series: true }); } catch (e) { console.warn('engine simulate failed', e); return { sigma8: 0.81 }; }
+    var c = U.cosmologyFrom(r);
+    console.log('[demo] 引擎宇宙学：', r.outcome && r.outcome.name, c);
+    return c;
+  }
+  var starLog = [];
+  function build() {
+    if (u) { u.dispose(); u = null; }
+    var cosmo = cosmologyFor($('cosmo').value);
+    var force = $('force').value || null;
+    $('modeTag').textContent = '启动…';
+    u = U.create(canvas, {
+      cosmology: cosmo, seed: +$('seed').value >>> 0, boxMpc: +$('box').value, particles: $('tier').value, local: $('local').checked, force: force,
+      onStatus: function (msg, st) { if (msg) console.log('[u3d]', msg); },
+      onEnterStar: function (seed, info) {
+        var line = 'seed=' + seed + ' · ' + (info.name || '恒星') + ' · ' + info.spectral + ' 型 T=' + info.tempK + 'K M=' + info.massSol + 'M⊙ · ' + info.galaxy.typeName + ' · ' + info.basis;
+        starLog.unshift(line); if (starLog.length > 6) starLog.pop();
+        $('starlog').textContent = starLog.join('\n');
+        console.log('[demo] onEnterStar', seed, info);
+      }
+    });
+    window.u3d = u;
+    u.ready.then(function () { var st = u.getState(); $('modeTag').textContent = st.mode + ' · ' + st.tier; console.log('[demo] ready', st.label); }, function (err) { $('modeTag').textContent = '失败'; $('stat').textContent = '初始化失败：' + (err && err.message || err) + '\n支持：' + JSON.stringify(sup); });
+    var a0 = +$('timeA').value; if (a0 !== 1) setTimeout(function () { setTargetA(a0); }, 0);
+  }
+  function setTargetA(a) {
+    if (!u) return; var st = u.getState(); if (!st.ready) return;
+    // a → t：用模块的宇宙学表
+    var tH0 = u.cosmo.tOfA(a) * u.cosmo.TH;
+    u.setTime(tH0);
+  }
+  $('regen').addEventListener('click', build);
+  $('startBtn').addEventListener('click', function () { if (u) { u._S.targetA = 8; u.start(); } });
+  $('pauseBtn').addEventListener('click', function () { if (u) u.pause(); });
+  $('stepBtn').addEventListener('click', function () { if (u) u.step(); });
+  $('timeA').addEventListener('input', function () { $('timeAV').textContent = (+this.value).toFixed(2); });
+  $('timeA').addEventListener('change', function () { setTargetA(+this.value); });
+  $('ev').addEventListener('input', function () { $('evV').textContent = this.value; if (u) u.setExposure(+this.value); });
+  $('flyDense').addEventListener('click', function () { if (u) u.flyTo('densest'); });
+  $('flyRand').addEventListener('click', function () { if (u) u.flyTo('randomHalo'); });
+  $('flyIn').addEventListener('click', function () { if (!u) return; var hs = u.halos(); if (!hs.length) return; var st = u.getState(); var best = 0, bd = 1e9; hs.forEach(function (h, i) { var d = 0; for (var k = 0; k < 3; k++) { var x = h[['x', 'y', 'z'][k]] - st.camera.pos[k]; x -= Math.round(x); d += x * x; } if (d < bd) { bd = d; best = i; } }); u.flyIntoHalo(best); });
+  $('vol').addEventListener('click', function () { if (u) u.toggleVolume(); });
+  $('labels').addEventListener('click', function () { if (u) u.toggleLabels(); });
+  $('tiles').addEventListener('click', function () { if (u) u.toggleTiling(); });
+  $('parts').addEventListener('click', function () { if (u) u.toggleParticles(); });
+  var cm = 0; $('cmode').addEventListener('click', function () { cm ^= 1; if (u) u.setColorMode(cm); });
+  var pr = false; $('proper').addEventListener('click', function () { pr = !pr; if (u) u.setProperScale(pr); });
+  $('anBtn').addEventListener('click', function () { if (u) u.requestAnalysis(); });
+  $('toggle').addEventListener('click', function () { $('panel').style.display = $('panel').style.display === 'none' ? '' : 'none'; });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Tab') { e.preventDefault(); $('panel').style.display = $('panel').style.display === 'none' ? '' : 'none'; } });
+  // 状态与诊断刷新
+  var pkc = $('pk').getContext('2d');
+  function drawPk(d) {
+    var W = 276, H = 120; pkc.fillStyle = '#04050a'; pkc.fillRect(0, 0, W, H);
+    if (!d || !d.Pk || d.Pk.length < 2) { pkc.fillStyle = '#5c6280'; pkc.fillText('P(k)：等待分析…', 8, 20); return; }
+    var pts = d.Pk.filter(function (p) { return p[1] > 0; }), lin = d.PkLinear || [];
+    var kmin = Math.log10(pts[0][0]), kmax = Math.log10(pts[pts.length - 1][0]);
+    var pmin = Infinity, pmax = -Infinity; pts.concat(lin).forEach(function (p) { if (p[1] > 0) { pmin = Math.min(pmin, Math.log10(p[1])); pmax = Math.max(pmax, Math.log10(p[1])); } });
+    pmin -= 0.3; pmax += 0.3;
+    function X(k) { return 30 + (Math.log10(k) - kmin) / (kmax - kmin) * (W - 40); }
+    function Y(p) { return H - 16 - (Math.log10(p) - pmin) / (pmax - pmin) * (H - 26); }
+    pkc.strokeStyle = '#3d4a80'; pkc.beginPath(); lin.forEach(function (p, i) { if (p[1] <= 0) return; var x = X(p[0]), y = Y(p[1]); if (i === 0) pkc.moveTo(x, y); else pkc.lineTo(x, y); }); pkc.stroke();
+    pkc.strokeStyle = '#9fdcff'; pkc.beginPath(); pts.forEach(function (p, i) { var x = X(p[0]), y = Y(p[1]); if (i === 0) pkc.moveTo(x, y); else pkc.lineTo(x, y); }); pkc.stroke();
+    pkc.fillStyle = '#9fdcff'; pts.forEach(function (p) { pkc.fillRect(X(p[0]) - 1.5, Y(p[1]) - 1.5, 3, 3); });
+    pkc.fillStyle = '#5c6280'; pkc.font = '10px Consolas,monospace'; pkc.fillText('log P(k)  蓝=模拟  暗=线性理论×D(a)²', 32, 10); pkc.fillText('k [h/Mpc]: ' + pts[0][0].toFixed(3) + ' … ' + pts[pts.length - 1][0].toFixed(2), 32, H - 3);
+  }
+  setInterval(function () {
+    if (!u) return;
+    var st = u.getState();
+    $('stat').textContent = (st.label || '') + '\n模式 ' + st.mode + ' · 档位 ' + st.tier + ' · fps ' + st.fps + (st.stepMs ? ' · 每步 ' + st.stepMs.toFixed(1) + ' ms' : '') + '\na=' + st.a.toFixed(4) + ' · z=' + st.z.toFixed(2) + ' · t=' + st.t.toFixed(3) + ' Gyr · ' + (st.running ? '演化中' : '暂停') + (st.contracting ? ' · 收缩' : '') + '\n晕 ' + st.halosFound + ' · 层：' + st.layer + (st.galaxy ? ' · ' + st.galaxy.typeName + '（' + st.galaxy.count + ' 星）' : '') + (st.progress ? '\n' + st.progress : '') + (st.error ? '\n错误：' + st.error : '');
+    var d = u.diagnostics();
+    $('diag').textContent = 'σ₈ 线性(引擎/归一) = ' + (d.sigma8LinearZ0 != null ? d.sigma8LinearZ0.toFixed(3) : '—') + '  ×D(a) = ' + (d.sigma8Linear != null ? d.sigma8Linear.toFixed(3) : '—') + '\nσ₈ 模拟网格测量 = ' + (d.sigma8 != null ? d.sigma8.toFixed(3) : '—') + '  （网格平滑会压低；非线性会抬高）\n晕数 ' + d.haloCount + ' · 网格 ' + d.mesh + '³ · 粒子 ' + d.N + '\n' + (d.halos.slice(0, 5).map(function (h, i) { return '#' + (i + 1) + ' M≈' + h.mass.toExponential(1) + ' M⊙/h  δ=' + h.delta.toFixed(0) + '  r₂₀₀=' + h.rMpc.toFixed(2) + ' Mpc/h'; }).join('\n'));
+    drawPk(d);
+  }, 500);
+  build();
+})();
+</script>
+</body>
+</html>

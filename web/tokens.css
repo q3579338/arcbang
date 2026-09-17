@@ -1,0 +1,118 @@
+/* ============================================================================
+ * web/tokens.css —— 全站唯一的一份设计令牌表
+ * ----------------------------------------------------------------------------
+ * 收敛之前：index.html / web/market.html / web/economy.html 各自带一份，
+ * 每份又分 :root（浅）、:root[data-theme="dark"]（显式深）、@media(深色系统)
+ * 三段 —— 一共 9 份拷贝。改一个对比度要人肉抄三遍，抄了就漂。
+ *
+ * 这里的值是按 WCAG AA 实测调过的，**一个都不许改**。
+ * 要改颜色只改这一个文件，三页一起跟着变。
+ *
+ * 三段的分工（顺序照抄原来的 index.html，没有重排）：
+ *   :root                           浅色一整套，**所有颜色的浅色值都在这里给全**
+ *   :root[data-theme="dark"]         显式选了深色时的覆盖
+ *   @media (prefers-color-scheme:dark) :root:not([data-theme="light"])
+ *                                   没有手动记忆、跟随系统时的深色覆盖
+ * 后两段特异性相同（都是 0,2,0），谁排后面谁赢 —— 但它们的值逐字相同，
+ * 所以谁赢都一样；真正起作用的是「显式选浅色时 :not([data-theme=light]) 不匹配」，
+ * @media 那一段整段失效，浅色守得住。
+ * 任何颜色都不许只存在于后两段：那样在浅色下就是个 undefined，字会压在自己的底色上。
+ *
+ * **不在这里的东西**（都是有意的）：
+ *   --navh    顶栏高度，归 web/nav.js 那份顶栏样式管（连同它的响应式覆盖），
+ *             放两处会让 @media 覆盖被这里的裸 :root 反超，顶栏就不会随窄屏收高了
+ *   --measure 只有经济页的正文用，留在那一页自己的 <style> 里
+ *   --sans / --mono 经济页有自己的字体栈（IBM Plex / Azeret），它在自己的
+ *             <style> 里覆盖这两个 —— 那份 <style> 排在本文件之后，所以覆盖得掉
+ *
+ * 怎么被三个页面吃到（离线版必须零外部请求，见 README 与 tools/check-dist.js）：
+ *   web/market.html / web/economy.html   用 link 标签（rel=stylesheet）引同目录的 tokens.css
+ *   index.html                            <link> 由 build.js 在构建时**内联**成 <style>，
+ *                                         所以 dist/mirror.html 里一条外链都不剩
+ * ============================================================================ */
+:root{
+  color-scheme:light;
+  /* —— 浅色（默认）：冷白底 + 白卡片 + 靛蓝主色 —— */
+  --void:#F5F6FA; --deep:#FFFFFF; --panel:#FFFFFF; --panel2:#F0F2F7; --line:#E6E8EF; --line2:#D2D6E2;
+  --ink:#1A1D26; --ink2:#343946; --ink3:#4E5464; --dim:#696E7D; --dim2:#656D82; --dim3:#636D85;
+  --cyan:#4A5BD4; --gold:#8B6913; --red:#C8362C; --green:#107D4E; --amber:#9A6212; --on-red:#FFFFFF;
+  --sel:#EDEFF6; --sel2:#E9EBFB; --sel2-ink:#3A48B0; --hi-bg:#DCE8F4; --hi-ink:#0B3E68;
+  --line-soft:#F0F2F7; --line-soft2:#E3E0D7; --line-faint:#E5E1D8;
+  --diff:#A8560A; --diff-bg:rgba(168,86,10,.10);
+  --bad:#C8362C; --bad-line:#D9A9A5; --sev-line:#CBB07A; --warn-line:#D9B486;
+  --violet:#6B4BC4; --violet-line:#CFC3EE; --violet-bg:rgba(107,75,196,.08);
+  --green-line:#A8DCC3; --green-bg:rgba(16,125,78,.08);
+  --cyan-line:#C3C9F2; --cyan-bg:rgba(74,91,212,.07);
+  --amber-line:#E4C68F; --amber-bg:rgba(154,98,18,.09);
+  --red-line:#EFB4AE; --red-bg:rgba(200,54,44,.07); --stripe:rgba(200,38,28,.16);
+  --gold-line:#DCC584; --gold-bg:rgba(139,105,19,.10); --gold-glow:rgba(154,117,21,.20);
+  --panel-a:rgba(255,255,255,.94); --panel-a2:rgba(247,246,242,.96);
+  --shadow:rgba(26,29,54,.10); --shadow2:rgba(60,55,45,.14); --scrim:rgba(60,55,45,.45);
+  --focus:#4A5BD4; --on-cyan:#FFFFFF;
+  /* 形状与阴影：层次靠"白卡片 + 浅灰底 + 柔和阴影"，不靠重描边 */
+  --radius-card:16px; --radius-btn:10px; --radius-chip:999px; --radius-pop:14px;
+  --shadow-card:0 1px 2px rgba(26,29,54,.04), 0 8px 24px rgba(26,29,54,.06);
+  --shadow-pop:0 8px 32px rgba(26,29,54,.14);
+  --gap:16px;
+  /* —— 画布 HUD（两主题相同） —— */
+  --hud-bg:rgba(4,5,10,.55); --hud-panel:rgba(13,16,32,.86); --hud-panel2:rgba(13,16,32,.92);
+  --hud-ink:#E9E6F5; --hud-dim:#8B8FA8; --hud-dim2:#5C6280; --hud-line:#262D4A; --hud-line2:#3A4370;
+  --hud-red:#E8322A; --hud-red2:#B0332C; --hud-hint:#7A6E62;
+  /* —— 乳白确认页（两主题相同） —— */
+  --milk:#F2EEE4; --milk2:#E6E1D4; --milk-ink:#1E1B16; --milk-line:#B9B2A2;
+  --mono:Consolas,"Cascadia Code","Cascadia Mono","SF Mono",Menlo,"Noto Sans Mono CJK SC","Microsoft YaHei",monospace;
+  --sans:"PingFang SC","Microsoft YaHei","Noto Sans SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"Songti SC","STSong","SimSun","Noto Serif SC",Georgia,serif;
+}
+/* —— 深色：显式选择 —— */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --void:#0B0D16; --deep:#12151F; --panel:#161A26; --panel2:#1D2231; --line:#272D3D; --line2:#39415A;
+  --ink:#EDEFF5; --ink2:#CBD0DC; --ink3:#A7AEBE; --dim:#858CA0; --dim2:#828A9E; --dim3:#7F89A2;
+  --cyan:#8B99F5; --gold:#E8C874; --red:#FF7A6E; --green:#4ED6A0; --amber:#E8B057; --on-red:#FFFFFF;
+  --sel:#1A1F31; --sel2:#1E2340; --sel2-ink:#C3CBFF; --hi-bg:#1E2542; --hi-ink:#FFFFFF;
+  --line-soft:#1B2030; --line-soft2:#1B2040; --line-faint:#1E2542;
+  --diff:#FFA54A; --diff-bg:rgba(255,165,74,.08);
+  --bad:#FF7A6E; --bad-line:#5A2A2A; --sev-line:#5A4A1E; --warn-line:#4A3A1E;
+  --violet:#B197FC; --violet-line:#463763; --violet-bg:rgba(177,151,252,.07);
+  --green-line:#2A5C48; --green-bg:rgba(78,214,160,.07);
+  --cyan-line:#333C66; --cyan-bg:rgba(139,153,245,.07);
+  --amber-line:#5C4520; --amber-bg:rgba(232,176,87,.07);
+  --red-line:#7A322B; --red-bg:rgba(255,122,110,.07); --stripe:rgba(232,50,42,.18);
+  --gold-line:#6E5720; --gold-bg:rgba(232,200,116,.09); --gold-glow:rgba(232,200,116,.20);
+  --panel-a:rgba(13,16,32,.86); --panel-a2:rgba(11,14,28,.93);
+  --shadow:rgba(0,0,0,.55); --shadow2:rgba(0,0,0,.5); --scrim:rgba(4,5,10,.82);
+  --focus:#8B99F5; --on-cyan:#12151F;
+  /* 形状与阴影（深色只覆盖两条阴影，圆角/间距与浅色同值，三处都写全） */
+  --radius-card:16px; --radius-btn:10px; --radius-chip:999px; --radius-pop:14px;
+  --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --shadow-pop:0 8px 32px rgba(0,0,0,.5);
+  --gap:16px;
+}
+/* —— 深色：跟随系统（没有显式选浅色时） —— */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --void:#0B0D16; --deep:#12151F; --panel:#161A26; --panel2:#1D2231; --line:#272D3D; --line2:#39415A;
+    --ink:#EDEFF5; --ink2:#CBD0DC; --ink3:#A7AEBE; --dim:#858CA0; --dim2:#828A9E; --dim3:#7F89A2;
+    --cyan:#8B99F5; --gold:#E8C874; --red:#FF7A6E; --green:#4ED6A0; --amber:#E8B057; --on-red:#FFFFFF;
+    --sel:#1A1F31; --sel2:#1E2340; --sel2-ink:#C3CBFF; --hi-bg:#1E2542; --hi-ink:#FFFFFF;
+    --line-soft:#1B2030; --line-soft2:#1B2040; --line-faint:#1E2542;
+    --diff:#FFA54A; --diff-bg:rgba(255,165,74,.08);
+    --bad:#FF7A6E; --bad-line:#5A2A2A; --sev-line:#5A4A1E; --warn-line:#4A3A1E;
+    --violet:#B197FC; --violet-line:#463763; --violet-bg:rgba(177,151,252,.07);
+    --green-line:#2A5C48; --green-bg:rgba(78,214,160,.07);
+    --cyan-line:#333C66; --cyan-bg:rgba(139,153,245,.07);
+    --amber-line:#5C4520; --amber-bg:rgba(232,176,87,.07);
+    --red-line:#7A322B; --red-bg:rgba(255,122,110,.07); --stripe:rgba(232,50,42,.18);
+    --gold-line:#6E5720; --gold-bg:rgba(232,200,116,.09); --gold-glow:rgba(232,200,116,.20);
+    --panel-a:rgba(13,16,32,.86); --panel-a2:rgba(11,14,28,.93);
+    --shadow:rgba(0,0,0,.55); --shadow2:rgba(0,0,0,.5); --scrim:rgba(4,5,10,.82);
+    --focus:#8B99F5; --on-cyan:#12151F;
+    /* 形状与阴影（深色只覆盖两条阴影，圆角/间距与浅色同值，三处都写全） */
+    --radius-card:16px; --radius-btn:10px; --radius-chip:999px; --radius-pop:14px;
+    --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    --shadow-pop:0 8px 32px rgba(0,0,0,.5);
+    --gap:16px;
+  }
+}

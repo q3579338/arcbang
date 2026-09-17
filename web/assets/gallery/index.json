@@ -1,0 +1,328 @@
+{
+ "generated": "2026-09-17",
+ "chain": "Arc 主网（chainId 5042，RPC https://rpc.mainnet.arc.io）",
+ "renderer": "web/dist-arc/app.html（Chrome 桌面版，WebGL2 + Worker CPU 物理；本机 WebGPU 无可用适配器）· 画布 1600×948 CSS 像素 @ DPR 1.25 = 2000×1185 设备像素，等比缩到 1600×948",
+ "derivation": "v3-3（同 /api/card；每张图的 D 与结局都由服务端 /api/card 算出，不是本地猜的）",
+ "note": "引擎实时渲染截图，未调色；按画布原样导出（canvas 同帧合成 → PNG → WebPq80），没有页面外框",
+ "items": [
+  {
+   "file": "1000021-web.webp",
+   "thumb": "1000021-web-800.webp",
+   "block": 1000021,
+   "hash": "0xa95b638836411edeac6172b51f11fc349cf6261072a40fe4f4269551762e3356",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "宇宙网与晕标注（3D）",
+   "viewEn": "Cosmic web with halo labels (3D)",
+   "dimension": 3,
+   "note": "3D PM N 体模拟 · 512,000 粒子 · 64³ 网格 · 盒长 200 Mpc/h · 圈出的是识别到的晕（这个宇宙共 113 个）",
+   "source": "u1-web.png",
+   "nonBlack": 0.537,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 92.4,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 37.3,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "5000017-galaxy.webp",
+   "thumb": "5000017-galaxy-800.webp",
+   "block": 5000017,
+   "hash": "0x16b9b6dd19192866291f7a86449b15596610fb106b03eb2f1d6186670ea4d503",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "旋臂星系俯视",
+   "viewEn": "Spiral galaxy, top-down",
+   "dimension": 3,
+   "note": "镜像 · 星系层（星系 G-9554，棒旋 SBb，4 条旋臂，直径 9.3 万光年，约 184 亿颗恒星）",
+   "source": "u2-galaxy.png",
+   "nonBlack": 0.053,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 18.2,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 5.3,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "12000079-system.webp",
+   "thumb": "12000079-system-800.webp",
+   "block": 12000079,
+   "hash": "0xb0dc5c8d76df8dd9c529007211cc20972532cbd3a2b9c5e1a05d2c475814d6f9",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "恒星系",
+   "viewEn": "Planetary system",
+   "dimension": 3,
+   "note": "镜像 · 恒星系层（恒星 EHSN，M7V，恒星系年龄 104.36 亿年，7 颗行星 + 小行星带 + 彗星）",
+   "source": "u3-system.png",
+   "nonBlack": 0.093,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 52.7,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 20,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "18000081-surface.webp",
+   "thumb": "18000081-surface-800.webp",
+   "block": 18000081,
+   "hash": "0xa2274c464a751150e706d1c1bb80cc2eb5af8afdfbf819bc191d9ace874af4c9",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "熔岩行星地表",
+   "viewEn": "Lava planet surface",
+   "dimension": 3,
+   "note": "镜像 · 地表层（63X0 b，熔岩行星，0.011 AU，气温约 662 ℃，高度 10 km）",
+   "source": "u4-lava.png",
+   "nonBlack": 1,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 144,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 49.7,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "21000009-dim18.webp",
+   "thumb": "21000009-dim18-800.webp",
+   "block": 21000009,
+   "hash": "0xffff41185f23c168787c1664345da142dfe63f66286493855974e21191a15af1",
+   "outcome": "UNSTABLE_ORBITS",
+   "outcomeName": "无稳定轨道 / 无稳定原子的宇宙",
+   "view": "十八维宇宙的 N 体投影（D=18）",
+   "viewEn": "N-body projection of an 18-dimensional universe (D=18)",
+   "dimension": 18,
+   "note": "真 18 维 N 体（N=1,225，直接求和 Worker CPU）· 投影到 (x₁,x₂,x₃) · D>3 下引力太陡，物质不成团、没有稳定轨道",
+   "source": "u5-dim18.png",
+   "nonBlack": 0.036,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 22.6,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 8,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "9044269-plane.webp",
+   "thumb": "9044269-plane-800.webp",
+   "block": 9044269,
+   "hash": "0x537a6f0e6b802386737a7b81152a17a82e5714f41c8e33be754fc9c05fa3860c",
+   "outcome": "BEYOND_MODEL_DIM",
+   "outcomeName": "超出模型适用范围（D≠3，按 3 维公式外推）",
+   "view": "黑平面与垂直银线（D=2.50）",
+   "viewEn": "Black plane pierced by silver lines (D=2.50)",
+   "dimension": 2.5,
+   "note": "低维宇宙 D=2.50：黑色没有厚度的平面就是这个宇宙的太空，与平面垂直相交的亮线是只有一维的恒星（《镜子》第八章）",
+   "source": "u6-plane.png",
+   "nonBlack": 0.103,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 41.6,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 14.1,
+   "thumbSizeQ": 80
+  }
+ ],
+ "legacyBsc": {
+  "note": "BSC（bnbbang.com）与 BTC（bang.satloot.com）两站首页仍在用的旧图，区块来自 BNB 链，不是 Arc。备份在 web/assets/gallery-bsc/。等那两站的 landing 换图之后可以删。",
+  "renderer": "web/dist/app.html (headless Chrome 152, ANGLE D3D11 / RTX 4090), WebGL2 backend, particle tier high",
+  "derivation": "v3-2 (同 test.satloot.com /api/card)",
+  "items": [
+   {
+    "file": "122752492-giant.webp",
+    "thumb": "122752492-giant-800.webp",
+    "block": 122752492,
+    "hash": "0x1b6e24153a17b49cb45b4002dc2a37c213c0dfdfa37e660123e9dcbba65a2178",
+    "outcome": "OBSERVERS_POSSIBLE",
+    "outcomeName": "可能诞生观察者",
+    "view": "气态巨行星与卫星",
+    "viewEn": "Gas giant with a moon",
+    "dimension": 3,
+    "note": "镜像 · 行星层（KMEG d，卫星 KMEG d-1）",
+    "source": "b122752492-planet.png",
+    "nonBlack": 0.445,
+    "size": [
+     1600,
+     948
+    ],
+    "sizeKB": 76.5,
+    "sizeQ": 80,
+    "thumbSize": [
+     800,
+     474
+    ],
+    "thumbSizeKB": 25.5,
+    "thumbSizeQ": 80
+   },
+   {
+    "file": "122752492-galaxy.webp",
+    "thumb": "122752492-galaxy-800.webp",
+    "block": 122752492,
+    "hash": "0x1b6e24153a17b49cb45b4002dc2a37c213c0dfdfa37e660123e9dcbba65a2178",
+    "outcome": "OBSERVERS_POSSIBLE",
+    "outcomeName": "可能诞生观察者",
+    "view": "旋臂星系俯视",
+    "viewEn": "Spiral galaxy, top-down",
+    "dimension": 3,
+    "note": "镜像 · 星系层（星系 G-4894，3 条旋臂）",
+    "source": "b122752492-mgalaxy.png",
+    "nonBlack": 0.055,
+    "size": [
+     1600,
+     948
+    ],
+    "sizeKB": 20.2,
+    "sizeQ": 80,
+    "thumbSize": [
+     800,
+     474
+    ],
+    "thumbSizeKB": 5.8,
+    "thumbSizeQ": 80
+   },
+   {
+    "file": "122752492-web.webp",
+    "thumb": "122752492-web-800.webp",
+    "block": 122752492,
+    "hash": "0x1b6e24153a17b49cb45b4002dc2a37c213c0dfdfa37e660123e9dcbba65a2178",
+    "outcome": "OBSERVERS_POSSIBLE",
+    "outcomeName": "可能诞生观察者",
+    "view": "宇宙网与晕标注（3D）",
+    "viewEn": "Cosmic web with halo labels (3D)",
+    "dimension": 3,
+    "note": "3D PM N 体模拟 · 512,000 粒子 · 飞入晕 #1",
+    "source": "b122752492-galaxy3d.png",
+    "nonBlack": 0.645,
+    "size": [
+     1600,
+     948
+    ],
+    "sizeKB": 116.9,
+    "sizeQ": 80,
+    "thumbSize": [
+     800,
+     474
+    ],
+    "thumbSizeKB": 51.5,
+    "thumbSizeQ": 80
+   },
+   {
+    "file": "126029267-system.webp",
+    "thumb": "126029267-system-800.webp",
+    "block": 126029267,
+    "hash": "0x713e927a3bbbd8699f9a3f527ea85b986bff2efbeab898dc5c687f2ba03e0a86",
+    "outcome": "OBSERVERS_POSSIBLE",
+    "outcomeName": "可能诞生观察者",
+    "view": "恒星系",
+    "viewEn": "Planetary system",
+    "dimension": 3,
+    "note": "镜像 · 恒星系层（恒星 C4BY，6 颗行星 + 小行星带 + 彗星）",
+    "source": "b126029267-system.png",
+    "nonBlack": 0.112,
+    "size": [
+     1600,
+     948
+    ],
+    "sizeKB": 70.3,
+    "sizeQ": 80,
+    "thumbSize": [
+     800,
+     474
+    ],
+    "thumbSizeKB": 23.7,
+    "thumbSizeQ": 80
+   },
+   {
+    "file": "126029267-surface.webp",
+    "thumb": "126029267-surface-800.webp",
+    "block": 126029267,
+    "hash": "0x713e927a3bbbd8699f9a3f527ea85b986bff2efbeab898dc5c687f2ba03e0a86",
+    "outcome": "OBSERVERS_POSSIBLE",
+    "outcomeName": "可能诞生观察者",
+    "view": "岩质行星地表",
+    "viewEn": "Rocky planet surface",
+    "dimension": 3,
+    "note": "镜像 · 地表层（C4BY b，高度 10 km）",
+    "source": "b126029267-surface.png",
+    "nonBlack": 1,
+    "size": [
+     1600,
+     948
+    ],
+    "sizeKB": 123.2,
+    "sizeQ": 80,
+    "thumbSize": [
+     800,
+     474
+    ],
+    "thumbSizeKB": 37.5,
+    "thumbSizeQ": 80
+   },
+   {
+    "file": "121572853-dim4.webp",
+    "thumb": "121572853-dim4-800.webp",
+    "block": 121572853,
+    "hash": "0x7e51c66261a1e3eb0f6f0ebe3fcc0d758967645634137e3d2b482ca4b50044a7",
+    "outcome": "UNSTABLE_ORBITS",
+    "outcomeName": "无稳定轨道 / 无稳定原子的宇宙",
+    "view": "四维宇宙（D=4）",
+    "viewEn": "A four-dimensional universe (D=4)",
+    "dimension": 4,
+    "note": "3D 视图 · 高维宇宙的「无法观察」一屏",
+    "source": "b121572853-dim.png",
+    "nonBlack": 1,
+    "size": [
+     1600,
+     948
+    ],
+    "sizeKB": 34,
+    "sizeQ": 80,
+    "thumbSize": [
+     800,
+     474
+    ],
+    "thumbSizeKB": 14.5,
+    "thumbSizeQ": 80
+   }
+  ]
+ }
+}

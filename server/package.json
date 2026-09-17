@@ -1,0 +1,23 @@
+{
+  "name": "bnbbang-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BNBBANG 服务端：算 card、签名盖章、出图",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node selftest.js",
+    "make-base": "node tools/make-base.js",
+    "make-og-fallback": "node tools/make-og-fallback.js"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "ethers": "^6.13.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}

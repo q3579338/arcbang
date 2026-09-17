@@ -1,0 +1,17 @@
+{
+  "name": "mirror-universe-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BNBBANG NFT contract + 跨语言一致性校验",
+  "scripts": {
+    "build": "node tools/compile.js",
+    "crosscheck": "node tools/crosscheck.js 20",
+    "sample": "node tools/minttest.js"
+  },
+  "devDependencies": {
+    "solc": "0.8.24",
+    "@ethereumjs/evm": "3.1.1",
+    "@ethereumjs/common": "4.4.0",
+    "@ethereumjs/util": "9.1.0"
+  }
+}

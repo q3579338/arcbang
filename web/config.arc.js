@@ -1,0 +1,72 @@
+/*
+ * web/config.arc.js —— ARCBANG 站点配置（specs/arcbang-v1.md）
+ *
+ * 与 bnb / btc 两站的差别只有两处，其余键的语义逐字相同：
+ *   1. **没有代币**。bangToken / vesting / promo / referral 四个键在这里不存在 ——
+ *      不是留空，是删掉：留空的语义是「还没部署」，而这里是「永远不会有」。
+ *      读到 undefined 的地方一律不渲染代币相关的界面。
+ *   2. 链换成 Arc。Arc 的 native 就是 USDC（18 位小数），所以 currency 是 'USDC'，
+ *      界面上所有「多少 BNB」的位置自动变成「多少 USDC」。
+ *
+ * 当前指向 **Arc 主网**（chainId 5042）：引爆读的是真实主网区块。
+ * 测试网（5042002，水龙头 https://faucet.circle.com/ 免费领）的那一份在文件末尾注释里，
+ * 要联调铸造流程时整块替换 chain + rpc。
+ */
+window.BNBBANG_CONFIG = {
+  /* 服务端 API 前缀。引爆的计算和出图都在那边（specs/server-side.md）。
+     同域部署时保持 '/api'；本地联调改成 'http://127.0.0.1:8801/api'。 */
+  apiBase: '/api',
+  /* 留空 = 跟着访问者当前的域名走。 */
+  siteBase: '',
+  /* 站点标识。nav / bnb-ui 按它决定品牌名与取块源；'arc' 走 EVM 取块（与 bnb 同一套），
+     不走 btc-source 那条 REST 路。 */
+  site: 'arc',
+
+  /* ArcUniverse（宇宙 NFT，contracts/src/ArcUniverse.sol）。
+     部署后填这里，并且**服务端 /etc/bnbbang/api.env 的 BNBBANG_CONTRACT 必须同步改**——
+     签名把合约地址绑死了，两边不一致时签出来的名在链上一律 BadSig。 */
+  contract: '',
+  /* 市场（ArcMarket，contracts/src/ArcMarket.sol）。**部署后填这里** ——
+     地址从 contracts/tools/deploy-arc.mjs 的输出里抄。空着 = 市场页显示「未部署」。
+
+     只有一种计价：native，在 Arc 上就是 USDC，挂单价是 wei（1 USDC = 1e18）。
+     成交时先按 ERC-2981 付版税（ArcUniverse 默认 5%，市场侧截断在 10%），
+     再抽 1% 手续费进国库，其余给卖家；合约不留钱。 */
+  market: '',
+  /* 造物与命名两套在 v1 不上（它们的定价原本全建在 BANG 上，要重设计）。 */
+  crafted: '',
+  craftedNames: '',
+
+  /* 公开 RPC，按顺序轮换。两个域名都能用：官方文档给的是 arc.io，
+     arc.network 那一条是测试网时期就在用的，留作备胎。 */
+  rpc: [
+    'https://rpc.mainnet.arc.io',
+    '/api/rpc'
+  ],
+
+  /* 链身份的唯一真相来源。**换链只改这一块。** */
+  chain: {
+    id: 5042,
+    name: 'Arc 主网',
+    nameEn: 'Arc Mainnet',
+    explorer: 'https://explorer.arc.io',
+    currency: 'USDC',
+    isTestnet: false
+  }
+
+  /* ---- 测试网（要用水龙头联调铸造时整块替换上面的 rpc + chain；2026-09-17 用户拍板本地也读主网区块）----
+  rpc: [
+    'https://rpc.testnet.arc.io',
+    '/api/rpc',
+    'https://rpc.testnet.arc.network'
+  ],
+  chain: {
+    id: 5042002,
+    name: 'Arc 测试网',
+    nameEn: 'Arc Testnet',
+    explorer: 'https://explorer.testnet.arc.io',
+    currency: 'USDC',
+    isTestnet: true
+  }
+  ---- */
+};

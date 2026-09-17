@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- canonical / og:url / hreflang 里写的是**主站的占位域名**，不是笔误：web/build-web.js 的
+     siteify() 只改写 <title>/<meta>/<link> 与 ld+json，把那个占位域名整体换成 SITES.arc.base
+     （arcbang.xyz）、站名换成 ARCBANG、/assets/og/home.jpg 换成 SITES.arc.og。
+     域名只存在于 SITES 表那一处，换域那天不用回来改这些文件。
+     **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
+<title>自己验一遍 —— ARCBANG</title>
+<meta name="description" content="别信站点的一面之词。把引擎克隆下来，用任意 Arc 区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。两条命令，几分钟。">
+<link rel="canonical" href="https://bnbbang.com/verify.html">
+<link rel="alternate" hreflang="zh-CN" href="https://bnbbang.com/verify.html">
+<link rel="alternate" hreflang="en" href="https://bnbbang.com/en/verify.html">
+<link rel="alternate" hreflang="x-default" href="https://bnbbang.com/en/verify.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://bnbbang.com/verify.html">
+<meta property="og:title" content="自己验一遍">
+<meta property="og:description" content="两条命令：从区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。">
+<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="自己验一遍">
+<meta name="twitter:description" content="两条命令：从区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。">
+<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "把一个 ARCBANG 宇宙和链上对一遍",
+  "url": "https://bnbbang.com/verify.html",
+  "inLanguage": "zh-CN",
+  "step": [
+    { "@type": "HowToStep", "name": "克隆引擎", "text": "git clone https://github.com/q3579338/arcbang && cd arcbang" },
+    { "@type": "HowToStep", "name": "从区块哈希重算一个宇宙", "text": "node tools/recompute.js <区块哈希> 会打印参数、结局、等级和 cardHash。" },
+    { "@type": "HowToStep", "name": "和链上那枚 NFT 对一遍", "text": "node tools/verify-onchain.js <tokenId> 从 Arc 读回那枚 NFT，与本地结果逐字节比较。" }
+  ]
+}
+</script>
+<!-- 中文页在根路径、英文页在 /en/（与首页同一条规矩）。整个 <main> 与页脚都带 data-nolang：
+     两种语言各写一份静态页，不走运行时翻译，i18n 只管顶栏与钱包 chip 那一半。 -->
+<script>try{localStorage.setItem("mirror.lang","zh")}catch(e){}</script>
+<!-- 不挂 Google Fonts：国内访问会等它超时才渲染；字体栈全是系统字体。 -->
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="arc-doc.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">跳到主要内容</a>
+
+<div id="siteNavMount"></div>
+<script>MirrorNav.mount({ page: 'doc' });</script>
+
+<main id="main" data-nolang>
+<div class="ab-wrap">
+
+<header class="ad-head">
+  <h1 class="ad-h1">别信我，自己跑一遍</h1>
+  <p class="ad-lede">每个宇宙都是区块哈希的纯函数，函数开源。你可以在自己机器上把它重算一遍，再跟链上存的对。两条命令，不用注册。</p>
+  <div class="ad-cta">
+    <a class="ab-btn" href="https://github.com/q3579338/arcbang">克隆引擎</a>
+    <a class="ab-btn2" href="how-it-works.html">这是怎么回事</a>
+  </div>
+</header>
+
+<div class="ad-body">
+
+<nav class="ad-rail" aria-label="本页目录">
+  <p class="ad-railhead">这一页</p>
+  <ol>
+    <li><a href="#recompute"><span>重算一个宇宙</span></a></li>
+    <li><a href="#diff"><span>跟链上对</span></a></li>
+    <li><a href="#sig"><span>签名管什么</span></a></li>
+    <li><a href="#contracts"><span>合约</span></a></li>
+    <li><a href="#limits"><span>不是无信任的地方</span></a></li>
+  </ol>
+</nav>
+
+<div class="ad-main">
+
+<section class="ad-sec" id="recompute">
+<h2 class="ad-h2">重算一个宇宙</h2>
+<pre class="ad-cmd"><code>git clone https://github.com/q3579338/arcbang
+cd arcbang
+node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b</code></pre>
+<p>只要一个哈希，它就能把参数、结局、等级和 <code>cardHash</code> 全推出来。推导是纯整数的，换台机器结果也一样。零依赖，Node 18 起。</p>
+</section>
+
+<section class="ad-sec" id="diff">
+<h2 class="ad-h2">跟链上对</h2>
+<pre class="ad-cmd"><code>node tools/verify-onchain.js 1</code></pre>
+<p>它从 Arc 上读回 1 号 NFT，拿它记着的块哈希重算一遍，再逐字节比对。整个过程只用到那个哈希，服务端的任何东西都不参与。</p>
+<div class="ad-note">
+  <p>仓库里还带着引擎自检和链上比对的测试，<code>node engine/test.js</code> 在本地就能跑。</p>
+</div>
+</section>
+
+<section class="ad-sec" id="sig">
+<h2 class="ad-h2">签名管什么</h2>
+<p>铸造要服务端签个名。这一步只是为了防止有人拿伪造的参数来铸——服务端把参数重算一遍再签，签名地址在链上写着，谁都能查。</p>
+<p>它不能让我凭空造宇宙：被签的那组参数必须跟 <code>recompute.js</code> 从哈希算出来的一模一样，而这正是上面那条命令在核的事。</p>
+</section>
+
+<section class="ad-sec" id="contracts">
+<h2 class="ad-h2">合约</h2>
+<p>Arc 主网，chainId 5042，gas 用 USDC 付。没有代理、没有升级通道、没有暂停开关，部署完就是那样。一共两个合约，没有代币就没有别的要部署。</p>
+<div class="ad-tblwrap"><table class="ad-tbl">
+<thead><tr><th>合约</th><th>干什么的</th></tr></thead>
+<tbody>
+<tr><td class="k">ArcUniverse</td><td>宇宙本身。铸造价格与免费额度、5% 版税，以及 <code>tokenURI</code> 的链上 SVG 兜底。</td></tr>
+<tr><td class="k">MirrorMarket</td><td>站内挂单、买入、撤单。手续费上限写死在合约里。</td></tr>
+</tbody></table></div>
+<p>部署地址上链当天会公布在这一页和 <code>config.js</code> 里，站点只从那一个文件读，所以页面显示的和你钱包在谈的不可能是两个东西。</p>
+</section>
+
+<section class="ad-sec" id="limits">
+<h2 class="ad-h2">不是无信任的地方</h2>
+<p>说两件我自己也不满意但确实存在的事。</p>
+<ul class="ad-bullets">
+  <li>铸造离不开服务端那个签名。签名地址在链上，被签的参数你能自己重算，但服务端挂了就没法铸新的（已经铸出来的不受影响，合约自带链上 SVG）。</li>
+  <li>合约里有几个 owner 开关。都有边界：免费额度只能调小，价格被常数夹在 0.1 到 20 USDC 之间，版税上限 10%，市场手续费上限 10%。已经存在的 NFT，谁也改不了它的参数。</li>
+</ul>
+<div class="ad-end-cta">
+  <a class="ab-btn" href="https://github.com/q3579338/arcbang">克隆引擎</a>
+  <a class="ab-btn2" href="how-it-works.html">这是怎么回事</a>
+  <a class="ab-btn2" href="faq.html">常见问题</a>
+</div>
+</section>
+
+</div><!-- /.ad-main -->
+</div><!-- /.ad-body -->
+</div><!-- /.ab-wrap -->
+</main>
+
+<footer class="ab-foot" data-nolang>
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARC宇宙</div>
+      <nav class="ab-foot-lnk" aria-label="页脚">
+        <a href="/">首页</a>
+        <a href="app.html">模拟器</a>
+        <a href="how-it-works.html">怎么回事</a>
+        <a href="faq.html">常见问题</a>
+        <a href="/en/verify.html" hreflang="en">English</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">用区块哈希造宇宙。免费引爆，喜欢再铸。</p>
+    <div class="ab-legal">
+      <span>© 2026 ARCBANG</span>
+      <span>一件收藏品，一次实验，不是投资产品。</span>
+      <span><a href="https://github.com/q3579338/arcbang">引擎开源（AGPL-3.0）</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

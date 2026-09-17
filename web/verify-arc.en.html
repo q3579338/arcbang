@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 落盘到 /en/verify.html（build-web.js 的 SITES.arc.enPages）。相对地址由 absolutize() 在落盘时
+     改成根绝对；SEO 头里写的是主站的占位域名，siteify() 会换成 SITES.arc.base。 -->
+<title>Check it yourself — ARCBANG</title>
+<meta name="description" content="Do not take the site's word for it. Clone the engine, recompute any Arc block hash into its universe, and diff it against the NFT on chain. Two commands, a couple of minutes.">
+<link rel="canonical" href="https://bnbbang.com/en/verify.html">
+<link rel="alternate" hreflang="zh-CN" href="https://bnbbang.com/verify.html">
+<link rel="alternate" hreflang="en" href="https://bnbbang.com/en/verify.html">
+<link rel="alternate" hreflang="x-default" href="https://bnbbang.com/en/verify.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://bnbbang.com/en/verify.html">
+<meta property="og:title" content="Check it yourself">
+<meta property="og:description" content="Two commands: recompute a universe from its block hash, then diff it against the NFT on chain.">
+<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Check it yourself">
+<meta name="twitter:description" content="Two commands: recompute a universe from its block hash, then diff it against the NFT on chain.">
+<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Check an ARCBANG universe against the chain",
+  "url": "https://bnbbang.com/en/verify.html",
+  "inLanguage": "en",
+  "step": [
+    { "@type": "HowToStep", "name": "Clone the engine", "text": "git clone https://github.com/q3579338/arcbang && cd arcbang" },
+    { "@type": "HowToStep", "name": "Recompute a universe from its block hash", "text": "node tools/recompute.js <blockhash> prints the parameters, the outcome, the grade and the cardHash." },
+    { "@type": "HowToStep", "name": "Diff it against the NFT", "text": "node tools/verify-onchain.js <tokenId> reads the NFT from Arc and compares it with the local result." }
+  ]
+}
+</script>
+<script>try{localStorage.setItem("mirror.lang","en")}catch(e){}</script>
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="arc-doc.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">Skip to content</a>
+
+<div id="siteNavMount"></div>
+<script>MirrorNav.mount({ page: 'doc' });</script>
+
+<main id="main" data-nolang>
+<div class="ab-wrap">
+
+<header class="ad-head">
+  <h1 class="ad-h1">Don't take my word for it</h1>
+  <p class="ad-lede">Every universe here is a pure function of a block hash, and the function is open source. Run it on your own machine and compare the result with what is on chain. Two commands, no account needed.</p>
+  <div class="ad-cta">
+    <a class="ab-btn" href="https://github.com/q3579338/arcbang">Clone the engine</a>
+    <a class="ab-btn2" href="/en/how-it-works.html">What this is</a>
+  </div>
+</header>
+
+<div class="ad-body">
+
+<nav class="ad-rail" aria-label="On this page">
+  <p class="ad-railhead">On this page</p>
+  <ol>
+    <li><a href="#recompute"><span>Recompute a universe</span></a></li>
+    <li><a href="#diff"><span>Diff it against the chain</span></a></li>
+    <li><a href="#sig"><span>What the signature is for</span></a></li>
+    <li><a href="#contracts"><span>Contracts</span></a></li>
+    <li><a href="#limits"><span>Where it is not trustless</span></a></li>
+  </ol>
+</nav>
+
+<div class="ad-main">
+
+<section class="ad-sec" id="recompute">
+<h2 class="ad-h2">Recompute a universe</h2>
+<pre class="ad-cmd"><code>git clone https://github.com/q3579338/arcbang
+cd arcbang
+node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b</code></pre>
+<p>Give it a hash and it works out the parameters, the outcome, the grade and the <code>cardHash</code>. The derivation is integer-only, so another machine gives the same answer. No dependencies, Node 18 or later.</p>
+</section>
+
+<section class="ad-sec" id="diff">
+<h2 class="ad-h2">Diff it against the chain</h2>
+<pre class="ad-cmd"><code>node tools/verify-onchain.js 1</code></pre>
+<p>This reads NFT #1 back from Arc, recomputes it from the block hash stored with it, and compares the two byte for byte. The hash is the only input; nothing from my server is involved.</p>
+<div class="ad-note">
+  <p>The repository also ships the engine self-checks and the on-chain comparison tests. <code>node engine/test.js</code> runs the first set locally.</p>
+</div>
+</section>
+
+<section class="ad-sec" id="sig">
+<h2 class="ad-h2">What the signature is for</h2>
+<p>Minting needs a signature from the server. That exists to stop anyone minting made-up parameters: the server recomputes them and signs what it got, and the signer address is on chain for anyone to check.</p>
+<p>It does not let me invent universes. The signed parameters have to match what <code>recompute.js</code> derives from the hash, which is exactly what the command above checks.</p>
+</section>
+
+<section class="ad-sec" id="contracts">
+<h2 class="ad-h2">Contracts</h2>
+<p>Arc mainnet, chainId 5042, gas paid in USDC. No proxy, no upgrade path, no pause switch — once deployed it stays as it is. Two contracts in total; with no token there is nothing else to deploy.</p>
+<div class="ad-tblwrap"><table class="ad-tbl">
+<thead><tr><th>Contract</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td class="k">ArcUniverse</td><td>The universes. Mint price and free allowance, 5% royalties, and the on-chain SVG fallback for <code>tokenURI</code>.</td></tr>
+<tr><td class="k">MirrorMarket</td><td>Listing, buying and cancelling on the site. The fee ceiling is written into the contract.</td></tr>
+</tbody></table></div>
+<p>The deployed addresses go on this page and into <code>config.js</code> the day v1 lands. The site reads them from that one file, so what the page shows and what your wallet talks to cannot drift apart.</p>
+</section>
+
+<section class="ad-sec" id="limits">
+<h2 class="ad-h2">Where it is not trustless</h2>
+<p>Two things I am not thrilled about but that are real.</p>
+<ul class="ad-bullets">
+  <li>Minting depends on that server signature. The signer is on chain and the signed parameters are recomputable, but if the server is down, no new mints. Existing NFTs are fine — the contract falls back to on-chain SVG.</li>
+  <li>There are a few owner switches. All of them are bounded: the free allowance can only be tightened, the price is clamped between 0.1 and 20 USDC, royalties cap at 10%, market fees cap at 10%. Nothing can change the parameters of an NFT that already exists.</li>
+</ul>
+<div class="ad-end-cta">
+  <a class="ab-btn" href="https://github.com/q3579338/arcbang">Clone the engine</a>
+  <a class="ab-btn2" href="/en/how-it-works.html">What this is</a>
+  <a class="ab-btn2" href="/en/faq.html">Questions</a>
+</div>
+</section>
+
+</div><!-- /.ad-main -->
+</div><!-- /.ad-body -->
+</div><!-- /.ab-wrap -->
+</main>
+
+<footer class="ab-foot" data-nolang>
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARCBANG</div>
+      <nav class="ab-foot-lnk" aria-label="Footer">
+        <a href="/en/">Home</a>
+        <a href="app.html">Simulator</a>
+        <a href="/en/how-it-works.html">What this is</a>
+        <a href="/en/faq.html">Questions</a>
+        <a href="/verify.html" hreflang="zh-CN">中文</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">Universes made from block hashes. Free to detonate, mint the one you want to keep.</p>
+    <div class="ab-legal">
+      <span>© 2026 ARCBANG</span>
+      <span>A collectible and an experiment, not an investment product.</span>
+      <span><a href="https://github.com/q3579338/arcbang">Engine source (AGPL-3.0)</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

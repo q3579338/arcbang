@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>ARCBANG 部署向导（运营者）</title>
+<!--
+  web/deploy-arc.html —— ARCBANG 两个合约的浏览器部署向导
+  ============================================================================
+  为什么单独写一份：web/deploy.html 是 BNBBANG 六合约一套的向导（代币 → 宇宙 →
+  市场 → 三个金库 → 接线，3000 多行），ARCBANG 没有代币、没有金库、没有接线，
+  用它等于在一堆不存在的步骤里找那两步，而且它按 BSC 的 chainId 硬核对，
+  在 Arc 上第一步就停。
+
+  为什么不用 contracts/tools/deploy-arc.mjs：那一份要把私钥放进环境变量。
+  这一页走钱包签名，私钥一次都不离开钱包。两份并存：脚本留作无浏览器时的备用。
+
+  六步，每步一张卡，前一步没完成后一步锁住；每一步都有「回读核对」——
+  链上读到的值与预期不符就红字停下，不往下走。
+
+  依赖：同目录的 config.js（Arc 链参数，落盘名就是 config.js，源文件是
+  config.arc.js）、wallet.js（EIP-6963 多钱包发现 + ensureChain）、
+  keccak-lite.js（只用来给字节码打指纹）、arc-doc.css（浅色令牌）。
+  除此之外零外部脚本：不引 ethers，ABI 编解码在下面手写。
+-->
+<link rel="stylesheet" href="arc-doc.css">
+<style>
+/* 这一页的构件样式。令牌全部继承 arc-doc.css（--ab-plate / --ab-ink / --ab-signal），
+   不新定义颜色，也不做深色切换（新站一律浅色）。 */
+body{background-image:none;background:var(--ab-plate)}
+.dw-wrap{max-width:920px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-left)) 96px}
+
+/* 顶部红底提示：这不是玩家页面。做成通栏、不可折叠、不带关闭按钮。 */
+.dw-alarm{background:#8E1B2E;color:#fff;padding:14px 0;margin-bottom:40px}
+.dw-alarm .in{max-width:920px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-left));
+  font-size:var(--t-s);line-height:1.7}
+.dw-alarm b{font-weight:700}
+.dw-alarm ul{margin:6px 0 0;padding:0;list-style:none}
+.dw-alarm li{position:relative;padding-left:16px}
+.dw-alarm li::before{content:"·";position:absolute;left:4px}
+
+.dw-head{padding:36px 0 8px}
+.dw-head h1{font-size:var(--t-xl);line-height:1.25;font-weight:700;letter-spacing:-.01em}
+.dw-head p{margin-top:12px;font-size:var(--t-s);color:var(--ab-graphite);max-width:64ch;line-height:1.75}
+
+/* 步骤卡。锁住时整张卡压暗并吃掉点击，不靠「按钮变灰」这种容易看漏的提示。 */
+.dw-step{border:1px solid var(--ab-hair);background:#fff;border-radius:var(--r);
+  padding:24px 26px;margin-top:20px;position:relative}
+.dw-step.lk{opacity:.42;filter:saturate(.35)}
+.dw-step.lk::after{content:"";position:absolute;inset:0;border-radius:var(--r);cursor:not-allowed}
+.dw-step.ok{border-color:var(--ab-signal)}
+.dw-step > h2{font-size:var(--t-l);font-weight:700;display:flex;align-items:baseline;gap:12px}
+.dw-step > h2 .n{font-family:var(--mono);font-size:var(--t-s);color:var(--ab-signal);
+  font-variant-numeric:tabular-nums;flex:none}
+.dw-step > h2 .tick{margin-left:auto;font-size:var(--t-xs);color:var(--ab-signal);font-weight:600}
+.dw-step > p{margin-top:10px;font-size:var(--t-s);color:var(--ab-graphite);line-height:1.75;max-width:70ch}
+.dw-step h3{margin-top:22px;font-size:var(--t-s);font-weight:700}
+
+.dw-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px}
+.dw-row label{font-size:var(--t-xs);color:var(--ab-graphite)}
+button{font:inherit;font-size:var(--t-s);padding:9px 16px;border-radius:var(--r);cursor:pointer;
+  background:var(--ab-ink);color:#fff;border:1px solid var(--ab-ink)}
+button:hover:not(:disabled){background:var(--ab-signal);border-color:var(--ab-signal)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.gh{background:transparent;color:var(--ab-ink);border-color:rgba(19,33,74,.28)}
+button.gh:hover:not(:disabled){background:rgba(19,33,74,.05);color:var(--ab-ink);border-color:var(--ab-ink)}
+button.sm{font-size:12px;padding:5px 10px}
+input[type=text],textarea{font:inherit;font-size:var(--t-s);padding:8px 10px;border-radius:var(--r);
+  border:1px solid var(--ab-hair);background:#fff;color:var(--ab-ink);width:100%;max-width:100%}
+input[type=text].mono,textarea{font-family:var(--mono);font-size:13px}
+textarea{min-height:88px;resize:vertical;word-break:break-all;line-height:1.5}
+.dw-f{flex:1 1 320px;min-width:0}
+.dw-radio{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-s);margin-right:18px}
+
+.dw-msg{margin-top:14px;font-size:var(--t-s);line-height:1.7;white-space:pre-wrap;word-break:break-word}
+.dw-msg:empty{display:none}
+.dw-msg.err{color:#8E1B2E;font-weight:600}
+.dw-msg.ok{color:#1B6B45}
+.dw-msg.warn{color:#8A5A00}
+.dw-msg.dim{color:var(--ab-graphite)}
+.dw-msg a{color:var(--ab-signal)}
+
+/* 台账：一行一个回读项。线在编码信息，所以这里留着行线。 */
+.dw-tbl{width:100%;border-collapse:collapse;margin-top:14px;font-size:var(--t-xs)}
+.dw-tbl th{text-align:left;color:var(--ab-graphite);font-weight:400;padding:0 12px 8px 0;
+  border-bottom:1px solid var(--ab-ink);white-space:nowrap}
+.dw-tbl td{padding:9px 12px 9px 0;border-bottom:1px solid var(--ab-hair);vertical-align:top;
+  font-family:var(--mono);word-break:break-all}
+.dw-tbl td.lbl{font-family:var(--ab-face);color:var(--ab-ink);white-space:nowrap}
+.dw-tbl td.bad{color:#8E1B2E;font-weight:600}
+.dw-tbl td.good{color:#1B6B45}
+
+.dw-fold{margin-top:16px;font-size:var(--t-xs)}
+.dw-fold summary{cursor:pointer;color:var(--ab-signal)}
+.dw-fold > div{margin-top:10px}
+
+/* 产出配置：真黑感光板，硬边、圆角为 0 —— 与文档页里「命令行」的处理一致。 */
+.dw-out{background:var(--ab-void);color:#D8DEE9;font-family:var(--mono);font-size:13px;
+  line-height:1.85;padding:16px 18px;margin-top:14px;overflow-x:auto}
+.dw-out .ln{display:flex;gap:12px;align-items:baseline}
+.dw-out .ln .tx{flex:1 1 auto;word-break:break-all;white-space:pre-wrap}
+.dw-out .ln button{flex:none;background:transparent;border:1px solid #39435A;color:#9FB0CC;
+  border-radius:3px;font-size:11px;padding:2px 8px;font-family:var(--ab-face)}
+.dw-out .ln button:hover{background:#1A2338;color:#fff;border-color:#5C6A88}
+.dw-out .cm{color:#6B7998}
+
+.dw-foot{margin-top:56px;font-size:var(--t-xs);color:var(--ab-graphite);line-height:1.8}
+@media (max-width:640px){
+  .dw-step{padding:20px 16px}
+  .dw-head h1{font-size:22px}
+}
+</style>
+</head>
+<body>
+
+<div class="dw-alarm"><div class="in">
+  <b>这是运营者页面，不是玩家页面。</b>
+  <ul>
+    <li>部署花的是<b>你钱包里的 USDC</b>（Arc 的原生币就是 USDC）。两个合约合计约 0.1 USDC。</li>
+    <li>地址一旦填错到 config 里，<b>铸造会全部失败</b>：签名把合约地址绑进摘要，对不上链上一律 BadSig。</li>
+    <li>ArcMarket 的 <code>nft</code> 是 immutable：部错了修不回来，只能重发一个市场。</li>
+  </ul>
+</div></div>
+
+<div class="dw-wrap">
+
+<div class="dw-head">
+  <h1>ARCBANG 部署向导</h1>
+  <p>把 <b>ArcUniverse</b>（宇宙 NFT）和 <b>ArcMarket</b>（挂单簿）部署到 Arc，全程走钱包签名，私钥一次都不离开钱包。
+     六步，前一步没完成后一步锁着；每一步发完交易都会<b>回读链上的值</b>，与预期不符就停下。
+     已经在链上的合约可以在对应那一步用「我已部署，填地址」跳过。</p>
+</div>
+
+<!-- ============================================================ 1 连钱包 + 切链 -->
+<section class="dw-step" id="step1">
+  <h2><span class="n">01</span>连钱包 + 切到 Arc<span class="tick" id="tick1"></span></h2>
+  <p>装了两个以上钱包扩展时会弹选择器（EIP-6963），选哪个用哪个。链不对会请钱包切过去，
+     钱包里没有 Arc 就先加进去；切完还会再读一次 <code>eth_chainId</code> 核对 —— 不会「以为切好了其实没切」。</p>
+
+  <div class="dw-row" id="netPick">
+    <span class="dw-radio"><input type="radio" name="net" id="netMain" value="main" checked><label for="netMain">Arc 主网（5042）</label></span>
+    <span class="dw-radio"><input type="radio" name="net" id="netTest" value="test"><label for="netTest">Arc 测试网（5042002）</label></span>
+  </div>
+  <div class="dw-row">
+    <button id="btnConnect" type="button">连接钱包</button>
+    <button id="btnReload" class="gh" type="button">换钱包 / 换链（重载本页）</button>
+  </div>
+  <table class="dw-tbl" id="tbl1" hidden>
+    <tr><td class="lbl">钱包</td><td id="v1wal">—</td></tr>
+    <tr><td class="lbl">地址</td><td id="v1acc">—</td></tr>
+    <tr><td class="lbl">链</td><td id="v1chain">—</td></tr>
+    <tr><td class="lbl">余额</td><td id="v1bal">—</td></tr>
+    <tr><td class="lbl">baseFee</td><td id="v1base">—</td></tr>
+  </table>
+  <div class="dw-msg" id="msg1"></div>
+</section>
+
+<!-- ============================================================ 2 取字节码 -->
+<section class="dw-step lk" id="step2">
+  <h2><span class="n">02</span>取字节码<span class="tick" id="tick2"></span></h2>
+  <p>先找同目录的 <code>ArcUniverse.bytecode.hex</code> / <code>ArcMarket.bytecode.hex</code>（站点产物里就有），
+     取不到再试 <code>../contracts/out/</code>（本地直接打开仓库里的这一页时走这条），
+     都不行就展开下面的折叠区手工粘贴。取到之后显示字节数与 keccak 前 10 位 ——
+     部署前请拿它和 <code>contracts/out/</code> 里那份对一眼。</p>
+  <div class="dw-row">
+    <button id="btnCode" type="button">取字节码</button>
+  </div>
+  <table class="dw-tbl" id="tbl2" hidden>
+    <tr><th>合约</th><th>字节数</th><th>keccak 前 10 位</th></tr>
+    <tr><td class="lbl">ArcUniverse</td><td id="v2uniLen">—</td><td id="v2uniK">—</td></tr>
+    <tr><td class="lbl">ArcMarket</td><td id="v2mktLen">—</td><td id="v2mktK">—</td></tr>
+  </table>
+  <details class="dw-fold">
+    <summary>取不到？手工粘贴（contracts/out/*.bytecode.hex 的全文）</summary>
+    <div>
+      <label for="taUni">ArcUniverse.bytecode.hex</label>
+      <textarea id="taUni" spellcheck="false" placeholder="0x60806040…"></textarea>
+      <label for="taMkt" style="display:block;margin-top:10px">ArcMarket.bytecode.hex</label>
+      <textarea id="taMkt" spellcheck="false" placeholder="0x60806040…"></textarea>
+    </div>
+  </details>
+  <div class="dw-msg" id="msg2"></div>
+</section>
+
+<!-- ============================================================ 3 部署 ArcUniverse -->
+<section class="dw-step lk" id="step3">
+  <h2><span class="n">03</span>部署 ArcUniverse<span class="tick" id="tick3"></span></h2>
+  <p>构造函数<b>无参</b>（只把 <code>owner</code> 设成发起人），所以直接把字节码当 data 发出去。
+     Arc 的 baseFee 实测固定 20 gwei、优先费 0，手续费由钱包自己估；这里只先用
+     <code>eth_estimateGas</code> 把 gas 算出来给你看一眼（约 4.1M gas ≈ 0.082 USDC，与
+     <code>deploy-arc.mjs --dry</code> 同一个口径）。</p>
+  <div class="dw-row">
+    <button id="btnEst3" type="button">估 gas</button>
+    <button id="btnGo3" type="button" disabled>部署 ArcUniverse</button>
+  </div>
+  <details class="dw-fold">
+    <summary>我已部署，填地址</summary>
+    <div class="dw-row">
+      <span class="dw-f"><input type="text" class="mono" id="inUni" placeholder="0x… 已在链上的 ArcUniverse"></span>
+      <button id="btnUseUni" class="gh sm" type="button">核对并采用</button>
+    </div>
+  </details>
+  <table class="dw-tbl" id="tbl3" hidden>
+    <tr><th>回读项</th><th>链上</th><th>应为</th></tr>
+    <tr><td class="lbl">地址</td><td id="v3addr" colspan="2">—</td></tr>
+    <tr><td class="lbl">MINT_CAP()</td><td id="v3cap">—</td><td>1387</td></tr>
+    <tr><td class="lbl">freeCap()</td><td id="v3free">—</td><td>387</td></tr>
+    <tr><td class="lbl">freePerAddr()</td><td id="v3per">—</td><td>1</td></tr>
+    <tr><td class="lbl">paidPerAddr()</td><td id="v3paid">—</td><td>3</td></tr>
+    <tr><td class="lbl">price()</td><td id="v3price">—</td><td>1e18（1 USDC）</td></tr>
+    <tr><td class="lbl">owner()</td><td id="v3owner">—</td><td>当前地址</td></tr>
+  </table>
+  <div class="dw-msg" id="msg3"></div>
+</section>
+
+<!-- ============================================================ 4 部署 ArcMarket -->
+<section class="dw-step lk" id="step4">
+  <h2><span class="n">04</span>部署 ArcMarket<span class="tick" id="tick4"></span></h2>
+  <p>构造参数两个：<code>nft_</code> 就是上一步的 ArcUniverse（<b>immutable，部错修不回来</b>），
+     <code>treasury_</code> 是手续费收款地址（留空 = 当前地址）。手续费 1%，硬上限 10%；
+     版税走 ArcUniverse 的 ERC-2981（5%）。</p>
+  <div class="dw-row">
+    <label class="dw-f">nft_（只读，来自第 3 步）<input type="text" class="mono" id="inNft" readonly></label>
+  </div>
+  <div class="dw-row">
+    <label class="dw-f">treasury_（手续费收款地址）<input type="text" class="mono" id="inTre" placeholder="0x…（留空 = 当前地址）"></label>
+  </div>
+  <div class="dw-row">
+    <button id="btnEst4" type="button">估 gas</button>
+    <button id="btnGo4" type="button" disabled>部署 ArcMarket</button>
+  </div>
+  <details class="dw-fold">
+    <summary>我已部署，填地址</summary>
+    <div class="dw-row">
+      <span class="dw-f"><input type="text" class="mono" id="inMkt" placeholder="0x… 已在链上的 ArcMarket"></span>
+      <button id="btnUseMkt" class="gh sm" type="button">核对并采用</button>
+    </div>
+  </details>
+  <table class="dw-tbl" id="tbl4" hidden>
+    <tr><th>回读项</th><th>链上</th><th>应为</th></tr>
+    <tr><td class="lbl">地址</td><td id="v4addr" colspan="2">—</td></tr>
+    <tr><td class="lbl">nft()</td><td id="v4nft">—</td><td>第 3 步的 ArcUniverse</td></tr>
+    <tr><td class="lbl">feeBps()</td><td id="v4fee">—</td><td>100（1%）</td></tr>
+    <tr><td class="lbl">treasury()</td><td id="v4tre">—</td><td>上面填的地址</td></tr>
+  </table>
+  <div class="dw-msg" id="msg4"></div>
+</section>
+
+<!-- ============================================================ 5 开签名闸 -->
+<section class="dw-step lk" id="step5">
+  <h2><span class="n">05</span>开签名闸（setSigner / setBaseURI）<span class="tick" id="tick5"></span></h2>
+  <p>合约刚上链时 <code>signer</code> 是空的，<b>铸造整条路是关着的</b> —— 这是有意的默认：
+     服务端确认好再开闸。签名地址从服务端的 <code>/api/health</code> 读（下面那个地址可改）。</p>
+  <div class="dw-row">
+    <label class="dw-f">/api/health 地址<input type="text" class="mono" id="inHealth"></label>
+    <button id="btnHealth" class="gh" type="button">读 signer</button>
+  </div>
+  <div class="dw-row">
+    <label class="dw-f">signer（服务端签名地址）<input type="text" class="mono" id="inSigner" placeholder="0x…"></label>
+    <button id="btnSigner" type="button">setSigner</button>
+  </div>
+  <h3>tokenURI 前缀</h3>
+  <p>不设 <code>baseURI</code> 时 <code>tokenURI</code> 退回合约内的链上 SVG —— 能看，只是没有服务端出的图。
+     可改，改了不影响已铸的 NFT 的归属。</p>
+  <div class="dw-row">
+    <label class="dw-f">baseURI<input type="text" class="mono" id="inBaseURI" value="https://arcbang.xyz/api/token/"></label>
+    <button id="btnBaseURI" class="gh" type="button">setBaseURI</button>
+  </div>
+  <table class="dw-tbl" id="tbl5" hidden>
+    <tr><th>回读项</th><th>链上</th><th>应为</th></tr>
+    <tr><td class="lbl">signer()</td><td id="v5signer">—</td><td>上面填的地址</td></tr>
+    <tr><td class="lbl">baseURI()</td><td id="v5base">—</td><td>上面填的前缀</td></tr>
+  </table>
+  <div class="dw-msg" id="msg5"></div>
+</section>
+
+<!-- ============================================================ 6 产出配置 -->
+<section class="dw-step lk" id="step6">
+  <h2><span class="n">06</span>产出配置<span class="tick" id="tick6"></span></h2>
+  <p>下面每一行都要原样抄进对应的文件。<b>两边地址必须一致</b>：签名把合约地址绑进摘要，
+     不一致时链上一律 BadSig，而报错看不出是地址对不上。</p>
+  <div class="dw-out" id="out6"></div>
+  <h3>验证清单</h3>
+  <p>再向链上问三个问题，答对了才算这一趟没白跑。</p>
+  <div class="dw-row"><button id="btnCheck6" type="button">跑验证清单</button></div>
+  <table class="dw-tbl" id="tbl6" hidden>
+    <tr><th>检查</th><th>链上</th><th>应为</th></tr>
+    <tr><td class="lbl">totalSupply()</td><td id="v6sup">—</td><td>0（还没人铸）</td></tr>
+    <tr><td class="lbl">mintLeft()</td><td id="v6left">—</td><td>1387</td></tr>
+    <tr><td class="lbl">royaltyInfo(1, 1e18)</td><td id="v6roy">—</td><td>5e16 = 5%</td></tr>
+  </table>
+  <div class="dw-msg" id="msg6"></div>
+</section>
+
+<p class="dw-foot">
+  合约源码 <code>contracts/src/ArcUniverse.sol</code> / <code>contracts/src/ArcMarket.sol</code>；
+  无浏览器时的备用路径是 <code>contracts/tools/deploy-arc.mjs</code>（私钥走环境变量）。
+  这一页不上报任何数据，也不记住你的地址。
+</p>
+
+</div>
+
+<script src="config.js"></script>
+<script src="wallet.js"></script>
+<script src="keccak-lite.js"></script>
+<script>
+'use strict';
+/* ============================================================ 链身份
+   两条 Arc 链写死在这里（config.arc.js 里测试网那一块是注释掉的，读不到），
+   但只要 config.js 在、且它的 chain.id 命中其中一条，就用它的 rpc / 浏览器地址覆盖 ——
+   「换链只改 config」那条规矩在这一页同样成立，这里的写死只是它缺席时的底。 */
+var NETS = {
+  main: { key: 'main', id: 5042, hex: '0x13b2', name: 'Arc Mainnet', label: 'Arc 主网',
+          explorer: 'https://explorer.arc.io', rpc: ['https://rpc.mainnet.arc.io'] },
+  test: { key: 'test', id: 5042002, hex: '0x4cef52', name: 'Arc Testnet', label: 'Arc 测试网',
+          explorer: 'https://explorer.testnet.arc.io', rpc: ['https://rpc.testnet.arc.io'] }
+};
+(function mergeCfg() {
+  var c = window.BNBBANG_CONFIG;
+  if (!c || !c.chain || c.chain.id == null) return;
+  var id = Number(c.chain.id), k;
+  for (k in NETS) {
+    if (NETS[k].id !== id) continue;
+    var n = NETS[k];
+    if (c.chain.explorer) n.explorer = String(c.chain.explorer).replace(/\/+$/, '');
+    if (c.chain.name) n.label = String(c.chain.name);
+    if (c.chain.nameEn) n.name = String(c.chain.nameEn);
+    /* 钱包的 wallet_addEthereumChain 只收 https 绝对地址：'/api/rpc' 那种同源中继在钱包里用不了。 */
+    var https = (c.rpc || []).filter(function (u) { return /^https:/i.test(u); });
+    if (https.length) n.rpc = https;
+    n.fromCfg = true;
+  }
+})();
+
+/* ============================================================ 函数选择器
+   = keccak256(签名) 的前 4 字节。用 web/keccak-lite.js 现算，不写死 ——
+   写死抄错了不会静默出错（这两个合约都没有 fallback，调进不存在的函数直接 revert），
+   但现算连抄错的机会都没有。keccak-lite 缺席时退回下面这张对照表。 */
+var SIGS = ['MINT_CAP()', 'freeCap()', 'freePerAddr()', 'paidPerAddr()', 'price()', 'owner()', 'signer()',
+            'setSigner(address)', 'setBaseURI(string)', 'baseURI()', 'totalSupply()',
+            'mintLeft()', 'royaltyInfo(uint256,uint256)', 'nft()', 'feeBps()', 'treasury()'];
+var FALLBACK_SEL = {
+  'MINT_CAP()': '0x98f1312e', 'freeCap()': '0x69b126ef', 'freePerAddr()': '0x21daa6e7', 'paidPerAddr()': '0xe7aea71c',
+  'price()': '0xa035b1fe', 'owner()': '0x8da5cb5b', 'signer()': '0x238ac933',
+  'setSigner(address)': '0x6c19e783', 'setBaseURI(string)': '0x55f804b3', 'baseURI()': '0x6c0360eb',
+  'totalSupply()': '0x18160ddd', 'mintLeft()': '0x022a2777',
+  'royaltyInfo(uint256,uint256)': '0x2a55205a', 'nft()': '0x47ccca02',
+  'feeBps()': '0x24a9d853', 'treasury()': '0x61d027b3'
+};
+var SEL = {};
+(function buildSel() {
+  var K = window.MirrorKeccak, i, s;
+  for (i = 0; i < SIGS.length; i++) {
+    s = SIGS[i];
+    var sel = FALLBACK_SEL[s];
+    if (K && K.keccak256) {
+      try { sel = K.keccak256(s).slice(0, 10); } catch (e) { /* 退回对照表 */ }
+    }
+    SEL[s] = sel;
+  }
+})();
+
+/* ============================================================ 状态 */
+var S = {
+  net: 'main',
+  prov: null, wal: '', acct: '', base: 0n,
+  code: { uni: null, mkt: null },
+  uni: '', uniBlock: null, mkt: '', tre: '',
+  signer: '', baseURI: ''
+};
+var DONE = { 1: false, 2: false, 3: false, 4: false, 5: false };
+var ZERO = '0x0000000000000000000000000000000000000000';
+var GWEI_20 = 20000000000n;
+
+function NET() { return NETS[S.net]; }
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+  });
+}
+function msg(el, text, kind) {
+  el.className = 'dw-msg' + (kind ? ' ' + kind : '');
+  el.textContent = text || '';
+}
+function msgHtml(el, html, kind) {
+  el.className = 'dw-msg' + (kind ? ' ' + kind : '');
+  el.innerHTML = html || '';
+}
+function errOf(e) {
+  if (!e) return '未知错误';
+  if (e.chainSwitch && e.message) return e.message;
+  var m = (e.data && e.data.message) || e.message || String(e);
+  return String(m);
+}
+function isAddr(a) { return /^0x[0-9a-fA-F]{40}$/.test(String(a || '').trim()); }
+function sameAddr(a, b) { return String(a || '').toLowerCase() === String(b || '').toLowerCase(); }
+function txLink(h) { return NET().explorer + '/tx/' + h; }
+function addrLink(a) { return NET().explorer + '/address/' + a; }
+
+/* 18 位定点 → 人看的小数（不四舍五入，直接截断到 prec 位；数额是钱，宁可显示得小一点）。 */
+function fmt18(v, prec) {
+  v = BigInt(v);
+  var neg = v < 0n; if (neg) v = -v;
+  var i = v / (10n ** 18n), f = (v % (10n ** 18n)).toString().padStart(18, '0');
+  if (prec == null) prec = 6;
+  f = prec > 0 ? '.' + f.slice(0, prec) : '';
+  return (neg ? '-' : '') + i.toString() + f;
+}
+function gwei(v) { return (Number(BigInt(v) / 1000000n) / 1000).toString(); }
+
+/* ============================================================ ABI 编码（手写，不引 ethers） */
+function encAddr(a) { return String(a).replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
+function encUint(v) { return BigInt(v).toString(16).padStart(64, '0'); }
+/* 动态 string 的尾部：length 槽 + UTF-8 右填充到 32 字节整数倍（不含 offset）。
+   单参 string（setBaseURI）的 offset 恒为 32。 */
+function encStringTail(s) {
+  var b = new TextEncoder().encode(s), h = '', i;
+  for (i = 0; i < b.length; i++) h += (b[i] < 16 ? '0' : '') + b[i].toString(16);
+  while (h.length % 64) h += '0';
+  return b.length.toString(16).padStart(64, '0') + h;
+}
+function encString(s) { return (32).toString(16).padStart(64, '0') + encStringTail(s); }
+
+/* ============================================================ 链读写（全部走钱包选中的那个 provider） */
+function req(method, params) {
+  if (!S.prov) return Promise.reject(new Error('还没连钱包'));
+  return S.prov.request({ method: method, params: params || [] });
+}
+function ethCall(to, data) { return req('eth_call', [{ to: to, data: data }, 'latest']); }
+function readUint(to, sig) {
+  return ethCall(to, SEL[sig]).then(function (r) {
+    if (!r || r === '0x') throw new Error(sig + ' 没有返回值（这个地址上多半不是这个合约）');
+    return BigInt(r);
+  });
+}
+function readAddr(to, sig) {
+  return ethCall(to, SEL[sig]).then(function (r) {
+    if (!r || r.length < 66) throw new Error(sig + ' 的返回值不像地址：' + r);
+    return '0x' + r.slice(-40);
+  });
+}
+function readString(to, sig) {
+  return ethCall(to, SEL[sig]).then(function (r) {
+    var h = String(r).replace(/^0x/, '');
+    if (h.length < 128) return '';
+    var len = parseInt(h.slice(64, 128), 16), body = h.substr(128, len * 2), s = '', i;
+    for (i = 0; i < body.length; i += 2) s += '%' + body.substr(i, 2);
+    try { return decodeURIComponent(s); } catch (e) { return body; }
+  });
+}
+function codeSize(addr) {
+  return req('eth_getCode', [addr, 'latest']).then(function (c) {
+    return (String(c || '0x').length - 2) / 2;
+  });
+}
+function readBaseFee() {
+  return req('eth_getBlockByNumber', ['latest', false]).then(function (b) {
+    var f = b && b.baseFeePerGas;
+    return f ? BigInt(f) : GWEI_20;      // 没有 EIP-1559 字段就按实测的固定 20 gwei
+  }).catch(function () { return GWEI_20; });
+}
+
+/* 回执轮询。**回执带 contractAddress 不算数**（创建回滚的回执也带），
+   必须同时 status === 0x1；部署还要再查一次 eth_getCode。 */
+function waitReceipt(tx) {
+  var t0 = Date.now();
+  return new Promise(function (resolve, reject) {
+    (function next() {
+      req('eth_getTransactionReceipt', [tx]).then(function (r) {
+        if (r) return resolve(r);
+        if (Date.now() - t0 > 300000) return reject(new Error('等回执超时（5 分钟）：' + tx));
+        setTimeout(next, 3000);
+      }).catch(function () { setTimeout(next, 3000); });
+    })();
+  });
+}
+function statusOk(r) {
+  if (!r || r.status == null || r.status === '') return false;
+  try { return BigInt(r.status) === 1n; } catch (e) { return false; }
+}
+
+/* 发一笔交易并等到它成功；过程里把 tx hash 贴到 el 上（带浏览器链接）。 */
+function sendAndWait(el, what, txObj) {
+  return req('eth_sendTransaction', [txObj]).then(function (h) {
+    msgHtml(el, what + ' 已发出：<a href="' + esc(txLink(h)) + '" target="_blank" rel="noopener noreferrer">' +
+      esc(h) + '</a>\n等回执中（每 3 秒问一次，最多 5 分钟）…', 'dim');
+    return waitReceipt(h).then(function (r) {
+      if (!statusOk(r)) {
+        throw new Error(what + ' 回滚了（status 0）：' + h + '\n交易在链上，但什么都没改。' +
+          '去浏览器看这一笔的 revert 原因再重来，别直接重发。');
+      }
+      msgHtml(el, what + ' 成功：<a href="' + esc(txLink(h)) + '" target="_blank" rel="noopener noreferrer">' +
+        esc(h) + '</a>（区块 ' + parseInt(r.blockNumber, 16) + '）', 'ok');
+      return r;
+    });
+  });
+}
+
+/* ============================================================ 锁与完成态 */
+function lockAll() {
+  [[2, DONE[1]], [3, DONE[2]], [4, DONE[3]], [5, DONE[4]], [6, DONE[5]]].forEach(function (p) {
+    var sec = $('step' + p[0]), on = !p[1];
+    sec.classList.toggle('lk', on);
+    var c = sec.querySelectorAll('button,input,textarea,select'), i;
+    for (i = 0; i < c.length; i++) {
+      if (c[i].dataset.always === '1') continue;
+      c[i].disabled = on || c[i].dataset.gate === 'est';
+    }
+    /* 估过 gas 才放开部署按钮：这两步的「估」是强制的一道眼睛 */
+    if (!on) {
+      if (p[0] === 3 && $('btnGo3').dataset.ready === '1') $('btnGo3').disabled = false;
+      if (p[0] === 4 && $('btnGo4').dataset.ready === '1') $('btnGo4').disabled = false;
+    }
+  });
+  [1, 2, 3, 4, 5].forEach(function (n) {
+    $('tick' + n).textContent = DONE[n] ? '✓ 完成' : '';
+    $('step' + n).classList.toggle('ok', !!DONE[n]);
+  });
+  if (DONE[5]) renderOut();
+}
+function markDone(n, v) { DONE[n] = !!v; lockAll(); }
+
+/* ============================================================ 1 连钱包 + 切链 */
+$('btnReload').dataset.always = '1';
+$('btnReload').addEventListener('click', function () { location.reload(); });
+['netMain', 'netTest'].forEach(function (id) {
+  $(id).addEventListener('change', function () {
+    if (!$(id).checked) return;
+    S.net = $(id).value;
+    msg($('msg1'), '目标链：' + NET().label + '（chainId ' + NET().id + '，RPC ' + NET().rpc[0] + '）' +
+      (NET().fromCfg ? '　—— 链参数来自 config.js' : '　—— config.js 里没有这条链，用的是页面内置参数'), 'dim');
+  });
+});
+
+$('btnConnect').addEventListener('click', function () {
+  var W = window.MirrorWallet;
+  if (!W) { msg($('msg1'), '没加载 wallet.js —— 这一页要靠它做多钱包发现和切链。', 'err'); return; }
+  msg($('msg1'), '等钱包…', 'dim');
+  W.pick({}).then(function (picked) {
+    if (picked === false) { msg($('msg1'), '没选钱包（或一个都没检测到），没往下走。', 'warn'); return null; }
+    S.prov = W.provider();
+    S.wal = (picked && picked.name) || '未知钱包';
+    if (!S.prov) { msg($('msg1'), '没拿到钱包 provider。', 'err'); return null; }
+    return req('eth_requestAccounts', []).then(function (a) {
+      S.acct = (a && a[0]) || '';
+      if (!S.acct) throw new Error('钱包没给出账户');
+      return W.ensureChain(S.prov, {
+        hex: NET().hex, id: NET().id, name: NET().name, label: NET().label,
+        currency: { name: 'USD Coin', symbol: 'USDC', decimals: 18 },
+        rpcUrls: NET().rpc, explorer: NET().explorer
+      });
+    }).then(function () {
+      /* 切链是异步的，钱包可能「答应了但没切完」。ensureChain 已经核过一次，这里再核一次 ——
+         这是这一页唯一一个「发交易之前必须成立」的前提，多问一句不亏。 */
+      return req('eth_chainId', []);
+    }).then(function (id) {
+      if (String(id).toLowerCase() !== NET().hex) {
+        throw new Error('钱包现在的 chainId 是 ' + id + '，不是 ' + NET().label +
+          '（' + NET().hex + '）。停下来了 —— 别在别的链上发这一笔。');
+      }
+      return Promise.all([req('eth_getBalance', [S.acct, 'latest']), readBaseFee()]);
+    }).then(function (r) {
+      var bal = BigInt(r[0]);
+      S.base = r[1];
+      $('tbl1').hidden = false;
+      $('v1wal').textContent = S.wal;
+      $('v1acc').textContent = S.acct;
+      $('v1chain').textContent = NET().label + '（chainId ' + NET().id + '）';
+      $('v1bal').textContent = fmt18(bal, 6) + ' USDC';
+      $('v1base').textContent = gwei(S.base) + ' gwei（优先费 0）';
+      $('v1bal').className = bal < 200000000000000000n ? 'bad' : 'good';
+      $('netMain').disabled = true; $('netTest').disabled = true; $('btnConnect').disabled = true;
+      $('inTre').value = $('inTre').value || S.acct;
+      markDone(1, true);
+      if (bal < 200000000000000000n) {
+        msg($('msg1'), '余额只有 ' + fmt18(bal, 6) + ' USDC，低于 0.2 —— 两个合约合计约 0.1 USDC，' +
+          '留一倍余量才稳。先充值再继续：' +
+          (S.net === 'test' ? '测试网水龙头 https://faucet.circle.com/'
+                            : '主网走 https://portal.arc.io ，或从别的链用 CCTP 把 USDC 跨过来。'), 'warn');
+      } else {
+        msg($('msg1'), '连上了，链也对。下一步取字节码。', 'ok');
+      }
+    });
+  }).catch(function (e) {
+    msg($('msg1'), '停下了：' + errOf(e), 'err');
+  });
+});
+
+/* ============================================================ 2 取字节码 */
+var PATHS = {
+  uni: ['ArcUniverse.bytecode.hex', '../contracts/out/ArcUniverse.bytecode.hex'],
+  mkt: ['ArcMarket.bytecode.hex', '../contracts/out/ArcMarket.bytecode.hex']
+};
+function tryFetch(list) {
+  var i = 0;
+  return new Promise(function (resolve, reject) {
+    (function next() {
+      if (i >= list.length) return reject(new Error('都取不到：' + list.join(' / ')));
+      var p = list[i++];
+      fetch(p, { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      }).then(resolve).catch(next);
+    })();
+  });
+}
+function normCode(t) {
+  var h = String(t || '').trim().replace(/\s+/g, '').replace(/^0x/i, '');
+  if (!/^[0-9a-fA-F]+$/.test(h) || h.length < 200 || h.length % 2) return null;
+  return '0x' + h;
+}
+function kec10(hex) {
+  var K = window.MirrorKeccak;
+  if (!K || !K.keccak256) return '（没有 keccak-lite.js，算不了）';
+  try { return K.keccak256(hex).slice(0, 10); } catch (e) { return '（算不出：' + errOf(e) + '）'; }
+}
+function setCodes() {
+  S.code.uni = normCode($('taUni').value);
+  S.code.mkt = normCode($('taMkt').value);
+  $('tbl2').hidden = false;
+  [['uni', 'v2uniLen', 'v2uniK'], ['mkt', 'v2mktLen', 'v2mktK']].forEach(function (p) {
+    var c = S.code[p[0]];
+    $(p[1]).textContent = c ? ((c.length - 2) / 2) + ' 字节' : '×';
+    $(p[1]).className = c ? 'good' : 'bad';
+    $(p[2]).textContent = c ? kec10(c) : '—';
+  });
+  var ok = !!(S.code.uni && S.code.mkt);
+  markDone(2, ok);
+  if (ok) msg($('msg2'), '两份都在。请把上面的 keccak 前 10 位和 contracts/out/ 里那两份对一眼再往下。', 'ok');
+  return ok;
+}
+$('btnCode').addEventListener('click', function () {
+  msg($('msg2'), '取字节码…', 'dim');
+  Promise.all([
+    tryFetch(PATHS.uni).then(function (t) { $('taUni').value = normCode(t) || t; }),
+    tryFetch(PATHS.mkt).then(function (t) { $('taMkt').value = normCode(t) || t; })
+  ]).then(function () {
+    if (!setCodes()) msg($('msg2'), '取到了文件，但内容不像字节码。展开折叠区手工粘贴。', 'err');
+  }).catch(function (e) {
+    setCodes();
+    msg($('msg2'), '自动取失败（' + errOf(e) + '）。用 file:// 直接打开时浏览器会拦住 fetch —— ' +
+      '展开上面的折叠区，把 contracts/out/ 里那两份 .bytecode.hex 的内容分别粘进去。', 'warn');
+  });
+});
+$('taUni').addEventListener('input', setCodes);
+$('taMkt').addEventListener('input', setCodes);
+
+/* ============================================================ 回读核对
+   fresh=true（刚部署出来的）：任何一项对不上都是硬错 —— 字节码不是这一版，或者根本没部成。
+   fresh=false（手填的已部署地址）：MINT_CAP 与 owner 仍是硬错（前者认合约版本，
+   后者决定第 5 步能不能 setSigner），freeCap / freePerAddr / price 只报黄字 ——
+   这三个 owner 事后调过是合法的（只能收紧，调不回来），不该把人挡在门外。 */
+/* 回读的第一道错不是「值不对」，而是「这个地址上根本不是那个合约」——
+   那时节点回的是一句干巴巴的 execution reverted，看不出根因。在这里翻译一次。 */
+function readFail(addr, what, e) {
+  return new Error('在 ' + addr + ' 上读不到 ' + what + ' 的方法（' + errOf(e) + '）。\n' +
+    '这个地址上的代码多半不是 ' + what + '：链选错了？地址抄错了？字节码不是这一版？');
+}
+function verifyUniverse(addr, fresh) {
+  return Promise.all([
+    readUint(addr, 'MINT_CAP()'), readUint(addr, 'freeCap()'), readUint(addr, 'freePerAddr()'),
+    readUint(addr, 'price()'), readAddr(addr, 'owner()'), readUint(addr, 'paidPerAddr()')
+  ]).catch(function (e) { throw readFail(addr, 'ArcUniverse', e); }).then(function (r) {
+    var hard = [], soft = [];
+    function put(cell, got, want, wantTxt, isHard) {
+      $(cell).textContent = got;
+      var okv = got === want;
+      $(cell).className = okv ? 'good' : 'bad';
+      if (!okv) (isHard ? hard : soft).push(wantTxt + ' 链上是 ' + got);
+      return okv;
+    }
+    $('tbl3').hidden = false;
+    $('v3addr').textContent = addr;
+    put('v3cap', r[0].toString(), '1387', 'MINT_CAP() 应为 1387，', true);
+    put('v3free', r[1].toString(), '387', 'freeCap() 应为 387，', !!fresh);
+    put('v3per', r[2].toString(), '1', 'freePerAddr() 应为 1，', !!fresh);
+    put('v3paid', r[5].toString(), '3', 'paidPerAddr() 应为 3，', !!fresh);
+    put('v3price', r[3].toString(), '1000000000000000000', 'price() 应为 1e18，', !!fresh);
+    $('v3owner').textContent = r[4];
+    if (sameAddr(r[4], S.acct)) { $('v3owner').className = 'good'; }
+    else { $('v3owner').className = 'bad'; hard.push('owner() 是 ' + r[4] + '，不是当前地址 ' + S.acct); }
+    return { hard: hard, soft: soft };
+  });
+}
+function verifyMarket(addr) {
+  return Promise.all([
+    readAddr(addr, 'nft()'), readUint(addr, 'feeBps()'), readAddr(addr, 'treasury()')
+  ]).catch(function (e) { throw readFail(addr, 'ArcMarket', e); }).then(function (r) {
+    var hard = [];
+    $('tbl4').hidden = false;
+    $('v4addr').textContent = addr;
+    $('v4nft').textContent = r[0];
+    if (sameAddr(r[0], S.uni)) { $('v4nft').className = 'good'; }
+    else { $('v4nft').className = 'bad'; hard.push('nft() 是 ' + r[0] + '，不是第 3 步的 ' + S.uni + '　（immutable，改不了：这个市场只能弃用）'); }
+    $('v4fee').textContent = r[1].toString();
+    if (r[1] === 100n) { $('v4fee').className = 'good'; }
+    else { $('v4fee').className = 'bad'; hard.push('feeBps() 是 ' + r[1] + '，应为 100'); }
+    $('v4tre').textContent = r[2];
+    $('v4tre').className = '';
+    S.tre = r[2];
+    return { hard: hard, soft: [] };
+  });
+}
+/* 回读结果统一落地：硬错 → 红字 + 这一步不算完成；只有软警告 → 黄字但放行。 */
+function applyVerify(step, addr, v, what) {
+  var el = $('msg' + step);
+  if (v.hard.length) {
+    markDone(step, false);
+    msgHtml(el, '<b>回读对不上，停在这里：</b>\n· ' + v.hard.map(esc).join('\n· ') +
+      '\n\n地址 ' + esc(addr) + '　<a href="' + esc(addrLink(addr)) +
+      '" target="_blank" rel="noopener noreferrer">去浏览器看</a>', 'err');
+    return false;
+  }
+  markDone(step, true);
+  var tail = '　<a href="' + esc(addrLink(addr)) + '" target="_blank" rel="noopener noreferrer">去浏览器看</a>';
+  if (v.soft.length) {
+    msgHtml(el, what + ' 核对通过，但有几项与出厂值不同（owner 事后调过是合法的，只能收紧）：\n· ' +
+      v.soft.map(esc).join('\n· ') + '\n\n' + esc(addr) + tail, 'warn');
+  } else {
+    msgHtml(el, what + ' 回读全部对上：' + esc(addr) + tail, 'ok');
+  }
+  return true;
+}
+
+/* ============================================================ 3 部署 ArcUniverse */
+function showCost(el, gas, what) {
+  var cost = BigInt(gas) * (S.base || GWEI_20);
+  msg(el, what + ' 预估 gas ' + gas.toString() + ' × baseFee ' + gwei(S.base || GWEI_20) +
+    ' gwei ≈ ' + fmt18(cost, 6) + ' USDC。实际手续费由钱包按当时的 baseFee 估，优先费 0。', 'dim');
+}
+$('btnGo3').dataset.gate = 'est';
+$('btnEst3').addEventListener('click', function () {
+  if (!S.code.uni) { msg($('msg3'), '没有 ArcUniverse 字节码。', 'err'); return; }
+  msg($('msg3'), '估 gas…', 'dim');
+  readBaseFee().then(function (b) {
+    S.base = b;
+    return req('eth_estimateGas', [{ from: S.acct, data: S.code.uni }]);
+  }).then(function (g) {
+    S.gas3 = BigInt(g);
+    showCost($('msg3'), S.gas3, 'ArcUniverse');
+    $('btnGo3').dataset.ready = '1';
+    $('btnGo3').disabled = false;
+  }).catch(function (e) {
+    $('btnGo3').dataset.ready = '';
+    $('btnGo3').disabled = true;
+    msg($('msg3'), '估 gas 失败，不往下发：' + errOf(e), 'err');
+  });
+});
+$('btnGo3').addEventListener('click', function () {
+  if (!S.gas3) { msg($('msg3'), '先估 gas。', 'err'); return; }
+  if (!window.confirm('要在 ' + NET().label + ' 上部署 ArcUniverse。\n' +
+      '花的是你钱包里的真 USDC（约 ' + fmt18(S.gas3 * (S.base || GWEI_20), 6) + '）。\n继续？')) return;
+  $('btnGo3').disabled = true;
+  /* gas 上限给 20% 余量：估出来的数是「这一刻」的，打包时状态可能变一点。 */
+  var lim = S.gas3 * 12n / 10n;
+  sendAndWait($('msg3'), 'ArcUniverse 部署', { from: S.acct, data: S.code.uni, gas: '0x' + lim.toString(16) })
+    .then(function (r) {
+      var addr = r.contractAddress;
+      if (!isAddr(addr)) throw new Error('回执里没有 contractAddress —— 这一笔不是创建交易？');
+      return codeSize(addr).then(function (n) {
+        if (n <= 0) throw new Error('链上这个地址没有代码：创建回滚了。地址 ' + addr);
+        S.uni = addr;
+        S.uniBlock = parseInt(r.blockNumber, 16);
+        $('inNft').value = addr;
+        return verifyUniverse(addr, true);
+      }).then(function (v) { applyVerify(3, addr, v, 'ArcUniverse'); });
+    })
+    .catch(function (e) {
+      markDone(3, false);
+      msg($('msg3'), '停下了：' + errOf(e), 'err');
+      $('btnGo3').disabled = false;
+    });
+});
+$('btnUseUni').addEventListener('click', function () {
+  var a = String($('inUni').value || '').trim();
+  if (!isAddr(a)) { msg($('msg3'), '这不是一个合法地址。', 'err'); return; }
+  msg($('msg3'), '核对 ' + a + ' …', 'dim');
+  codeSize(a).then(function (n) {
+    if (n <= 0) throw new Error('这个地址在 ' + NET().label + ' 上没有代码 —— 要么链选错了，要么地址抄错了');
+    S.uni = a; S.uniBlock = null;
+    $('inNft').value = a;
+    return verifyUniverse(a, false);
+  }).then(function (v) { applyVerify(3, a, v, 'ArcUniverse'); })
+    .catch(function (e) { markDone(3, false); msg($('msg3'), '停下了：' + errOf(e), 'err'); });
+});
+
+/* ============================================================ 4 部署 ArcMarket */
+function mktTreasury() {
+  var t = String($('inTre').value || '').trim();
+  if (!t) return S.acct;
+  return t;
+}
+function mktData() {
+  var t = mktTreasury();
+  if (!isAddr(t)) throw new Error('treasury 不是合法地址：' + t);
+  return S.code.mkt + encAddr(S.uni) + encAddr(t);
+}
+$('btnGo4').dataset.gate = 'est';
+$('btnEst4').addEventListener('click', function () {
+  if (!S.code.mkt) { msg($('msg4'), '没有 ArcMarket 字节码。', 'err'); return; }
+  if (!isAddr(S.uni)) { msg($('msg4'), '还没有 ArcUniverse 地址。', 'err'); return; }
+  msg($('msg4'), '估 gas…', 'dim');
+  var data;
+  try { data = mktData(); } catch (e) { msg($('msg4'), errOf(e), 'err'); return; }
+  readBaseFee().then(function (b) {
+    S.base = b;
+    return req('eth_estimateGas', [{ from: S.acct, data: data }]);
+  }).then(function (g) {
+    S.gas4 = BigInt(g);
+    showCost($('msg4'), S.gas4, 'ArcMarket');
+    $('btnGo4').dataset.ready = '1';
+    $('btnGo4').disabled = false;
+  }).catch(function (e) {
+    $('btnGo4').dataset.ready = '';
+    $('btnGo4').disabled = true;
+    msg($('msg4'), '估 gas 失败，不往下发：' + errOf(e) +
+      '\n（构造函数要求 nft_ 是个有代码的地址；第 3 步的地址不对时就会卡在这里）', 'err');
+  });
+});
+$('btnGo4').addEventListener('click', function () {
+  if (!S.gas4) { msg($('msg4'), '先估 gas。', 'err'); return; }
+  var data;
+  try { data = mktData(); } catch (e) { msg($('msg4'), errOf(e), 'err'); return; }
+  if (!window.confirm('要在 ' + NET().label + ' 上部署 ArcMarket。\n' +
+      'nft = ' + S.uni + '（immutable，部错修不回来）\ntreasury = ' + mktTreasury() + '\n' +
+      '约 ' + fmt18(S.gas4 * (S.base || GWEI_20), 6) + ' USDC。继续？')) return;
+  $('btnGo4').disabled = true;
+  var lim = S.gas4 * 12n / 10n;
+  sendAndWait($('msg4'), 'ArcMarket 部署', { from: S.acct, data: data, gas: '0x' + lim.toString(16) })
+    .then(function (r) {
+      var addr = r.contractAddress;
+      if (!isAddr(addr)) throw new Error('回执里没有 contractAddress');
+      return codeSize(addr).then(function (n) {
+        if (n <= 0) throw new Error('链上这个地址没有代码：创建回滚了。地址 ' + addr);
+        S.mkt = addr;
+        return verifyMarket(addr);
+      }).then(function (v) { applyVerify(4, addr, v, 'ArcMarket'); });
+    })
+    .catch(function (e) {
+      markDone(4, false);
+      msg($('msg4'), '停下了：' + errOf(e), 'err');
+      $('btnGo4').disabled = false;
+    });
+});
+$('btnUseMkt').addEventListener('click', function () {
+  var a = String($('inMkt').value || '').trim();
+  if (!isAddr(a)) { msg($('msg4'), '这不是一个合法地址。', 'err'); return; }
+  msg($('msg4'), '核对 ' + a + ' …', 'dim');
+  codeSize(a).then(function (n) {
+    if (n <= 0) throw new Error('这个地址在 ' + NET().label + ' 上没有代码');
+    S.mkt = a;
+    return verifyMarket(a);
+  }).then(function (v) { applyVerify(4, a, v, 'ArcMarket'); })
+    .catch(function (e) { markDone(4, false); msg($('msg4'), '停下了：' + errOf(e), 'err'); });
+});
+
+/* ============================================================ 5 开签名闸 */
+(function initHealth() {
+  var h = String(location.hostname || '');
+  var local = !h || h === 'localhost' || h === '127.0.0.1' || h === '::1' || location.protocol === 'file:';
+  $('inHealth').value = local ? 'http://127.0.0.1:8801/api/health' : '/api/health';
+})();
+$('btnHealth').addEventListener('click', function () {
+  var u = String($('inHealth').value || '').trim();
+  if (!u) { msg($('msg5'), '地址是空的。', 'err'); return; }
+  msg($('msg5'), '读 ' + u + ' …', 'dim');
+  fetch(u, { cache: 'no-store' }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function (j) {
+    if (!j || !isAddr(j.signer)) throw new Error('返回里没有合法的 signer 字段：' + JSON.stringify(j && j.signer));
+    $('inSigner').value = j.signer;
+    S.signer = j.signer;
+    var notes = [];
+    if (j.chainId != null && Number(j.chainId) !== NET().id) {
+      notes.push('服务端报的 chainId 是 ' + j.chainId + '，而这里在 ' + NET().label + '（' + NET().id + '）');
+    }
+    if (j.contract && isAddr(j.contract) && !sameAddr(j.contract, S.uni)) {
+      notes.push('服务端的 BNBBANG_CONTRACT 现在是 ' + j.contract + '，不是刚部署的 ' + S.uni +
+        '　—— 第 6 步抄完配置要重启服务端，否则签出来的名在链上一律 BadSig');
+    }
+    msg($('msg5'), 'signer = ' + j.signer + (notes.length ? '\n\n注意：\n· ' + notes.join('\n· ') : ''),
+      notes.length ? 'warn' : 'ok');
+  }).catch(function (e) {
+    msg($('msg5'), '读不到：' + errOf(e) + '\n（跨源时服务端要放 CORS；读不到就手工把签名地址填到下面。）', 'err');
+  });
+});
+$('btnSigner').addEventListener('click', function () {
+  var s = String($('inSigner').value || '').trim();
+  if (!isAddr(s)) { msg($('msg5'), 'signer 不是合法地址。', 'err'); return; }
+  if (sameAddr(s, ZERO)) { msg($('msg5'), 'signer 不能是零地址 —— 那等于把铸造关掉。', 'err'); return; }
+  $('btnSigner').disabled = true;
+  sendAndWait($('msg5'), 'setSigner', { from: S.acct, to: S.uni, data: SEL['setSigner(address)'] + encAddr(s) })
+    .then(function () { return readAddr(S.uni, 'signer()'); })
+    .then(function (got) {
+      $('tbl5').hidden = false;
+      $('v5signer').textContent = got;
+      if (!sameAddr(got, s)) {
+        $('v5signer').className = 'bad';
+        markDone(5, false);
+        msg($('msg5'), '回读对不上：链上 signer() 是 ' + got + '，写进去的是 ' + s + '。停在这里。', 'err');
+      } else {
+        $('v5signer').className = 'good';
+        S.signer = got;
+        markDone(5, true);
+        msg($('msg5'), '签名闸开了：signer() = ' + got + '。铸造这条路现在通了。', 'ok');
+      }
+    })
+    .catch(function (e) { markDone(5, false); msg($('msg5'), '停下了：' + errOf(e), 'err'); })
+    .then(function () { lockAll(); });
+});
+$('btnBaseURI').addEventListener('click', function () {
+  var u = String($('inBaseURI').value || '').trim();
+  if (!u) { msg($('msg5'), 'baseURI 是空的。', 'err'); return; }
+  if (!/\/$/.test(u)) { msg($('msg5'), 'baseURI 要以斜杠结尾（合约直接拼 tokenId 上去）。', 'err'); return; }
+  $('btnBaseURI').disabled = true;
+  sendAndWait($('msg5'), 'setBaseURI', { from: S.acct, to: S.uni, data: SEL['setBaseURI(string)'] + encString(u) })
+    .then(function () { return readString(S.uni, 'baseURI()'); })
+    .then(function (got) {
+      $('tbl5').hidden = false;
+      $('v5base').textContent = got || '（空）';
+      if (got !== u) {
+        $('v5base').className = 'bad';
+        msg($('msg5'), '回读对不上：链上 baseURI() 是「' + got + '」，写进去的是「' + u + '」。', 'err');
+      } else {
+        $('v5base').className = 'good';
+        S.baseURI = got;
+        msg($('msg5'), 'baseURI() = ' + got, 'ok');
+        renderOut();
+      }
+    })
+    .catch(function (e) { msg($('msg5'), '停下了：' + errOf(e), 'err'); })
+    .then(function () { lockAll(); });
+});
+
+/* ============================================================ 6 产出配置 */
+function copyText(t, btn) {
+  function done() {
+    var old = btn.textContent;
+    btn.textContent = '已复制';
+    setTimeout(function () { btn.textContent = old; }, 1200);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(done, fallback);
+  } else { fallback(); }
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* 浏览器不给复制，让人自己选 */ }
+    document.body.removeChild(ta);
+  }
+}
+function renderOut() {
+  var lines = [];
+  function cm(t) { lines.push({ cm: t }); }
+  function ln(t) { lines.push({ tx: t }); }
+  cm('# web/config.arc.js —— 站点连哪一个合约');
+  ln("  contract: '" + S.uni + "',");
+  ln("  market: '" + S.mkt + "',");
+  cm('');
+  cm('# server/api.env.arc（线上 /etc/bnbbang/api.arc.env，键名照 api.env.arc.example）');
+  ln('BNBBANG_CONTRACT=' + S.uni);
+  ln('BNBBANG_MARKET=' + S.mkt);
+  if (S.uniBlock != null) ln('BNBBANG_INDEX_FROM=' + S.uniBlock);
+  cm('');
+  cm('# 链接');
+  ln('https://opensea.io/assets/arc/' + S.uni + '/1');
+  ln(NET().explorer + '/address/' + S.uni);
+  ln(NET().explorer + '/address/' + S.mkt);
+  var box = $('out6');
+  box.innerHTML = '';
+  lines.forEach(function (o) {
+    var d = document.createElement('div');
+    if (o.cm != null) {
+      d.className = 'cm';
+      d.textContent = o.cm || ' ';
+    } else {
+      d.className = 'ln';
+      var sp = document.createElement('span');
+      sp.className = 'tx'; sp.textContent = o.tx;
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = '复制';
+      b.addEventListener('click', function () { copyText(o.tx.trim(), b); });
+      d.appendChild(sp); d.appendChild(b);
+    }
+    box.appendChild(d);
+  });
+  msg($('msg6'), 'config.arc.js 与服务端 env 两边都改完之后，服务端要重启才会读到新地址。', 'dim');
+}
+$('btnCheck6').addEventListener('click', function () {
+  msg($('msg6'), '问链…', 'dim');
+  Promise.all([
+    readUint(S.uni, 'totalSupply()'),
+    readUint(S.uni, 'mintLeft()'),
+    ethCall(S.uni, SEL['royaltyInfo(uint256,uint256)'] + encUint(1) + encUint(10n ** 18n))
+  ]).then(function (r) {
+    $('tbl6').hidden = false;
+    var bad = [];
+    $('v6sup').textContent = r[0].toString();
+    $('v6sup').className = r[0] === 0n ? 'good' : 'bad';
+    if (r[0] !== 0n) bad.push('totalSupply() 是 ' + r[0] + '，不是 0（已经有人铸过了）');
+    $('v6left').textContent = r[1].toString();
+    $('v6left').className = r[1] === 1387n ? 'good' : 'bad';
+    if (r[1] !== 1387n) bad.push('mintLeft() 是 ' + r[1] + '，不是 1387');
+    /* royaltyInfo 返回 (address receiver, uint256 amount)：两个定长槽，直接切。 */
+    var h = String(r[2]).replace(/^0x/, '');
+    if (h.length < 128) { bad.push('royaltyInfo 返回值太短：' + r[2]); $('v6roy').textContent = '—'; }
+    else {
+      var recv = '0x' + h.slice(24, 64), amt = BigInt('0x' + h.slice(64, 128));
+      $('v6roy').textContent = recv + ' / ' + amt.toString() + '（' + fmt18(amt * 100n, 2) + '%）';
+      $('v6roy').className = amt === 50000000000000000n ? 'good' : 'bad';
+      if (amt !== 50000000000000000n) bad.push('版税是 ' + amt + '/1e18，不是 5%（5e16）');
+    }
+    if (bad.length) msg($('msg6'), '有对不上的：\n· ' + bad.join('\n· '), 'err');
+    else msg($('msg6'), '三项全对。把上面的配置抄进两个文件，重启服务端，然后到 /market.html 看一眼。', 'ok');
+  }).catch(function (e) { msg($('msg6'), '问不到：' + errOf(e), 'err'); });
+});
+
+/* ============================================================ 起步 */
+lockAll();
+msg($('msg1'), '目标链：' + NET().label + '（chainId ' + NET().id + '，RPC ' + NET().rpc[0] + '）' +
+  (NET().fromCfg ? '　—— 链参数来自 config.js' : '　—— config.js 里没有这条链，用的是页面内置参数'), 'dim');
+</script>
+</body>
+</html>

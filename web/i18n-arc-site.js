@@ -1,0 +1,190 @@
+/*
+ * web/i18n-arc-site.js —— ARCBANG（Arc 主网）首页的中英词条
+ * ------------------------------------------------------------
+ * 只放 landing-arc.html 里**界面上真会出现**的句子，而且只放 arc 站独有的那些：
+ * 与 BNBBANG 首页逐字相同的句子（图廊视图名、页脚那几栏、状态卡的
+ * 「在线 / 离线 / 未部署」…）已经在 web/i18n-site.js 的全局表里，
+ * 这里**不重复收** —— 重复收一旦值不一样，MirrorI18n.add() 会在控制台喊
+ * 「全局词条被改写」，那正是它要防的事。踩过一次：'说明' 和 '数值' 都是别人占过的 key。
+ *
+ * key 是中文原文（trim 后逐字相等才命中，见 i18n-site.js 顶部）。
+ * 全部进全局表（不带 ns）：DOM 遍历与 /en/ 预渲染只认全局表；
+ * 页面里显式 t(zh,'home') 的调用查不到 home 分册时也会落到全局，一样命中。
+ *
+ * ARCBANG 没有代币：这份词典里不该出现 BANG / 邀请返利 / 代币分发 这类词条。
+ *
+ * 2026-09-17（拯救系统下线）：首页整页文案重写成**对外的介绍**而不是工程说明，
+ * 同时「拯救 / 销毁 / 0x…dEaD」那一路词条全部删掉，没有一条改写成含糊话。
+ * 英文这边同样是介绍口吻，不是逐字翻译。
+ */
+(function (root) {
+  'use strict';
+  var I = root.MirrorI18n;
+  if (!I) return;
+
+  I.add({
+    /* ---- 浏览器标题（/en/ 预渲染会整条换掉，这条是给运行时切语言用的）---- */
+    'ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次':
+      'ARCBANG — Every Arc block hash is a universe | Free to detonate, mint once.',
+    'ARC宇宙 · ARCBANG': 'Arc Universe · ARCBANG',
+
+    /* ---- 首屏 ----
+       D 在首页上第一次露面是在下面「引擎实况」那一段，那里带着一句人话解释；
+       这条 lede 排在它前面，所以只说「空间有几个维度」，先不搬字母。 */
+    '每个 Arc 区块哈希，都是一个宇宙': 'Every Arc block hash is a universe',
+    '引爆它。哈希里读出 23 个常数：引力多强、光速多快、空间有几个维度。引擎按这套常数把宇宙从第一秒算到热寂，看它长不长得出恒星、行星、生命。':
+      'Detonate it. The hash gives you 23 constants: how strong gravity is, how fast light travels, how many dimensions space has. The engine takes them and runs the universe from its first second to heat death, to see whether it grows stars, planets, life.',
+    '九成以上的宇宙第一秒就废了：没有稳定轨道，物质飞散或者坠核。大约二十个区块里有一个能一路长到生命。喜欢哪个就把它铸成 NFT，一个哈希只能铸一枚。':
+      'More than nine in ten universes are finished inside their first second: no stable orbit, matter either flying apart or falling into the core. About one block in twenty makes it all the way to life. Mint the one you like as an NFT — a hash can only be minted once.',
+    /* {0} = config.arc.js 的 chain 块给的链名（中文态 name、英文态 nameEn）。
+       **整句进词典**：英文语序和中文对不上，在外面拼 T('当前在') + 链名 会拼错。 */
+    '当前在 {0} · 前 387 枚每地址免费 1 次，之后 1 USDC、每地址最多 3 枚':
+      'On {0} · first 387 free, one per address, then 1 USDC, up to 3 per address',
+
+    /* ---- 首屏活仪表盘 ----
+       原来还有第三格「已销毁 USDC」（totalBurned）。拯救系统下线之后那个数永远是 0，
+       整格连同读数一起删掉了，词条也跟着删。 */
+    'Arc 区块高度': 'Arc block height',
+    '已铸宇宙': 'Universes minted',
+    '分享 ARCBANG ↗': 'Share ARCBANG ↗',
+    '每个 Arc 区块哈希都是一套物理定律。免费引爆一个，看它能不能长出恒星、行星和生命。喜欢再铸，全网 1,387 枚。@arcbang_xyz @arc':
+      'Every Arc block hash is a set of physical laws. Detonate one for free and watch whether it grows stars, planets and life. Mint it if you like it — 1,387 in all. @arcbang_xyz @arc',
+    '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz @arc':
+      'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a set of physical laws — go detonate your own. First 387 are free (1 per address), 1 USDC after that. @arcbang_xyz @arc',
+
+    /* ---- 1,387 ---- */
+    '全网只有这么多。一枚宇宙算一千万年，铸满正好 137.87 亿年，就是这个宇宙的岁数。':
+      'That is all there will ever be. One universe stands for ten million years, so the full set comes to 13.787 billion — the age of this universe.',
+    '前 387 枚免费 · 每地址限 1 次': 'First 387 free · 1 per address',
+    '免费期之后的固定价 · 一次铸造 gas 约 0.003 USDC':
+      'The flat price after the free tier · about 0.003 USDC of gas per mint',
+
+    /* ---- 找到你的宇宙 ---- */
+    '找到你的宇宙': 'Find your universe',
+    '粘一个 Arc 区块高度，或者一个 0x 开头的区块哈希。你生日那天的块、你第一笔交易所在的块，都可以。同一个哈希，谁来引爆都是同一个宇宙。':
+      'Paste an Arc block height, or a 0x block hash. The block from your birthday, the block your first transaction landed in, anything. The same hash is the same universe, whoever detonates it.',
+    '区块高度 / 0x 区块哈希 / 钱包地址': 'Block height / 0x block hash / wallet address',
+    '区块高度、区块哈希或钱包地址': 'Block height, block hash or wallet address',
+    /* 「个人中心」这一句被切成三段：中间那段是页内链接的文字，它的词条在
+       i18n-market.js 的全局导航段里（'个人中心' → 'Profile'），**这里不重收** ——
+       重收一次就是两处维护同一句话，而且值不一样时控制台会喊「全局词条被改写」。 */
+    '这是一个钱包地址。星图还没上线，先连上钱包，在':
+      'That is a wallet address. The sky map is not live yet — connect your wallet and open',
+    '里能看到你名下的宇宙。': 'to see the universes you hold.',
+    '认不出来：给一个区块高度、一个 0x 开头的 64 位区块哈希，或者一个钱包地址。':
+      'Not recognised: give a block height, a 0x block hash (64 hex chars), or a wallet address.',
+
+    /* ---- 引擎实况（滚动墙） ----
+       **D 在整页上第一次出现就在这一句里**，所以括号里必须有一句人话；
+       后面（图廊卡、模拟器）再出现就只写 D。 */
+    '每一张都是引擎实时渲染时截的屏，没修图。最后一张的空间维数 D = 4（D 就是空间有几个维度，我们的宇宙是 3）。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
+      'Every frame is a screenshot of the engine rendering live, untouched. The last one has spatial dimension D = 4 — D is how many dimensions space has, and ours has 3. 55% of universes come out above D = 4, where no orbit is stable and matter either flies apart or falls into the core. Draw D = 14 and the engine really does run an N-body in 14 dimensions, then projects it onto three axes you pick. Swap the axes and the same universe wears a different face. ',
+    '引擎开源，谁都能自己复算': 'The engine is open source — recompute it yourself',
+    '引爆同一个哈希 →': 'Detonate the same hash →',
+    '分享 ↗': 'Share ↗',
+    '横向滑动看全部六个 · 点图看大图': 'Scroll sideways for all six · tap an image for full size',
+    /* ---- 引擎实况：09-17 换成六张 Arc 主网区块图之后的说明与卡片文字（用户：「英文部分没汉化」）----
+       图廊卡的「区块 N · 0x…」原来带 data-nolang，预渲染会整个跳过，英文页里就一直是中文；现已去掉。 */
+    '每一张都是引擎实时渲染时截的屏，没修图。第五张的空间维数 D = 18（D 就是空间有几个维度，我们的宇宙是 3），第六张是 2.5 维的黑平面。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
+      'Every frame is a screenshot of the engine rendering live, untouched. The fifth one has spatial dimension D = 18 — D is how many dimensions space has; ours has 3 — and the sixth is a 2.5-dimensional black plane. Universes with D above 4 make up 55% of all blocks: no stable orbits exist there, matter either flies apart or falls into the core. Draw D = 14 and the engine really runs the N-body in 14 dimensions, then projects onto the three axes you pick; change the axes and the same universe shows another face.',
+    '恒星系': 'Planetary system',
+    '熔岩行星地表': 'Lava planet surface',
+    '十八维宇宙的 N 体投影（D=18）': 'N-body projection of an 18-dimensional universe (D=18)',
+    '黑平面与垂直银线（D=2.50）': 'Black plane pierced by silver lines (D=2.50)',
+    '可能诞生观察者 · D=3': 'Observers possible · D=3',
+    '无稳定轨道 · D=18': 'No stable orbits · D=18',
+    '超出模型适用范围 · D=2.5': 'Beyond the model’s range · D=2.5',
+    '区块 1,000,021 · 0xa95b…3356': 'Block 1,000,021 · 0xa95b…3356',
+    '区块 5,000,017 · 0x16b9…d503': 'Block 5,000,017 · 0x16b9…d503',
+    '区块 12,000,079 · 0xb0dc…d6f9': 'Block 12,000,079 · 0xb0dc…d6f9',
+    '区块 18,000,081 · 0xa227…f4c9': 'Block 18,000,081 · 0xa227…f4c9',
+    '区块 21,000,009 · 0xffff…5af1': 'Block 21,000,009 · 0xffff…5af1',
+    '区块 9,044,269 · 0x537a…860c': 'Block 9,044,269 · 0x537a…860c',
+
+    /* ---- 三个动作 ----
+       第三张原来是「拯救」。拯救整套下线，这一格换成「转手」—— 铸完之后真的能做的事。 */
+    '引爆随便玩，铸造看你喜不喜欢，铸完了想卖就卖。':
+      'Detonate as much as you want, mint what you like, sell it when you want to.',
+    '挑一个 Arc 区块，哈希当场展开成一整套物理常数，引擎推演这个宇宙的一生。Arc 每 0.5 秒出一个块，每个块都还没人引爆过。':
+      'Pick an Arc block. The hash expands on the spot into a full set of physical constants and the engine runs that universe’s whole life. Arc closes a block every 0.5 seconds and nobody has detonated any of them yet. ',
+    '引擎开源，可以自己复算一遍': 'The engine is open source — recompute it yourself',
+    '看完再决定收不收。全网': 'You decide after you have seen it. There are',
+    '枚，前 387 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后一枚 1 USDC，每个地址最多 3 枚。':
+      'universes in all. The first 387 are free: 1 per address, about 0.003 USDC of gas. After that, 1 USDC each, up to 3 per address.',
+    '转手': 'Resell',
+    '铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。成交时 5% 版税，上限 10% 写死在合约里，抬不上去。':
+      'What you mint is a standard NFT. List it on the built-in market, or on OpenSea. A sale pays a 5% royalty, and the 10% ceiling is hard-coded in the contract.',
+    '看它怎么运作 →': 'See how it works →',
+
+    /* ---- 一个哈希，一枚 ----
+       这一节原来叫「为什么销毁的是真美元」，整节建在拯救系统上。
+       拯救下线之后换成剩下的那个卖点：稀缺来自哈希本身。 */
+    '一个哈希，一枚': 'One hash, one universe',
+    'Arc 每 0.5 秒出一个块，一天十七万个。引爆它们不要钱，想炸多少炸多少。':
+      'Arc closes a block every 0.5 seconds, about 170,000 a day. Detonating them is free, as often as you like.',
+    '铸造只有一次机会。一个区块哈希只能长出一个宇宙，谁先铸走就是谁的，全网一共 1,387 枚。你挑中的那个被别人先铸了，它就永远不是你的了。':
+      'Minting is the part you get one shot at. One block hash grows exactly one universe, it belongs to whoever mints it first, and there are 1,387 in all. If someone mints the one you picked, it is never going to be yours.',
+    'ARCBANG 没有代币，没有预售，没有空投，也没有解锁表。你拿到的就是一枚 NFT，价格就是价格。':
+      'ARCBANG has no token, no presale, no airdrop and no unlock schedule. What you get is an NFT, and the price is just the price.',
+    /* 表头两列（数量 / 说明）走 i18n-site.js 的全局词条，这里不重收 */
+    '全网总量': 'Hard cap',
+    '免费期': 'Free tier',
+    '之后': 'After that',
+    '二级版税': 'Secondary royalty',
+    '前 387 枚': 'first 387',
+    '宇宙 137.87 亿岁，一枚 NFT 一千万年；写死在合约里':
+      'The universe is 13.787 Gyr old and one NFT is ten million years; hard-coded in the contract',
+    '每地址 1 次，只花 gas（约 0.003 USDC）': '1 per address, gas only (about 0.003 USDC)',
+    '每地址最多 3 枚；合约把价格夹在 0.1 – 20 USDC 之间': 'At most 3 per address; the contract clamps the price to 0.1 – 20 USDC',
+    'OpenSea 这类市场直接读得到，上限 10% 写死在合约里':
+      'Markets like OpenSea read it straight off the NFT; the 10% ceiling is hard-coded in the contract',
+
+    /* ---- 四条规矩 ---- */
+    '四条规矩': 'Four rules',
+    '四条，都能自己核。': 'Four of them, all checkable.',
+    '免费玩，只铸你真喜欢的': 'Free to play; mint only what you like',
+    '引爆不要钱，也不限次数。看完结果再决定铸不铸。':
+      'Detonating costs nothing and has no limit. You decide whether to mint after you have seen the result.',
+    '一个区块哈希，一个宇宙，永远': 'One block hash, one universe, forever',
+    '一个哈希只能铸一枚。被别人铸走了，这个宇宙就不会再有第二枚。':
+      'A hash can be minted once. If someone else takes it, there is no second copy of that universe.',
+    '不发代币': 'No token',
+    '没有预售，没有空投，没有解锁表，也没有任何收益话术。':
+      'No presale, no airdrop, no unlock schedule, and no talk of returns.',
+    '全程可验证': 'Fully verifiable',
+    '哈希是种子，引擎开源。同一个哈希在你的机器上会算出同一个宇宙。':
+      'The hash is the seed and the engine is open source. The same hash computes the same universe on your machine.',
+
+    /* ---- 链上状态 ---- */
+    '两个合约的地址和实时状态，都从链上现读。':
+      'Addresses and live state of both contracts, read straight from the chain.',
+    '合约还没上 Arc 主网。上线那天，上面两张卡会自己亮起来。':
+      'The contracts are not on Arc mainnet yet. The two cards above light up on their own the day they are.',
+
+    /* ---- 2026-09-17 首页改版（web/landing-arc.html v2「测绘板」）新增的句子 ----
+       旧版整份在 web/landing-arc-v1.html。 */
+    '跳到主要内容': 'Skip to content',
+    '窗口里那片星场是引擎此刻算出来的。Arc 每出一个新块，它闪一次。':
+      'That star field is the engine computing, right now. It flashes once for every new Arc block.',
+    /* 动效开关（WCAG 2.2.2：自动播放超过 5 秒必须给一个看得见的停法）。
+       按钮上写的是**点下去会发生什么**，不是当前状态。 */
+    '暂停动效': 'Pause motion',
+    '继续动效': 'Resume motion',
+    /* 搜索框那颗提交钮：说清楚点下去发生什么 */
+    '引爆这个区块': 'Detonate this block',
+
+    /* ---- 页脚 ----
+       'ARC宇宙' 在 i18n-arc.js 里已经是 'ARCBANG'（顶栏品牌名用的就是它）。
+       这里**逐字照抄那个值**：值不一样就会触发 i18n.js 的「全局词条被改写」告警，
+       而且 /en/ 预渲染两册都装（build-web.js 的 enDicts），谁后装谁赢，页脚会跟顶栏打架。 */
+    'ARC宇宙': 'ARCBANG',
+    /* 页脚导航的 aria-label —— v1 漏收，英文版那里一直是中文，顺手补上 */
+    '页脚': 'Footer',
+    '用区块哈希造宇宙。免费引爆，喜欢再铸。':
+      'Universes made out of block hashes. Free to detonate; mint the ones you like.',
+    '怎么运作': 'How it works',
+    '自己验证': 'Verify it yourself',
+    'BNBBANG 镜像宇宙': 'BNBBANG mirror universe'
+  });
+
+})(typeof window !== 'undefined' ? window : this);

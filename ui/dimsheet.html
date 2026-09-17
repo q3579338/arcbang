@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>整体宇宙 · 维度对照表</title>
+<style>html,body{margin:0;background:#04060c;color:#8b95b0;font:12px Consolas,monospace}
+canvas{display:block;max-width:100%}</style>
+</head>
+<body>
+<canvas id="sheet"></canvas>
+<div id="log"></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var LIST = (q.get('list') || '1,1.5,2,2.5,3,3.5,4,5,6').split(',').map(Number);
+  var CELL = 440, GAP = 14, M = 26, TOP = 84, CAPH = 66;
+  var cols = 3, rows = Math.ceil(LIST.length / cols);
+  var W = M * 2 + CELL * cols + GAP * (cols - 1);
+  var H = TOP + rows * (CELL + CAPH) + GAP * (rows - 1) + M + 34;   // +34 给页脚两行
+  var cv = document.getElementById('sheet'); cv.width = W; cv.height = H;
+  var g = cv.getContext('2d');
+
+  var NOTE = {
+    1:   '无角动量：物质只能径向坠落，没有绕转结构',
+    1.5: '分数维 · 引力核 r^-0.5，比三维平缓得多',
+    2:   '引力 ∝ 1/r：结构弥散，团块不易塌缩',
+    2.5: '介于二维与三维之间',
+    3:   '我们的宇宙：纤维、节点、空洞都长得出来',
+    3.5: '引力比三维更陡，塌缩更猛',
+    4:   '核 r^-3：小尺度失控，需限速积分',
+    5:   '核 r^-4：结构塌成点，大尺度几乎空',
+    6:   '核 r^-5：同上，更极端'
+  };
+
+  function load(src) {
+    return new Promise(function (res) {
+      var im = new Image();
+      im.onload = function () { res(im); };
+      im.onerror = function () { res(null); };
+      im.src = src;
+    });
+  }
+
+  fetch('/contracts/out/samples/dims/results.json').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
+  .then(function (stats) {
+    var byD = {}; stats.forEach(function (s) { byD[s.D] = s; });
+    return Promise.all(LIST.map(function (D) {
+      return load('/contracts/out/samples/dims/u-D' + String(D).replace('.', 'p') + '.png');
+    })).then(function (imgs) {
+      g.fillStyle = '#04060c'; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#e6e9f5'; g.font = '600 24px Helvetica,Arial,sans-serif';
+      g.fillText('同一颗种子、同一套宇宙学，只改空间维度', M, 42);
+      g.fillStyle = '#7b86a3'; g.font = '13px Helvetica,Arial,sans-serif';
+      g.fillText('平坦 ΛCDM · 200 Mpc/h 盒 · 26 万粒子 PM · 演化到 a=1 · 27 重平铺整盒视角 · 维度只进引力核指数 r^−(D−1)',
+        M, 66);
+
+      LIST.forEach(function (D, i) {
+        var ox = M + (i % cols) * (CELL + GAP);
+        var oy = TOP + Math.floor(i / cols) * (CELL + CAPH + GAP);
+        g.fillStyle = '#080b14'; g.fillRect(ox, oy, CELL, CELL + CAPH);
+        var im = imgs[i];
+        if (im) g.drawImage(im, ox, oy, CELL, CELL);
+        else { g.fillStyle = '#3a4257'; g.font = '14px Helvetica,Arial'; g.fillText('（无图）', ox + 16, oy + 30); }
+        g.strokeStyle = '#1b2233'; g.lineWidth = 1; g.strokeRect(ox + .5, oy + .5, CELL - 1, CELL + CAPH - 1);
+
+        var s = byD[D];
+        g.fillStyle = '#e6e9f5'; g.font = '600 17px Helvetica,Arial,sans-serif';
+        g.fillText(Number.isInteger(D) ? D + ' 维' : 'D = ' + D, ox + 14, oy + CELL + 26);
+        if (s) {
+          var right = 'σ₈≈' + (s.sigma8 == null ? '—' : s.sigma8.toFixed(2))
+                    + ' · 晕 ' + (s.halos == null ? '—' : s.halos)
+                    + ' · a=' + s.a.toFixed(2) + (s.reachedTarget ? '' : '(未到 1)');
+          g.fillStyle = '#63b3ff'; g.font = '12px Helvetica,Arial,sans-serif';
+          g.textAlign = 'right'; g.fillText(right, ox + CELL - 14, oy + CELL + 26); g.textAlign = 'left';
+        }
+        g.fillStyle = '#8b95b0'; g.font = '12px Helvetica,Arial,sans-serif';
+        g.fillText(NOTE[D] || '', ox + 14, oy + CELL + 48);
+        // 软化长度：softCells = clamp(2|D−3|, 0.4, 2)（universe3d.js:1979），cell = 200/64 Mpc/h
+        var sc = D === 3 ? 0 : Math.min(Math.max(2 * Math.abs(D - 3), 0.4), 2);
+        var eps = sc * (200 / 64) / 0.674;
+        g.fillStyle = sc ? '#a3762f' : '#5ad1a0';
+        g.textAlign = 'right';
+        g.fillText(sc ? '软化 ε=' + eps.toFixed(1) + ' Mpc' : '无软化', ox + CELL - 14, oy + CELL + 48);
+        g.textAlign = 'left';
+      });
+
+      // 页脚：把这批图唯一的不公平之处写在脸上
+      g.fillStyle = '#a3762f'; g.font = '12px Helvetica,Arial,sans-serif';
+      g.fillText('注意：只有 D=3 不加软化，其余维度为数值稳定被软化了 0.4–2 个网格（见每格右下），'
+        + '所以「小尺度有多锐利」本身就不可比 —— 可比的是有没有长出纤维和晕。', M, H - 26);
+      g.fillStyle = '#5c6280';
+      g.fillText('σ₈ 与晕数由模块自带的回读分析给出（u.diagnostics()），不是我另算的。', M, H - 9);
+
+      var x = new XMLHttpRequest();
+      x.open('POST', '/_save?name=universes.png');
+      x.onload = function () { document.getElementById('log').textContent = '已保存 universes.png'; window.__done = true; };
+      x.send(cv.toDataURL('image/png'));
+    });
+  });
+})();
+</script>
+</body>
+</html>

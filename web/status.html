@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BNBBANG · 系统状态</title>
+<meta name="robots" content="noindex, follow">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0A0F2E">
+<!-- 站点顶栏（四页同一份：模拟器 / 市场 / 经济 / 状态）。
+     theme.js 要在首屏绘制前定主题；i18n 三份：顶栏词条 + 本页正文
+     （2026-08-21 英文校订收进 i18n-site.js 的 'status' 分节，JS 拼的读数走 t()）。
+     tokens.css 只给顶栏用：本页自己的深空变量全部收在 main{} 里
+     （见 <style> 顶部的说明），不压 :root，两个世界互不相扰。 -->
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<!-- 多钱包发现（EIP-6963）：顶栏「连接钱包」必须走 MirrorWallet.pick()，不能直打 window.ethereum -->
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<style>
+/* ============================================================================
+ * web/status.html —— 公开的系统状态页（科幻舷窗）
+ * ----------------------------------------------------------------------------
+ * 正文（<main> 里的一切）是**刻意的深空世界** —— 舷窗没有浅色模式。
+ * 顶栏（#siteNav，main 之外）是 tokens.css 的世界，跟随全站浅深主题：
+ * 深色下融进深空，浅色下是浅色的栏、正文照旧深空。**不钉死主题**
+ * （MIRROR_FORCE_DARK 那套正在拆，别在这页新增）。
+ * 变量域因此分了家：本页的 --ink/--panel/--mono 等只定义在 main{} 上，
+ * 不压 :root —— 压了 :root 会把顶栏拽进深空配色（tokens.css 同名键被盖）。
+ * 零外部资源的正文：星空和扫描线全是纯 CSS。
+ * 数据全部链上现读（公开 RPC 轮换），不依赖钱包、不依赖 API。
+ * ========================================================================== */
+/* 三段式主题（与 landing.html 同一套写法）：裸 :root 给**浅色整套**，
+   @media dark 与 [data-theme=dark] 各覆盖一次深空值。
+   变量挂在 :root 但**全部带 --s 前缀**，所以不会盖掉 tokens.css 的同名键，
+   顶栏照常跟着全站主题走 —— 这就是当初把它们收进 main{} 想解决的问题，
+   加前缀比缩作用域干净：body 也够得着，不用再写字面量。 */
+:root{
+  color-scheme:light;
+  --s-ink:#1A1D26; --s-dim:#5A6272; --s-dim2:#8A93A6;
+  --s-glow:#0E7C9B;                     /* 浅底上的数据色：同色相压暗到能读 */
+  --s-glow-rgb:14,124,155;              /* 同色的 rgb 三元组：发光/描边按主题配平，不再写死深空值 */
+  --s-glow-soft:rgba(14,124,155,.18);
+  --s-warn:#C8362C; --s-ok:#107D4E;
+  --s-warn-rgb:200,54,44;
+  --s-panel:rgba(255,255,255,.86);
+  --s-track:rgba(26,29,38,.08);
+  --s-mono:Consolas,"Cascadia Mono",Menlo,monospace;
+  /* 底：浅色用极淡的青紫光斑，不用星空（白底上的白星点是看不见的） */
+  --s-body-bg:#F5F6FA;
+  --s-body-img:radial-gradient(60% 42% at 78% -8%, rgba(107,75,196,.07), transparent 70%),
+               radial-gradient(48% 36% at 8% 12%, rgba(30,90,150,.06), transparent 70%);
+  --s-scan:transparent;                 /* 扫描线是深空专属，浅色下关掉 */
+  /* 标题辉光是深空专属：白底上的辉光只会把字糊成一团脏影 */
+  --s-h1-glow:none;
+  /* 折叠面板的"壳"：浅色 = 市场页那种柔和卡片阴影；深空 = 一圈近黑描边压住星野 */
+  --s-fold-ring:0 1px 2px rgba(22,26,38,.05), 0 8px 24px rgba(22,26,38,.08);
+  /* 矩阵/分发的行分隔线：浅色下用墨色低透明——白线画在白底上等于没画 */
+  --s-line:rgba(22,26,38,.10); --s-line-soft:rgba(22,26,38,.07);
+  /* 分发条四段：与 landing 浅色同一套（白底上压暗到能读的档） */
+  --s-ref:#1D8A60; --s-team:#6B4BC4; --s-promo:#9A6212; --s-burn:#B4571E;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ color-scheme:dark;
+    --s-ink:#E9EDF8; --s-dim:#8B94AD; --s-dim2:#5C6280;
+    --s-glow:#6FE3FF; --s-glow-rgb:111,227,255; --s-glow-soft:rgba(111,227,255,.14);
+    --s-warn:#FF6E5E; --s-ok:#7EE787;
+    --s-warn-rgb:255,110,94;
+    --s-panel:rgba(9,13,28,.72); --s-track:rgba(233,237,248,.07);
+    --s-body-bg:#04050C; --s-body-img:var(--s-deep-img); --s-scan:var(--s-deep-scan);
+    --s-h1-glow:0 0 22px rgba(111,227,255,.35);
+    --s-fold-ring:0 0 0 1px rgba(4,5,12,.6);
+    --s-line:rgba(233,237,248,.08); --s-line-soft:rgba(233,237,248,.06);
+    --s-ref:#55E6A5; --s-team:#8F7BFF; --s-promo:#FFCF6A; --s-burn:#FF9B6B;
+  }
+}
+:root[data-theme="dark"]{ color-scheme:dark;
+  --s-ink:#E9EDF8; --s-dim:#8B94AD; --s-dim2:#5C6280;
+  --s-glow:#6FE3FF; --s-glow-rgb:111,227,255; --s-glow-soft:rgba(111,227,255,.14);
+  --s-warn:#FF6E5E; --s-ok:#7EE787;
+  --s-warn-rgb:255,110,94;
+  --s-panel:rgba(9,13,28,.72); --s-track:rgba(233,237,248,.07);
+  --s-body-bg:#04050C; --s-body-img:var(--s-deep-img); --s-scan:var(--s-deep-scan);
+  --s-h1-glow:0 0 22px rgba(111,227,255,.35);
+  --s-fold-ring:0 0 0 1px rgba(4,5,12,.6);
+  --s-line:rgba(233,237,248,.08); --s-line-soft:rgba(233,237,248,.06);
+  --s-ref:#55E6A5; --s-team:#8F7BFF; --s-promo:#FFCF6A; --s-burn:#FF9B6B;
+}
+/* 别名：老代码里用的是不带前缀的名字，这里一次性映射过去，
+   下面几百行选择器一个字都不用改。 */
+main{
+  --bg:var(--s-body-bg);
+  --ink:var(--s-ink); --dim:var(--s-dim); --dim2:var(--s-dim2);
+  --glow:var(--s-glow);
+  --glow-soft:var(--s-glow-soft);
+  --warn:var(--s-warn);
+  --ok:var(--s-ok);
+  --panel:var(--s-panel);
+  --track:var(--s-track);
+  --mono:var(--s-mono);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+/* 深空底的星图：只在深色下用，所以存成一个变量，由上面两个 dark 分支引用。
+   放在这里（:root 之后）是因为它太长，塞进主题块里会把那几行撑得没法读。 */
+:root{
+  --s-deep-img:
+    radial-gradient(60% 42% at 78% -8%, rgba(96,48,140,.20), transparent 70%),
+    radial-gradient(48% 36% at 8% 12%, rgba(30,90,150,.14), transparent 70%),
+    radial-gradient(1px 1px at 12% 24%, rgba(255,255,255,.55), transparent),
+    radial-gradient(1px 1px at 28% 68%, rgba(255,255,255,.35), transparent),
+    radial-gradient(1.5px 1.5px at 41% 12%, rgba(255,255,255,.45), transparent),
+    radial-gradient(1px 1px at 63% 79%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1.5px 1.5px at 76% 30%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1px 1px at 88% 60%, rgba(255,255,255,.35), transparent),
+    radial-gradient(1px 1px at 52% 90%, rgba(255,255,255,.3), transparent),
+    radial-gradient(1px 1px at 6% 84%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1.5px 1.5px at 94% 88%, rgba(255,255,255,.35), transparent);
+  --s-deep-scan:repeating-linear-gradient(180deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);
+}
+body{margin:0;min-height:100vh;
+  background-color:var(--s-body-bg);color:var(--s-ink);
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  font-size:15px;line-height:1.7;overflow-x:hidden;
+  background-image:var(--s-body-img);
+  background-attachment:fixed}
+/* 扫描线质感：整页罩一层极淡的横纹，pointer-events 关掉，不碍任何点击 */
+/* 浅色下这一层是 transparent（--s-scan 的默认值）—— 白底上的横纹只会显脏 */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+  background:var(--s-scan)}
+main{max-width:860px;margin:0 auto;padding:44px 20px 72px;position:relative}
+
+/* ---------------- 标题区 ---------------- */
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.28em;color:var(--dim);
+  text-transform:uppercase}
+h1{margin:6px 0 10px;font-size:clamp(26px,6vw,36px);font-weight:700;letter-spacing:.06em;
+  text-shadow:var(--s-h1-glow)}
+h1 .dot{color:var(--glow)}
+.sub{margin:0 0 8px;color:var(--dim);font-size:14px;max-width:60ch}
+/* 标题下的能量线：细渐变 + 一道缓慢来回的扫描光 */
+.beam{position:relative;height:1px;margin:22px 0 30px;overflow:hidden;
+  background:linear-gradient(90deg, transparent, rgba(var(--s-glow-rgb),.4), transparent)}
+.beam i{position:absolute;top:0;left:-18%;width:18%;height:1px;
+  background:linear-gradient(90deg, transparent, var(--glow), transparent);
+  animation:sweep 5.5s ease-in-out infinite}
+@keyframes sweep{0%{left:-18%}55%{left:100%}100%{left:100%}}
+.meta{display:flex;gap:8px 20px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;
+  color:var(--dim2);margin-top:-16px;margin-bottom:26px}
+.meta b{color:var(--dim);font-weight:400}
+button.re{background:none;border:1px solid rgba(var(--s-glow-rgb),.3);border-radius:6px;
+  color:var(--glow);font-family:var(--mono);font-size:12px;padding:2px 12px;cursor:pointer}
+button.re:hover{background:rgba(var(--s-glow-rgb),.08)}
+button.re:disabled{opacity:.4;cursor:wait}
+
+/* ---------------- 面板（折叠段） ----------------
+   每块都是原生 <details>/<summary> —— 键盘可开合、读屏认识它，不用 div 模拟。
+   标题行右侧带一个摘要数字：不展开也看得到要点。 */
+details.fold{background:var(--panel);border:1px solid var(--glow-soft);border-radius:var(--radius-card,16px);
+  padding:0;margin-bottom:22px;position:relative;
+  box-shadow:var(--s-fold-ring), 0 0 28px rgba(var(--s-glow-rgb),.05);
+  /* 细网格质感：只在面板里铺，40px 一格，淡到刚好可感 */
+  background-image:
+    linear-gradient(rgba(var(--s-glow-rgb),.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--s-glow-rgb),.03) 1px, transparent 1px);
+  background-size:40px 40px}
+.fold summary{display:flex;gap:8px 14px;align-items:baseline;flex-wrap:wrap;
+  padding:16px 22px;cursor:pointer;list-style:none;border-radius:var(--radius-card,16px)}
+.fold summary::-webkit-details-marker{display:none}
+/* 折叠箭头画在最右：颜色用页面现成的 --dim2，动画只有一个旋转，
+   reduced-motion 下被页尾那条 *{transition:none} 一并关掉 */
+.fold summary::after{content:"▾";margin-left:6px;flex:none;color:var(--dim2);
+  font-size:12px;transition:transform .2s}
+.fold:not([open]) summary::after{transform:rotate(-90deg)}
+.fold summary:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+.fold summary:hover h2{color:var(--glow)}
+.fsum{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--dim);
+  font-variant-numeric:tabular-nums;text-align:right}
+.fsum.warn{color:var(--warn)}
+.fbody{padding:0 22px 20px}
+h2{margin:0;font-size:16px;font-weight:600;letter-spacing:.14em;transition:color .15s}
+h2::before{content:"▮ ";color:var(--glow);font-size:12px}
+.why{margin:0 0 16px;font-size:12.5px;color:var(--dim)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+a{color:var(--glow)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.dimtx{color:var(--dim)} .warntx{color:var(--warn)} .oktx{color:var(--ok)}
+
+/* ---------------- 合约矩阵 ---------------- */
+.mx{display:grid;grid-template-columns:minmax(150px,190px) minmax(0,1fr) minmax(170px,230px);
+  border-top:1px solid var(--s-line);font-size:13px}
+.mx>div{padding:9px 10px 9px 0;border-bottom:1px solid var(--s-line-soft);min-width:0}
+.mx .hd{font-size:11px;letter-spacing:.12em;color:var(--dim2);font-family:var(--mono);
+  text-transform:uppercase}
+.mx .name b{font-weight:600}
+.mx .name .en{display:block;font-family:var(--mono);font-size:11px;color:var(--dim2)}
+.mx .addr a{font-family:var(--mono);font-size:11.5px;color:var(--glow);
+  text-decoration:none;word-break:break-all;opacity:.9}
+.mx .addr a:hover{text-decoration:underline}
+.mx .st{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;
+  vertical-align:1px;background:var(--dim2)}
+.dot.on{background:var(--glow);box-shadow:0 0 8px rgba(var(--s-glow-rgb),.9);
+  animation:pulse 2.6s ease-in-out infinite}
+.dot.off{background:var(--warn);box-shadow:0 0 8px rgba(var(--s-warn-rgb),.8)}
+@keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(var(--s-glow-rgb),.5)}50%{box-shadow:0 0 10px rgba(var(--s-glow-rgb),1)}}
+@media (max-width:720px){
+  .mx{grid-template-columns:1fr;border-top:none}
+  .mx .hd{display:none}
+  .mx>div{border-bottom:none;padding:2px 0}
+  .mx .name{padding-top:14px}
+  .mx .st{border-bottom:1px solid var(--s-line);padding-bottom:14px}
+}
+
+/* ---------------- 进度条（铸造 & 分发） ---------------- */
+.bar{height:10px;border-radius:6px;background:var(--track);overflow:hidden;
+  display:flex;margin:8px 0 6px}
+.bar i{display:block;height:100%}
+.bar .seg-mint{background:var(--glow);box-shadow:0 0 10px rgba(var(--s-glow-rgb),.6)}
+.bar .seg-give{background:var(--glow)}
+.bar .seg-ref{background:var(--s-ref)}
+.bar .seg-team{background:var(--s-team)}
+.bar .seg-promo{background:var(--s-promo)}
+.bar .seg-burn{background:var(--s-burn)}
+.kline{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  font-size:12.5px;color:var(--dim)}
+.kline .num{font-size:13px}
+.leg{display:flex;gap:8px 18px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--dim)}
+.leg .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.dist{margin-top:14px;border-top:1px solid var(--s-line)}
+.dist .row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:9px 0;border-bottom:1px solid var(--s-line-soft);font-size:13px}
+.dist .row .k{color:var(--dim)}
+.dist .row .k b{color:var(--ink);font-weight:500}
+
+/* ---------------- 页脚 ---------------- */
+footer{margin-top:36px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  font-size:13px;color:var(--dim2)}
+footer a{text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important}
+  .beam i{display:none}
+}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<!-- 站点顶栏：结构 / 样式 / 行为全在 web/nav.js，这里只挂载。
+     本页没有链上写操作，但「连接钱包」入口与其它页统一（chip + pick）。 -->
+<div id="siteNavMount"></div>
+<script>MirrorNav.mount({ page: 'status' });</script>
+<script>
+/* ---------------- 顶栏钱包 chip ----------------
+   壳在 web/nav.js 的 walletChip。本页不写链，只做「显示与连接」：
+   连接 = MirrorWallet.pick() 再 eth_requestAccounts（≥2 个钱包一定弹选择器）。 */
+(function () {
+  'use strict';
+  if (!window.MirrorNav || !MirrorNav.walletChip) return;
+  var addr = null;
+  var EXPLORER = MirrorNav.chain().explorer + '/address/';
+  function ST(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh, 'site') : zh; }
+  function prov() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum || null; }
+  var chip = MirrorNav.walletChip({
+    account: function () { return addr; },
+    connect: function () {
+      var MW = window.MirrorWallet;
+      var pre = (MW && MW.pick) ? MW.pick() : Promise.resolve(null);
+      return pre.then(function (sel) {
+        if (sel === false) return null;
+        var p = (sel && sel.provider) || prov();
+        if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+        return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
+          addr = (a && a[0]) || null;
+          if (!addr) throw new Error(ST('没拿到账户 —— 钱包可能锁着，或者你在弹窗里拒绝了'));
+          return addr;
+        }, function (er) {
+          throw new Error(er && er.code === 4001 ? ST('你在钱包里取消了') : ((er && er.message) || String(er)));
+        });
+      });
+    },
+    disconnect: function () {
+      var p = prov();
+      addr = null;
+      if (p && p.request) {
+        return p.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] })
+          .then(function () { }, function () {
+            return ST('本页已断开。钱包里的授权还在 —— 要彻底移除请到钱包扩展的「已连接的网站」');
+          });
+      }
+    },
+    switchAccount: function () {
+      var p = prov();
+      if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+      return p.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
+        .then(
+          function () { return p.request({ method: 'eth_accounts' }); },
+          function (er) {
+            if (er && er.code === 4001) throw new Error(ST('取消了切换账户 —— 账户没变'));
+            return p.request({ method: 'eth_requestAccounts' });
+          }
+        )
+        .then(function (a) { addr = (a && a[0]) || null; });
+    },
+    explorer: function () { return addr ? EXPLORER + addr : ''; },
+    onChange: function () { }
+  });
+  if (!chip) return;
+  var wired = false;
+  function wire() {
+    if (wired) return true;
+    var p = prov();
+    if (!p || !p.request) return false;
+    wired = true;
+    p.request({ method: 'eth_accounts' }).then(function (a) {
+      if (a && a[0]) { addr = a[0]; chip.refresh(); }
+    }, function () { });
+    if (p.on) { try { p.on('accountsChanged', function (a) { addr = (a && a[0]) || null; chip.refresh(); }); } catch (e) { } }
+    return true;
+  }
+  if (!wire() && window.MirrorWallet) MirrorWallet.onChange(function () { wire(); });
+})();
+</script>
+<main>
+  <span class="eyebrow" id="eyebrow">BNBBANG · STATUS</span>
+  <h1>BNBBANG <span class="dot">·</span> 系统状态</h1>
+  <p class="sub">区块链是控制台，这一页是舷窗 —— 读数全部链上现读，随时可复核。</p>
+  <div class="beam"><i></i></div>
+  <div class="meta">
+    <span>链 <b id="mChain">—</b></span>
+    <span>区块高度 <b id="mBlock">—</b></span>
+    <span>数据源 <b id="mRpc">—</b></span>
+    <span>读取于 <b id="mTime">—</b></span>
+    <button class="re" id="btnRe">重新读取</button>
+  </div>
+
+  <!-- ============================================ 合约矩阵（默认收起：
+       它是给要复核的人的，七行地址很长；摘要行不展开也报「几个在线」） -->
+  <details class="fold" data-fold="mx">
+    <summary><h2>合约矩阵</h2><span class="fsum" id="fsMx">—</span></summary>
+    <div class="fbody">
+    <p class="why" id="mxWhy">八个合约的地址、在线状态与关键参数。点击进区块浏览器。</p>
+    <div class="mx" id="mx">
+      <div class="hd">合约</div><div class="hd">地址</div><div class="hd">状态 · 关键参数</div>
+    </div>
+    </div>
+  </details>
+
+  <!-- ============================================ 铸造进度（默认展开） -->
+  <details class="fold" data-fold="mint" open>
+    <summary><h2>铸造进度</h2><span class="fsum" id="fsMint">—</span></summary>
+    <div class="fbody">
+    <p class="why">宇宙限量 1,707,000 枚；造物没有数量上限，铸一枚烧一次 BANG——成本即闸门。</p>
+    <div class="kline"><span>宇宙 NFT · MirrorUniverse</span>
+      <span><span class="num" id="muSupply">—</span> <span class="dimtx">/ 1,707,000</span></span></div>
+    <div class="bar"><i class="seg-mint" id="muBar" style="width:0"></i></div>
+    <div class="kline" style="margin-top:16px"><span>造物 NFT · MirrorCrafted</span>
+      <span><span class="num" id="cfSupply">—</span> <span class="dimtx">/ ∞ · 成本即闸门</span></span></div>
+    </div>
+  </details>
+
+  <!-- ============================================ 代币分发全景（默认展开） -->
+  <details class="fold" data-fold="dist" open>
+    <summary><h2>代币分发全景</h2><span class="fsum" id="fsDist">—</span></summary>
+    <div class="fbody">
+    <!-- 静态兜底 = 四池口径（v5.1 已按四池部署，config.referral 非空）：
+         JS 正常时 renderWhy 会用带 <b> 的整句重写；JS 挂掉时亮的就是这一段，
+         **别改成三池**——链上是 6/2/1/1。别拆行：单文本节点才能被 i18n 整段命中。 -->
+    <p class="why" id="distWhy">BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + 邀请返利 2 亿 + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发约 4.74 亿，不到 6 亿，铸造奖励的发放规则一分不变。</p>
+    <!-- 堆叠条：四段都是「毛量」口径 —— 已烧的那些币原本也属于前三类，
+         这里按类目并排画出来，是给量级一个直观印象，不是四段相加等于流通量。 -->
+    <div class="bar" id="distBar">
+      <i class="seg-give" id="sgGive" style="width:0"></i>
+      <i class="seg-ref" id="sgRef" style="width:0"></i>
+      <i class="seg-team" id="sgTeam" style="width:0"></i>
+      <i class="seg-promo" id="sgPromo" style="width:0"></i>
+      <i class="seg-burn" id="sgBurn" style="width:0"></i>
+    </div>
+    <div class="leg">
+      <span><i class="sw" style="background:var(--glow)"></i>已赠</span>
+      <span id="legRef"><i class="sw" style="background:var(--s-ref)"></i>返利</span>
+      <span><i class="sw" style="background:var(--s-team)"></i>团队</span>
+      <span><i class="sw" style="background:var(--s-promo)"></i>上所费用</span>
+      <span><i class="sw" style="background:var(--s-burn)"></i>已烧</span>
+      <span class="dimtx">底色 = 尚未铸出</span>
+    </div>
+    <div class="dist">
+      <!-- CAP 数字尽量读链（REWARD_CAP 等都是 public 常量，eth_call 读得到），
+           读不到才退回下面这些写死值 —— 写死值按现役 v5.1 四池（6/2/1/1）。 -->
+      <div class="row"><span class="k">铸造奖励已赠送 <b id="dRewardCap">/ 6 亿</b></span>
+        <span class="num" id="dGive">—</span></div>
+      <div class="row" id="rowRef"><span class="k"><span id="dRefCapLabel">邀请返利 2 亿</span> · <span id="dRefFlag">—</span> · 已发放</span>
+        <span class="num" id="dRef">—</span></div>
+      <div class="row"><span class="k"><span id="dDevCapLabel">团队 1 亿</span> · <span id="dDevFlag">—</span> · 已领取</span>
+        <span class="num" id="dDev">—</span></div>
+      <div class="row"><span class="k"><span id="dPromoCapLabel">上交易所费用 1 亿</span> · <span id="dPromoFlag">—</span> · 已发放</span>
+        <span class="num" id="dPromo">—</span></div>
+      <div class="row"><span class="k">累计销毁 <b>—— 拯救全烧、造物烧两成、命名也烧</b></span>
+        <span class="num" id="dBurn">—</span></div>
+    </div>
+    </div>
+  </details>
+
+  <!-- ============================================ 未接入（默认收起；
+       全部接入时整块不显示 —— 摆一个空清单等于自造警报）。
+       口径：config.js 没填地址（未部署），或地址有、链上读不到代码（离线）。 -->
+  <details class="fold" data-fold="na" id="foldNa" hidden>
+    <summary><h2>未接入</h2><span class="fsum warn" id="fsNa">—</span></summary>
+    <div class="fbody">
+    <p class="why">还没填地址、或链上读不到代码的合约。全部接入后这一块自动消失。</p>
+    <div class="dist" id="naList"></div>
+    </div>
+  </details>
+
+  <footer>
+    <!-- 与首页页脚同一套去处，写法也一致（相对路径，不写 "/"）—— 这一页挂在哪个
+         目录下都不会走丢，和 index.html 那份页脚是同一个口径。 -->
+    <span class="footnav">
+      <a href="index.html">首页</a>
+      <a href="app.html">模拟器</a>
+      <a href="market.html">市场</a>
+      <a href="economy.html">经济</a>
+      <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
+      <a href="mailto:admin@bnbbang.com" data-nolang>admin@bnbbang.com</a>
+    </span>
+    <!-- 只在 config.js 的 chain.isTestnet 为真时出现（specs/mainnet-ready.md）；
+         主网上整条不渲染。默认 hidden，脚本里的 renderChainText() 才放出来。 -->
+    <span id="chainLegal" hidden></span>
+    <!-- 友情链接：satloot 站族五个站。样式只在 nav.js 的共用块里（.sitefriends），
+         文案键在 i18n-site.js；标记静态写在页脚里 —— 爬虫与 /en/ 预渲染要在 HTML 里看得见它。 -->
+    <nav class="sitefriends" aria-label="友情链接">
+      <span class="sitefriends-t">友情链接</span>
+      <a href="https://bang.satloot.com/" rel="noopener">BTCBANG 比特宇宙</a>
+      <a href="https://satloot.com/" rel="noopener">satloot 项目总览</a>
+      <a href="https://sim.satloot.com/" rel="noopener">合约模拟器</a>
+      <a href="https://earn.satloot.com/" rel="noopener">riskdesk 风控面板</a>
+      <a href="https://airdrop.satloot.com/" rel="noopener">空投雷达</a>
+      <a href="https://game.satloot.com/" rel="noopener">satloot 游戏厅</a>
+      <a href="https://tool.satloot.com/" rel="noopener">satloot 工具站</a>
+      <a href="https://trx.satloot.com/" rel="noopener">TRX 质押收益计算器</a>
+      <a href="https://faucet.satloot.com/" rel="noopener">比特币测试币水龙头</a>
+    </nav>
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var CFG = window.BNBBANG_CONFIG || {};
+
+  /* BTCBANG（config.site === 'btc'，specs/btcbang-v1.md §三）：这一页两站共用，只把站名换掉。
+     读数全部链上现读，合约与 bnbbang.com 是同一套，所以正文一个字不改；
+     config.js 在本脚本之前加载，这里读到的就是最终值。bnb 模式一个字节不变。 */
+  if (CFG.site === 'btc') {
+    document.title = 'BTCBANG · 系统状态';
+    var eb = document.getElementById('eyebrow');
+    if (eb) eb.textContent = 'BTCBANG · STATUS';
+    var h1 = document.querySelector('main > h1');
+    if (h1 && h1.firstChild && h1.firstChild.nodeType === 3) h1.firstChild.nodeValue = 'BTCBANG ';
+  }
+
+  /* 本页词条的命名空间是 'status'（web/i18n-site.js）。查不到落回全局表；
+     i18n 整个没加载就原样返回中文 —— 页面照常能用。 */
+  function T(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh, 'status') : zh; }
+  function TF(zh, a) { var t2 = T(zh); return a === undefined ? t2 : t2.split('{0}').join(String(a)); }
+  function TX(zh) {
+    var t2 = T(zh);
+    for (var i2 = 1; i2 < arguments.length; i2++) t2 = t2.split('{' + (i2 - 1) + '}').join(String(arguments[i2]));
+    return t2;
+  }
+  function isEn() { return !!(window.MirrorI18n && window.MirrorI18n.lang() === 'en'); }
+
+  /* 锁仓与推广：地址只认 config.js（vesting / promo）。空着 = 矩阵标「未部署」。
+     返利金库走 config.referral —— 口径切换（三池/四池文案、第四行显不显示）吊在那个键上。 */
+  var VESTING = CFG.vesting || '';
+  var PROMO   = CFG.promo || '';
+
+  /* ---------------------------------------------------------- 链身份
+     链名跟着顶栏的语言开关走 —— 两边不至于一半中文一半英文。
+     唯一真相来源是 config.js 的 chain 块（specs/mainnet-ready.md）；**派生只有一份**，
+     在 web/nav.js 里（五个站点页共用）。这里不再抄一份兜底 —— 抄一份就是
+     「改了一处漏三处」，正是这轮改造要拔掉的病。nav.js 本来就是本页的硬依赖
+     （顶栏是它挂的），它不在的话页面在 MirrorNav.mount() 那一行就已经停了。 */
+  var CH = MirrorNav.chain();
+  function chainName() { return MirrorNav.chainName(); }
+  /* 页脚那条免责声明：只有测试网才出现，主网上整条不渲染。 */
+  function renderChainText() {
+    var el = document.getElementById('chainLegal');
+    if (!el) return;
+    el.hidden = !CH.isTestnet;
+    el.textContent = CH.isTestnet ? TF('{0} · 测试资产无价值', chainName()) : '';
+  }
+
+  var EXPLORER = CH.explorer + '/address/';
+  var RPCS = (CFG.rpc && CFG.rpc.length) ? CFG.rpc : ['https://bsc-testnet-rpc.publicnode.com'];
+
+  /* 函数选择器（keccak 前 4 字节，与 deploy.html 的 SEL 表同源） */
+  var SEL = {
+    totalSupply: '0x18160ddd',
+    balanceOf:   '0x70a08231',   // balanceOf(address)
+    signer:      '0x238ac933',   // signer()        非零 = 铸造闸门开着
+    bangFeeBps:  '0x3c0ac66b',   // bangFeeBps()    应为 500
+    bnbFeeBps:   '0x9faf7b31',   // bnbFeeBps()     应为 100
+    burnBps:     '0x53deb3d6',   // burnBps()       MirrorCrafted 应为 2000
+    rewardMinted:'0x4e7ccc83',   // rewardMinted()  铸造奖励累计赠出
+    devMinted:   '0xadf2131b',   // devMinted()     团队 1 亿是否已注入锁仓
+    promoMinted: '0xc4793c19',   // promoMinted()   上交易所费用 1 亿是否已注入
+    /* v5.1 四池（都用 web/keccak-lite.js 复核过）。CAP 都是 public 常量，
+       读链优先、读不到才退回写死值 —— 8 亿老合约与 6 亿新合约都显示正确。 */
+    referralMinted:'0xac85e6e5', // referralMinted() 返利 2 亿是否已注入（老合约上没有，读挂 = 三池）
+    rewardCap:   '0x206ade24',   // REWARD_CAP()
+    referralCap: '0xd1516a5d',   // REFERRAL_CAP()
+    devCap:      '0xfc490128',   // DEV_CAP()
+    promoCap:    '0x42534606',   // PROMO_CAP()
+    granted:     '0x400571ba'    // granted()       BangPromo（返利金库同款）累计已发
+  };
+
+  /* 返利池（v5.1）：config.referral 非空才进入四池口径；空 = 维持三池现状显示。 */
+  var REF = isAddr(CFG.referral) ? CFG.referral : '';
+
+  /* ---------------- RPC：公开节点轮换，一个挂了换下一个，全挂 = null ---------------- */
+  var rpcUsed = '—';
+  function rpc(method, params, i) {
+    i = i || 0;
+    if (i >= RPCS.length) return Promise.resolve(null);
+    var ctl = new AbortController();
+    var t = setTimeout(function () { ctl.abort(); }, 5000);
+    return fetch(RPCS[i], {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      clearTimeout(t);
+      if (j && typeof j.result === 'string') { rpcUsed = RPCS[i].replace(/^https:\/\//, '').replace(/[:/].*$/, ''); return j.result; }
+      return rpc(method, params, i + 1);
+    }).catch(function () { clearTimeout(t); return rpc(method, params, i + 1); });
+  }
+  function call(to, data) { return rpc('eth_call', [{ to: to, data: data }, 'latest']); }
+  function code(addr) { return rpc('eth_getCode', [addr, 'latest']); }
+  function toBig(hex) { try { return hex == null ? null : BigInt(hex); } catch (e) { return null; } }
+
+  /* ---------------- 展示工具 ---------------- */
+  function $(id) { return document.getElementById(id); }
+  function grp(s) { return String(s).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  var E18 = 1000000000000000000n;
+  /* wei → BANG，整数分组 + 两位小数（尾零裁掉）。读不到 = — */
+  function fmtBang(v) {
+    if (v == null) return '—';
+    var cent = v / (E18 / 100n);
+    var n = grp((cent / 100n).toString());
+    var f = (cent % 100n).toString();
+    if (f !== '0') n += '.' + (f.length < 2 ? '0' + f : f).replace(/0$/, '');
+    return n;
+  }
+  function isAddr(a) { return /^0x[0-9a-fA-F]{40}$/.test(a || ''); }
+  function isZeroWord(hex) { return !hex || /^0x0*$/.test(hex); }
+  /* 亿级摘要：≥1 亿 BANG 写成「N 亿」（最多两位小数、尾零裁掉），不足 1 亿退回 fmtBang */
+  var YI = 100000000n * E18;
+  function fmtYi(v) {
+    if (v == null) return '—';
+    if (v < YI) return fmtBang(v);
+    /* 英文态不直译「亿」：亿级摘要写成 474M / 600M（1 亿 = 100M，精度与中文的
+       两位小数一致，都是 1M 一格）。中文态原样。 */
+    if (isEn()) return (v * 100n / YI).toString() + 'M';
+    var c = v * 100n / YI;
+    var n = (c / 100n).toString(), f = (c % 100n).toString();
+    if (f !== '0') n += '.' + (f.length < 2 ? '0' + f : f).replace(/0$/, '');
+    return n + ' 亿';
+  }
+
+  /* ---------------- 折叠状态：localStorage 记住用户的选择 ----------------
+     键 mirror.status.open，值 {mx:…,mint:…,dist:…,na:…} 的布尔表。
+     没存过就用标记里的默认：铸造进度 + 分发展开（人来看的），
+     合约矩阵收起（给要复核的人的，七行地址很长），未接入收起。 */
+  var FOLD_KEY = 'mirror.status.open';
+  function folds() { return document.querySelectorAll('details.fold'); }
+  function foldSave() {
+    var o = {}, fs = folds(), i;
+    for (i = 0; i < fs.length; i++) o[fs[i].getAttribute('data-fold')] = fs[i].open;
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify(o)); } catch (e) { /* 隐私模式：不记就不记 */ }
+  }
+  function foldRestore() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(FOLD_KEY) || 'null'); } catch (e) { saved = null; }
+    var fs = folds(), i, d, k;
+    for (i = 0; i < fs.length; i++) {
+      d = fs[i]; k = d.getAttribute('data-fold');
+      if (saved && typeof saved[k] === 'boolean') d.open = saved[k];
+      d.addEventListener('toggle', foldSave);
+    }
+  }
+
+  /* ---------------- 合约矩阵 ---------------- */
+  var ROWS = [
+    /* [中文名, 合约名, 地址, 参数格填充器 key] */
+    ['BANG 代币', 'BangToken', CFG.bangToken, 'bang'],
+    ['宇宙 NFT', 'MirrorUniverse', CFG.contract, 'mu'],
+    ['市场', 'MirrorMarket', CFG.market, 'market'],
+    ['命名', 'BangNames', CFG.bangNames, 'names'],
+    ['团队锁仓', 'BangVesting', VESTING, 'vesting'],
+    ['上交易所费用金库', 'BangPromo', PROMO, 'promo'],
+    ['造物 NFT', 'MirrorCrafted', CFG.crafted, 'crafted']
+  ];
+  /* 返利金库只在 config.referral 配了之后才进矩阵：没配时整行不出现，
+     免得「未接入」清单在三池现状下自造一条警报（零回归）。 */
+  if (REF) ROWS.push(['返利金库', 'BangPromo', REF, 'referral']);
+  function mountMatrix() {
+    /* 整块重组（表头也在内）：语言切换时同一个函数再跑一遍就是重画，
+       不会像原来那样把旧行留在 innerHTML 里叠一份。 */
+    var mx = $('mx'), i;
+    var h = '<div class="hd">' + T('合约') + '</div><div class="hd">' + T('地址') + '</div><div class="hd">' + T('状态 · 关键参数') + '</div>';
+    for (i = 0; i < ROWS.length; i++) {
+      var r = ROWS[i];
+      h += '<div class="name"><b>' + T(r[0]) + '</b><span class="en" data-nolang>' + r[1] + '</span></div>' +
+        '<div class="addr">' + (isAddr(r[2])
+          ? '<a target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" href="' + EXPLORER + r[2] + '">' + r[2] + '</a>'
+          : '<span class="warntx">' + T('未部署') + '</span>') + '</div>' +
+        '<div class="st" id="st-' + r[3] + '">' + (isAddr(r[2]) ? T('读取中…') : '—') + '</div>';
+    }
+    mx.innerHTML = h;
+  }
+
+  function dot(on) {
+    return on == null ? '<span class="dot"></span>'
+      : '<span class="dot ' + (on ? 'on' : 'off') + '"></span>';
+  }
+  function online(on) {
+    return on == null ? dot(null) + '<span class="dimtx">—</span>'
+      : on ? dot(true) + T('在线') : dot(false) + '<span class="warntx">' + T('离线') + '</span>';
+  }
+  function gateTxt(signerWord) {
+    if (signerWord == null) return '<span class="dimtx">' + T('闸 —') + '</span>';
+    return isZeroWord(signerWord)
+      ? '<span class="warntx">' + T('闸关着') + '</span>'
+      : '<span class="oktx">' + T('闸开着') + '</span>';
+  }
+
+  /* ---------------- 主读取 ---------------- */
+  var loading = false;
+  function load() {
+    if (loading) return;
+    loading = true;
+    $('btnRe').disabled = true;
+
+    /* 元信息行 */
+    rpc('eth_chainId', []).then(function (r) {
+      var id = toBig(r);
+      /* 认得出来（= 和 config.js 的 chain.id 对得上）就报链名，对不上只报数字 ——
+         那正是「RPC 连错链了」的信号，编一个链名反而把它藏起来。 */
+      $('mChain').textContent = id == null ? '—'
+        : (id === BigInt(CH.id) ? chainName() + ' · ' + id : 'chainId ' + id);
+    });
+    rpc('eth_blockNumber', []).then(function (r) {
+      var n = toBig(r);
+      $('mBlock').textContent = n == null ? '—' : grp(n.toString());
+    });
+
+    /* 在线状态：eth_getCode 非空 = 在线 */
+    var codes = {};
+    var pCodes = ROWS.map(function (r) {
+      if (!isAddr(r[2])) { codes[r[3]] = null; return Promise.resolve(); }
+      return code(r[2]).then(function (c) {
+        codes[r[3]] = (c == null) ? null : (c.length > 2);
+      });
+    });
+
+    /* 关键参数（都是只读 view，读不到显 —） */
+    var V = {};
+    function read(key, to, sel) {
+      if (!isAddr(to)) { V[key] = null; return Promise.resolve(); }
+      return call(to, sel).then(function (r) { V[key] = r; });
+    }
+    var bal = function (who) { return SEL.balanceOf + who.slice(2).toLowerCase().padStart(64, '0'); };
+    var pVals = [
+      read('bangSupply', CFG.bangToken, SEL.totalSupply),
+      read('reward', CFG.bangToken, SEL.rewardMinted),
+      read('devMinted', CFG.bangToken, SEL.devMinted),
+      read('promoMinted', CFG.bangToken, SEL.promoMinted),
+      read('balVesting', CFG.bangToken, isAddr(CFG.bangToken) ? bal(VESTING) : ''),
+      read('balPromo', CFG.bangToken, isAddr(CFG.bangToken) ? bal(PROMO) : ''),
+      read('muSupply', CFG.contract, SEL.totalSupply),
+      read('muSigner', CFG.contract, SEL.signer),
+      read('mktBangFee', CFG.market, SEL.bangFeeBps),
+      read('mktBnbFee', CFG.market, SEL.bnbFeeBps),
+      read('cfSupply', CFG.crafted, SEL.totalSupply),
+      read('cfSigner', CFG.crafted, SEL.signer),
+      read('cfBurn', CFG.crafted, SEL.burnBps),
+      /* CAP 三连：8 亿老合约和 6 亿 v5.1 合约上都有这些 getter，读到什么显示什么 */
+      read('rewardCap', CFG.bangToken, SEL.rewardCap),
+      read('devCap', CFG.bangToken, SEL.devCap),
+      read('promoCap', CFG.bangToken, SEL.promoCap),
+      /* 返利池：config.referral 配了才读（老三池合约上 referralMinted() 会 revert，
+         没必要每次刷新都去撞一遍） */
+      read('referralCap', REF ? CFG.bangToken : '', SEL.referralCap),
+      read('referralMinted', REF ? CFG.bangToken : '', SEL.referralMinted),
+      read('balRef', REF && isAddr(CFG.bangToken) ? CFG.bangToken : '', REF ? bal(REF) : ''),
+      read('refGranted', REF, SEL.granted)
+    ];
+
+    Promise.all(pCodes.concat(pVals)).then(function () {
+      /* ---- 矩阵状态格 ---- */
+      function st(key, extra) {
+        var el = $('st-' + key);
+        if (!el) return;
+        el.innerHTML = online(codes[key]) + (extra ? ' · ' + extra : '');
+      }
+      function bps(hex, denomTxt) {
+        var v = toBig(hex);
+        return v == null ? '—' : (Number(v) / 100) + '%' + (denomTxt || '');
+      }
+      st('bang', T('已发行') + ' <span class="num">' + fmtBang(toBig(V.bangSupply)) + '</span>');
+      st('mu', gateTxt(V.muSigner));
+      st('market', T('费 BANG ') + bps(V.mktBangFee) + ' / BNB ' + bps(V.mktBnbFee));
+      st('names', T('命名烧 BANG'));
+      st('vesting', T('未领') + ' <span class="num">' + fmtBang(toBig(V.balVesting)) + '</span>');
+      st('promo', T('未发') + ' <span class="num">' + fmtBang(toBig(V.balPromo)) + '</span>');
+      if (REF) st('referral', T('未发') + ' <span class="num">' + fmtBang(toBig(V.balRef)) + '</span>');
+      st('crafted', gateTxt(V.cfSigner) + ' · ' + T('烧') + ' ' + bps(V.cfBurn));
+
+      /* ---- 铸造进度 ---- */
+      var mu = toBig(V.muSupply);
+      $('muSupply').textContent = mu == null ? '—' : grp(mu.toString());
+      if (mu != null) {
+        var pct = Number(mu * 10000n / 1707000n) / 100;
+        $('muBar').style.width = Math.max(pct, mu > 0n ? 0.3 : 0) + '%';
+      }
+      var cf = toBig(V.cfSupply);
+      $('cfSupply').textContent = cf == null ? '—' : grp(cf.toString());
+
+      /* ---- 代币分发全景 ----
+         已铸出总量 = rewardMinted + 各一次性池（devMinted/promoMinted/referralMinted）
+         按各自的 CAP 计入。BangToken 只有这几条铸币通道（构造函数零铸），推导完备。
+         CAP 读链优先（REWARD_CAP 等是 public 常量），读不到才退回写死值 ——
+         这样 8 亿老合约和 6 亿 v5.1 合约都显示正确，文案不会落后链上。
+         累计销毁 = 已铸出总量 − totalSupply：烧掉的币不管从哪个口烧
+        （拯救 100%、造物 20%、命名），都会从 totalSupply 里消失，差值就是它。 */
+      var HUNDRED_M = 100000000n * E18;                       // 1e26 = 1 亿 BANG
+      var TWO_HUNDRED_M = 200000000n * E18;
+      var reward = toBig(V.reward);
+      var dev = toBig(V.devMinted), promo = toBig(V.promoMinted);
+      var supply = toBig(V.bangSupply);
+      var balV = toBig(V.balVesting), balP = toBig(V.balPromo);
+      /* CAP：读到用读到的，读不到退回写死值。REWARD 的写死值按口径分叉：
+         配了返利池 = v5.1 = 6 亿；没配 = 现状三池 = 8 亿。 */
+      var capReward = toBig(V.rewardCap);
+      if (capReward == null) capReward = REF ? 600000000n * E18 : 800000000n * E18;
+      var capDev = toBig(V.devCap); if (capDev == null) capDev = HUNDRED_M;
+      var capPromo = toBig(V.promoCap); if (capPromo == null) capPromo = HUNDRED_M;
+      var capRef = toBig(V.referralCap); if (capRef == null) capRef = TWO_HUNDRED_M;
+      var devIn = dev == null ? null : dev !== 0n;
+      var promoIn = promo == null ? null : promo !== 0n;
+      /* 返利注入与已发放：没配返利池时恒为 false/0，不参与计算（= 现状） */
+      var refM = REF ? toBig(V.referralMinted) : 0n;
+      var refIn = REF ? (refM == null ? null : refM !== 0n) : false;
+      var balR = toBig(V.balRef), refGranted = toBig(V.refGranted);
+      var minted = (reward == null || devIn == null || promoIn == null || refIn == null) ? null
+        : reward + (devIn ? capDev : 0n) + (promoIn ? capPromo : 0n) + (refIn ? capRef : 0n);
+      var burned = (minted == null || supply == null) ? null : minted - supply;
+      var devTaken = (devIn && balV != null) ? capDev - balV : (devIn === false ? 0n : null);
+      var promoOut = (promoIn && balP != null) ? capPromo - balP : (promoIn === false ? 0n : null);
+      /* 已发放优先用金库自己的 granted() 计数；读不到退回 CAP − 余额 */
+      var refOut = refIn ? (refGranted != null ? refGranted
+                            : (balR != null ? capRef - balR : null))
+                         : (refIn === false ? 0n : null);
+
+      $('dRewardCap').textContent = '/ ' + fmtYi(capReward);
+      $('dDevCapLabel').textContent = TF('团队 {0}', fmtYi(capDev));
+      $('dPromoCapLabel').textContent = TF('上交易所费用 {0}', fmtYi(capPromo));
+      $('dGive').textContent = fmtBang(reward);
+      $('dDevFlag').innerHTML = devIn == null ? '—' : (devIn ? '<span class="oktx">' + T('已注入锁仓 ✓') + '</span>' : '<span class="warntx">' + T('未注入') + '</span>');
+      $('dDev').textContent = fmtBang(devTaken);
+      $('dPromoFlag').innerHTML = promoIn == null ? '—' : (promoIn ? '<span class="oktx">' + T('已注入 ✓') + '</span>' : '<span class="warntx">' + T('未注入') + '</span>');
+      $('dPromo').textContent = fmtBang(promoOut);
+      if (REF) {
+        $('dRefCapLabel').textContent = TF('邀请返利 {0}', fmtYi(capRef));
+        $('dRefFlag').innerHTML = refIn == null ? '—' : (refIn ? '<span class="oktx">' + T('已注入 ✓') + '</span>' : '<span class="warntx">' + T('未注入') + '</span>');
+        $('dRef').textContent = fmtBang(refOut);
+      }
+      $('dBurn').textContent = fmtBang(burned);
+
+      /* 堆叠条：宽度 = 占 10 亿的比例；非零但小到看不见的段给 2px 底线 */
+      var TOTAL = 1000000000n * E18;
+      function seg(id, v) {
+        var el = $(id);
+        if (v == null || v <= 0n) { el.style.width = '0'; return; }
+        el.style.width = (Number(v * 10000n / TOTAL) / 100) + '%';
+        el.style.minWidth = '2px';
+      }
+      seg('sgGive', reward);
+      seg('sgRef', refIn ? capRef : 0n);
+      seg('sgTeam', devIn ? capDev : 0n);
+      seg('sgPromo', promoIn ? capPromo : 0n);
+      seg('sgBurn', burned);
+
+      /* ---- 折叠段的摘要行 ----
+         数字与展开后的内容同源同变量（mu/cf/minted/burned/codes），
+         不另算一遍 —— 摘要跟正文对不上是最糟的一种错。 */
+      var onN = 0, na = [], iR, rR;
+      for (iR = 0; iR < ROWS.length; iR++) {
+        rR = ROWS[iR];
+        if (codes[rR[3]] === true) onN++;
+        if (!isAddr(rR[2])) na.push([rR[0], rR[1], T('未部署（还没填地址）')]);
+        else if (codes[rR[3]] === false) na.push([rR[0], rR[1], T('地址有，链上读不到代码（离线）')]);
+      }
+      $('fsMx').textContent = onN === ROWS.length
+        ? TF('{0} 个合约 · 全部在线', ROWS.length)
+        : TX('{0}/{1} 在线', onN, ROWS.length);
+      $('fsMx').className = 'fsum' + (onN === ROWS.length ? '' : ' warn');
+      $('fsMint').textContent = TX('宇宙 {0} / 1,707,000 · 造物 {1}',
+        (mu == null ? '—' : grp(mu.toString())), (cf == null ? '—' : grp(cf.toString())));
+      $('fsDist').textContent = TX('已发行 {0} / 10 亿 · 已销毁 {1}', fmtYi(minted), fmtYi(burned));
+      var fNa = $('foldNa');
+      if (na.length) {
+        var hNa = '';
+        for (iR = 0; iR < na.length; iR++) {
+          hNa += '<div class="row"><span class="k"><b>' + T(na[iR][0]) + '</b> · ' + na[iR][1] + '</span>'
+            + '<span class="warntx">' + na[iR][2] + '</span></div>';
+        }
+        $('naList').innerHTML = hNa;
+        $('fsNa').textContent = TF('{0} 项', na.length);
+        fNa.hidden = false;
+      } else {
+        fNa.hidden = true;   // 全部接入：整块不显示，摆一个空清单等于自造警报
+      }
+
+      $('mRpc').textContent = rpcUsed;
+      $('mTime').textContent = new Date().toTimeString().slice(0, 8);
+      loading = false;
+      $('btnRe').disabled = false;
+    });
+  }
+
+  /* ---- 四池口径（v5.1，2026-08-22 起唯一口径）----
+     现役链上就是四池（6/2/1/1，config.referral 非空）；三池那套旧文案
+     随合约退役一起删了 —— 两个分支同一句话，分支只保留结构以便将来再分叉。 */
+  function renderWhy() {
+    /* 由 JS 用整句词条重写（带 <b> 强调）：英文整段命中。 */
+    $('distWhy').innerHTML = REF
+      ? T('BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + <b>邀请返利 2 亿</b> + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。<br>2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发 4.74 亿 &lt; 6 亿，<b>铸造奖励的发放规则一分不变</b>。这一套合约已按四份部署 —— 下面第二行就是返利池的注入与发放进度。')
+      : T('BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + 邀请返利 2 亿 + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发约 4.74 亿，不到 6 亿，铸造奖励的发放规则一分不变。');
+    $('mxWhy').textContent = REF
+      ? T('八个合约的地址、在线状态与关键参数。点击进区块浏览器。')
+      : T('八个合约的地址、在线状态与关键参数。点击进区块浏览器。');
+  }
+  if (REF) {
+    $('rowRef').hidden = false;
+    $('legRef').hidden = false;
+  }
+  renderWhy();
+
+  mountMatrix();
+  renderChainText();
+  document.addEventListener('mirror:lang', renderChainText);
+  /* 语言切换：矩阵与口径段整块重画，读数重新拉一遍（load 自带 loading 防抖）。
+     静态标记那一半由 MirrorI18n 的 DOM 遍历处理，这里只管 JS 拼出来的。 */
+  document.addEventListener('mirror:lang', function () {
+    renderWhy();
+    mountMatrix();
+    load();
+  });
+  foldRestore();
+  $('btnRe').addEventListener('click', load);
+  load();
+})();
+</script>
+</body>
+</html>

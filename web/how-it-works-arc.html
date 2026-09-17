@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- canonical / og:url / hreflang 里写的是**主站的占位域名**，不是笔误：web/build-web.js 的
+     siteify() 只改写 <title>/<meta>/<link> 与 ld+json，把那个占位域名整体换成 SITES.arc.base
+     （arcbang.xyz）、站名换成 ARCBANG、/assets/og/home.jpg 换成 SITES.arc.og。
+     域名只存在于 SITES 表那一处，换域那天不用回来改这些文件。
+     **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
+<title>每个 Arc 区块哈希，都是一个宇宙 —— ARCBANG 是怎么回事</title>
+<meta name="description" content="Arc 每半秒出一个块。ARCBANG 把块哈希的 32 个字节当成一个宇宙的物理常数，让它从头跑到底。多半长不出任何东西，偶尔有一个能长出恒星和行星。免费玩，喜欢再铸，全网 1,387 枚。">
+<link rel="canonical" href="https://bnbbang.com/how-it-works.html">
+<link rel="alternate" hreflang="zh-CN" href="https://bnbbang.com/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://bnbbang.com/en/how-it-works.html">
+<link rel="alternate" hreflang="x-default" href="https://bnbbang.com/en/how-it-works.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://bnbbang.com/how-it-works.html">
+<meta property="og:title" content="每个 Arc 区块哈希，都是一个宇宙">
+<meta property="og:description" content="把 Arc 区块哈希当成一个宇宙的出厂参数，跑一遍看它能长出什么。九成多什么也长不出来。">
+<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="每个 Arc 区块哈希，都是一个宇宙">
+<meta name="twitter:description" content="把 Arc 区块哈希当成一个宇宙的出厂参数，跑一遍看它能长出什么。九成多什么也长不出来。">
+<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "每个 Arc 区块哈希，都是一个宇宙",
+  "description": "ARCBANG 把 Arc 区块哈希的 32 个字节当成一个宇宙的物理常数，跑到热寂为止。多数宇宙长不出任何东西。",
+  "url": "https://bnbbang.com/how-it-works.html",
+  "inLanguage": "zh-CN",
+  "dateModified": "2026-09-17",
+  "author": { "@type": "Organization", "name": "ARCBANG", "url": "https://bnbbang.com/" },
+  "publisher": { "@type": "Organization", "name": "ARCBANG", "url": "https://bnbbang.com/", "logo": { "@type": "ImageObject", "url": "https://bnbbang.com/assets/icons/icon-512.png" } },
+  "image": "https://bnbbang.com/assets/og/home.jpg"
+}
+</script>
+<!-- 中文页在根路径、英文页在 /en/（与首页同一条规矩）。整个 <main> 与页脚都带 data-nolang：
+     两种语言各写一份静态页，不走运行时翻译，i18n 只管顶栏与钱包 chip 那一半。 -->
+<script>try{localStorage.setItem("mirror.lang","zh")}catch(e){}</script>
+<!-- 不挂 Google Fonts：国内访问会等它超时才渲染；字体栈全是系统字体。 -->
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="arc-doc.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">跳到主要内容</a>
+
+<div id="siteNavMount"></div>
+<script>MirrorNav.mount({ page: 'doc' });</script>
+
+<main id="main" data-nolang>
+<div class="ab-wrap">
+
+<header class="ad-head">
+  <h1 class="ad-h1">每个 Arc 区块哈希，都是一个宇宙</h1>
+  <p class="ad-lede">Arc 每半秒出一个块，每个块带一串谁也预定不了的哈希。我把那 32 个字节当成一个宇宙的出厂参数，让它从头跑到底，看能长出点什么。多半长不出来。</p>
+  <div class="ad-cta">
+    <a class="ab-btn" href="app.html">去引爆一个区块</a>
+    <a class="ab-btn2" href="faq.html">常见问题</a>
+  </div>
+</header>
+
+<div class="ad-body">
+
+<nav class="ad-rail" aria-label="本页目录">
+  <p class="ad-railhead">这一页</p>
+  <ol>
+    <li><a href="#idea"><span>哪来的宇宙</span></a></li>
+    <li><a href="#dead"><span>多数是废的</span></a></li>
+    <li><a href="#alive"><span>偶尔有一个活的</span></a></li>
+    <li><a href="#play"><span>怎么玩</span></a></li>
+    <li><a href="#supply"><span>1,387 枚</span></a></li>
+    <li><a href="#code"><span>代码</span></a></li>
+  </ol>
+</nav>
+
+<div class="ad-main">
+
+<section class="ad-sec" id="idea">
+<h2 class="ad-h2">哪来的宇宙</h2>
+<p>哈希被拆成 23 个数，全是物理常数：引力多强、电子多重、暗能量多少、空间几个维度。拿这 23 个数当初始条件，按真实的宇宙学往下推，从暴胀一直推到热寂。</p>
+<p>所以它不是随机生成器，是个函数。同一个哈希，今天跑和十年后跑，出来的是同一个宇宙。我也没本事为了好看去调它，哈希给什么就是什么。</p>
+</section>
+
+<section class="ad-sec" id="dead">
+<h2 class="ad-h2">多数是废的</h2>
+<p>最先卡住的通常是 D。D 是空间维数，说白了就是空间有几个方向，我们这边是 3。哈希随手给出来的往往是 9、14、18 这种。维数一高引力就太陡，行星绕不住恒星，电子也绕不住原子核——这种宇宙第一秒就结束了。</p>
+<p>过了这关还有下一关：撑不撑得出原子、星系、恒星、碳。任何一关过不去就停在那儿，给一个结局名字。我随机抽了 1,600 个块试，九成多停在第一关。</p>
+<figure class="ad-plate">
+  <div class="win"><img src="assets/gallery/21000009-dim18-800.webp" width="800" height="474" loading="lazy" alt="十八维宇宙的 N 体模拟投影到三个坐标轴上，物质没有成团"></div>
+  <figcaption>区块 21,000,009 给出的是 <span class="h">D = 18</span>。这是真按 18 维算完再投影到三个轴上的，物质散着，谁也抓不住谁。</figcaption>
+</figure>
+</section>
+
+<section class="ad-sec" id="alive">
+<h2 class="ad-h2">偶尔有一个活的</h2>
+<p>大概十几到三十个块能碰上一个：星系长出来了，恒星点着了，有碳有水，时间也够长。这种引擎会一路画到行星表面，你可以自己转着看。</p>
+<figure class="ad-plate">
+  <div class="win"><img src="assets/gallery/1000021-web-800.webp" width="800" height="474" loading="lazy" alt="宇宙网结构，圈出的是引擎识别到的暗物质晕"></div>
+  <figcaption>区块 1,000,021 长出了结构。圈出来的是这个宇宙里的晕，一共 113 个。</figcaption>
+</figure>
+</section>
+
+<section class="ad-sec" id="play">
+<h2 class="ad-h2">怎么玩</h2>
+<p>打开模拟器点「最新」，或者填一个你在意的高度——生日那天的块、你第一笔交易那天的块都行。算几秒出结果。不要钱，不要钱包，看多少个都行。</p>
+<p>旁边还有个沙盒，可以自己推常数，看结局跟着变。纯玩，推出来的东西不上链也不能铸。</p>
+</section>
+
+<section class="ad-sec" id="supply">
+<h2 class="ad-h2">1,387 枚</h2>
+<p>宇宙 137.87 亿岁，我就照这个取的数：一枚 NFT 顶一千万年。铸满就没了，不会再加。</p>
+<p>前 387 枚不收钱，每个地址一枚，只出 gas。Arc 上的 gas 就是 USDC，一次铸造三厘钱左右，不用另备什么燃料币。之后每枚 1 USDC，每个地址最多再拿 3 枚——限 3 是怕被一个人扫光，不是拿来制造紧张感的。</p>
+<p>铸出来就是标准 ERC-721，能挂 OpenSea 转手，版税 5%。</p>
+</section>
+
+<section class="ad-sec" id="code">
+<h2 class="ad-h2">代码</h2>
+<p>引擎开源，AGPL-3.0。23 个常数具体怎么推、结局怎么判，代码里写得比我在这儿铺一页表格清楚：<a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>。</p>
+<p>想核对某一枚 NFT 是不是真算出来的，<a href="verify.html">自己验证</a>那页有两条命令，几分钟的事。</p>
+<div class="ad-end-cta">
+  <a class="ab-btn" href="app.html">去引爆一个区块</a>
+  <a class="ab-btn2" href="faq.html">常见问题</a>
+  <a class="ab-btn2" href="verify.html">自己验一遍</a>
+</div>
+</section>
+
+</div><!-- /.ad-main -->
+</div><!-- /.ad-body -->
+</div><!-- /.ab-wrap -->
+</main>
+
+<footer class="ab-foot" data-nolang>
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARC宇宙</div>
+      <nav class="ab-foot-lnk" aria-label="页脚">
+        <a href="/">首页</a>
+        <a href="app.html">模拟器</a>
+        <a href="faq.html">常见问题</a>
+        <a href="verify.html">自己验证</a>
+        <a href="/en/how-it-works.html" hreflang="en">English</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">用区块哈希造宇宙。免费引爆，喜欢再铸。</p>
+    <div class="ab-legal">
+      <span>© 2026 ARCBANG</span>
+      <span>一件收藏品，一次实验，不是投资产品。</span>
+      <span><a href="https://github.com/q3579338/arcbang">引擎开源（AGPL-3.0）</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

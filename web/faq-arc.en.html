@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 落盘到 /en/faq.html（build-web.js 的 SITES.arc.enPages）。相对地址由 absolutize() 在落盘时
+     改成根绝对；SEO 头里写的是主站的占位域名，siteify() 会换成 SITES.arc.base。 -->
+<title>ARCBANG questions</title>
+<meta name="description" content="Ten things people ask before playing ARCBANG: does it cost anything, do I need a wallet, why did my universe die, can I sell what I mint, why the limit of 3, how is this different from other NFTs, is the art drawn or computed, is the code open, will there be a token.">
+<link rel="canonical" href="https://bnbbang.com/en/faq.html">
+<link rel="alternate" hreflang="zh-CN" href="https://bnbbang.com/faq.html">
+<link rel="alternate" hreflang="en" href="https://bnbbang.com/en/faq.html">
+<link rel="alternate" hreflang="x-default" href="https://bnbbang.com/en/faq.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://bnbbang.com/en/faq.html">
+<meta property="og:title" content="ARCBANG questions">
+<meta property="og:description" content="What it costs, why your universe died, whether you can sell it, why the limit of 3, and whether there will ever be a token. Ten short answers.">
+<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ARCBANG questions">
+<meta name="twitter:description" content="What it costs, why your universe died, whether you can sell it, why the limit of 3, and whether there will ever be a token.">
+<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "url": "https://bnbbang.com/en/faq.html",
+  "inLanguage": "en",
+  "mainEntity": [
+    { "@type": "Question", "name": "Does playing cost anything?", "acceptedAnswer": { "@type": "Answer", "text": "No. Detonating runs in your own browser. Look at as many universes as you want and it costs nothing." } },
+    { "@type": "Question", "name": "Do I need a wallet?", "acceptedAnswer": { "@type": "Answer", "text": "Only if you want to keep one of them as an NFT. Browsing needs nothing." } },
+    { "@type": "Question", "name": "Why did my universe die so fast?", "acceptedAnswer": { "@type": "Answer", "text": "Almost always the number of spatial dimensions. D is how many directions space has; ours is 3. Hashes hand out 9, 14 or 18 all the time, and at those numbers planets cannot hold an orbit and electrons cannot hold onto a nucleus, so it is over in the first second. More than nine blocks in ten end this way." } },
+    { "@type": "Question", "name": "What does a mint cost?", "acceptedAnswer": { "@type": "Answer", "text": "The first 387 are free, one per address, gas only. Gas on Arc is USDC and a mint works out to a fraction of a cent. After that it is 1 USDC per mint and any address can take at most 3 more. There are 1,387 in total." } },
+    { "@type": "Question", "name": "Can I sell what I mint?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is a plain ERC-721, so list it on OpenSea. Royalties are 5%. There is also a simple listing and buying page on the site." } },
+    { "@type": "Question", "name": "Why is the paid mint limited to 3 per address?", "acceptedAnswer": { "@type": "Answer", "text": "At 1 USDC a script could take the whole supply in minutes and everyone else would be left buying on the secondary market. Three is there to keep the first mint within reach of more people." } },
+    { "@type": "Question", "name": "How is this different from other NFT projects?", "acceptedAnswer": { "@type": "Answer", "text": "Most projects sell you a spot and show the art later. Here the thing you want already exists before you pay, and it is free to look at. The scarcity is not a number I picked: one block hash yields one universe, and once someone mints it, it is gone." } },
+    { "@type": "Question", "name": "Is the art drawn or computed?", "acceptedAnswer": { "@type": "Answer", "text": "Computed. No artist, no layers, no asset library. Every image is a simulation of that universe's parameters, so a different angle looks different and a different constant changes the picture." } },
+    { "@type": "Question", "name": "Where is the code?", "acceptedAnswer": { "@type": "Answer", "text": "The engine is open source under AGPL-3.0 at github.com/q3579338/arcbang. Any NFT can be recomputed locally and compared against the chain." } },
+    { "@type": "Question", "name": "Will there be a token?", "acceptedAnswer": { "@type": "Answer", "text": "No. No token, no presale, no airdrop, no points. Just the 1,387 universes." } }
+  ]
+}
+</script>
+<script>try{localStorage.setItem("mirror.lang","en")}catch(e){}</script>
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="arc-doc.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">Skip to content</a>
+
+<div id="siteNavMount"></div>
+<script>MirrorNav.mount({ page: 'doc' });</script>
+
+<main id="main" data-nolang>
+<div class="ab-wrap">
+
+<header class="ad-head">
+  <h1 class="ad-h1">Questions</h1>
+  <p class="ad-lede">The ten I get asked most. The rest is on <a href="/en/how-it-works.html">what this is</a>, and after that, in the code.</p>
+  <div class="ad-cta">
+    <a class="ab-btn" href="app.html">Detonate a block</a>
+    <a class="ab-btn2" href="/en/how-it-works.html">What this is</a>
+  </div>
+</header>
+
+<div class="ad-body">
+
+<nav class="ad-rail" aria-label="On this page">
+  <p class="ad-railhead">On this page</p>
+  <ol>
+    <li><a href="#play"><span>Playing</span></a></li>
+    <li><a href="#mint"><span>Minting and selling</span></a></li>
+    <li><a href="#rest"><span>Everything else</span></a></li>
+  </ol>
+</nav>
+
+<div class="ad-main">
+
+<section class="ad-sec" id="play">
+<h2 class="ad-h2">Playing</h2>
+
+<div class="ad-qa">
+  <article class="ad-q">
+    <p class="verdict">No</p>
+    <div>
+      <h3>Does playing cost anything?</h3>
+      <p>Detonating runs in your own browser. Look at as many universes as you want; it costs nothing.</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">Not to look</p>
+    <div>
+      <h3>Do I need a wallet?</h3>
+      <p>Only if you want to keep one of them as an NFT. Browsing needs nothing at all.</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">Wrong number of dimensions</p>
+    <div>
+      <h3>Why did my universe die so fast?</h3>
+      <p>D is how many directions space has, and ours is 3. Hashes hand out 9, 14 or 18 all the time. At those numbers gravity is too steep for a planet to hold an orbit or an electron to hold onto a nucleus, and the whole thing is over in the first second. More than nine blocks in ten end this way, which is why finding one that grows stars is worth something.</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">Computed</p>
+    <div>
+      <h3>Is the art drawn or computed?</h3>
+      <p>No artist, no layers, no asset library. Every image is a simulation of that universe's own parameters — turn it and you see something else, change one constant and the picture changes with it.</p>
+    </div>
+  </article>
+</div>
+</section>
+
+<section class="ad-sec" id="mint">
+<h2 class="ad-h2">Minting and selling</h2>
+
+<div class="ad-qa">
+  <article class="ad-q">
+    <p class="verdict">First 387 are free</p>
+    <div>
+      <h3>What does a mint cost?</h3>
+      <p>The first 387 are free, one per address, gas only. Gas on Arc is USDC, so a mint is a fraction of a cent and you never need a separate fuel token. After that it is 1 USDC, and any one address can take at most 3 more. There are 1,387 in total, then minting stops.</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">Yes</p>
+    <div>
+      <h3>Can I sell what I mint?</h3>
+      <p>It is a plain ERC-721, so list it on OpenSea. Royalties are 5%. The site also has a simple listing and buying page, with the fee ceiling written into the contract.</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">Bots</p>
+    <div>
+      <h3>Why is the paid mint limited to 3?</h3>
+      <p>1 USDC is cheap enough that a script could take the whole supply in minutes, and everyone else would be left buying on the secondary market. Three keeps the first mint within reach of more people. It is not there to make anyone feel rushed.</p>
+    </div>
+  </article>
+</div>
+</section>
+
+<section class="ad-sec" id="rest">
+<h2 class="ad-h2">Everything else</h2>
+
+<div class="ad-qa">
+  <article class="ad-q">
+    <p class="verdict">The thing exists first</p>
+    <div>
+      <h3>How is this different from other NFT projects?</h3>
+      <p>Most of them sell you a spot and show the art later. Here the thing you want is already on your screen before you pay anything, and looking is free. The scarcity is not a number I picked either: one block hash yields one universe, and once someone mints it, that one is gone.</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">Open source</p>
+    <div>
+      <h3>Where is the code?</h3>
+      <p>The engine is AGPL-3.0 at <a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>. Any NFT can be recomputed on your own machine and compared against the chain — two commands, listed on <a href="/en/verify.html">verify</a>.</p>
+    </div>
+  </article>
+
+  <article class="ad-q">
+    <p class="verdict">No</p>
+    <div>
+      <h3>Will there be a token?</h3>
+      <p>No token, no presale, no airdrop, no points to farm. Just the 1,387 universes, and when they are minted this is finished.</p>
+    </div>
+  </article>
+</div>
+
+<div class="ad-end-cta">
+  <a class="ab-btn" href="app.html">Detonate a block</a>
+  <a class="ab-btn2" href="/en/how-it-works.html">What this is</a>
+  <a class="ab-btn2" href="/en/verify.html">Verify it yourself</a>
+</div>
+</section>
+
+</div><!-- /.ad-main -->
+</div><!-- /.ad-body -->
+</div><!-- /.ab-wrap -->
+</main>
+
+<footer class="ab-foot" data-nolang>
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARCBANG</div>
+      <nav class="ab-foot-lnk" aria-label="Footer">
+        <a href="/en/">Home</a>
+        <a href="app.html">Simulator</a>
+        <a href="/en/how-it-works.html">What this is</a>
+        <a href="/en/verify.html">Verify</a>
+        <a href="/faq.html" hreflang="zh-CN">中文</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">Universes made from block hashes. Free to detonate, mint the one you want to keep.</p>
+    <div class="ab-legal">
+      <span>© 2026 ARCBANG</span>
+      <span>A collectible and an experiment, not an investment product.</span>
+      <span><a href="https://github.com/q3579338/arcbang">Engine source (AGPL-3.0)</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

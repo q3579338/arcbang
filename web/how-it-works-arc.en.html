@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 落盘到 /en/how-it-works.html（build-web.js 的 SITES.arc.enPages）。落在子目录里，
+     所有相对地址由 prerender-en.js 的 absolutize() 在落盘时改成根绝对，源文件照常写相对。
+     SEO 头里写的是主站的占位域名，siteify() 会换成 SITES.arc.base —— 与中文版同一条规矩。 -->
+<title>Every Arc block hash is a universe — what ARCBANG is</title>
+<meta name="description" content="Arc closes a block every half second. ARCBANG takes the 32 bytes of the block hash as the physical constants of a universe and runs it. Most of them are duds; once in a while one grows stars and planets. Free to play, 1,387 to mint.">
+<link rel="canonical" href="https://bnbbang.com/en/how-it-works.html">
+<link rel="alternate" hreflang="zh-CN" href="https://bnbbang.com/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://bnbbang.com/en/how-it-works.html">
+<link rel="alternate" hreflang="x-default" href="https://bnbbang.com/en/how-it-works.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://bnbbang.com/en/how-it-works.html">
+<meta property="og:title" content="Every Arc block hash is a universe">
+<meta property="og:description" content="Take a block hash as the factory settings of a universe, run it, see what grows. Nine times out of ten, nothing.">
+<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Every Arc block hash is a universe">
+<meta name="twitter:description" content="Take a block hash as the factory settings of a universe, run it, see what grows. Nine times out of ten, nothing.">
+<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Every Arc block hash is a universe",
+  "description": "ARCBANG reads the 32 bytes of an Arc block hash as the physical constants of a universe and runs it to heat death. Most universes never grow anything.",
+  "url": "https://bnbbang.com/en/how-it-works.html",
+  "inLanguage": "en",
+  "dateModified": "2026-09-17",
+  "author": { "@type": "Organization", "name": "ARCBANG", "url": "https://bnbbang.com/" },
+  "publisher": { "@type": "Organization", "name": "ARCBANG", "url": "https://bnbbang.com/", "logo": { "@type": "ImageObject", "url": "https://bnbbang.com/assets/icons/icon-512.png" } },
+  "image": "https://bnbbang.com/assets/og/home.jpg"
+}
+</script>
+<script>try{localStorage.setItem("mirror.lang","en")}catch(e){}</script>
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="arc-doc.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">Skip to content</a>
+
+<div id="siteNavMount"></div>
+<script>MirrorNav.mount({ page: 'doc' });</script>
+
+<main id="main" data-nolang>
+<div class="ab-wrap">
+
+<header class="ad-head">
+  <h1 class="ad-h1">Every Arc block hash is a universe</h1>
+  <p class="ad-lede">Arc closes a block every half second, and every block comes with a hash nobody can order in advance. I take those 32 bytes as the factory settings of a universe and run it from the start. Usually nothing comes of it.</p>
+  <div class="ad-cta">
+    <a class="ab-btn" href="app.html">Detonate a block</a>
+    <a class="ab-btn2" href="/en/faq.html">Questions</a>
+  </div>
+</header>
+
+<div class="ad-body">
+
+<nav class="ad-rail" aria-label="On this page">
+  <p class="ad-railhead">On this page</p>
+  <ol>
+    <li><a href="#idea"><span>Where the universe comes from</span></a></li>
+    <li><a href="#dead"><span>Most are duds</span></a></li>
+    <li><a href="#alive"><span>Once in a while, one works</span></a></li>
+    <li><a href="#play"><span>How to play</span></a></li>
+    <li><a href="#supply"><span>1,387 of them</span></a></li>
+    <li><a href="#code"><span>The code</span></a></li>
+  </ol>
+</nav>
+
+<div class="ad-main">
+
+<section class="ad-sec" id="idea">
+<h2 class="ad-h2">Where the universe comes from</h2>
+<p>The hash is unpacked into 23 numbers, all of them physical constants: how strong gravity is, how heavy the electron is, how much dark energy there is, how many dimensions space has. Those 23 numbers become the starting conditions, and real cosmology takes it from there — inflation through to heat death.</p>
+<p>So it is a function, not a random generator. The same hash gives the same universe today and in ten years. I cannot nudge one into looking nicer either; the hash says what it says.</p>
+</section>
+
+<section class="ad-sec" id="dead">
+<h2 class="ad-h2">Most are duds</h2>
+<p>The first thing that usually goes wrong is D. D is the number of dimensions space has — we live with 3. Hashes hand out 9, 14, 18 all the time. Gravity gets too steep at those numbers, planets cannot hold an orbit and electrons cannot hold onto a nucleus, so the whole thing is over in the first second.</p>
+<p>Clear that and there is another gate, then another: atoms, galaxies, stars, carbon. The run stops at the first one it fails and that failure becomes the name of the universe. I drew 1,600 random blocks once; more than nine in ten stopped at the very first gate.</p>
+<figure class="ad-plate">
+  <div class="win"><img src="assets/gallery/21000009-dim18-800.webp" width="800" height="474" loading="lazy" alt="N-body projection of an eighteen-dimensional universe; matter never clumps"></div>
+  <figcaption>Block 21,000,009 came out at <span class="h">D = 18</span>. This is a real 18-dimensional run, projected back onto three axes. Matter just drifts; nothing ever catches hold of anything.</figcaption>
+</figure>
+</section>
+
+<section class="ad-sec" id="alive">
+<h2 class="ad-h2">Once in a while, one works</h2>
+<p>Every fifteen to thirty blocks or so you hit a good one: galaxies form, stars light, there is carbon and water, and there is time to spare. Those the engine will draw all the way down to a planet surface, and you can turn it around and look.</p>
+<figure class="ad-plate">
+  <div class="win"><img src="assets/gallery/1000021-web-800.webp" width="800" height="474" loading="lazy" alt="Cosmic web with the halos the engine identified circled"></div>
+  <figcaption>Block 1,000,021 grew structure. The circles are the halos in this particular universe — 113 of them.</figcaption>
+</figure>
+</section>
+
+<section class="ad-sec" id="play">
+<h2 class="ad-h2">How to play</h2>
+<p>Open the simulator and hit "latest", or type in a height you care about — the block from your birthday, the block your first transaction landed in. A few seconds and you have a universe. No money, no wallet, look at as many as you like.</p>
+<p>There is also a sandbox where you push the constants around yourself and watch the ending move. Purely for fun; nothing you make there touches the chain and none of it can be minted.</p>
+</section>
+
+<section class="ad-sec" id="supply">
+<h2 class="ad-h2">1,387 of them</h2>
+<p>The universe is 13.787 billion years old, so that is the number I took: one NFT for every ten million years. When they are gone they are gone, and I will not add more.</p>
+<p>The first 387 are free, one per address, you only pay gas. Gas on Arc is USDC, which works out to a fraction of a cent per mint, so you never need to keep some separate fuel token around. After that a mint is 1 USDC and any one address can take at most 3 more. The cap of 3 is there so a script cannot walk off with the lot, not to make anybody feel rushed.</p>
+<p>What you get is an ordinary ERC-721. List it on OpenSea whenever you like; royalties are 5%.</p>
+</section>
+
+<section class="ad-sec" id="code">
+<h2 class="ad-h2">The code</h2>
+<p>The engine is open source under AGPL-3.0. How the 23 constants are derived and how an ending is decided is clearer in the code than in a page of tables I could write here: <a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>.</p>
+<p>If you want to check that a particular NFT really came out of its block hash, <a href="/en/verify.html">verify</a> has two commands for it. Takes a couple of minutes.</p>
+<div class="ad-end-cta">
+  <a class="ab-btn" href="app.html">Detonate a block</a>
+  <a class="ab-btn2" href="/en/faq.html">Questions</a>
+  <a class="ab-btn2" href="/en/verify.html">Verify it yourself</a>
+</div>
+</section>
+
+</div><!-- /.ad-main -->
+</div><!-- /.ad-body -->
+</div><!-- /.ab-wrap -->
+</main>
+
+<footer class="ab-foot" data-nolang>
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARCBANG</div>
+      <nav class="ab-foot-lnk" aria-label="Footer">
+        <a href="/en/">Home</a>
+        <a href="app.html">Simulator</a>
+        <a href="/en/faq.html">Questions</a>
+        <a href="/en/verify.html">Verify</a>
+        <a href="/how-it-works.html" hreflang="zh-CN">中文</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">Universes made from block hashes. Free to detonate, mint the one you want to keep.</p>
+    <div class="ab-legal">
+      <span>© 2026 ARCBANG</span>
+      <span>A collectible and an experiment, not an investment product.</span>
+      <span><a href="https://github.com/q3579338/arcbang">Engine source (AGPL-3.0)</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

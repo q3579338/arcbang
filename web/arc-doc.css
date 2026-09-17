@@ -1,0 +1,229 @@
+/* ============================================================================
+ * web/arc-doc.css —— ARCBANG 三份文档页（怎么运作 / 常见问题 / 自己验证）的版式
+ * ----------------------------------------------------------------------------
+ * 这份样式是 web/landing-arc.html「测绘板」那一套的内页延续：**令牌逐字相同**
+ * （冷灰白台面 --ab-plate、深海军蓝墨 --ab-ink、唯一强调色 --ab-signal、
+ * 72px 格点、只浅色），改的只有排版密度 —— 首页是海报，文档页是台面上的记录页。
+ *
+ * 为什么不继续用 web/doc.css：那份是 bnbbang.com 的朴素文档壳（白卡片 + 通栏细线 +
+ * 全大写眉标），和 arc 首页不是一个站。2026-09-17 用户看 how-it-works 的原话是
+ * 「这里好像还是旧版本的」—— 问题就在这里。doc.css 一个字不改，主站与 BTC 站照旧用它。
+ *
+ * 继承首页的三条规矩：
+ *   1. 分节靠留白和格点，不靠通栏细线。线只留给「线在编码信息」的地方：
+ *      表格的行线、台账的行线、目录栏的当前列。
+ *   2. 真黑（--ab-void）只出现在「感光板」上：宇宙截图、命令行。相板是硬边，圆角为 0。
+ *   3. 等宽只给机器串：区块哈希、合约地址、函数名、命令、结局编号。标签一律不用等宽。
+ * 大胆只花在一处：每页开头那个大标题。往下一律安静 —— 没有卡片、没有阴影、
+ * 没有渐变、没有逐节淡入，hover 只改颜色。
+ *
+ * 顶栏（#siteNav，nav.js 注入的那份样式）一个类都不覆盖，它照旧跟 tokens.css 走。
+ * ========================================================================== */
+:root{
+  --ab-plate:#ECEEF1;      /* 测绘台：冷灰白 */
+  --ab-plate2:#E3E6EB;     /* 台面上压低的一档 */
+  --ab-ink:#13214A;        /* 墨：深海军蓝。页面上最重的东西，但它不是黑 */
+  --ab-graphite:#515B6E;   /* 次级文字，台面上 5.2:1 */
+  --ab-void:#000000;       /* 真黑：只出现在感光板里 */
+  --ab-signal:#4A5BD4;     /* 唯一强调色 */
+  --ab-hair:#D5D9E0;       /* 细线 */
+
+  --t-xs:13px; --t-s:15px; --t-m:17px; --t-l:20px; --t-xl:27px;
+
+  --sp-1:24px; --sp-2:56px; --sp-3:96px;
+
+  --ab-max:1280px;
+  --ab-pad:40px;
+  --r:6px;
+  --ab-face:-apple-system,"Segoe UI Variable Text","Segoe UI",system-ui,
+    "PingFang SC","Microsoft YaHei","Noto Sans SC","Hiragino Sans GB",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body :where(h1,h2,h3,h4,p,ul,ol,dl,dd,figure,figcaption,table,blockquote,pre){margin:0}
+body :where(ul,ol){padding:0;list-style:none}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;color:var(--ab-ink);
+  font-family:var(--ab-face);font-size:var(--t-m);line-height:1.7;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  -webkit-tap-highlight-color:rgba(74,91,212,.18);
+  background-color:var(--ab-plate);
+  background-image:
+    linear-gradient(to right, rgba(19,33,74,.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(19,33,74,.045) 1px, transparent 1px);
+  background-size:72px 72px;
+  background-position:-1px -1px;
+}
+a{color:inherit}
+button,input{font-family:inherit}
+:focus-visible{outline:2px solid var(--ab-signal);outline-offset:3px}
+img{max-width:100%;display:block}
+[id]{scroll-margin-top:84px}
+
+.ab-wrap{max-width:var(--ab-max);margin:0 auto;
+  padding-left:max(var(--ab-pad),env(safe-area-inset-left));
+  padding-right:max(var(--ab-pad),env(safe-area-inset-right))}
+
+.ab-skip{position:absolute;left:-9999px;top:0;z-index:200;background:var(--ab-ink);color:#fff;
+  padding:12px 18px;border-radius:0 0 var(--r) 0;font-size:var(--t-s);font-weight:600;text-decoration:none}
+.ab-skip:focus{left:0}
+
+/* ---------------------------------------------------------------- 控件（同首页） */
+.ab-btn,.ab-btn2{display:inline-flex;align-items:center;justify-content:center;min-height:52px;
+  padding:0 26px;border-radius:var(--r);font-size:var(--t-s);font-weight:600;text-decoration:none;
+  touch-action:manipulation;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.ab-btn{background:var(--ab-ink);color:#fff;border:1px solid var(--ab-ink)}
+.ab-btn:hover{background:var(--ab-signal);border-color:var(--ab-signal)}
+.ab-btn2{background:transparent;color:var(--ab-ink);border:1px solid rgba(19,33,74,.28)}
+.ab-btn2:hover{border-color:var(--ab-ink);background:rgba(19,33,74,.05)}
+
+/* ================================================================== 页头
+   标题比首页小一档：这是内页，不是海报。 */
+.ad-head{padding:var(--sp-2) 0 0}
+.ad-h1{font-size:clamp(34px,5.2vw,68px);line-height:1.05;letter-spacing:-.032em;font-weight:700;
+  max-width:18ch;text-wrap:balance}
+.ad-lede{margin-top:var(--sp-1);font-size:clamp(17px,1.25vw,20px);line-height:1.62;max-width:54ch}
+.ad-lede a{color:var(--ab-signal);text-underline-offset:3px}
+.ad-lede a:hover{color:var(--ab-ink)}
+.ad-cta{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-top:32px}
+
+/* ================================================================== 正文骨架
+   宽屏两栏：左边一条细目录（它是导航信息，不是装饰），右边是量程 66ch 的正文。
+   窄屏目录收成一行行内链接，排在正文前面。 */
+.ad-body{padding:var(--sp-2) 0 var(--sp-3);display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-2)}
+.ad-railhead{font-size:var(--t-xs);color:var(--ab-graphite);margin-bottom:4px}
+.ad-rail ol{display:flex;flex-wrap:wrap;gap:0 22px}
+.ad-rail a{display:inline-flex;align-items:baseline;gap:9px;min-height:40px;font-size:var(--t-s);
+  color:var(--ab-graphite);text-decoration:none;transition:color .15s ease,border-color .15s ease}
+.ad-rail a:hover{color:var(--ab-ink)}
+.ad-rail .n{font-family:var(--mono);font-size:12px;color:var(--ab-signal);font-variant-numeric:tabular-nums}
+@media (min-width:1080px){
+  .ad-body{grid-template-columns:186px minmax(0,1fr);column-gap:88px;align-items:start}
+  .ad-rail{position:sticky;top:88px}
+  .ad-rail ol{display:block}
+  .ad-rail a{display:flex;align-items:baseline;min-height:34px;line-height:1.35;
+    border-left:1px solid var(--ab-hair);padding:5px 0 5px 14px;margin-left:-15px}
+  .ad-rail a:hover{border-left-color:var(--ab-ink)}
+}
+
+/* ---------------------------------------------------------------- 分节
+   节与节之间只有留白。标题的序号挂在左边空白里 —— 只有「怎么运作」那一页
+   内容真的是一条序列（1→7），另外两页不编号。 */
+.ad-sec + .ad-sec{margin-top:var(--sp-3)}
+.ad-h2{font-size:clamp(25px,2.6vw,36px);line-height:1.15;letter-spacing:-.022em;font-weight:700;
+  max-width:32ch;text-wrap:balance;position:relative}
+.ad-h2 .n{font-family:var(--mono);font-size:var(--t-s);font-weight:600;color:var(--ab-signal);
+  font-variant-numeric:tabular-nums;margin-right:12px}
+@media (min-width:1080px){
+  .ad-h2 .n{position:absolute;right:calc(100% + 18px);top:.34em;margin:0}
+}
+.ad-sec p,.ad-sec li{max-width:66ch}
+.ad-sec > p{margin-top:var(--sp-1);line-height:1.75}
+.ad-sec a{color:var(--ab-signal);text-underline-offset:3px}
+.ad-sec a:hover{color:var(--ab-ink)}
+.ad-sec code,.ad-note code,.ad-q code{font-family:var(--mono);font-size:.88em;color:var(--ab-ink);
+  background:var(--ab-plate2);padding:1px 5px;border-radius:3px;word-break:break-word}
+.ad-sec strong{font-weight:600}
+
+  font-family:var(--mono);font-size:13px;color:var(--ab-signal);font-variant-numeric:tabular-nums}
+.ad-bullets{margin-top:var(--sp-1)}
+.ad-bullets > li{position:relative;padding-left:22px;line-height:1.75}
+.ad-bullets > li + li{margin-top:14px}
+.ad-bullets > li::before{content:"";position:absolute;left:2px;top:.82em;width:8px;height:1px;
+  background:var(--ab-ink)}
+
+/* ---------------------------------------------------------------- 表格
+   横线在这里是在分隔数据，不是在装饰。 */
+.ad-tblwrap{margin-top:var(--sp-1);overflow-x:auto;overscroll-behavior-x:contain}
+.ad-tbl{width:100%;border-collapse:collapse;font-size:var(--t-s);min-width:440px}
+.ad-tbl th{text-align:left;font-size:var(--t-xs);color:var(--ab-graphite);font-weight:400;
+  padding:0 16px 12px 0;border-bottom:1px solid var(--ab-ink);white-space:nowrap}
+.ad-tbl td{padding:15px 16px 15px 0;border-bottom:1px solid var(--ab-hair);vertical-align:top;
+  color:var(--ab-graphite);line-height:1.6}
+.ad-tbl td.k{color:var(--ab-ink);font-weight:600}
+.ad-tbl td.num,.ad-tbl th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;
+  padding-right:0}
+.ad-tbl td.num{color:var(--ab-ink)}
+.ad-tbl code{font-family:var(--mono);font-size:.92em;background:none;padding:0;color:inherit;
+  word-break:break-word}
+
+/* ---------------------------------------------------------------- 感光板
+   宇宙截图：真黑底、硬边、板内格点比台面上亮一点（同一个想法用两次）。 */
+.ad-plate{margin-top:var(--sp-2)}
+.ad-plate .win{position:relative;background:var(--ab-void);overflow:hidden}
+.ad-plate .win::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(to right, rgba(74,91,212,.13) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(74,91,212,.13) 1px, transparent 1px);
+  background-size:72px 72px}
+.ad-plate img{width:100%;height:auto}
+.ad-plate figcaption{margin-top:14px;font-size:var(--t-xs);line-height:1.7;color:var(--ab-graphite);
+  max-width:60ch}
+.ad-plate figcaption .h{font-family:var(--mono);color:var(--ab-ink)}
+
+/* ---------------------------------------------------------------- 常见问题
+   一问一答，左边空白里挂一句「短答」—— 这些问题多半是是非题，
+   先给结论再给理由，比一串同样粗细的小标题好读。 */
+.ad-qa{margin-top:var(--sp-2)}
+.ad-q{display:grid;grid-template-columns:minmax(0,1fr);gap:4px 28px;padding:26px 0;
+  border-top:1px solid var(--ab-hair)}
+.ad-q:last-child{border-bottom:1px solid var(--ab-hair)}
+.ad-q .verdict{font-size:var(--t-s);font-weight:600;color:var(--ab-signal);line-height:1.5}
+.ad-q h3{font-size:var(--t-l);font-weight:600;letter-spacing:-.01em;line-height:1.45;max-width:34ch}
+.ad-q p{margin-top:12px;font-size:var(--t-s);line-height:1.75;color:var(--ab-graphite);max-width:60ch}
+.ad-q p + p{margin-top:12px}
+.ad-q a{color:var(--ab-signal);text-underline-offset:3px}
+.ad-q a:hover{color:var(--ab-ink)}
+@media (min-width:880px){
+  .ad-q{grid-template-columns:132px minmax(0,1fr);align-items:baseline}
+  .ad-q .verdict{text-align:right;padding-top:.28em}
+}
+
+/* ---------------------------------------------------------------- 命令行
+   命令是机器串，所以它落在感光板上：真黑、等宽、硬边、可横滑。 */
+.ad-cmd{margin-top:var(--sp-1);background:var(--ab-void);color:#DDE2F0;
+  font-family:var(--mono);font-size:13.5px;line-height:1.85;
+  padding:22px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.ad-cmd code{display:block;white-space:pre;color:inherit;background:none;padding:0;font-size:inherit}
+.ad-cmd .c{color:#7F89A6}
+
+/* ---------------------------------------------------------------- 压低的一档
+   旁注：台面上压低的一格（同首页输入框的底色），不画框、不加左侧色条。 */
+.ad-note{margin-top:var(--sp-2);background:var(--ab-plate2);border-radius:var(--r);padding:22px 26px}
+.ad-note p{margin:0;font-size:var(--t-s);line-height:1.75;color:var(--ab-graphite);max-width:62ch}
+.ad-note p + p{margin-top:12px}
+.ad-note a{color:var(--ab-signal);text-underline-offset:3px}
+
+/* 收尾那排按钮：与页头同款，但上面留够一节的白 */
+.ad-end-cta{margin-top:var(--sp-3);display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+
+/* ================================================================== 页脚（同首页） */
+.ab-foot{padding:var(--sp-2) 0}
+.ab-foot-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:20px 40px}
+.ab-brand{font-size:var(--t-l);font-weight:700;letter-spacing:-.015em}
+.ab-foot-lnk{display:flex;flex-wrap:wrap;gap:4px 28px}
+.ab-foot-lnk a{display:inline-flex;align-items:center;min-height:44px;font-size:var(--t-s);
+  color:var(--ab-graphite);text-decoration:none;transition:color .15s ease}
+.ab-foot-lnk a:hover{color:var(--ab-ink)}
+.ab-mail{display:inline-flex;align-items:center;min-height:44px;font-family:var(--mono);font-size:13px;
+  color:var(--ab-graphite);text-decoration:none;transition:color .15s ease}
+.ab-mail:hover{color:var(--ab-signal)}
+.ab-foot-tag{margin-top:18px;font-size:var(--t-s);color:var(--ab-graphite);max-width:52ch}
+.ab-legal{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:var(--sp-1);
+  font-size:12px;color:var(--ab-graphite)}
+
+/* ================================================================== 窄屏
+   375 是基准：标题换行、两栏收一栏、命令行铺满宽度。 */
+@media (max-width:760px){
+  :root{--ab-pad:16px;--sp-2:40px;--sp-3:64px}
+  .ad-h1{max-width:none;letter-spacing:-.028em}
+  .ad-h2{max-width:none}
+  .ab-btn,.ab-btn2{flex:1 1 auto;padding:0 18px}
+  .ad-cmd{margin-left:calc(var(--ab-pad) * -1);margin-right:calc(var(--ab-pad) * -1);
+    padding-left:var(--ab-pad);padding-right:var(--ab-pad)}
+  .ad-note{margin-left:calc(var(--ab-pad) * -1);margin-right:calc(var(--ab-pad) * -1);
+    border-radius:0;padding:22px var(--ab-pad)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms !important}
+}
