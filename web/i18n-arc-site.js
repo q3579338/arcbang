@@ -61,16 +61,16 @@
     '找到你的宇宙': 'Find your universe',
     '粘一个 Arc 区块高度，或者一个 0x 开头的区块哈希。你生日那天的块、你第一笔交易所在的块，都可以。同一个哈希，谁来引爆都是同一个宇宙。':
       'Paste an Arc block height, or a 0x block hash. The block from your birthday, the block your first transaction landed in, anything. The same hash is the same universe, whoever detonates it.',
-    '区块高度 / 0x 区块哈希 / 钱包地址': 'Block height / 0x block hash / wallet address',
-    '区块高度、区块哈希或钱包地址': 'Block height, block hash or wallet address',
+    '区块高度 / 0x 区块哈希': 'Block height / 0x block hash',
+    '区块高度或区块哈希': 'Block height or block hash',
     /* 「个人中心」这一句被切成三段：中间那段是页内链接的文字，它的词条在
        i18n-market.js 的全局导航段里（'个人中心' → 'Profile'），**这里不重收** ——
        重收一次就是两处维护同一句话，而且值不一样时控制台会喊「全局词条被改写」。 */
     '这是一个钱包地址，不是区块。要看某个地址名下的宇宙，去':
       'That is a wallet address, not a block. To see the universes an address holds, open',
     '。': '.',
-    '认不出来：给一个区块高度、一个 0x 开头的 64 位区块哈希，或者一个钱包地址。':
-      'Not recognised: give a block height, a 0x block hash (64 hex chars), or a wallet address.',
+    '认不出来：给一个区块高度，或者一个 0x 开头的 64 位区块哈希。':
+      'Not recognised: give a block height or a 0x block hash (64 hex chars).',
 
     /* ---- 引擎实况（滚动墙） ----
        **D 在整页上第一次出现就在这一句里**，所以括号里必须有一句人话；
@@ -98,6 +98,32 @@
     '区块 18,000,081 · 0xa227…f4c9': 'Block 18,000,081 · 0xa227…f4c9',
     '区块 21,000,009 · 0xffff…5af1': 'Block 21,000,009 · 0xffff…5af1',
     '区块 9,044,269 · 0x537a…860c': 'Block 9,044,269 · 0x537a…860c',
+    /* ---- 引擎实况：09-17 补到十四张之后新增的八张（用户：「图片太少了，补充」）----
+       说明那一句原来写「第五张 / 第六张」，靠顺序指代；穿插加图之后顺序会变，
+       改成不依赖顺序的写法（直接点名 D = 18 / 2.5 / 1 / 2 这几类），中英一起换。 */
+    '每一张都是引擎实时渲染时截的屏，没修图。这里有 D = 18 的宇宙（D 就是空间有几个维度，我们的宇宙是 3），有 2.5 维的黑平面，也有 D = 1 的时空图和 D = 2 的圆盘世界。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
+      'Every frame is a screenshot of the engine rendering live, untouched. There is a universe with spatial dimension D = 18 in here — D is how many dimensions space has; ours has 3 — a 2.5-dimensional black plane, a D = 1 spacetime diagram and a D = 2 disc world. Universes with D above 4 make up 55% of all blocks: no stable orbits exist there, matter either flies apart or falls into the core. Draw D = 14 and the engine really runs the N-body in 14 dimensions, then projects onto the three axes you pick; change the axes and the same universe shows another face.',
+    '横向滑动看全部十四个 · 点图看大图': 'Scroll sideways for all fourteen · tap an image for full size',
+    '一维宇宙的时空图（D=1）': 'Spacetime diagram of a one-dimensional universe (D=1)',
+    '活行星的夜面与城市灯光': 'Night side of a living planet, with city lights',
+    '带环的气态巨行星': 'Ringed gas giant',
+    '冰封世界地表': 'Surface of an ice world',
+    '沙漠世界地表': 'Surface of a desert world',
+    '五维宇宙的 N 体投影（D=5）': 'N-body projection of a five-dimensional universe (D=5)',
+    '二维世界的圆盘（D=2）': 'A disc world in two dimensions (D=2)',
+    '黑洞主导的宇宙（晕标注）': 'A black-hole-dominated universe (halo labels)',
+    '无稳定轨道 · D=1': 'No stable orbits · D=1',
+    '无稳定轨道 · D=5': 'No stable orbits · D=5',
+    '无稳定轨道 · D=2': 'No stable orbits · D=2',
+    '黑洞主导 · D=3': 'Black-hole dominated · D=3',
+    '区块 20,024,723 · 0xe428…df41': 'Block 20,024,723 · 0xe428…df41',
+    '区块 20,024,600 · 0xbbd5…e7bc': 'Block 20,024,600 · 0xbbd5…e7bc',
+    '区块 20,027,429 · 0x971f…af5f': 'Block 20,027,429 · 0x971f…af5f',
+    '区块 20,026,445 · 0xa25f…6dbc': 'Block 20,026,445 · 0xa25f…6dbc',
+    '区块 20,027,142 · 0x8856…db32': 'Block 20,027,142 · 0x8856…db32',
+    '区块 20,026,568 · 0x3425…5853': 'Block 20,026,568 · 0x3425…5853',
+    '区块 20,024,641 · 0x2665…bf03': 'Block 20,024,641 · 0x2665…bf03',
+    '区块 20,374,740 · 0x0b6f…bf81': 'Block 20,374,740 · 0x0b6f…bf81',
 
     /* ---- 三个动作 ----
        第三张原来是「拯救」。拯救整套下线，这一格换成「转手」—— 铸完之后真的能做的事。 */
@@ -110,8 +136,8 @@
     '枚，前 387 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后一枚 1 USDC，每个地址最多 3 枚。':
       'universes in all. The first 387 are free: 1 per address, about 0.003 USDC of gas. After that, 1 USDC each, up to 3 per address.',
     '转手': 'Resell',
-    '铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。成交时 5% 版税，上限 10% 写死在合约里，抬不上去。':
-      'What you mint is a standard NFT. List it on the built-in market, or on OpenSea. A sale pays a 5% royalty, and the 10% ceiling is hard-coded in the contract.',
+    '铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。':
+      'What you mint is a standard NFT. List it on the built-in market, or on OpenSea.',
     '看它怎么运作 →': 'See how it works →',
 
     /* ---- 一个哈希，一枚 ----
@@ -134,8 +160,8 @@
       'The universe is 13.787 Gyr old and one NFT is ten million years; hard-coded in the contract',
     '每地址 1 次，只花 gas（约 0.003 USDC）': '1 per address, gas only (about 0.003 USDC)',
     '每地址最多 3 枚；合约把价格夹在 0.1 – 20 USDC 之间': 'At most 3 per address; the contract clamps the price to 0.1 – 20 USDC',
-    'OpenSea 这类市场直接读得到，上限 10% 写死在合约里':
-      'Markets like OpenSea read it straight off the NFT; the 10% ceiling is hard-coded in the contract',
+    'OpenSea 这类市场直接读得到':
+      'Markets like OpenSea read it straight off the NFT',
 
     /* ---- 四条规矩 ---- */
     '四条规矩': 'Four rules',

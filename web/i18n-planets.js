@@ -781,11 +781,11 @@
     '流浪行星：此刻 ': 'Rogue planets: ',
     ' 光年内有 ': ' light-years away right now there are ',
     ' 颗（不绕任何恒星，可进入；': ' of them (orbiting no star; you can enter them; ',
-    '吸积盘为示意：黑洞本身不发光，画面上那圈发热的物质是被吸进去之前摩擦生热的盘。它的视界半径只有 ':
-      'The accretion disc is illustrative: the black hole itself emits no light, and the glowing ring on screen is matter heated by friction before it falls in. Its horizon radius is only ',
+    '吸积盘为示意：黑洞本身不发光，画面上那点发热的物质是被吸进去之前摩擦生热的盘。它的视界半径只有 ':
+      'The accretion disc is illustrative: the black hole itself emits no light, and the glowing speck on screen is matter heated by friction before it falls in. Its horizon radius is only ',
     ' km（≈ ': ' km (≈ ',
-    ' AU），按真比例在这一层连一个像素都不到，所以盘的**大小按取景半径给**（约 6%，只随黑洞质量弱变化），不代表真实尺度；内缘取最内稳定圆轨道 ISCO = 3 r_s、外缘取 22 r_s（与近景观同一口径），内外之比是真的。颜色按 Shakura & Sunyaev 1973 的薄盘温标 T ∝ R^{−3/4}（内缘蓝白、外缘橙红），亮暗不对称是相对论性集束。要按 r_s 看盘，点进黑洞本体。':
-      ' AU) — at true scale it would not span a single pixel at this zoom, so the **disc size is set from the framing radius** (about 6%, varying only weakly with black-hole mass) and does not represent the real scale. The inner edge is the innermost stable circular orbit, ISCO = 3 r_s, and the outer edge 22 r_s (the same convention as the close-up), so the inner-to-outer ratio is real. The colors follow the Shakura & Sunyaev 1973 thin-disc temperature scale T ∝ R^{−3/4} (blue-white inside, orange-red outside), and the brightness asymmetry is relativistic beaming. To see the disc in units of r_s, click into the black hole itself.',
+    ' AU），按真比例在这一层连一个像素都不到。盘的外缘按物理量级给：100 r_s = 200 r_g（薄盘典型外缘是几百个引力半径），并封顶为最内行星轨道的 1/20，两者取小——所以它绝不会盖到行星轨道上。内缘取最内稳定圆轨道 ISCO = 3 r_s，内外之比是真的。小到画不出几个像素时只留一个暗核加一圈细亮环，那是标记不是尺度。颜色按 Shakura & Sunyaev 1973 的薄盘温标 T ∝ R^{−3/4}（内缘蓝白、外缘橙红），亮暗不对称是相对论性集束。要按 r_s 看盘，点进黑洞本体。':
+      ' AU) — at true scale it would not span a single pixel at this zoom. The outer edge is set from physics: 100 r_s = 200 r_g (a thin disc typically reaches a few hundred gravitational radii), capped at one twentieth of the innermost planetary orbit, whichever is smaller — so it can never spill across an orbit. The inner edge is the innermost stable circular orbit, ISCO = 3 r_s, and that inner-to-outer ratio is real. When the disc comes out only a few pixels wide, all that is left is a dark core inside a thin bright ring: a marker, not a scale. The colors follow the Shakura & Sunyaev 1973 thin-disc temperature scale T ∝ R^{−3/4} (blue-white inside, orange-red outside), and the brightness asymmetry is relativistic beaming. To see the disc in units of r_s, click into the black hole itself.',
     '恒星本体：点击': 'The star itself: click ',
     '可近观（安全距离外的示意；恒星与遗骸都不可降落，进去会说明为什么）。':
       ' for a close-up (illustrative, from beyond a safe distance; neither stars nor remnants can be landed on, and going in explains why).',

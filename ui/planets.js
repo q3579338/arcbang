@@ -1697,6 +1697,17 @@
       // 超热木星的辉边颜色：按云顶温度从暗红（~1500 K）过渡到橙（~3000 K）。gasGlow = 0 时不使用
       o.gasGlowCol = o.gasGlow > 0 ? mix3([1.0, 0.20, 0.04], [1.0, 0.62, 0.30], smoothstep(1500, 3000, planet.tempK || 1500)) : [0, 0, 0];
     } else { o.noSurface = 0; o.gasIce = 0; o.scaleHeightM = 0; o.gasGlow = 0; o.gasGlowCol = [0, 0, 0]; }
+    /* 外观风格：全部从 planet.seed 派生，且**用现在这一刻的年龄**（不是时间轴上的 timeYr），
+       这样 CPU 贴图（getMaps 按 seed 缓存、与时间无关）与着色器 uniform 用的是同一套数，
+       拖时间轴只改材质（岩浆/海/冰/灯光），不会让撞击坑数量跟着变。 */
+    o.style = surfStyle(planet, o, ageGyrOf(planet, null)); o.palVar = o.style.palVar; o.surfKind = o.style.kind;
+    if (o.surfKind === 3) o.sunTint = mix3(o.sunTint, [1, 1, 1], 0.5);
+    /* 冰盖范围随温度：冷 → 冰线压到低纬，暖 → 只剩极冠。iceLat 是「|sin 纬度| 的阈值」。
+       只在过程生成的世界上生效（真实天体与地球时间线自己算的那套一个字不改）。 */
+    if (!planet.visualKey && planet.type !== 'earth' && isFinite(planet.tempK) && o.iceLat > 0 && o.iceLat < 1.5) {
+      var tIce = clamp((planet.tempK - 215) / 95, 0, 1);
+      o.iceLat = clamp(lerp(0.16, 0.99, tIce) * (0.9 + 0.2 * ((o.style.crackAmt * 3) % 1)), 0.1, 0.995);
+    }
     if (!o.eraName) o.eraName = !o.exists ? TR('尚未形成') : o.forming < 1 ? TR('吸积中') : (o.lava > 0.3 ? TR('地表仍在熔融') : (o.green > 0.2 ? TR('陆地已有生物覆盖') : TR('稳定演化中')));
     return o;
   }
@@ -1813,6 +1824,52 @@
     return out;
   }
 
+  /* ---- 多尺度地形构件（全部确定性：只吃行星种子与方向向量） ----
+     撞击盆地：由种子定的 K 个方向，每个有角半径、盆底深度与环形隆起。
+     依据：月球的雨海/东方海、水星的卡洛里盆地都是「盆底被后期玄武岩填平 + 一圈同心山脊」。 */
+  function basinsAt(seedBase, nx, ny, nz, count) {
+    var out = 0, deepest = 0;
+    for (var k = 0; k < count; k++) {
+      var hh = hash32((seedBase + k * 0x9E3779B9) >>> 0);
+      var uu = ((hh & 0xffff) / 65536) * 2 - 1, phi = ((hh >>> 16) / 65536) * TAU;
+      var sq = Math.sqrt(Math.max(0, 1 - uu * uu));
+      var cx = sq * Math.cos(phi), cy = uu, cz = sq * Math.sin(phi);
+      var h2 = hash32(hh ^ 0x51ED2701);
+      var rad = 0.16 + ((h2 & 255) / 255) * 0.36, dep = 0.55 + (((h2 >>> 8) & 255) / 255) * 0.9;
+      var d = Math.acos(clamp(nx * cx + ny * cy + nz * cz, -1, 1)) / rad;
+      if (d < 1.9) {
+        var fill = dep * 0.062 * (1 - smoothstep(0, 1.05, d));
+        out += dep * 0.030 * Math.exp(-Math.pow((d - 1.04) / 0.20, 2)) - fill;
+        if (fill > deepest) deepest = fill;
+      }
+    }
+    return { h: out, inBasin: clamp(deepest / 0.06, 0, 1) };
+  }
+  /* 辐射纹：年轻撞击坑抛出的高反照率射线。沿中心的方位角变化、随距离衰减 —— 所以是「从坑往外辐射的条纹」。 */
+  function raysAt(N, seedBase, nx, ny, nz, count, amt) {
+    if (amt <= 0 || count <= 0) return 0;
+    var out = 0;
+    for (var k = 0; k < count; k++) {
+      var hh = hash32((seedBase + k * 0x85EBCA6B) >>> 0);
+      if ((hh & 3) !== 0) continue;                       // 只有 1/4 的坑足够年轻，还留着辐射纹
+      var uu = ((hh & 0xffff) / 65536) * 2 - 1, phi = ((hh >>> 16) / 65536) * TAU;
+      var sq = Math.sqrt(Math.max(0, 1 - uu * uu));
+      var cx = sq * Math.cos(phi), cy = uu, cz = sq * Math.sin(phi);
+      var cd = clamp(nx * cx + ny * cy + nz * cz, -1, 1), d = Math.acos(cd);
+      if (d > 1.25 || d < 1e-4) continue;
+      /* 以坑心为极点建一组切向基：T = normalize(cross(up, c))，B = cross(c, T)；方位角 = atan2(n·B, n·T) */
+      var tx, ty, tz;
+      if (Math.abs(cy) < 0.985) { tx = cz; ty = 0; tz = -cx; } else { tx = 0; ty = -cz; tz = cy; }
+      var tl = Math.sqrt(tx * tx + ty * ty + tz * tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+      var bx = cy * tz - cz * ty, by = cz * tx - cx * tz, bz = cx * ty - cy * tx;
+      var ang = Math.atan2(nx * bx + ny * by + nz * bz, nx * tx + ny * ty + nz * tz);
+      var rn = N.snoise(Math.cos(ang) * 5.5 + k * 13.1, Math.sin(ang) * 5.5 + k * 13.1, k * 3.7);
+      out += smoothstep(0.30, 0.85, rn) * Math.max(0, 1 - d / 1.25) * amt;
+    }
+    return clamp(out, 0, 1);
+  }
+
+  var ZERO_BASIN = { h: 0, inBasin: 0 };
   var mapCache = {}; var mapCacheKeys = [];
   function getMaps(planet, size) {
     size = size || 512;
@@ -1828,8 +1885,15 @@
     var N = makeNoise(planet.seed), vis = planet.visual || baseVisual(planet.type), key = planet.visualKey || planet.type;
     var h = new Float32Array(W * H), rough = new Float32Array(W * H), moist = new Float32Array(W * H);
     var x, y, i, sea = vis.sea, earth = null;
+    /* 外观风格（与 visualParams 里取到的是同一套：同 seed 同 rnd 序列，且都用「现在」的年龄） */
+    var st = surfStyle(planet, vis, ageGyrOf(planet, null));
+    /* 真实天体（地球/月球/水星/火星/金星/小行星/KBO/彗核）沿用各自原有的公式，逐字不动；
+       只有过程生成的行星走下面这套多尺度地形。 */
+    var special = { earth: 1, moon: 1, mercury: 1, mars: 1, venus: 1, asteroid: 1, kbo: 1, comet: 1 }[key] ? 1 : 0;
+    var cf = st.contFreq, wf = st.warpFreq, wa = st.warpAmp, rf = st.ridgeFreq, rvf = st.riftFreq;
+    var basinSeed = (planet.seed ^ 0xBA51A0) >>> 0, raySeed = (planet.seed ^ 0x2A75) >>> 0;
     if (key === 'earth') earth = rasterEarth(W, H);
-    var oceanFrac = { ocean: 0.9, living: 0.66, lava: 0.35 }[planet.type];
+    var oceanFrac = { ocean: 0.9, living: 0.66, lava: 0.22 }[planet.type];
     if (vis.gas) { // 气态：不需要高度，仅生成湍流通道
       for (y = 0; y < H; y++) for (x = 0; x < W; x++) { i = y * W + x; var lat = ((y + 0.5) / H - 0.5) * PI, lon = ((x + 0.5) / W - 0.5) * TAU, cl = Math.cos(lat); var nx = cl * Math.cos(lon), ny = Math.sin(lat), nz = -cl * Math.sin(lon); h[i] = 0.5 + 0.5 * N.fbm(nx * 4, ny * 4, nz * 4, 4); rough[i] = 0.5 + 0.5 * N.fbm(nx * 9 + 3, ny * 30, nz * 9, 3); moist[i] = 0.5; }
     } else {
@@ -1837,9 +1901,9 @@
         var lat = ((y + 0.5) / H - 0.5) * PI, cl = Math.cos(lat), sl = Math.sin(lat), v = (y + 0.5) / H, alat = Math.abs(lat) / (PI / 2);
         for (x = 0; x < W; x++) {
           i = y * W + x; var lon = ((x + 0.5) / W - 0.5) * TAU, u = (x + 0.5) / W;
-          var nx = cl * Math.cos(lon), ny = sl, nz = -cl * Math.sin(lon), hh, rg = 0, mo;
-          var f1 = N.fbm(nx * 2.3, ny * 2.3, nz * 2.3, 6), f2 = N.fbm(nx * 5.1 + 7, ny * 5.1, nz * 5.1 - 3, 5), rd = N.ridged(nx * 3.7 + 1, ny * 3.7, nz * 3.7 + 5, 5);
-          var mask = 0.5 + 0.5 * f1;
+          var nx = cl * Math.cos(lon), ny = sl, nz = -cl * Math.sin(lon), hh, rg = 0, mo = 0;
+          var f1 = 0, f2 = 0, rd = 0, mask = 0;
+          if (special) { f1 = N.fbm(nx * 2.3, ny * 2.3, nz * 2.3, 6); f2 = N.fbm(nx * 5.1 + 7, ny * 5.1, nz * 5.1 - 3, 5); rd = N.ridged(nx * 3.7 + 1, ny * 3.7, nz * 3.7 + 5, 5); mask = 0.5 + 0.5 * f1; }
           if (key === 'earth') {
             var L = earth.land[i], R = earth.range[i];
             var coast = clamp(L + 0.09 * f2 - 0.5, -0.5, 0.5); // 海岸线加噪声
@@ -1867,13 +1931,83 @@
             hh = 0.5 + 0.19 * f1 + cliff - pit * 0.5 + craters(N, u, v, 0.55) * 1.1;
             rg = clamp(0.18 + 0.40 * Math.max(0, f1 + 0.2), 0, 1); mo = 0;
           } else {
+            /* ============ 过程生成行星的多尺度地形 ============
+               1) 低频：域扭曲 fBm（4 个八度）—— 板块 / 大陆 / 大洋盆地 / 大冰盖。域扭曲让海岸线蜿蜒，
+                  不再是噪声的圆滚滚等值线；contFreq 由种子给，所以有的星球是两块超级大陆、有的是一串群岛。
+               2) 中频：造山带只长在板块边界（低频场的零等值线附近）、裂谷沿同一条边界撕开、
+                  盾状火山是少数几座孤峰、撞击盆地按表面年龄给数量。
+               3) 细节：一律留给着色器的 detailN，并随距离淡入 —— 远看不出颗粒。 */
+            var w0 = N.snoise(nx * wf + 11.3, ny * wf + 11.3, nz * wf + 11.3);
+            var w1 = N.snoise(nx * wf + 37.1, ny * wf + 37.1, nz * wf + 37.1);
+            var w2 = N.snoise(nx * wf + 63.7, ny * wf + 63.7, nz * wf + 63.7);
+            var px = nx * cf + w0 * wa, py = ny * cf + w1 * wa, pz = nz * cf + w2 * wa;
+            var g1 = N.fbm(px, py, pz, 4);                                       // 大陆 / 盆地（低频）
+            var g2 = N.fbm(px * 3.1 + 7.7, py * 3.1 - 2.3, pz * 3.1 + 5.1, 3);   // 次级起伏（中低频）
+            var pl = N.fbm(px * 1.55 + 31.7, py * 1.55 - 13.3, pz * 1.55 + 27.1, 3);   // 板块拼图（与大陆分布无关的另一个场）
+            var edge = smoothstep(0.26, 0.02, Math.abs(pl));                     // 板块边界带：一条线，不是半个星球
+            var gr = N.ridged(px * rf / cf + 3.3, py * rf / cf - 1.7, pz * rf / cf + 9.1, 4);
+            /* 造山带只往**陆地那一侧**隆起：山脊来回穿过海平面就会把海岸线切成等高线迷宫 */
+            var belt = gr * edge * st.ridgeAmt * smoothstep(-0.02, 0.22, g1);
+            var rl = N.snoise(px * rvf / cf + 21.5, py * rvf / cf + 21.5, pz * rvf / cf + 21.5);
+            var rift = smoothstep(0.955, 0.998, 1 - Math.abs(rl)) * (0.35 + 0.65 * edge) * st.riftAmt;
+            var bs = st.basinN ? basinsAt(basinSeed, nx, ny, nz, st.basinN) : ZERO_BASIN;
+            var cr = (vis.craters && st.craterDens > 0.02) ? craters(N, u, v, st.craterDens) : 0;
+            var mk = 0.5;
             switch (planet.type) {
-              case 'rock': case 'desert': hh = 0.5 + 0.22 * f1 + 0.08 * f2 + 0.18 * rd * mask + (vis.craters ? craters(N, u, v, vis.craters) : 0); rg = clamp(0.25 + rd * 0.7, 0, 1); mo = planet.type === 'desert' ? 0.1 : 0; break;
-              case 'ice': hh = 0.5 + 0.15 * f1 + 0.05 * f2 + 0.08 * rd + (vis.craters ? craters(N, u, v, vis.craters) * 0.6 : 0); rg = 0.3 + 0.4 * rd; mo = 0; break;
-              case 'lava': hh = 0.5 + 0.2 * f1 + 0.1 * f2 + 0.2 * rd; rg = 0.4 + 0.5 * rd; mo = 0; break;
-              case 'ocean': hh = 0.5 + 0.22 * f1 + 0.1 * f2 + 0.3 * Math.pow(rd, 2.2); rg = clamp(rd, 0, 1); mo = 0.6 + 0.3 * f2; break;
-              default: /* living */ hh = 0.5 + 0.24 * f1 + 0.08 * f2 + 0.22 * rd * smoothstep(0.35, 0.65, mask); rg = clamp(0.2 + rd * 0.8 * smoothstep(0.35, 0.65, mask), 0, 1); mo = 0.55 + 0.35 * f2 + 0.15 * (1 - alat) - 0.2 * Math.pow(Math.max(0, Math.cos(lat * 6.2)), 6);
+              case 'rock': {
+                hh = 0.5 + 0.22 * g1 + 0.055 * g2 + 0.13 * belt + bs.h + cr - rift * 0.035;
+                /* 月海：大盆地底与低洼处被后期玄武岩填平 —— 又平又暗。粗糙度跟着下来，近看才不是一地碎石。 */
+                var mare = st.mareAmt * clamp(bs.inBasin * 0.8 + smoothstep(-0.10, -0.42, g1) * 0.7, 0, 1);
+                hh += mare * 0.02;
+                rg = clamp(0.12 + 0.62 * gr * edge + 0.22 * Math.max(0, g2) - mare * 0.45, 0.02, 1);
+                mk = clamp(0.5 + raysAt(N, raySeed, nx, ny, nz, st.basinN + 2, st.rayAmt) * 0.5 - mare * 0.5, 0, 1);
+                break; }
+              case 'desert': {
+                /* 台地：把海拔量化成几级，形成层层叠叠的方山；干河谷沿低处切开 */
+                var mesa = Math.floor(clamp(g1 * 0.5 + 0.5, 0, 0.999) * 5) / 5;
+                var wadi = smoothstep(0.90, 0.995, 1 - Math.abs(N.snoise(px * 6.1 + 4.4, py * 6.1 + 4.4, pz * 6.1 + 4.4)));
+                hh = 0.5 + 0.14 * g1 + 0.09 * mesa + 0.05 * g2 + 0.09 * belt + bs.h * 0.5 + cr * 0.7 - wadi * 0.03;
+                /* 沙海：低洼处 + 信风带（|纬度| ≈ 20–30°）。沙海是平的，粗糙度压到很低。 */
+                var erg = clamp(smoothstep(0.18, -0.32, g1) * 0.75 + 0.55 * Math.exp(-Math.pow((alat - 0.30) / 0.20, 2)), 0, 1) * st.duneAmt;
+                hh -= erg * 0.012;
+                rg = clamp(0.16 + 0.55 * gr * edge + 0.2 * Math.max(0, g2) - erg * 0.5, 0.02, 1);
+                mk = clamp(erg, 0, 1); mo = 0.1;
+                break; }
+              case 'ice': {
+                /* 冰壳：大片平滑冰原（低频起伏很小），少量长裂谷（沿一条构造带，不是满球蜘蛛网），
+                   极区冰更厚（所以更高）。粗糙度整体压低 —— 冰原就该是光的。 */
+                var prov = smoothstep(0.15, 0.6, 0.5 + 0.5 * N.snoise(px * 0.8 + 5.5, py * 0.8 + 5.5, pz * 0.8 + 5.5));
+                var gash = smoothstep(0.945, 0.999, 1 - Math.abs(rl)) * prov * st.crackAmt;
+                hh = 0.5 + 0.085 * g1 + 0.025 * g2 + 0.05 * belt + bs.h * 0.7 + cr * 0.55 - gash * 0.055 + alat * alat * 0.045;
+                rg = clamp(0.05 + 0.30 * gr * edge + 0.18 * gash + 0.10 * Math.max(0, g2), 0.02, 0.8);
+                /* 沉积暗斑：喷流落回冰面的有机/尘埃物质，聚在裂缝两侧与低洼处 */
+                mk = clamp(st.plumeAmt * (gash * 1.0 + smoothstep(-0.10, -0.48, g1) * 0.55) + bs.inBasin * 0.30, 0, 1);
+                break; }
+              case 'lava': {
+                hh = 0.5 + 0.20 * g1 + 0.09 * g2 + 0.11 * belt - rift * 0.05;
+                rg = clamp(0.25 + 0.55 * gr * edge + 0.25 * Math.max(0, g2), 0.02, 1);
+                /* 壳龄：0 = 刚翻新（裂缝/熔岩湖），1 = 已经冷透的暗壳 */
+                mk = clamp(1 - (rift * 1.2 + smoothstep(0.05, -0.4, g1) * st.lakeAmt * 0.9 + edge * 0.35), 0, 1);
+                break; }
+              case 'ocean': {
+                /* 大洋世界：海底盆地深而平，零星岛弧沿板块边界冒头 —— 海岸线因此是清楚的弧线，不是散点 */
+                var arc = Math.pow(Math.max(0, gr), 2.2) * edge * smoothstep(-0.30, 0.10, g1);   // 岛弧：贴着板块边界的陆侧冒头
+                hh = 0.5 + 0.26 * g1 + 0.07 * g2 + 0.22 * arc + bs.h * 0.4;
+                rg = clamp(0.10 + 0.75 * arc + 0.15 * Math.max(0, g2), 0.02, 1);
+                mo = clamp(0.62 + 0.28 * g2 + 0.12 * (1 - alat), 0, 1);
+                mk = mo;
+                break; }
+              default: {  /* living */
+                hh = 0.5 + 0.26 * g1 + 0.06 * g2 + 0.13 * belt + bs.h * 0.3 - rift * 0.03;
+                rg = clamp(0.10 + 0.72 * gr * edge + 0.2 * Math.max(0, g2), 0.02, 1);
+                /* 湿度：赤道辐合带湿、副热带（|纬度|≈25°）干、中纬再湿；再叠一层大尺度的雨影 */
+                var zonal = 0.55 + 0.42 * Math.cos(alat * PI * 2.6 + st.biomeShift * 4.0) - 0.30 * Math.exp(-Math.pow((alat - 0.30) / 0.16, 2));
+                var shadow = 0.22 * smoothstep(0.25, 0.75, gr * edge);           // 山脉背风面的雨影
+                mo = clamp(zonal + 0.26 * g2 - shadow, 0, 1);
+                mk = mo;
+                break; }
             }
+            if (planet.type !== 'ocean' && planet.type !== 'living') mo = mk;      // 无水世界：A 通道改记「标记场」，含义见各分支
           }
           h[i] = hh; rough[i] = clamp(rg, 0, 1); moist[i] = clamp(mo, 0, 1);
         }
@@ -1897,6 +2031,7 @@
   // 双线性采样（与 GLSL mapSample 一致）：返回 [h, rough, moist]
   function sampleMap(m, u, v) {
     var W = m.W, H = m.H, fx = u * W - 0.5, fy = clamp(v * H - 0.5, 0, H - 1), x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+    tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);   // 与 GLSL mapSample 一致的 Hermite 权重
     var x1 = ((x0 + 1) % W + W) % W, y1 = Math.min(y0 + 1, H - 1); x0 = ((x0 % W) + W) % W; y0 = clamp(y0, 0, H - 1);
     var i00 = y0 * W + x0, i10 = y0 * W + x1, i01 = y1 * W + x0, i11 = y1 * W + x1;
     function bl(a) { return lerp(lerp(a[i00], a[i10], tx), lerp(a[i01], a[i11], tx), ty); }
@@ -1904,7 +2039,7 @@
   }
 
   /* ---------------------------------------------------------- 调色板（128×64 RGBA：x = 海拔 0..1，y = 气候 0 热 → 1 冷） */
-  var PAL_STOPS = {
+  var PAL_STOPS_BASE = {
     rock: [[0, '#5e564f'], [0.3, '#7d746a'], [0.6, '#9c948a'], [1, '#c8c2b8']],
     venus: [[0, '#5a4a3a'], [0.4, '#7a6448'], [0.8, '#9a8560'], [1, '#b0a070']],
     desert: [[0, '#b8925c'], [0.3, '#cfa86c'], [0.65, '#a37c4e'], [1, '#e8d7ae']],
@@ -1920,6 +2055,128 @@
     kbo: [[0, '#4a3830'], [0.3, '#6d5240'], [0.65, '#967253'], [1, '#c2a184']],        // 托林红
     comet: [[0, '#14120f'], [0.4, '#231f1a'], [0.75, '#332c25'], [1, '#463d33']]        // 反照率 0.04：几乎全黑
   };
+  /* ---------------------------------------------------------- 同类型的多套调色板（由行星种子选）
+     每类 4–6 套「裸地/基岩」色阶。植被、冰、熔岩仍由着色器叠在上面，所以这里只管底色。
+     真实天体（visualKey 非空：地球/火星/金星/月球…）一律走第 0 套 —— 它们的样子不能被种子改掉。 */
+  var PAL_VARIANTS = {
+    rock: [
+      PAL_STOPS_BASE.rock,
+      [[0, '#3b3530'], [0.3, '#57493d'], [0.62, '#7d6350'], [1, '#a8886b']],   // 铁红尘的暗玄武
+      [[0, '#6e6a63'], [0.32, '#8f8b82'], [0.66, '#b4b0a6'], [1, '#e2ded4']],  // 斜长岩高地：亮灰白
+      [[0, '#4a4234'], [0.3, '#736232'], [0.65, '#9c8b46'], [1, '#c9bc84']],   // 含硫黄褐
+      [[0, '#1d1c1b'], [0.35, '#2e2c29'], [0.7, '#45413b'], [1, '#635d54']],   // 暗碳质：几乎不反光
+      [[0, '#4d4247'], [0.3, '#6b5b62'], [0.62, '#8e7c82'], [1, '#bdaeb2']]    // 偏紫灰的辉石
+    ],
+    desert: [
+      PAL_STOPS_BASE.desert,
+      [[0, '#9c5233'], [0.3, '#bd6f40'], [0.65, '#8f5330'], [1, '#e0a878']],   // 赭红
+      [[0, '#c6bda8'], [0.32, '#e0d8c4'], [0.68, '#b3a88e'], [1, '#f2ecdd']],  // 石膏白沙
+      [[0, '#6b5340'], [0.28, '#a8763f'], [0.6, '#4e433a'], [1, '#d9b47c']],   // 橙褐沙 + 暗玄武沙海
+      [[0, '#d8c583'], [0.3, '#efe0a4'], [0.62, '#b8a262'], [1, '#fdf6df']]    // 淡黄沙 + 白盐滩
+    ],
+    ocean: [
+      PAL_STOPS_BASE.ocean,
+      [[0, '#6d6157'], [0.15, '#3f3a35'], [0.6, '#565049'], [1, '#c8c4bc']],   // 火山黑岛
+      [[0, '#e6dcc2'], [0.16, '#c3bda0'], [0.6, '#8d8874'], [1, '#efeee8']],   // 石灰岩/珊瑚岛
+      [[0, '#c28a5e'], [0.16, '#8c6a45'], [0.6, '#6d6152'], [1, '#d6cfc2']]    // 红壤岛
+    ],
+    /* 冰：主色必须是白 / 浅蓝 / 青 —— 褐色只允许以「沉积暗斑」的形式局部出现（见着色器里的 uDepositC）。
+       六套里只有第 4 套（尘埃脏冰）偏灰，其余五套一眼是冰。 */
+    ice: [
+      PAL_STOPS_BASE.ice,                                                       // 0 蓝白冰盖 + 深蓝裂谷
+      [[0, '#e6eef5'], [0.35, '#f2f7fb'], [0.75, '#fafcfe'], [1, '#ffffff']],   // 1 纯白（欧罗巴式：裂纹是红褐的，冰面是白的）
+      [[0, '#e9dfe2'], [0.35, '#f6eeef'], [0.75, '#fdf8f7'], [1, '#ffffff']],   // 2 氮冰粉白（冥王星式的心形平原）
+      [[0, '#a9cfd2'], [0.35, '#cfe6e8'], [0.75, '#ecf7f8'], [1, '#fbffff']],   // 3 甲烷冰浅青
+      [[0, '#7f8a95'], [0.4, '#a6b1bb'], [0.8, '#cdd6dd'], [1, '#eef2f5']],     // 4 尘埃污染的脏冰（唯一偏灰的一套）
+      [[0, '#8f9cc0'], [0.4, '#c0c8de'], [0.8, '#e6eaf5'], [1, '#ffffff']]      // 5 偏紫蓝的深冷冰
+    ],
+    lava: [
+      PAL_STOPS_BASE.lava,
+      [[0, '#241210'], [0.4, '#3d1c17'], [0.8, '#5a2c22'], [1, '#7a453a']],    // 暗红玄武
+      [[0, '#1a1a18'], [0.4, '#3a3728'], [0.8, '#6b6038'], [1, '#9b8a46']],    // 灰黑 + 硫黄结壳
+      [[0, '#1f1713'], [0.4, '#392b20'], [0.8, '#57412f'], [1, '#7d6248']]     // 深棕
+    ],
+    earth: [
+      PAL_STOPS_BASE.earth,
+      [[0, '#b08a64'], [0.06, '#9a704a'], [0.35, '#87654a'], [0.7, '#6f6259'], [1, '#8d8681']], // 红壤
+      [[0, '#a8a596'], [0.06, '#93917f'], [0.35, '#7e7d70'], [0.7, '#6c6b66'], [1, '#93928d']], // 灰岩
+      [[0, '#c6b784'], [0.06, '#b0a067'], [0.35, '#948a5e'], [0.7, '#77736a'], [1, '#95918a']], // 黄壤
+      [[0, '#8e8c66'], [0.06, '#7b7a55'], [0.35, '#6c6c52'], [0.7, '#63625a'], [1, '#86847e']]  // 暗橄榄
+    ]
+  };
+
+  function palStopsOf(vp) {
+    var vars = PAL_VARIANTS[vp.palette];
+    if (vars && vars.length) return vars[clamp(Math.round(vp.palVar || 0), 0, vars.length - 1)] || vars[0];
+    return PAL_STOPS_BASE[vp.palette] || PAL_STOPS_BASE.rock;
+  }
+
+  /* ---------------------------------------------------------- 每颗行星的外观风格
+     铁律：全部从 planet.seed（与行星自己的物理量）派生，不掺相机、不掺时间、不用 Math.random。
+     同一个定位码 → 同一个 seed → 同一套 style → 同一张贴图、同一组着色器 uniform → 逐像素一致。
+     这里只决定「画成什么样」，一个物理量都不产生、也不修改。 */
+  var SURF_KIND = { rock: 0, desert: 1, ocean: 2, ice: 3, lava: 4, living: 5, earth: 5, gas: 6 };
+  function surfStyle(planet, vp, ageGyr) {
+    var seed = (planet.seed >>> 0), real = !!planet.visualKey, rnd = mulberry32(hash32(seed ^ 0x5A17E5));
+    var kind = SURF_KIND[planet.type] != null ? SURF_KIND[planet.type] : 0;
+    var vars = PAL_VARIANTS[vp.palette], nVar = vars ? vars.length : 1;
+    var st = { kind: kind, palVar: real ? 0 : Math.floor(rnd() * nVar) * 1 };
+    st.palVar = clamp(st.palVar, 0, nVar - 1);
+    /* 冰世界：越冷越往蓝白那几套靠（甲烷/氮在很低温下才铺得住；靠近升华线的那些反而更脏）。
+       只是把「种子选出来的序号」按温度重映射一次，仍然是查表，仍然完全确定性。 */
+    if (kind === 3 && !real && nVar >= 6) {
+      var TK = isFinite(planet.tempK) ? planet.tempK : 120;
+      var remap = TK < 90 ? [1, 2, 5, 1, 3, 5] : TK < 150 ? [0, 1, 2, 3, 5, 5] : [0, 3, 4, 0, 3, 5];
+      st.palVar = remap[st.palVar];
+    }
+    /* 大尺度：大陆/板块的特征尺度（小 = 少数几块超级大陆，大 = 许多小陆块）与域扭曲强度（海岸线的蜿蜒程度） */
+    st.contFreq = 1.05 + rnd() * 1.75;
+    st.warpAmp = 0.10 + rnd() * 0.42;
+    st.warpFreq = 1.4 + rnd() * 2.2;
+    /* 中尺度：造山带（只长在板块边界上）、裂谷、盾状火山 */
+    st.ridgeFreq = 2.6 + rnd() * 4.6;
+    st.ridgeAmt = 0.45 + rnd() * 0.85;
+    st.riftFreq = 1.8 + rnd() * 2.6;
+    st.riftAmt = rnd();
+    st.volcN = Math.floor(rnd() * 5);
+    /* 撞击盆地：数量随「表面年龄」上升；有大气/有水/在熔融的世界会把坑抹掉 */
+    var renew = (planet.type === 'lava') ? 0.08 : (planet.type === 'ocean' || planet.type === 'living' || planet.type === 'earth') ? 0.18
+      : (planet.type === 'desert') ? 0.55 : (planet.type === 'ice') ? 0.7 : 1.0;
+    var age = isFinite(ageGyr) ? clamp(ageGyr, 0, 13) : 4.5;
+    st.craterDens = clamp((vp.craters || 0) * renew * (0.22 + age / 4.0), 0, 1.0);
+    st.basinN = Math.min(6, Math.round(st.craterDens * (1.2 + rnd() * 2.6)));
+    st.rayAmt = clamp(st.craterDens * (0.35 + rnd() * 0.65), 0, 1);      // 辐射纹（年轻坑才有）
+    st.mareAmt = (kind === 0 && !real) ? rnd() * 0.85 : 0;               // 月海式暗色平原
+    /* 沙漠：主风向（沙丘脊垂直于风向）与沙海密度 */
+    st.duneDir = rnd() * PI; st.duneFreq = 22 + rnd() * 46; st.duneAmt = 0.35 + rnd() * 0.65;
+    /* 冰：裂谷条数（少而长）、极冠范围（由温度给，见下）、喷流沉积暗斑 */
+    st.crackAmt = 0.25 + rnd() * 0.75; st.plumeAmt = rnd() * 0.8;
+    /* 云：云量与气旋尺度 */
+    st.cloudMul = 0.55 + rnd() * 0.95; st.cycloneF = 0.7 + rnd() * 1.1;
+    /* 海洋：洋流色差与浅海带宽度 */
+    st.currentAmt = 0.3 + rnd() * 0.7; st.shelfW = 0.012 + rnd() * 0.030;
+    /* 生命世界：生物群区带宽、雨林偏移 */
+    st.biomeShift = (rnd() - 0.5) * 0.22; st.biomeSharp = 0.5 + rnd() * 0.9;
+    /* 熔岩：裂缝网密度与熔岩湖数量 */
+    st.fissureF = 12 + rnd() * 26; st.lakeAmt = 0.2 + rnd() * 0.8;
+    /* 巨行星：云带条数 / 带纹湍流 / 风暴个数 / 极区结构 */
+    st.bandN = 9 + Math.floor(rnd() * 10);          // 9–18 条
+    st.bandTurb = 0.45 + rnd() * 0.75;
+    st.stormN = 1 + Math.floor(rnd() * 3);          // 1–3 个风暴斑
+    st.hexPole = rnd() < 0.22 ? 1 : 0;              // 极区六边形（土星式）偶尔出现
+    st.darkPole = 0.25 + rnd() * 0.6;
+    st.ringDense = 0.35 + rnd() * 0.6;
+    /* 真实天体（地球/火星/木星…）：与「认得出这是哪一颗」有关的几项按定值，不让种子改掉。 */
+    if (real) { st.biomeShift = 0; st.biomeSharp = 1.0; st.cycloneF = 1.0; st.cloudMul = 1.0; st.mareAmt = (planet.visualKey === 'moon') ? 0.85 : 0;
+      st.shelfW = 0.018; st.currentAmt = 0.45; }   // 地球的大陆架与洋流按定值：认得出来的海岸线不交给种子
+    st.heatK = clamp(((isFinite(planet.tempK) ? planet.tempK : 1200) - 700) / 1200, 0, 1);   // 熔岩世界的亮度档
+    st.storms = [];
+    for (var i = 0; i < 3; i++) {
+      st.storms.push([(rnd() * 2 - 1) * PI, (rnd() * 1.3 - 0.65), 0.05 + rnd() * 0.13, 0.35 + rnd() * 0.65, rnd() < 0.5 ? -1 : 1]);
+    }
+    return st;
+  }
+
   function gradAt(stops, x) { if (x <= stops[0][0]) return rgb(stops[0][1]); for (var i = 1; i < stops.length; i++) if (x <= stops[i][0]) { var t = (x - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0]); return mix3(rgb(stops[i - 1][1]), rgb(stops[i][1]), t); } return rgb(stops[stops.length - 1][1]); }
   /* 纬向云带的颜色表。太阳系四颗巨行星走各自硬编码的分支（逐位不变）；
      过程生成的巨行星走 generic 分支：色相 + 饱和度 + 亮带明度 + 明暗带对比都由 gasCloudClass 给
@@ -1929,7 +2186,15 @@
     var rnd = mulberry32(seed ^ 0x6A5), bands = [], style = vp.gasStyle, hue = vp.hue, y = 0;
     var sat = vp.gasSat, lgt = vp.gasLight, con = vp.gasContrast, jit = vp.gasHueJit != null ? vp.gasHueJit : 24;
     var tho = vp.tholin || 0, thoC = vp.tholinColor || [0.74, 0.42, 0.34];
-    while (y < 1) { var w = 0.03 + rnd() * 0.12, c; var lightBand = bands.length % 2 === 0;
+    /* 条数：太阳系四颗用各自的定值（样子要认得出），其余由行星种子给 7–17 条。上限 20 —— 着色器的带表就是 20 个槽。
+       明暗对比留一个下限：第 III–V 类本来就「几乎看不出带纹」，但完全没有结构就成了一个磨砂球，
+       所以只把亮度差托到 0.10，色相仍按分类走（偏离真实反照率的程度写在 HUD 的云顶说明里）。 */
+    var nFix = { jupiter: 16, saturn: 14, uranus: 8, neptune: 9 }[style];
+    var nB = clamp(Math.round(nFix || ((vp.style && vp.style.bandN) || 11)), 4, 20);
+    if (con != null) con = Math.max(con, 0.10);
+    var ws = [], wsum = 0, bi;
+    for (bi = 0; bi < nB; bi++) { var wv = 0.62 + rnd() * 0.80; ws.push(wv); wsum += wv; }
+    for (bi = 0; bi < nB; bi++) { var w = ws[bi] / wsum, c; var lightBand = bi % 2 === 0;
       if (style === 'jupiter') c = lightBand ? mix3([0.9, 0.85, 0.75], [0.96, 0.92, 0.85], rnd()) : mix3([0.66, 0.5, 0.36], [0.82, 0.62, 0.42], rnd());
       else if (style === 'saturn') c = lightBand ? [0.93, 0.87, 0.68] : mix3([0.82, 0.74, 0.55], [0.88, 0.8, 0.62], rnd());
       else if (style === 'uranus') c = lightBand ? [0.72, 0.87, 0.9] : [0.66, 0.84, 0.88];
@@ -1939,7 +2204,8 @@
       /* 托林雾霾盖在云带之上：整层朝托林色混，亮带混得多一点（薄云上的雾霾更显色），
          暗带本来就暗、混上去看不出。这一步只在 vp.tholin > 0 时发生（太阳系四颗巨行星恒为 0）。 */
       if (tho > 0) c = mix3(c, thoC, clamp(tho * (lightBand ? 0.88 : 0.7), 0, 0.92));
-      bands.push({ y0: y, y1: y + w, c: c }); y += w; }
+      bands.push({ y0: y, y1: Math.min(1, y + w), c: c }); y += w; }
+    bands[bands.length - 1].y1 = 1;
     return bands;
   }
   function buildPalette(planet, vp) {
@@ -1951,7 +2217,10 @@
         for (x = 0; x < W; x++) { var t = x / W; c = mix3(b.c, mix3(b.c, [1, 1, 1], 0.25), t); var i = (y * W + x) * 4; out[i] = c[0] * 255; out[i + 1] = c[1] * 255; out[i + 2] = c[2] * 255; out[i + 3] = 255; } }
       return { data: out, W: W, H: H };
     }
-    var stops = PAL_STOPS[vp.palette] || PAL_STOPS.rock;
+    var stops = palStopsOf(vp);
+    /* 冰面上的托林不该把整颗星球染成褐色：那是覆盖率很高时才成立的极端情形。
+       这里整张色板最多只混 0.18，余下的量交给着色器按「沉积场」局部上色（面积远小于整球）。 */
+    if (vp.palette === 'ice') tho = Math.min(tho, 0.18);
     for (y = 0; y < H; y++) { var climate = y / (H - 1);
       for (x = 0; x < W; x++) { var e = x / (W - 1); c = gradAt(stops, e);
         if (vp.palette === 'mars') c = mix3(c, [0.75, 0.55, 0.45], climate * 0.4);
@@ -1987,9 +2256,13 @@
   var GLSL_FIELD = [
     'uniform sampler2D uMap; uniform vec2 uMapSize;',
     'uniform float uSea, uHRef, uHRange, uPlanetR, uDetailAmp, uDetailFreq, uDrift; uniform int uOct;',
+    /* uOctF：最细那一个八度的权重（0..1）。球面视图按到相机的距离连续给，细节因此是**淡入淡出**
+       而不是整档跳出来；地表飞越一律给 1.0，与 CPU 的 fieldAtCPU 逐位一致（那里没有这一项）。 */
+    'uniform float uOctF;',
     'vec3 decMap(vec4 t){ return vec3((floor(t.r*255.0+0.5)*256.0+floor(t.g*255.0+0.5))/65535.0, t.b, t.a); }',
     'vec3 mapSample(vec2 uv){',
     '  float fx=uv.x*uMapSize.x-0.5, fy=clamp(uv.y*uMapSize.y-0.5,0.0,uMapSize.y-1.0); float x0f=floor(fx), y0f=floor(fy); float tx=fx-x0f, ty=fy-y0f;',
+    '  tx=tx*tx*(3.0-2.0*tx); ty=ty*ty*(3.0-2.0*ty);',
     '  int W=int(uMapSize.x), H=int(uMapSize.y); int x0=int(mod(x0f,uMapSize.x)); int x1=(x0+1)%W; int y0=int(y0f); int y1=min(y0+1,H-1);',
     '  vec3 a=decMap(texelFetch(uMap,ivec2(x0,y0),0)), b=decMap(texelFetch(uMap,ivec2(x1,y0),0)), c=decMap(texelFetch(uMap,ivec2(x0,y1),0)), d=decMap(texelFetch(uMap,ivec2(x1,y1),0));',
     '  return mix(mix(a,b,tx),mix(c,d,tx),ty); }',
@@ -2003,81 +2276,239 @@
     'const float DETAIL_GAIN=0.55, DETAIL_BOOST=2.2;',
     'float detailN(vec3 m, float rough, int oct){ float a=uDetailAmp*(0.15+1.35*rough)*DETAIL_BOOST, f=uDetailFreq, s=0.0, ridge=smoothstep(0.4,0.9,rough);',
 '  if(oct>=5){ m += vec3(snoise(m*3000.0+1.0), snoise(m*3000.0+2.0), snoise(m*3000.0+3.0))*0.00006; } /* 域扭曲：形成蜿蜒的山脊/谷地 */',
-'  for(int o=0;o<12;o++){ if(o>=oct) break; float v=snoise(m*f); v=mix(v,(1.0-abs(v))*1.6-0.8,ridge); s+=a*v; f*=2.05; a*=DETAIL_GAIN; } return s; }',
+'  for(int o=0;o<12;o++){ if(o>=oct) break; float v=snoise(m*f); v=mix(v,(1.0-abs(v))*1.6-0.8,ridge); s+=a*v*((o==oct-1)?uOctF:1.0); f*=2.05; a*=DETAIL_GAIN; } return s; }',
 'uniform float uRivers;',
 'float riverAt(vec3 m, float moist, float elev){ if(uRivers<0.5) return 0.0; vec3 mw=m+vec3(snoise(m*140.0+1.0),snoise(m*140.0+5.0),snoise(m*140.0+9.0))*0.0025; float valley=smoothstep(0.45,0.8,1.0-abs(snoise(m*70.0+4.0))); float w1=1.0-abs(snoise(mw*520.0+2.0)); float w2=1.0-abs(snoise(mw*2900.0+8.0)); float rv=max(smoothstep(0.982,0.997,w1)*(0.4+0.6*valley), smoothstep(0.988,0.999,w2)*0.7*valley); return rv*smoothstep(0.3,0.65,moist)*(1.0-smoothstep(0.06,0.35,elev)); }',
+/* 只取高度的轻量版：不做河道雕刻。球面视图的法线差分用它 ——
+   riverAt 在 fieldAt 里已经展开一次，再展开两次就把片元着色器撑到 D3D 编不动了，
+   而河道对球面尺度的法线本来就看不出来。 */
+'float fieldH(vec3 n, int oct){ vec3 m=warpN(n); vec3 t=mapSample(sph2uv(m)); return t.x+detailN(m,t.y,oct); }',
 'vec4 fieldAt(vec3 n, int oct){ vec3 m=warpN(n); vec3 t=mapSample(sph2uv(m)); float h=t.x+detailN(m,t.y,oct); if(uRivers>0.5 && oct>=5){ float el=uSea<0.0?h:clamp((h-uSea)/(1.0-uSea),0.0,1.0); h-=riverAt(m,t.z,el)*0.0022; } return vec4(h, t.y, t.z, t.x); }'
   ].join('\n');
   // 地表材质（球面视图与地表飞越共用）
+  /* 地表材质（球面视图与地表飞越共用）
+     ------------------------------------------------------------
+     uSurfKind：0 岩石 / 1 沙漠 / 2 海洋 / 3 冰 / 4 熔岩 / 5 生命（含地球） / 6 气态。
+     uSty0 是「按类型解释」的四个风格参数（全部由行星种子派生，见 CPU 侧 surfStyle）：
+       岩石 (月海量, 辐射纹量, 撞击密度, 造山强度)   沙漠 (沙丘基频, sin 主风向, cos 主风向, 沙海量)
+       海洋 (陆架宽, 洋流强, 0, 0)                     冰   (裂谷量, 沉积量, 裂谷基频, 0)
+       熔岩 (裂缝基频, 熔岩湖量, 温度档, 0)            生命 (气候带偏移, 分带锐度, 0, 0)
+     uSty1 是各类型共用的 (气旋尺度, 云量系数, 大陆基频, 裂谷量)。
+     uDetail：近地表细节权重 0..1。远景为 0 —— 细节八度与高频反照率斑点全部淡出，
+     所以远看到的是大陆/冰盖/云系这些大结构，而不是一层均匀的颗粒。
+     fld.z 的含义按类型分家：有水的世界（海洋/生命/地球）是湿度，其余世界是各自的「标记场」
+     （岩石 = 0.5 基准的月海/辐射纹，沙漠 = 沙海密度，冰 = 沉积暗斑，熔岩 = 壳龄）。 */
   var GLSL_SURF = [
     'uniform sampler2D uPal;',
     'uniform vec3 uOceanShallow,uOceanDeep,uAtm,uIceColor,uCloudColor,uFogColor,uVeg0,uVeg1;',
     'uniform float uAtmDensity,uIceLat,uIceHeight,uCloud,uLights,uLava,uLavaSea,uFog,uGreen,uSpec,uCracks,uTime,uCloudRot,uStorm,uCloudDetail;',
     'uniform int uGas;',
-    /* 超热木星：看到的是它自己的热辐射而不是恒星的反光（WASP-12b 的 A_g<0.064）。
-       uGasGlow 缺省 0 —— 其它任何天体逐位不受影响。 */
     'uniform float uGasGlow; uniform vec3 uGasGlowCol;',
-    /* 照明色温：宿主恒星的普朗克色（太阳 5772 K 归一化为 vec3(1)）。只乘在**反射**项上，
-       自发光（城市灯光、熔岩、超热木星的热辐射）不受影响 —— 那些不是恒星的光。
-       瑞利散射的边光只吃一半的色温（mix(1, tint, 0.45)）：σ ∝ λ⁻⁴ 会把散射光重新加权到蓝端，
-       所以红矮星下的大气边缘仍然偏蓝 —— 红橙的盘面配偏蓝的边光，看上去才是粉的。 */
     'uniform vec3 uSunTint;',
+    'uniform int uSurfKind; uniform vec4 uSty0, uSty1; uniform float uDetail;',
+    'uniform vec3 uDepositC, uCrackC;',   /* 冰：沉积暗斑色（托林）与裂谷色；其它类型给零不用 */
+    'uniform vec2 uSea2;',   /* (陆架宽度, 洋流色差强度)：所有有水的世界共用 */
     'struct Surf { vec3 col; vec3 emis; float spec; float water; float ice; };',
+    'float sn2(vec3 p, int oct){ float s=0.0,a=0.5,f=1.0; for(int i=0;i<4;i++){ if(i>=oct) break; s+=a*snoise(p*f); f*=2.11; a*=0.5; } return s; }',
+    'vec3 curlW(vec3 n, float f, float amp){ vec3 w=vec3(snoise(n*f+3.1), snoise(n*f+9.7), snoise(n*f+17.3)); return normalize(n + cross(n,w)*amp); }',
+    /* 中尺度地貌（只在近景淡入）：返回一个高度标量，球面视图用它在切平面上的梯度扰动法线。
+       这是高度场的梯度，不是把噪声直接糊到法线上 —— 所以近看是「看得懂的地貌」而不是一层沙：
+         冰   压力脊（长而直）+ 多边形冰原的裂纹网 + 雪垄（沿主风向的细垄）
+         沙漠 沙丘脊：迎风面缓、背风面陡（把正弦用 pow 压成不对称）
+         岩石 坑缘与溅射毯 + 巨石
+         熔岩 冷却壳板块的边缘隆起
+       每一支只花一两次噪声 —— 这个片元着色器离 D3D 的编译上限本来就不远。 */
+    'float hash21(vec2 p){ vec3 q=fract(vec3(p.x,p.y,p.x)*vec3(0.1031,0.1030,0.0973)); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }',
+    'float craterField(vec3 n, float S){',
+    '  vec2 uv=sph2uv(n); vec2 c=vec2(uv.x*2.0*S, uv.y*S); vec2 ic=floor(c); float o=0.0;',
+    '  for(int oy=-1;oy<=1;oy++){ for(int ox=-1;ox<=1;ox++){',
+    '    vec2 g=ic+vec2(float(ox),float(oy));',
+    '    float h1=hash21(g), h2=hash21(g+37.7);',
+    '    if(h1>0.52) continue;',
+    '    vec2 jc=g+vec2(h2, fract(h2*7.31));',
+    '    float rad=0.20+0.34*fract(h1*13.7);',
+    '    float d=length(c-jc)/rad;',
+    '    if(d<1.4){ float q=(d-1.0)/0.17;',
+    '      o -= (1.0-smoothstep(0.0,0.90,d))*0.95;',
+    '      o += exp(-q*q)*0.60; }',
+    '  } }',
+    '  return o; }',
+    'float surfBump(vec3 n){',
+    '  if(uDetail<=0.02) return 0.0;',
+    '  float b=0.0;',
+    '  if(uSurfKind==3){',
+    '    float r1=1.0-abs(snoise(n*58.0+4.0));',
+    '    b -= smoothstep(0.93,1.0,r1)*1.30;',
+    '    float p1=1.0-abs(snoise(n*520.0+11.0));',
+    '    b += smoothstep(0.88,1.0,p1)*0.70;',
+    '    b += sin(dot(n,vec3(0.81,0.42,0.41))*2400.0)*0.07;',
+    '  } else if(uSurfKind==1){',
+    '    float w=snoise(n*42.0+3.0);',
+    '    float dc=(dot(n,vec3(uSty0.z,0.55,uSty0.y))+w*0.010)*max(uSty0.x,6.0)*26.0;',
+    '    float sd=sin(dc)*0.5+0.5;',
+    '    b += (pow(sd,3.2)-0.22)*1.05*clamp(mix(0.30,1.0,clamp(uSty0.w,0.0,1.0)),0.0,1.0);',
+    '  } else if(uSurfKind==0){',
+    '    b += craterField(n, 26.0)*2.20*clamp(uSty0.z,0.25,1.0);',
+    '    b += snoise(n*1900.0+9.0)*0.16;',
+    '  } else if(uSurfKind==4){',
+    '    float pl=snoise(n*430.0+5.0);',
+    '    b += smoothstep(0.14,0.0,abs(pl))*1.10;',
+    '  } else {',
+    '    b += smoothstep(0.80,1.0, 1.0-abs(snoise(n*380.0+6.0)))*0.60;',
+    '  }',
+    '  return b*uDetail; }',
     'Surf shadeSurface(vec3 n, vec4 fld, float nz){',
     '  Surf S; S.emis=vec3(0.0); S.spec=0.0; S.water=0.0; S.ice=0.0;',
-    '  float h=fld.x, moist=fld.z, lat=abs(n.y);',
+    '  float h=fld.x, mark=fld.z, lat=abs(n.y);',
     '  bool land = uSea<0.0 || h>=uSea;',
     '  float elev = uSea<0.0 ? h : clamp((h-uSea)/(1.0-uSea),0.0,1.0);',
     '  float climate = clamp(lat*lat*1.2 + elev*uIceHeight*0.45 + 0.08*snoise(n*6.0), 0.0, 1.0);',
+    '  float steep = smoothstep(0.70,0.36,nz);',
     '  vec3 col;',
     '  if(land){',
     '    col = texture(uPal, vec2(elev, climate)).rgb;',
-    '    float steep = smoothstep(0.70,0.36,nz); /* 坡度：≈21° 起露岩、≈44° 全是岩（nz 已含 ×2.7 夸张） */',
-    '    float treeLine = 1.0-smoothstep(0.55-climate*0.35, 0.75-climate*0.35, elev); /* 林线随气候下降 */',
-    '    float veg = uGreen*smoothstep(0.25,0.65,moist)*(1.0-smoothstep(0.45,0.92,climate))*treeLine*(1.0-steep*0.9);',
-    '    float forest = smoothstep(0.3,0.75, snoise(n*1500.0)+0.35*snoise(n*6000.0)+moist*0.6-0.4)*smoothstep(0.7,0.35,climate);',
-    '    vec3 grass = mix(uVeg0, vec3(0.55,0.56,0.26), (1.0-smoothstep(0.35,0.6,moist))*0.7); vec3 tundra = vec3(0.42,0.4,0.28); vec3 forestC = mix(uVeg1, uVeg0*0.6, smoothstep(0.1,0.5,climate));',
-    '    vec3 vc = mix(grass, forestC, forest); vc = mix(vc, tundra, smoothstep(0.55,0.85,climate)); vc *= 0.85+0.3*snoise(n*40.0);',
-    '    /* 植被分区：大尺度生物群区 + 中尺度旱地斑块 + 林内明暗，避免整片一个绿 */',
-    '    float biome = clamp(0.5+0.5*snoise(n*220.0+17.0)+0.28*snoise(n*1400.0+31.0),0.0,1.0); vc = mix(vc*vec3(0.70,0.92,0.66), vc*vec3(1.34,1.08,0.62), biome);',
-    '    vc = mix(vc, vc*vec3(1.45,1.24,0.58), smoothstep(0.10,0.62,snoise(n*900.0+3.0))*(1.0-forest)*0.85);',
-    '    vc = mix(vc, vc*0.70, smoothstep(0.42,0.9,snoise(n*4200.0+8.0))*forest*0.55); col = mix(col, vc, veg);',
-    '    /* 裸地 / 岩石：陡坡、林线以上、干旱斑块——与植被形成可分辨的分区 */',
-    '    vec3 rockC = mix(vec3(0.33,0.30,0.27), vec3(0.64,0.59,0.50), 0.5+0.5*snoise(n*20000.0)); rockC *= 0.82+0.36*snoise(n*260.0+5.0);',
-    '    float dry = smoothstep(0.45,0.85, 0.5+0.5*snoise(n*380.0+9.0) + (1.0-moist)*0.5)*(1.0-veg)*(1.0-smoothstep(0.5,0.8,climate))*0.55; /* 旱地裸土斑：只在暖干区，寒区留给雪线 */',
-    '    float bare = clamp(max(steep, dry), 0.0, 1.0);',
-    '    col = mix(col, rockC, bare);',
-    '    col *= 0.88+0.24*snoise(n*3000.0)+0.08*snoise(n*12000.0);',
-'    if(uRivers>0.5){ float rv=riverAt(warpN(n),moist,elev); col=mix(col, uOceanShallow*0.7+vec3(0.04,0.07,0.05), smoothstep(0.15,0.6,rv)*0.9); S.water=max(S.water, smoothstep(0.3,0.7,rv)); }',
-    '    float ice = smoothstep(uIceLat-0.05, uIceLat+0.03, lat + 0.05*snoise(n*8.0) + elev*0.12*uIceHeight)*(1.0-steep*0.75); /* 陡壁挂不住雪：露出岩壁，雪线才看得出来 */',
-    '    col = mix(col, uIceColor, ice); S.ice=ice;',
-    '    if(uCracks>0.0){ float cr=1.0-abs(snoise(n*14.0)); float cr2=1.0-abs(snoise(n*45.0+2.0)); cr=max(smoothstep(0.93,1.0,cr),smoothstep(0.96,1.0,cr2)*0.6)*uCracks; col=mix(col, col*0.4+vec3(0.03,0.1,0.2), cr); }',
-    '    if(uLava>0.0){ float r1=1.0-abs(snoise(n*22.0+3.0)); float r2=1.0-abs(snoise(n*55.0-4.0)); float r3=1.0-abs(snoise(n*420.0+9.0)); float r4=1.0-abs(snoise(n*2600.0-5.0)); float r5=1.0-abs(snoise(n*14000.0+1.0));',
-    '      float riv=max(max(smoothstep(0.92,0.99,max(r1*0.95,r2*0.85)), smoothstep(0.965,0.997,r3)*0.75), max(smoothstep(0.972,0.998,r4)*0.6, smoothstep(0.978,0.999,r5)*0.45)); riv*=(1.0-smoothstep(0.12,0.5,elev));',
+    '    if(uSurfKind==3){',
+    '      vec3 polar = mix(col, vec3(0.97,0.985,1.0), smoothstep(0.52,0.88,lat));',
+    '      vec3 lowlat = col*vec3(0.80,0.88,1.02)*0.93;',
+    '      col = mix(mix(lowlat,col,smoothstep(0.08,0.45,lat)), polar, smoothstep(0.45,0.82,lat));',
+    '      col *= 0.95+0.10*snoise(n*(1.8+uSty1.z*0.6)+7.0);',
+    '      float prov = smoothstep(0.22,0.70, 0.5+0.5*snoise(n*0.8+5.5));',
+    '      float cf0 = max(uSty0.z,1.2);',
+    '      float c1 = 1.0-abs(snoise(n*cf0+2.0)), c2 = 1.0-abs(snoise(n*cf0*2.6-4.0));',
+    '      float crack = max(smoothstep(0.970,0.999,c1), smoothstep(0.984,1.0,c2)*0.55)*prov*uSty0.x;',
+    '      col = mix(col, uCrackC, crack*0.88);',
+    /* 沉积暗斑：先过一道阈值，只有沉积**厚**的地方才显色 —— 覆盖率压在一成出头，不会把整球染褐 */
+    '      col = mix(col, uDepositC, smoothstep(0.55,0.98, clamp(mark*uSty0.y,0.0,1.0))*0.82);',
+    '      col = mix(col, col*1.12+0.04, smoothstep(0.66,0.30,nz)*0.5);',
+    '      S.spec = 0.05+0.22*smoothstep(0.30,0.80,lat); S.ice=0.8;',
+    '    }',
+    '    else if(uSurfKind==0){',
+    '      float mare = smoothstep(0.50,0.04,mark)*uSty0.x;',
+    '      col = mix(col, col*vec3(0.44,0.46,0.50), mare);',
+    '      float ray = smoothstep(0.52,0.96,mark)*uSty0.y;',
+    '      col = mix(col, min(col*1.85+0.09, vec3(1.0)), ray*0.8);',
+    '      col *= 0.90+0.20*snoise(n*(1.5+uSty1.z*0.6)+3.0);',
+    '      if(uDetail>0.02){ float cf=craterField(n,26.0);',
+    '        col = mix(col, min(col*1.65+0.05,vec3(1.0)), clamp(cf,0.0,1.0)*0.60*uDetail);',
+    '        col = mix(col, col*0.80, clamp(-cf,0.0,1.0)*0.35*uDetail); }',
+    '      col = mix(col, col*1.22+0.02, steep*0.55);',
+    '      S.spec = 0.02;',
+    '    }',
+    '    else if(uSurfKind==1){',
+    '      float erg = clamp(mark,0.0,1.0);',
+    '      vec3 sand = texture(uPal, vec2(clamp(elev*0.5+0.45,0.0,1.0), climate*0.45)).rgb;',
+    '      col = mix(col, sand, erg*0.72);',
+    '      vec3 nw = curlW(n, 2.6, 0.10);',
+    '      float dc = dot(nw, vec3(uSty0.z, 0.55, uSty0.y))*max(uSty0.x,6.0);',
+    '      float dune = sin(dc)*0.5+0.5;',
+    '      dune = mix(dune, dune*0.55+0.45*(sin(dc*7.0)*0.5+0.5), uDetail);',
+    '      col *= 1.0 + (dune-0.5)*0.20*erg*uSty0.w;',
+    '      float wadi = smoothstep(0.90,0.998, 1.0-abs(snoise(n*(5.0+uSty1.z*2.0)+4.4)));',
+    '      col = mix(col, col*vec3(0.74,0.72,0.70), wadi*(1.0-erg)*0.75);',
+    '      col = mix(col, col*1.20+0.03, steep*0.7);',
+    '      S.spec = 0.03;',
+    '    }',
+    '    else if(uSurfKind==4){',
+    '      float age = clamp(mark,0.0,1.0);',
+    '      col = mix(mix(col,vec3(0.22,0.17,0.15),0.55), mix(col,vec3(0.06,0.05,0.045),0.75), age);',
+    '      float ff = max(uSty0.x,6.0);',
+    '      float k1 = 1.0-abs(snoise(n*ff+3.0)), k2 = 1.0-abs(snoise(n*ff*2.7-4.0));',
+    '      float fis = max(smoothstep(0.900,0.996,k1), smoothstep(0.950,0.999,k2)*0.7);',
+    '      if(uDetail>0.02){ float k3 = 1.0-abs(snoise(n*ff*8.5+1.0)); fis = max(fis, smoothstep(0.968,1.0,k3)*0.5*uDetail); }',
+    '      fis *= (1.0-age);',
+    '      float lake = smoothstep(0.34,0.02,elev)*smoothstep(0.55,0.12,age)*uSty0.y;',
+    '      float glow = clamp(max(fis, lake*0.9)*uLava, 0.0, 1.0);',
+    '      vec3 lc = mix(vec3(1.0,0.28,0.04), vec3(1.0,0.88,0.48), clamp(uSty0.z,0.0,1.0)*0.65+glow*0.35);',
+    '      col = mix(col, lc*0.55, glow*0.85);',
+    '      S.emis += lc*glow*(1.1+1.6*clamp(uSty0.z,0.0,1.0));',
+    '      S.spec = 0.05;',
+    '    }',
+    '    else {',
+    '      float moist = mark;',
+    '      float treeLine = 1.0-smoothstep(0.55-climate*0.35, 0.75-climate*0.35, elev);',
+    '      float veg = uGreen*smoothstep(0.22,0.62,moist)*(1.0-smoothstep(0.45,0.92,climate))*treeLine*(1.0-steep*0.9);',
+    '      float band = clamp(lat + uSty0.x, 0.0, 1.2);',
+    '      float sharp = max(uSty0.y, 0.4);',
+    '      float rain   = smoothstep(0.34,0.10,band)*smoothstep(0.42,0.72,moist);',
+    '      float savan  = smoothstep(0.08,0.30,band)*smoothstep(0.62,0.34,moist)*smoothstep(0.62,0.36,band);',
+    '      float arid   = smoothstep(0.16,0.36,band)*smoothstep(0.46,0.18,moist)*smoothstep(0.66,0.40,band);',
+    '      float boreal = smoothstep(0.42,0.62,band)*smoothstep(0.28,0.55,moist)*smoothstep(0.86,0.62,band);',
+    '      float tundra = smoothstep(0.62,0.82,band);',
+    '      vec3 cRain=uVeg1, cSav=vec3(0.55,0.54,0.26), cArid=vec3(0.66,0.56,0.36), cBor=mix(uVeg0,vec3(0.16,0.28,0.20),0.6), cTun=vec3(0.44,0.42,0.30);',
+    '      vec3 vc = uVeg0;',
+    '      vc = mix(vc, cRain, clamp(rain*sharp,0.0,1.0));',
+    '      vc = mix(vc, cSav,  clamp(savan*sharp,0.0,1.0));',
+    '      vc = mix(vc, cArid, clamp(arid*sharp,0.0,1.0));',
+    '      vc = mix(vc, cBor,  clamp(boreal*sharp,0.0,1.0));',
+    '      vc = mix(vc, cTun,  clamp(tundra,0.0,1.0));',
+    '      float patchN = 0.5+0.5*sn2(n*(120.0+uSty1.z*40.0)+17.0, 2);',
+    '      vc *= 0.86+0.30*patchN;',
+    '      if(uDetail>0.02) vc *= 1.0 + (snoise(n*700.0+8.0))*0.16*uDetail;',
+    '      col = mix(col, vc, veg);',
+    '      vec3 rockC = mix(vec3(0.33,0.30,0.27), vec3(0.62,0.58,0.50), 0.5+0.5*sn2(n*60.0+5.0,2));',
+    '      float dry = smoothstep(0.45,0.85, 0.5+0.5*snoise(n*180.0+9.0) + (1.0-moist)*0.5)*(1.0-veg)*(1.0-smoothstep(0.5,0.8,climate))*0.5;',
+    '      col = mix(col, rockC, clamp(max(steep, dry),0.0,1.0));',
+    '      if(uRivers>0.5){ float rv=riverAt(warpN(n),moist,elev); col=mix(col, uOceanShallow*0.7+vec3(0.04,0.07,0.05), smoothstep(0.15,0.6,rv)*0.9); S.water=max(S.water, smoothstep(0.3,0.7,rv)); }',
+    '      S.spec = 0.03;',
+    '    }',
+    '    if(uDetail>0.004){ col *= mix(1.0, 0.965+0.07*snoise(n*900.0)+0.025*snoise(n*3600.0), uDetail); }',
+    '    if(uSurfKind!=3){ float ice = smoothstep(uIceLat-0.05, uIceLat+0.03, lat + 0.05*snoise(n*8.0) + elev*0.12*uIceHeight)*(1.0-steep*0.75);',
+    '      col = mix(col, uIceColor, ice); S.ice=max(S.ice,ice); S.spec += ice*0.22; }',
+    '    if(uCracks>0.0 && uSurfKind!=3){ float cr=1.0-abs(snoise(n*14.0)); float cr2=1.0-abs(snoise(n*45.0+2.0)); cr=max(smoothstep(0.93,1.0,cr),smoothstep(0.96,1.0,cr2)*0.6)*uCracks; col=mix(col, col*0.4+vec3(0.03,0.1,0.2), cr); }',
+    '    if(uLava>0.0 && uSurfKind!=4){ float r1=1.0-abs(snoise(n*22.0+3.0)); float r2=1.0-abs(snoise(n*55.0-4.0)); float r3=1.0-abs(snoise(n*420.0+9.0));',
+    '      float riv=max(smoothstep(0.92,0.99,max(r1*0.95,r2*0.85)), smoothstep(0.965,0.997,r3)*0.75); riv*=(1.0-smoothstep(0.12,0.5,elev));',
     '      vec3 lc=vec3(1.0,0.35,0.06); col=mix(col, vec3(0.17,0.13,0.12), uLava*0.7); col=mix(col, lc*0.6, riv*uLava); S.emis+=lc*riv*uLava*1.8; }',
-    '    S.spec = 0.03 + ice*0.25;',
     '  } else {',
     '    float depth = clamp((uSea-h)/max(uSea,1e-4),0.0,1.0);',
-    '    if(uLavaSea>0.5){ vec3 lc=mix(vec3(0.9,0.25,0.03), vec3(1.0,0.75,0.25), 0.5+0.5*snoise(n*30.0+uTime*0.05)); float m=smoothstep(0.0,0.06,depth); col=mix(vec3(0.15,0.08,0.05), lc, m); S.emis=lc*1.4*m; S.spec=0.2; }',
-    '    else { col=mix(uOceanShallow, uOceanDeep, pow(depth,0.45)); S.spec=uSpec; S.water=1.0;',
-    '      float sice=smoothstep(uIceLat+0.02, uIceLat+0.09, lat+0.04*snoise(n*9.0)); col=mix(col, uIceColor*0.95, sice); S.spec=mix(S.spec,0.2,sice); S.ice=sice; }',
+    '    if(uLavaSea>0.5){ vec3 lc=mix(vec3(0.9,0.25,0.03), vec3(1.0,0.75,0.25), 0.5+0.5*snoise(n*30.0+uTime*0.05)); float m=smoothstep(0.0,0.06,depth);',
+    '      float plate=smoothstep(0.30,0.62, 0.5+0.5*snoise(n*26.0+5.0)+0.25*snoise(n*70.0-3.0));',   /* 漂在岩浆海上的冷却暗壳：亮的是板块之间的缝 */
+    '      col=mix(vec3(0.15,0.08,0.05), lc, m); S.emis=lc*1.4*m;',
+    '      col=mix(col, vec3(0.10,0.07,0.06), plate*0.85); S.emis*=1.0-plate*0.88; S.spec=0.2; }',
+    '    else {',
+    '      float shelfW = max(uSea2.x, 0.02);',
+    '      float shelf = 1.0-smoothstep(0.0, shelfW, depth);',
+    '      vec3 shallow = mix(uOceanShallow*1.22+vec3(0.06,0.08,0.05), uOceanShallow, smoothstep(0.0,0.6,shelf));',
+    '      col = mix(uOceanDeep, shallow, pow(1.0-clamp(depth,0.0,1.0), 2.2));',
+    '      col = mix(col, uOceanShallow*1.25+vec3(0.06,0.08,0.04), shelf*0.55);',
+    '      vec3 cw = curlW(n, 1.7, 0.30);',
+    '      float cur = sn2(cw*vec3(2.2,6.0,2.2)+11.0, 3);',
+    '      col *= 1.0 + cur*0.16*uSea2.y; col = mix(col, col*vec3(0.88,1.06,1.02), clamp(cur,0.0,1.0)*0.35*uSea2.y);',
+    '      S.spec=uSpec; S.water=1.0;',
+    '      float sice=smoothstep(uIceLat+0.02, uIceLat+0.09, lat+0.04*snoise(n*9.0)); col=mix(col, uIceColor*0.95, sice); S.spec=mix(S.spec,0.2,sice); S.ice=sice;',
+    '    }',
     '  }',
     '  S.col=col; return S; }',
     'uniform sampler2D uCityTex; uniform float uHasCity;',
-'float cityLights(vec3 n, vec4 fld){ if(uLights<=0.0) return 0.0; float h=fld.x, moist=fld.z; if(uSea>0.0 && h<uSea) return 0.0;',
-'  if(uHasCity>0.5){ float c=texture(uCityTex, sph2uv(n)).r; if(c<0.002) return 0.0; float dots=0.55+0.45*smoothstep(0.3,0.9,snoise(n*900.0)) + 0.5*smoothstep(0.6,0.95,snoise(n*2600.0)); return min(c*2.2,1.0)*dots*uLights; }',
+    'float cityLights(vec3 n, vec4 fld){ if(uLights<=0.0) return 0.0; float h=fld.x, moist=fld.z; if(uSea>0.0 && h<uSea) return 0.0;',
+    '  if(uHasCity>0.5){ float c=texture(uCityTex, sph2uv(n)).r; if(c<0.002) return 0.0; float dots=0.55+0.45*smoothstep(0.3,0.9,snoise(n*900.0)) + 0.5*smoothstep(0.6,0.95,snoise(n*2600.0)); return min(c*2.2,1.0)*dots*uLights; }',
     '  float elev = uSea<0.0? h : (h-uSea)/(1.0-uSea); float lat=abs(n.y);',
-    '  float base = smoothstep(0.25,0.55,moist)*(1.0-smoothstep(0.25,0.55,elev))*(1.0-smoothstep(0.55,0.75,lat));',
-    '  float coast = uSea>0.0 ? 1.0-smoothstep(0.0,0.08,elev) : 0.5;',
-    '  float cl = smoothstep(0.2,0.7, snoise(n*9.0)+0.35*snoise(n*23.0)+coast*0.5);',
+    '  float base = smoothstep(0.22,0.52,moist)*(1.0-smoothstep(0.22,0.52,elev))*(1.0-smoothstep(0.55,0.75,lat));',
+    '  float coast = uSea>0.0 ? 1.0-smoothstep(0.0,0.055,elev) : 0.5;',
+    '  float valley = uRivers>0.5 ? smoothstep(0.972,0.999, 1.0-abs(snoise(warpN(n)*520.0+2.0)))*0.8 : 0.0;',
+    '  float cl = smoothstep(0.18,0.68, snoise(n*9.0)+0.35*snoise(n*23.0)+coast*0.75+valley);',
     '  float dots = smoothstep(0.45,0.8, snoise(n*160.0)) + 0.4*smoothstep(0.6,0.95,snoise(n*400.0)) + 0.25*smoothstep(0.7,0.98,snoise(n*1200.0));',
-    '  return base*cl*dots*uLights; }',
+    '  return base*cl*dots*uLights*(0.55+0.65*max(coast,valley)); }',
+    /* 大气的边缘散射：光程 ∝ 1/μ（斜穿时更长）、瑞利 λ⁻⁴ 把蓝端加权、**向光侧亮而背光侧消失**。
+       厚度跟着 uAtmDensity（大气压/标高的代理）走 —— 无大气天体拿到 0，边上什么也不挂。 */
+    'vec3 limbGlow(vec3 Nw, vec3 V, float ndl, out float amt){',
+    '  float mu=max(dot(Nw,V),0.0);',
+    '  float thick=pow(1.0-mu,3.0)*(0.40+0.75*clamp(uAtmDensity,0.0,1.6));',
+    '  float litRim=smoothstep(-0.30,0.18,ndl);',
+    '  float gq=(ndl-0.04)/0.30; float fwd=1.0+0.95*exp(-gq*gq);',
+    '  amt=clamp(thick*litRim*fwd*0.80, 0.0, 0.94);',
+    '  return uAtm*mix(vec3(1.0),uSunTint,0.45)*vec3(1.06,0.94,0.86); }',,
     'float cloudAt(vec3 n){ if(uCloud<=0.0) return 0.0; float c=cos(uCloudRot), s=sin(uCloudRot); vec3 m=vec3(n.x*c-n.z*s, n.y, n.x*s+n.z*c);',
-    '  float f=0.0, a=0.5, fr=3.0; for(int i=0;i<4;i++){ f+=a*snoise(m*fr+float(i)*1.7+vec3(uTime*0.004*fr,0.0,0.0)); fr*=2.2; a*=0.5; }',
-    '  if(uCloudDetail>0.5){ float d=0.0, ad=0.28, fd=45.0; for(int j=0;j<5;j++){ d+=ad*snoise(m*fd+float(j)*3.1+vec3(uTime*0.01,0.0,0.0)); fd*=2.4; ad*=0.55; } f+=d; }',
-'  f=f*0.5+0.5+0.05*snoise(m*30.0); float lo=0.66-uCloud*0.3; return smoothstep(lo, lo+0.14, f)*min(1.0,uCloud*1.4); }'
+    '  float cyc = max(uSty1.x, 0.3);',
+    '  vec3 q = curlW(m, 1.15*cyc, 0.13);',
+    '  q = curlW(q, 3.0*cyc, 0.055);',
+    '  float f=0.0, a=0.5, fr=2.6*cyc; for(int i=0;i<4;i++){ f+=a*snoise(q*fr+float(i)*1.7+vec3(uTime*0.004*fr,0.0,0.0)); fr*=2.2; a*=0.5; }',
+    '  if(uCloudDetail>0.5){ float d=0.0, ad=0.26, fd=40.0; for(int j=0;j<5;j++){ d+=ad*snoise(q*fd+float(j)*3.1+vec3(uTime*0.01,0.0,0.0)); fd*=2.4; ad*=0.55; } f+=d; }',
+    '  float lat=abs(n.y);',
+    '  float a1=(lat-0.34)/0.16, a2=(lat-0.66)/0.20;',
+    '  float itcz = 0.26*exp(-lat*lat*26.0) - 0.22*exp(-a1*a1) + 0.20*exp(-a2*a2);',
+    '  f = f*0.5+0.5 + itcz;',
+    '  float lo=0.62-uCloud*0.26; return smoothstep(lo, lo+0.21, f)*min(1.0,uCloud*1.35); }'
   ].join('\n');
-
   /* 不规则天体的形状（小行星 / 彗核）：三轴椭球 × 若干「凸起 / 凹坑 / 收腰」。
      全部参数是每个天体的常量（CPU 按 seed 算好，见 shapeOf），与相机、时间无关。
      uShaped = 0（默认，也是所有行星/卫星的取值）时 shapeR ≡ 1、shapeP ≡ n，球状天体逐位保持原样。
@@ -2101,42 +2532,103 @@
     'layout(location=0) in vec3 aPos; uniform mat4 uVP, uModel; out vec3 vN; out vec3 vW; out vec3 vSN;',
     'void main(){ vN=aPos; vSN=shapeNrm(aPos); vec4 w=uModel*vec4(shapeP(aPos),1.0); vW=w.xyz; gl_Position=uVP*w; }'
   ].join('\n');
+  /* 巨行星 / 冰巨星的球面：只有云带，没有高度场 —— 单独一个程序，别和地形挤在一个着色器里。 */
+  var GLSL_GAS = [
+    'uniform sampler2D uPal;',
+    'uniform vec3 uAtm, uSunTint, uGasGlowCol;',
+    'uniform float uAtmDensity, uTime, uGasGlow, uDetail;',
+    'uniform float uBandY[20]; uniform vec3 uBandC[20]; uniform int uBandN;',
+    'uniform vec4 uStormA, uStormB, uStormC, uGasP;',
+    'vec3 curlW(vec3 n, float f, float amp){ vec3 w=vec3(snoise(n*f+3.1), snoise(n*f+9.7), snoise(n*f+17.3)); return normalize(n + cross(n,w)*amp); }',
+    'float wrapPi(float a){ return mod(a+3.14159265, 6.28318531)-3.14159265; }',
+    'vec3 stormPatch(vec3 col, vec4 sp, float lon, float y, float lat, float sgn){',
+    '  if(sp.w<=0.001) return col;',
+    '  vec2 d = vec2(wrapPi(lon-sp.x)*max(cos(lat),0.10), y-sp.y);',
+    '  float r = length(d/vec2(max(sp.z,0.01)*2.1, max(sp.z,0.01)));',
+    '  float a = atan(d.y,d.x) + sgn*(1.0-clamp(r,0.0,1.0))*2.6;',
+    '  float swirl = 0.5+0.5*sin(a*3.0+r*8.0);',
+    '  float m = smoothstep(1.05,0.30,r)*sp.w;',
+    '  vec3 sc = mix(col*vec3(1.55,0.82,0.58), col*vec3(1.10,1.02,0.92), swirl*0.55);',
+    '  col = mix(col, sc, m);',
+    '  return mix(col, min(col*1.45+0.05,vec3(1.0)), smoothstep(0.26,0.0,abs(r-0.94))*0.55*sp.w); }',
+    'vec3 gasShade(vec3 n, float t){',
+    /* 带的纵坐标用纬度而不是 sin 纬度：木星的带在纬度上大致等宽，用 sin 会把赤道那几条拉得特别肥 */
+    '  float y=clamp(n.y,-1.0,1.0), lat=asin(y), lon=atan(-n.z,n.x), by=lat*0.3183098862+0.5;',
+    '  float turb=max(uGasP.x,0.15);',
+    '  float edge=0.0;',
+    '  for(int i=0;i<20;i++){ if(i>=uBandN-1) break; edge=max(edge, smoothstep(0.022,0.0,abs(by-uBandY[i]))); }',
+    '  vec3 q=curlW(n, 2.6, 0.12*turb*(0.35+edge));',
+    '  q=curlW(q, 7.5, 0.055*turb*(0.30+edge));',
+    '  float adv=t*0.010;',
+    '  float w1=snoise(vec3(q.x*1.7+adv, q.y*9.0, q.z*1.7));',
+    '  float w2=snoise(vec3(q.x*4.2-adv*1.6, q.y*22.0, q.z*4.2)+7.0);',
+    '  float w3=snoise(vec3(q.x*0.85+adv*0.4, q.y*3.2, q.z*0.85)+3.0);',
+    '  float byw=clamp(by + (w1*0.5+w2*0.22+w3*0.45)*0.013*turb*(0.30+1.60*edge), 0.0, 1.0);',
+    '  float sw=0.006+0.012*turb;',
+    '  vec3 col=uBandC[0];',
+    '  for(int i=1;i<20;i++){ if(i>=uBandN) break; col=mix(col, uBandC[i], smoothstep(uBandY[i-1]-sw, uBandY[i-1]+sw, byw)); }',
+    '  col *= 1.0 + snoise(vec3(q.x*7.0+adv, q.y*46.0, q.z*7.0))*0.035*(0.45+0.55*uDetail);',
+    '  col = mix(col, min(col*1.30+0.03,vec3(1.0)), edge*smoothstep(0.05,0.75,w1*0.5+0.5)*0.55*turb);',
+    '  col = mix(col, col*0.82, edge*smoothstep(0.05,0.75,-w1*0.5+0.5)*0.35*turb);',
+    '  col = stormPatch(col, uStormA, lon, y, lat,  1.0);',
+    '  col = stormPatch(col, uStormB, lon, y, lat, -1.0);',
+    '  col = stormPatch(col, uStormC, lon, y, lat,  1.0);',
+    '  float pl=abs(y);',
+    '  if(uGasP.y>0.5){ float th=atan(n.z,n.x); float hr=0.79+0.060*cos(6.0*th);',
+    '    col = mix(col, col*0.78+vec3(0.015,0.025,0.04), smoothstep(hr-0.03,hr+0.03,pl)*uGasP.z);',
+    '    col = mix(col, min(col*1.30+0.03,vec3(1.0)), smoothstep(0.035,0.0,abs(pl-hr))*0.65); }',
+    '  else col = mix(col, col*(1.0-0.50*uGasP.z), smoothstep(0.70,0.99,pl));',
+    '  if(uGasP.w>0.5){ float br=smoothstep(0.78,0.96, snoise(vec3(q.x*5.0+adv*2.0, q.y*13.0, q.z*5.0)+21.0));',
+    '    col = mix(col, min(col*2.0+0.14,vec3(1.0)), br*0.55); }',
+    '  return col; }',
+    'vec3 limbGlow(vec3 Nw, vec3 V, float ndl, out float amt){',
+    '  float mu=max(dot(Nw,V),0.0);',
+    '  float thick=pow(1.0-mu,3.0)*(0.40+0.75*clamp(uAtmDensity,0.0,1.6));',
+    '  float litRim=smoothstep(-0.30,0.18,ndl);',
+    '  float g=(ndl-0.04)/0.30; float fwd=1.0+0.95*exp(-g*g);',
+    '  amt=clamp(thick*litRim*fwd*0.80, 0.0, 0.94);',
+    '  return uAtm*mix(vec3(1.0),uSunTint,0.45)*vec3(1.06,0.94,0.86); }'
+  ].join('\n');
+  SH.gasGlobeF = GLSL_HEAD + GLSL_NOISE + '\n' + GLSL_GAS + '\n' + [
+    'in vec3 vN; in vec3 vW; in vec3 vSN; uniform vec3 uCamW, uSunW; uniform mat3 uRot; uniform float uLumK, uAmbK, uStarlit, uForming; out vec4 fragColor;',
+    'void main(){',
+    '  vec3 n=normalize(vN); vec3 Nw=normalize(uRot*n); vec3 V=normalize(uCamW-vW); vec3 L=uSunW; float ndl=dot(Nw,L);',
+    '  vec3 col = gasShade(n, uTime);',
+    '  float diff=max(ndl,0.0); vec3 lit = col*uSunTint*(diff*1.05*uLumK+0.03*uAmbK);',
+    '  float rimA; vec3 rimC=limbGlow(Nw,V,ndl,rimA); lit += rimC*rimA*(0.30+1.05*diff);',
+    /* 自身热辐射（超热木星）：整个盘面都在发暗红的光，边缘因为斜穿的光程更长而明显更亮；夜面也留一点。 */
+    '  if(uGasGlow>0.001){ float lg=pow(1.0-max(dot(Nw,V),0.0),2.0);',
+    '    lit += uGasGlowCol*uGasGlow*(0.16+1.35*lg)*(1.0+0.55*(1.0-smoothstep(-0.10,0.30,ndl)));',
+    '    lit += uGasGlowCol*uGasGlow*uGasGlow*vec3(0.55,0.13,0.05)*0.5; }',
+    '  if(uForming<1.0){ float g2=0.5+0.5*snoise(n*6.0+uTime*0.1); lit=mix(vec3(0.6,0.35,0.2)*(g2*0.8+0.4)*(max(ndl,0.0)+0.2), lit, uForming); }',
+    '  if(uStarlit>0.0) lit=mix(lit, lit*vec3(0.74,0.82,1.0), uStarlit);',
+    '  fragColor=vec4(lit,1.0); }'
+  ].join('\n');
   SH.globeF = GLSL_HEAD + GLSL_NOISE + '\n' + GLSL_FIELD + '\n' + GLSL_SURF + '\n' + [
     'in vec3 vN; in vec3 vW; in vec3 vSN; uniform vec3 uCamW, uSunW; uniform mat3 uRot; uniform float uEps, uSlope, uForming, uLumK, uAmbK, uStarlit; out vec4 fragColor;',
     'void main(){',
     '  vec3 n=normalize(vN); vec3 gn=normalize(vSN); vec3 Nw=normalize(uRot*gn); vec3 V=normalize(uCamW-vW); vec3 L=uSunW; float ndl=dot(Nw,L); vec3 lit;',
     '  vec3 Lo = L*uRot; /* 光照方向转到物体空间（uRot 正交，转置=逆） */',
-    '  if(uGas==1){',
-    '    float turb = snoise(n*vec3(1.2,10.0,1.2)+vec3(uTime*0.01,0.0,0.0))*0.022 + snoise(n*vec3(4.0,30.0,4.0)+7.0)*0.008 + snoise(n*vec3(0.6,3.0,0.6)+3.0)*0.02;',
-    '    float band = clamp(n.y*0.5+0.5+turb,0.0,1.0);',
-    '    float tex = 0.5+0.5*snoise(n*vec3(6.0,60.0,6.0)+vec3(uTime*0.02,0.0,0.0))*0.7+0.3*snoise(n*vec3(20.0,150.0,20.0));',
-    '    vec3 col = texture(uPal, vec2(tex, band)).rgb;',
-    '    vec2 sp = vec2(atan(-n.z,n.x), n.y) - vec2(0.9, -0.36); sp.x = mod(sp.x+3.14159, 6.2831)-3.14159; float storm = exp(-dot(sp*vec2(3.5,14.0),sp*vec2(3.5,14.0)));',
-    '    col = mix(col, mix(col, vec3(0.75,0.35,0.22), 0.7), storm*uStorm);',
-    '    float diff=max(ndl,0.0); lit = col*uSunTint*(diff*1.05*uLumK+0.03*uAmbK);',
-    '    float rim=pow(1.0-max(dot(Nw,V),0.0),3.5); lit=mix(lit, uAtm*mix(vec3(1.0),uSunTint,0.45)*clamp(ndl*0.8+0.4,0.0,1.0), rim*uAtmDensity*0.8);',
-    /* 自身热辐射（超热木星）：整个盘面都在发暗红的光，边缘因为斜穿的光程更长而明显更亮。
-       越热越亮（uGasGlow 由云顶温度给），这一项是**自发光**，不乘 uSunTint、也不受昼夜影响。 */
-    '    if(uGasGlow>0.001){ float lg=pow(1.0-max(dot(Nw,V),0.0),2.0);',
-    '      lit += uGasGlowCol*uGasGlow*(0.16+1.35*lg);',
-    '      lit += uGasGlowCol*uGasGlow*uGasGlow*vec3(0.55,0.13,0.05)*0.5; }',
-    '  } else {',
+    '  {',
     '    vec4 f0=fieldAt(n,uOct);',
     '    vec3 up=abs(n.y)<0.999?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0); vec3 T=normalize(cross(up,n)); vec3 B=cross(n,T);',
-    '    vec4 fx=fieldAt(normalize(n+T*uEps),uOct), fy=fieldAt(normalize(n+B*uEps),uOct);',
-    '    float hs=uHRange/uPlanetR*uSlope; float dhx=(fx.x-f0.x)*hs/uEps, dhy=(fy.x-f0.x)*hs/uEps;',
+    '    float hx=fieldH(normalize(n+T*uEps),uOct), hy=fieldH(normalize(n+B*uEps),uOct);',
+    '    float hs=uHRange/uPlanetR*uSlope; float dhx=(hx-f0.x)*hs/uEps, dhy=(hy-f0.x)*hs/uEps;',
     '    Surf S=shadeSurface(n,f0,1.0);',
+    '    if(uDetail>0.02){ const float EB=0.0025; float b0=surfBump(n);',
+    '      float bx=surfBump(normalize(n+T*EB)), by=surfBump(normalize(n+B*EB));',
+    '      dhx += (bx-b0)*(0.0016/EB); dhy += (by-b0)*(0.0016/EB); }',
     '    vec3 Nl=normalize(gn-(T*dhx+B*dhy)*(1.0-S.water)); vec3 N2=normalize(uRot*Nl);',
-    '    float diff=max(dot(N2,L),0.0)*smoothstep(-0.25,0.05,ndl);',
+    '    float soft=clamp(uAtmDensity,0.0,1.5); float diff=max(dot(N2,L),0.0)*smoothstep(-0.03-0.30*soft, 0.02+0.14*soft, ndl);',
     '    lit = S.col*uSunTint*(diff*1.05*uLumK+0.035*uAmbK);',
     '    vec3 H=normalize(L+V); float sp=pow(max(dot(N2,H),0.0), S.water>0.5?150.0:24.0)*S.spec*smoothstep(0.0,0.12,ndl); lit+=vec3(1.0,0.97,0.9)*uSunTint*sp;',
-    '    float cl=cloudAt(n); float sh=cloudAt(normalize(n+Lo*0.012)); lit*=1.0-0.4*sh*step(0.01,uCloud);',
+    '    float cl=cloudAt(n); float sh=cloudAt(normalize(n+Lo*0.016)); lit*=1.0-0.45*sh*step(0.01,uCloud)*smoothstep(-0.05,0.25,ndl);',
     '    vec3 cc=uCloudColor*uSunTint*(max(dot(Nw,L),0.0)*0.95+0.05); lit=mix(lit, cc, cl);',
     '    float night=1.0-smoothstep(-0.12,0.05,ndl);',
     '    lit += vec3(1.0,0.85,0.55)*cityLights(n,f0)*night*(1.0-cl*0.85)*1.6;',
     '    lit += S.emis*(0.35+0.65*night);',
     '    lit = mix(lit, uFogColor*uSunTint*(max(ndl,0.0)*0.9+0.05), uFog*0.8);',
-    '    float rim=pow(1.0-max(dot(Nw,V),0.0),3.0); lit=mix(lit, uAtm*mix(vec3(1.0),uSunTint,0.45)*clamp(ndl*0.8+0.4,0.0,1.0), rim*uAtmDensity*0.7);',
+    '    float rimA; vec3 rimC=limbGlow(Nw,V,ndl,rimA); lit += rimC*rimA*(0.32+1.05*max(ndl,0.0));',
     '  }',
     '  if(uForming<1.0){ float g=0.5+0.5*snoise(n*6.0+uTime*0.1); lit=mix(vec3(0.6,0.35,0.2)*(g*0.8+0.4)*(max(ndl,0.0)+0.2), lit, uForming); }',
     /* 只靠星光照明（流浪行星）：星光偏蓝白（多数光子来自远处的热星与银河背景），亮度是示意 */
@@ -2833,7 +3325,7 @@
     };
     this.progsPending = function () { return self.pendOrder.length; };
     function compile(name, vs, fs) { issue(name, vs, fs); }
-    compile('globe', SH.globeV, SH.globeF); compile('atm', SH.globeV, SH.atmF); compile('ring', SH.ringV, SH.ringF); compile('sky', SH.skyV, SH.skyF);
+    compile('globe', SH.globeV, SH.globeF); compile('gasglobe', SH.globeV, SH.gasGlobeF); compile('atm', SH.globeV, SH.atmF); compile('ring', SH.ringV, SH.ringF); compile('sky', SH.skyV, SH.skyF);
     compile('terrain', SH.terrainV, SH.terrainF); compile('water', SH.waterV, SH.waterF); compile('cloud', SH.waterV, SH.cloudF); compile('gas', SH.gasV, SH.gasF);
     compile('sprite', SH.spriteV, SH.spriteF); compile('line', SH.lineV, SH.lineF); compile('tex', SH.texV, SH.texF); compile('bldg', SH.bldgV, SH.bldgF);
     compile('star', SH.globeV, SH.starF); compile('corona', SH.skyV, SH.coronaF); compile('coma', SH.skyV, SH.comaF);   // 恒星近观 / 星冕（屏幕空间）/ 彗发彗尾
@@ -2979,11 +3471,61 @@
     for (var i = 0; i < n; i++) { var b = shape.lobes[i]; L[i * 4] = b[0]; L[i * 4 + 1] = b[1]; L[i * 4 + 2] = b[2]; L[i * 4 + 3] = b[3]; E[i] = b[4] == null ? 2 : b[4]; }
     return { uShaped: 1, uAxes: shape.axes, uLobeN: n, uLobe: L, uLobeE: E };
   }
+  /* 巨行星的云带表 → 着色器（20 个槽）。带边界与带色来自 gasBands()，与 HUD 读的是同一张表。 */
+  function gasBandUniforms(vp, seed) {
+    var Y = new Float32Array(20), C = new Float32Array(60);
+    if (!vp.gas) return { uBandY: Y, uBandC: C, uBandN: 0 };
+    var bands = gasBands(vp, seed), n = Math.min(bands.length, 20);
+    for (var i = 0; i < n; i++) { Y[i] = bands[i].y1; C[i * 3] = bands[i].c[0]; C[i * 3 + 1] = bands[i].c[1]; C[i * 3 + 2] = bands[i].c[2]; }
+    return { uBandY: Y, uBandC: C, uBandN: n };
+  }
+  /* 风暴斑：1–3 个，位置/大小/旋向由种子给。木星的大红斑用原来那个位置，它得还认得出来。 */
+  function gasStormUniforms(vp) {
+    var st = vp.style, out = { uStormA: [0, 0, 0, 0], uStormB: [0, 0, 0, 0], uStormC: [0, 0, 0, 0] };
+    if (!vp.gas || !st) return out;
+    var keys = ['uStormA', 'uStormB', 'uStormC'], n = clamp(st.stormN || 0, 0, 3), i0 = 0;
+    if (vp.gasStyle === 'jupiter') { out.uStormA = [0.9, -0.36, 0.115, 1.0]; i0 = 1; n = Math.max(n, 2); }
+    for (var i = i0; i < n; i++) { var sp = st.storms[i]; if (!sp) break; out[keys[i]] = [sp[0], sp[1], sp[2], sp[3]]; }
+    return out;
+  }
+  /* 按类型把风格参数打成两个 vec4（含义见 GLSL_SURF 顶上的注释） */
+  function styleUniforms(vp) {
+    var st = vp.style;
+    if (!st) return { uSurfKind: 0, uSty0: [0, 0, 0, 0], uSty1: [1, 1, 1.5, 0.5], uSea2: [0.06, 0.5] };
+    var k = st.kind, s0;
+    if (k === 0) s0 = [st.mareAmt, st.rayAmt, st.craterDens, st.ridgeAmt];
+    else if (k === 1) s0 = [st.duneFreq, Math.sin(st.duneDir), Math.cos(st.duneDir), st.duneAmt];
+    else if (k === 2) s0 = [st.biomeShift, st.biomeSharp, 0, 0];
+    else if (k === 3) s0 = [st.crackAmt, Math.max(st.plumeAmt, Math.min(vp.tholin || 0, 0.95)), st.riftFreq, 0];
+    else if (k === 4) s0 = [st.fissureF, st.lakeAmt, st.heatK, 0];
+    else s0 = [st.biomeShift, st.biomeSharp, 0, 0];
+    /* 冰：沉积暗斑用托林的真实色（压暗），裂谷颜色按调色板走 —— 纯白那一套配红褐裂纹（欧罗巴式），
+       其余配深蓝 / 青。其它类型给零，着色器里那两行本来也只在 uSurfKind==3 的分支里。 */
+    var dep = [0, 0, 0], crk = [0, 0, 0];
+    if (k === 3) {
+      var tc = (vp.tholin > 0.02 && vp.tholinColor) ? vp.tholinColor : null;
+      dep = tc ? [tc[0] * 0.70, tc[1] * 0.50, tc[2] * 0.42] : [0.30, 0.30, 0.33];
+      var pv = Math.round(vp.palVar || 0);
+      crk = pv === 1 ? [0.52, 0.30, 0.21] : pv === 2 ? [0.60, 0.45, 0.50] : pv === 3 ? [0.22, 0.44, 0.49] : pv === 4 ? [0.28, 0.33, 0.38] : [0.19, 0.32, 0.52];
+    }
+    return { uSurfKind: k, uSty0: s0, uSty1: [st.cycloneF, st.cloudMul, st.contFreq, st.riftAmt], uSea2: [st.shelfW, st.currentAmt], uDepositC: dep, uCrackC: crk };
+  }
   function materialUniforms(vp, g, time, cloudRot, oct) {
-    return { uPerm: 0, uMap: 1, uPal: 2, uMapSize: [g.maps.W, g.maps.H], uLumK: 1, uAmbK: 1, uStarlit: 0, uShaped: 0, uAxes: [1, 1, 1], uLobeN: 0, uSea: vp.sea, uHRef: hRefOf(vp), uHRange: vp.rangeM || 1, uPlanetR: vp.radiusM, uDetailAmp: vp.detailAmp, uDetailFreq: vp.detailFreq, uDrift: vp.drift, uOct: oct,
+    var u = { uPerm: 0, uMap: 1, uPal: 2, uMapSize: [g.maps.W, g.maps.H], uLumK: 1, uAmbK: 1, uStarlit: 0, uShaped: 0, uAxes: [1, 1, 1], uLobeN: 0, uSea: vp.sea, uHRef: hRefOf(vp), uHRange: vp.rangeM || 1, uPlanetR: vp.radiusM, uDetailAmp: vp.detailAmp, uDetailFreq: vp.detailFreq, uDrift: vp.drift, uOct: oct,
       uOceanShallow: vp.oceanShallow, uOceanDeep: vp.oceanDeep, uAtm: vp.atm, uIceColor: vp.iceColor, uCloudColor: vp.cloudColor, uFogColor: vp.fogColor, uVeg0: vp.veg0, uVeg1: vp.veg1,
       uAtmDensity: vp.atmDensity, uIceLat: vp.iceLat, uIceHeight: vp.iceHeight, uCloud: vp.cloud, uLights: vp.lights, uLava: vp.lava, uLavaSea: vp.lavaSea, uFog: vp.fog, uGreen: vp.green, uSpec: vp.spec, uCracks: vp.cracks, uTime: time, uCloudRot: cloudRot, uGas: vp.gas, uStorm: vp.gasStyle === 'jupiter' ? 1 : 0, uCityTex: 3, uHasCity: g.city ? 1 : 0, uRivers: riversOn(vp) ? 1 : 0, uCloudDetail: 0,
-      uGasGlow: vp.gasGlow || 0, uGasGlowCol: vp.gasGlowCol || [0, 0, 0], uSunTint: vp.sunTint || [1, 1, 1] };
+      uGasGlow: vp.gasGlow || 0, uGasGlowCol: vp.gasGlowCol || [0, 0, 0], uSunTint: vp.sunTint || [1, 1, 1],
+      /* 缺省：细节全开、最细八度满权重 —— 地表飞越走的就是这一档，与 CPU 的 fieldAtCPU 逐位一致。
+         球面视图会按到相机的距离把这两项改小（见 drawGlobe）。 */
+      uDetail: 1, uOctF: 1 };
+    var sty = styleUniforms(vp); for (var sk in sty) u[sk] = sty[sk];
+    if (vp.gas) {
+      var gb = gasBandUniforms(vp, (g && g.maps) ? (g.maps.planetSeed >>> 0) : 0); for (var bk in gb) u[bk] = gb[bk];
+      var gs = gasStormUniforms(vp); for (var tk in gs) u[tk] = gs[tk];
+      var st2 = vp.style;
+      u.uGasP = [st2 ? st2.bandTurb : 0.8, (vp.gasStyle === 'saturn' ? 1 : (st2 && st2.hexPole ? 1 : 0)), st2 ? st2.darkPole : 0.4, vp.gasIce ? 1 : 0];
+    } else { u.uBandN = 0; u.uGasP = [0, 0, 0, 0]; }
+    return u;
   }
 
   /* ============================================================ 视图（状态机） */
@@ -4019,25 +4561,56 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
                 的薄盘标度 T ∝ R^{−3/4}，内缘蓝白、外缘橙红并渐隐，叠差动旋转（Ω ∝ R^{−3/2}）的湍流条纹，
                 转向观察者的一侧因相对论性集束更亮。uDoppler 必须显式传：不传就会沿用上一次用这个程序
                 （近景观）留下来的值。 */
+          /* ④ 尺寸再改一次（2026-09-17，用户报"怎么又出现大饼了"）——上面 ② 那条"按取景半径给 6.5%"
+                在大质量黑洞上翻了车：7350 M☉ 的黑洞把弱标度 kM 顶到上限 1.25，最外行星 5.78 AU 的
+                恒星系取景半径 fit = mapR(5.78)·2.95 ≈ 7.7，于是盘的外缘 ≈ 0.63，而最内行星 0.72 AU
+                映射后只有 mapR(0.72) ≈ 0.83 —— 盘几乎顶到最内轨道上，看着就是一张饼压在恒星系上，
+                行星轨道从盘里穿过去。物理上视界 2.2 万公里对 0.72 AU（1.08 亿公里）是万分之二，
+                盘再厚也不该碰到轨道。
+                现在改成按**物理量级**给，并且封顶：
+                  · 外缘取 100 r_s = 200 r_g —— 薄盘的典型外缘是几百个引力半径的量级；
+                  · 再封一道顶：不许超过最内行星轨道（映射后）的 1/20；
+                  · 两者取小。没有行星时退回取景半径的 1/60。
+                内缘仍是 ISCO = 3 r_s，内外之比照旧是真的。
+                盘小到投影不足几个像素时就不画三维盘了（画出来只是一团噪点），改由下面的
+                「暗核 + 细亮环」两个 sprite 顶上 —— 那两个有像素地板，保证黑洞在画面上仍然找得到，
+                但它们是**标记**不是尺度，HUD 里照旧写明。 */
           var mBH = st.massRemnant || (st.massRel || 20) * 0.35;                      // 末质量（M☉）：r_s = 2GM/c² ≈ 2.95 km/M☉
-          var kM = clamp(Math.pow(Math.max(mBH, 1) / 8, 0.22), 0.85, 1.25);           // 弱标度，不是比例尺
-          var rOut = sysCam.fit * 0.065 * kM, rIn = rOut * (3 / 22);                  // 取景半径的 5.5%–8.1%；内/外 = ISCO 3 r_s : 22 r_s
+          var rsAU = 2.95 * Math.max(mBH, 0.1) / 1.495978707e8;                       // 史瓦西半径，换成 AU
+          var aMinAU = 0;
+          if (sys.planets && sys.planets.length) {
+            for (var bi2 = 0; bi2 < sys.planets.length; bi2++) {
+              var oa = sys.planets[bi2] && sys.planets[bi2].orbitAU;
+              if (oa > 0 && (aMinAU === 0 || oa < aMinAU)) aMinAU = oa;
+            }
+          }
+          var rCap = aMinAU > 0 ? mapR(aMinAU) / 20 : sysCam.fit / 60;
+          var rOut = Math.min(mapR(100 * rsAU), rCap), rIn = rOut * (3 / 22);
           var toEye = v3norm(v3sub(M.eye, v));
-          gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.disable(gl.DEPTH_TEST);
-          R.use('ring', { uVP: M.vp, uModel: m4trans(v), uInner: rIn, uOuter: rOut, uMode: 2, uColor: [1.0, 0.72, 0.42], uAlpha: 0.9, uTime: elapsed, uSunO: [0, 1, 0], uCassini: 0, uDoppler: toEye, uPerm: 0 }, [R.permDefault]);
-          gl.bindVertexArray(R.ringVAO); gl.drawElements(gl.TRIANGLES, R.ringN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
-          gl.enable(gl.DEPTH_TEST);      // 上面为了画盘关掉了深度测试，这里必须还回去，否则后面的天体会被乱序覆盖
-          /* 中心的暗斑按盘内缘的**投影尺寸**给。原来写死 base*0.22（一个只跟相机距离有关的屏幕常数），
-             盘一改大小它就对不上——要么戳出盘外，要么缩成一个点。 */
+          /* 投影尺寸先算出来：三维盘画不画、暗核多大都要用它 */
           var rightW = v3norm(v3cross([0, 1, 0], toEye)); if (!isFinite(rightW[0])) rightW = [1, 0, 0];
-          var sc0 = toScreen(M.vp, v), sc1 = toScreen(M.vp, v3add(v, v3scale(rightW, rIn)));
-          var rInPx = Math.hypot(sc1[0] - sc0[0], sc1[1] - sc0[1]) * dpr;             // toScreen 给 CSS 像素，sprite 的尺寸按设备像素
-          sprites.push({ p: v, size: clamp(rInPx * 0.95, 3, 200), color: [0.03, 0.02, 0.05, 1], kind: 1, light: [0, 0, 1] });
+          var sc0 = toScreen(M.vp, v);
+          var scO = toScreen(M.vp, v3add(v, v3scale(rightW, rOut)));
+          var rOutPx = Math.hypot(scO[0] - sc0[0], scO[1] - sc0[1]) * dpr;            // toScreen 给 CSS 像素，sprite 的尺寸按设备像素
+          if (rOutPx >= 7) {
+            gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.disable(gl.DEPTH_TEST);
+            R.use('ring', { uVP: M.vp, uModel: m4trans(v), uInner: rIn, uOuter: rOut, uMode: 2, uColor: [1.0, 0.72, 0.42], uAlpha: 0.55, uTime: elapsed, uSunO: [0, 1, 0], uCassini: 0, uDoppler: toEye, uPerm: 0 }, [R.permDefault]);
+            gl.bindVertexArray(R.ringVAO); gl.drawElements(gl.TRIANGLES, R.ringN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
+            gl.enable(gl.DEPTH_TEST);    // 上面为了画盘关掉了深度测试，这里必须还回去，否则后面的天体会被乱序覆盖
+          }
+          /* 细亮环（kind 2 是环形 sprite）+ 中心暗核。两个都有像素地板：盘按物理尺寸已经小到
+             亚像素，没有这两笔的话黑洞在恒星系视图里就完全看不见了。 */
+          var corePx = clamp(rOutPx * (3 / 22) * 0.95, 3, 200);
+          sprites.push({ p: v, size: Math.max(corePx * 1.9, 7), color: [1.0, 0.62, 0.34, 0.75], kind: 2 });
+          sprites.push({ p: v, size: corePx, color: [0.03, 0.02, 0.05, 1], kind: 1, light: [0, 0, 1] });
           if (bhNote == null) bhNote = 2.95 * mBH;                                    // HUD 里要如实写出视界半径（km），说明盘为什么只能是示意
           return;
         }
-        if (stage === 'ns') { size = base * 0.30; c = [0.80, 0.88, 1.0]; }               // 中子星：半径 ~12 km，只画成一个很小的蓝白点
-        else if (stage === 'wd') { size = base * 0.34; c = mix3(c, [1, 1, 1], 0.35); }   // 白矮星：地球大小，极白
+        /* 遗骸一律画成很小的点：它们在这一层本来就远不到一个像素，光晕只是"这里有个东西"的标记。
+           2026-09-17 连同黑洞的盘一起再收一档（0.30/0.34 → 0.17/0.21），免得 12 km 的中子星
+           看起来跟一颗主序星差不多大。 */
+        if (stage === 'ns') { size = base * 0.17; c = [0.80, 0.88, 1.0]; }               // 中子星：半径 ~12 km
+        else if (stage === 'wd') { size = base * 0.21; c = mix3(c, [1, 1, 1], 0.35); }   // 白矮星：地球大小，极白
         else if (stage === 'pn' || stage === 'snr') { size = base * 1.1; }
         else if (stage === 'rgb' || stage === 'agb') { size = base * clamp(rs, 1.6, 5.0); c = mix3(c, [1, 0.45, 0.2], 0.35); }
         // 耀星：低频、幅度有限地闪一下（GCVS UV 型），不晃眼
@@ -4153,7 +4726,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       if (sys.comets) lines.push(TR('彗星：奥尔特云外缘约 ') + (sys.comets.oortAU >= 1e4 ? fmt(sys.comets.oortAU / 1e4, 1) + TR(' 万 AU') : fmt(sys.comets.oortAU, 0) + ' AU') + TR('，长周期彗星约 ') + sys.comets.longPeriodPerCentury + TR(' 颗/世纪 · ') + TR(sys.comets.note) + TR('（可进入彗核：彗发与彗尾随日心距变化）'));
       if (sys.rogues && sys.rogues.length) lines.push(TR('流浪行星：此刻 ') + fmt(Math.max.apply(null, sys.rogues.map(function (r) { return r.distanceLy || 5; })), 1) + TR(' 光年内有 ') + sys.rogues.length + TR(' 颗（不绕任何恒星，可进入；') + (sys.rogueNote || TR('Sumi 2011 / Mróz 2017，示意')) + TR('）'));
       /* 吸积盘的诚实标注：它在这个视图里是**画大了**的，必须自己说出来，别让人以为盘就有那么宽。 */
-      if (bhNote != null) lines.push(TR('吸积盘为示意：黑洞本身不发光，画面上那圈发热的物质是被吸进去之前摩擦生热的盘。它的视界半径只有 ') + fmt(bhNote, 1) + TR(' km（≈ ') + (bhNote / 1.496e8).toExponential(1) + TR(' AU），按真比例在这一层连一个像素都不到，所以盘的**大小按取景半径给**（约 6%，只随黑洞质量弱变化），不代表真实尺度；内缘取最内稳定圆轨道 ISCO = 3 r_s、外缘取 22 r_s（与近景观同一口径），内外之比是真的。颜色按 Shakura & Sunyaev 1973 的薄盘温标 T ∝ R^{−3/4}（内缘蓝白、外缘橙红），亮暗不对称是相对论性集束。要按 r_s 看盘，点进黑洞本体。'));
+      if (bhNote != null) lines.push(TR('吸积盘为示意：黑洞本身不发光，画面上那点发热的物质是被吸进去之前摩擦生热的盘。它的视界半径只有 ') + fmt(bhNote, 1) + TR(' km（≈ ') + (bhNote / 1.496e8).toExponential(1) + TR(' AU），按真比例在这一层连一个像素都不到。盘的外缘按物理量级给：100 r_s = 200 r_g（薄盘典型外缘是几百个引力半径），并封顶为最内行星轨道的 1/20，两者取小——所以它绝不会盖到行星轨道上。内缘取最内稳定圆轨道 ISCO = 3 r_s，内外之比是真的。小到画不出几个像素时只留一个暗核加一圈细亮环，那是标记不是尺度。颜色按 Shakura & Sunyaev 1973 的薄盘温标 T ∝ R^{−3/4}（内缘蓝白、外缘橙红），亮暗不对称是相对论性集束。要按 r_s 看盘，点进黑洞本体。'));
       lines.push(TR('恒星本体：点击') + TRN(star.name) + TR('可近观（安全距离外的示意；恒星与遗骸都不可降落，进去会说明为什么）。'));
       if (moonScaleNote) lines.push(TR('卫星：轨道已放大约 ') + fmt(moonScaleNote.factor, 0) + TR(' 倍显示（真实轨道在这个视图里不到一个像素）· M 键切换「所有行星都显示卫星」'));
       else if (sys.planets.some(function (p) { return (p.moonCount || 0) > 0; })) lines.push(TR('卫星：行星标签后的「N 卫」即卫星数；选中行星或按 M 可看放大示意'));
@@ -4201,7 +4774,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
           var ang = elapsed * (0.012 + rr() * 0.03) + rr() * TAU;
           var pos = [dist * Math.cos(ang) * Math.cos(incl), dist * Math.sin(incl), -dist * Math.sin(ang) * Math.cos(incl)];
           var mm = m4mul(m4trans(pos), m4mul(m4scale(sc), m4rotY(elapsed * 0.09 + i)));
-          var mu2 = materialUniforms(vp, g, elapsed, i * 1.3, Math.max(oct - 2, 2));
+          var mu2 = materialUniforms(vp, g, elapsed, i * 1.3, Math.max(oct - 2, 2)); mu2.uOctF = 1; mu2.uDetail = 0;
           mu2.uVP = M.vp; mu2.uModel = mm; mu2.uRot = m3of(m4rotY(elapsed * 0.09 + i)); mu2.uCamW = M.eye; mu2.uSunW = sunW; mu2.uEps = eps / sc; mu2.uSlope = slope; mu2.uForming = 1;
           applyBodyLook(mu2, { shape: shapeOf(hash32((p.seed >>> 0) ^ (i + 11) * 0x9E3779B9), 0) });
           R.use('globe', mu2, [g.perm, g.map, g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
@@ -4264,8 +4837,16 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       // 小天体离恒星远：日面视半径按 1/距离 缩小（主带 2.8 AU 处只有 0.1°，就是一个刺眼的亮点）；流浪行星没有宿主恒星
       drawSky(M, { space: true, sun: sunW, starColor: p.isRogue ? [0, 0, 0] : starCol, sunAng: sunAngOf(p), starDim: p.isRogue ? 0.0001 : 0 });
       var g = R.planetGPU(p, vp), model = planetModel(p, globeCam.spin), rot = m3of(model), d = globeCam.dist;
-      var eps = clamp((d - 1) * 0.8 / (H / dpr) * 1.6, 2e-5, 6e-3), oct = clamp(Math.round(3 + Math.log2(1 / Math.max(d - 1, 0.01))), 2, 9), slope = clamp(1.5 + (d - 1) * 2.5, 1, 7);
+      /* 细节的距离 LOD：倍频数取连续值，整数部分决定循环次数，小数部分交给 uOctF 做最后一档的淡入淡出。
+         以前是 Math.round —— 拉近一点就整档跳出来，那一下地形自己抖一抖，看着就是「闪」。
+         uDetail 则管高频的**反照率**斑点（沙丘细纹、林内明暗、岩石斑）：远景为 0，所以远看只有大结构。 */
+      /* 坡度夸张：越近越大。原来是越远越大（1.5 + (d-1)*2.5）—— 结果贴到脸上时地形被压成一张平面，
+         能看见的就只剩反照率噪点了。 */
+      var eps = clamp((d - 1) * 0.8 / (H / dpr) * 1.6, 2e-5, 6e-3), slope = clamp(1.6 + 5.2 * smoothstep(3.0, 1.45, d) - 2.6 * smoothstep(1.45, 1.04, d), 1.4, 7);
+      var octC = clamp(3 + Math.log2(1 / Math.max(d - 1, 0.01)), 2, 6), oct = Math.max(2, Math.ceil(octC)), octF = clamp(octC - (oct - 1), 0.001, 1);
+      var detail = smoothstep(2.4, 1.10, d);
       var mu = materialUniforms(vp, g, elapsed, globeCam.spin * 0.12 + elapsed * 0.006, oct);
+      mu.uOctF = octF; mu.uDetail = detail;
       if (!vp.exists) { // 尚未形成：只画一团尘埃
         gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.disable(gl.DEPTH_TEST);
         R.use('ring', { uVP: M.vp, uModel: m4id(), uInner: 0.2, uOuter: 2.2, uMode: 1, uColor: [0.5, 0.45, 0.4], uAlpha: 0.5, uTime: elapsed, uSunO: [0, 1, 0], uCassini: 0, uPerm: 0 }, [g.perm]);
@@ -4274,7 +4855,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
       mu.uVP = M.vp; mu.uModel = model; mu.uRot = rot; mu.uCamW = M.eye; mu.uSunW = sunW; mu.uEps = eps; mu.uSlope = slope; mu.uForming = vp.forming;
       applyBodyLook(mu, p);   // 不规则形状（小行星/彗核）与"只有星光"的照明（流浪行星）
-      R.use('globe', mu, [g.perm, g.map, g.pal, g.city || g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
+      R.use(vp.gas ? 'gasglobe' : 'globe', mu, [g.perm, g.map, g.pal, g.city || g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
       if (p.isSmallBody || p.isRogue) return drawSmallBodyExtras(p, vp, M, g, sunW, model, rot, eps, slope, oct);
       // 卫星（显示距离压缩到 2.5–7 R）
       var moonsDrawn = [];
@@ -4290,8 +4871,8 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
         if (moonCompress == null || realR / dist > moonCompress) moonCompress = realR / dist;
         var ang = elapsed * 0.35 / Math.max(mo.periodDays || 10, 0.4) * 6 + k * 2.1 + (mo.seed % 100) * 0.06;
         var pos = [dist * Math.cos(ang), 0.16 * dist * Math.sin(ang * 0.7), -dist * Math.sin(ang)], mm = m4mul(m4trans(pos), m4mul(m4scale(rr), m4rotY(elapsed * 0.05)));
-        var mmu = materialUniforms(mvp, mg, elapsed, 0, Math.max(oct - 2, 2)); mmu.uVP = M.vp; mmu.uModel = mm; mmu.uRot = m3of(m4rotY(elapsed * 0.05)); mmu.uCamW = M.eye; mmu.uSunW = sunW; mmu.uEps = eps / rr; mmu.uSlope = slope; mmu.uForming = 1;
-        R.use('globe', mmu, [mg.perm, mg.map, mg.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
+        var mmu = materialUniforms(mvp, mg, elapsed, 0, Math.max(oct - 2, 2)); mmu.uOctF = 1; mmu.uDetail = detail * 0.25; mmu.uVP = M.vp; mmu.uModel = mm; mmu.uRot = m3of(m4rotY(elapsed * 0.05)); mmu.uCamW = M.eye; mmu.uSunW = sunW; mmu.uEps = eps / rr; mmu.uSlope = slope; mmu.uForming = 1;
+        R.use(mvp.gas ? 'gasglobe' : 'globe', mmu, [mg.perm, mg.map, mg.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
         moonsDrawn.push({ name: TRN(mo.name) + TR('（半径 ') + fmtKm(mo.radiusRel * EARTH_R_M) + TR('，轨道 ') + fmtKm(mo.orbitKm * 1000) + TR('，周期 ') + fmt(mo.periodDays, 2) + TR(' 天') + (mo.tidalHeated ? TR(' · 潮汐加热：冰壳下可能有液态水海洋') : '') + TR('）'), pos: pos, r: rr, tidal: !!mo.tidalHeated, index: k, body: mp }); });
       moonPick = moonsDrawn;   // 双击可进入：记下这一帧每颗卫星的位置
       // 光环
@@ -4640,7 +5221,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
     var S = null, X = {}, globeImg = null, globeKey = '', caption = '';
     function surfColor(vp, f, lat, ndl) {
       var h = f.h, land = vp.sea < 0 || h >= vp.sea, c;
-      if (land) { var elev = vp.sea < 0 ? h : (h - vp.sea) / (1 - vp.sea); var stops = PAL_STOPS[vp.palette] || PAL_STOPS.rock; c = gradAt(stops, elev);
+      if (land) { var elev = vp.sea < 0 ? h : (h - vp.sea) / (1 - vp.sea); var stops = palStopsOf(vp); c = gradAt(stops, elev);
         var veg = vp.green * smoothstep(0.2, 0.6, f.moist) * (1 - smoothstep(0.35, 0.85, Math.abs(lat) / (PI / 2))) * (1 - smoothstep(0.3, 0.75, elev)); c = mix3(c, vp.veg0, veg);
         if (Math.abs(lat) / (PI / 2) + elev * 0.12 * vp.iceHeight > vp.iceLat) c = vp.iceColor; if (vp.lava > 0) c = mix3(c, [0.4, 0.15, 0.08], vp.lava * 0.6); }
       else { var depth = clamp((vp.sea - h) / Math.max(vp.sea, 1e-4), 0, 1); c = vp.lavaSea > 0.5 ? [0.9, 0.35, 0.08] : mix3(vp.oceanShallow, vp.oceanDeep, Math.pow(depth, 0.45)); }

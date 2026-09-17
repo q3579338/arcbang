@@ -1693,6 +1693,21 @@
     'Christensen 2010 的发电机标度指出场强主要由核内热流决定；此处的 0–1 指数是本引擎的启发式合成（核质量分数 × 自转 × 内部热流）':
       'the Christensen 2010 dynamo scaling makes field strength depend mainly on the heat flux through the core; the 0–1 index used here is this engine\'s own heuristic combination (core mass fraction × rotation × internal heat flux)',
     '取恒星年龄': 'taken to be the age of the star',
+    /* 生成器直接给定半径/重力时换的两条出处，以及巨行星没有固体表面时的气压注记 */
+    '半径由恒星系生成器给定': 'the radius is given by the star-system generator',
+    'M = gR²/G，g 与 R 由生成器给定': 'M = gR²/G, with g and R given by the generator',
+    '巨行星没有固体表面：与 NASA 表一样取 1 bar 参考面':
+      'a giant planet has no solid surface: as in the NASA tables, everything is quoted at the 1 bar reference level',
+    /* 「质量上限」那条发现（Weisskopf 1975）与洛希极限、偏心率两条，只在少数行星上出现 */
+    '质量上限': 'Mass ceiling',
+    '质量已经超过 Weisskopf 上限：这类天体由电子简并压支撑，再加质量半径反而会缩小（木星附近正是这个转折点）。':
+      'The mass is already past the Weisskopf ceiling: bodies like this are held up by electron degeneracy pressure, and adding mass makes them shrink rather than grow (Jupiter sits near that turning point).',
+    'M > (α/α_G)^{3/2}m_p：中心压强超过化学键的支撑能力':
+      'M > (α/α_G)^{3/2}m_p: the central pressure exceeds what chemical bonds can hold up',
+    '轨道在恒星的洛希极限之内：行星会被潮汐撕碎。':
+      'The orbit lies inside the Roche limit of the star: the planet would be pulled apart by tides.',
+    '温压落在液相区，但没有水可用':
+      'temperature and pressure fall in the liquid field, but there is no water to put there',
     'CODATA 2018；NASA Planetary Fact Sheet（nssdc.gsfc.nasa.gov/planetary/factsheet/）（NASA 表列的是赤道口径且含自转离心项，快转天体会差几个百分点）':
       'CODATA 2018; NASA Planetary Fact Sheet (nssdc.gsfc.nasa.gov/planetary/factsheet/) — NASA quotes equatorial values including the centrifugal term, so fast rotators differ by a few per cent',
     'NASA Planetary Fact Sheet（nssdc.gsfc.nasa.gov/planetary/factsheet/）（对照：土星 687、木星 1326、天王星 1270、火星 3934、地球 5514 kg/m³）':
@@ -2433,6 +2448,8 @@
       'With almost no axial tilt there are almost no seasons.',
       '倾角温和，季节变化在辐射平衡上限内约 {0}%。',
       'The tilt is moderate: seasonal swing reaches about {0}% of the radiative-equilibrium ceiling.',
+      '偏心率很大，近星点与远星点的辐照相差 {0} 倍。',
+      'The eccentricity is large: insolation at periastron and apastron differ by a factor of {0}.',
       '倾角很大，季节极端：高纬度在一年里既是最热也是最冷的地方（天王星的 97.8° 是极端例子）。',
       'The tilt is large and the seasons extreme: over one year the high latitudes are both the hottest and the coldest places on the planet (the 97.8° of Uranus is the extreme case).',
       '{0:s}；不过 {1:l} 在这个温度下可以是液体。',

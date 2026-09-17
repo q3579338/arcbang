@@ -425,11 +425,11 @@
     var foot = document.createElement('li');
     foot.className = 'dd-foot'; foot.setAttribute('aria-hidden', 'true');
     foot.innerHTML = '<span class="dd-foot-in">' + T('共 ') + rows.length + T(' 条 · ') +
-      '<button type="button" class="link" id="ddManage">' + esc(T('管理目录')) + '</button>' +
+      ((window.BNBBANG_SITE === 'arc') ? '' : '<button type="button" class="link" id="ddManage">' + esc(T('管理目录')) + '</button>') +
       '<span class="dd-foot-tip">' + esc(T('每行右端 ✕ 可直接删除；键盘 Delete 删除高亮行')) + '</span></span>';
     ddList.appendChild(foot);
     var mg = foot.querySelector('#ddManage');
-    mg.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); openList(false); openCatalog(); });
+    if (mg) mg.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); openList(false); openCatalog(); });
     mg.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); });
   }
   function setActive(i) { S.activeRow = i; var opts = ddList.querySelectorAll('.dd-row[role="option"]'); Array.prototype.forEach.call(opts, function (li, j) { li.classList.toggle('active', j === i); }); if (i >= 0 && opts[i]) { ddBtn.setAttribute('aria-activedescendant', opts[i].id); opts[i].scrollIntoView({ block: 'nearest' }); } }
@@ -917,7 +917,11 @@
   $('btnRandom').addEventListener('click', function () { selectEntry(randomEntry()); setState('confirm'); });
   $('btnEditor').addEventListener('click', function () { openEditor(true); });
   $('btnSearch').addEventListener('click', openSearch);
+  /* ARCBANG：宇宙只从区块哈希来，没有「自定义宇宙」可存，也就没有目录可管
+     （2026-09-17 用户：「管理目录删除……因为这是用区块引爆，所以不支持自定义」）。三处入口一起收。 */
+  var NO_CATALOG = (window.BNBBANG_SITE === 'arc');
   $('btnCatalog').addEventListener('click', openCatalog);
+  if (NO_CATALOG) $('btnCatalog').hidden = true;
 
   /* ---------------------------------------------------------- 目录写入：来源标记 · 自动保存开关 · 条数上限
    * 来源存在条目的 note 字段（引擎 Catalog 原样保存），目录管理里据此批量筛选与删除。
@@ -3499,7 +3503,7 @@
       run: function () { selectEntry(randomEntry()); setState('confirm'); } },
     CTX_SEP,
     /* —— 通用 —— */
-    { id: 'catalog', label: '管理目录', when: function () { return true; }, run: openCatalog },
+    { id: 'catalog', label: '管理目录', when: function () { return window.BNBBANG_SITE !== 'arc'; }, run: openCatalog },
     /* 参数编辑器 = 手调非区块参数，站点版收掉（页面上的 btnEditor/actEdit 早被
        lockToBlocks 藏了，这条菜单是当年漏的最后一个入口） */
     { id: 'editor', label: '参数编辑器', when: function () { return !window.MIRROR_LOCK_TO_BLOCKS; },
@@ -3896,6 +3900,13 @@
     try { var hs = null; try { hs = S.u3d && S.u3d.getState && S.u3d.getState(); } catch (e3) { /* 还没就绪 */ }
       if (hs && hs.lastHeavy) { c.u3dHeavy = hs.lastHeavy; c.u3dHeavyLog = hs.heavyLog || null; }
     } catch (e) { /* ignore */ }
+    /* 干预沙盒的现场（web/intervene.js 的 wdInfo）：卡住那一刻选的是哪个目标、
+       哪件重活跑了多久、上一步推的是谁。用户报「选冷液体宇宙的时候卡死了」时，
+       原来 dump 里一个字都没有，只能靠猜；有了这一段下一份 dump 直接指名。 */
+    try {
+      var sb = window.MirrorIntervene && window.MirrorIntervene.wdInfo && window.MirrorIntervene.wdInfo();
+      if (sb) c.sandbox = sb;
+    } catch (e) { /* 沙盒自己出问题也不许把这份现场弄丢 */ }
     c.frames = WD.recent();              // [[帧间隔, drawFrame 耗时] × ≤20]
     try {
       var pv = S.mirror && S.mirror.planetsView && S.mirror.planetsView();

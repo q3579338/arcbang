@@ -32,6 +32,32 @@
    "thumbSizeQ": 80
   },
   {
+   "file": "20024723-worldline.webp",
+   "thumb": "20024723-worldline-800.webp",
+   "block": 20024723,
+   "hash": "0xe4282146cab776a5fa380a9c73204c58b5e93d2851831951b003c2b55222df41",
+   "outcome": "UNSTABLE_ORBITS",
+   "outcomeName": "无稳定轨道 / 无稳定原子的宇宙",
+   "view": "一维宇宙的时空图（D=1）",
+   "viewEn": "Spacetime diagram of a one-dimensional universe (D=1)",
+   "dimension": 1,
+   "note": "真 1 维 N 体（Worker CPU 直接求和）· 时空图：横轴是位置、纵轴是时间（向上为新），每条线是一个粒子的世界线 · D=1 的引力是常力（r^0，与距离无关），世界线只会并拢、穿过、再散开，没有束缚结构",
+   "source": "D1-worldline-a.png",
+   "nonBlack": 0.141,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 68.8,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 16.7,
+   "thumbSizeQ": 80
+  },
+  {
    "file": "5000017-galaxy.webp",
    "thumb": "5000017-galaxy-800.webp",
    "block": 5000017,
@@ -55,6 +81,32 @@
     474
    ],
    "thumbSizeKB": 5.3,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "20024600-night.webp",
+   "thumb": "20024600-night-800.webp",
+   "block": 20024600,
+   "hash": "0xbbd5ef01dbc64f0759b5c6dab063e6c9216730016f56518607dc9023dbf3e7bc",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "活行星的夜面与城市灯光",
+   "viewEn": "Night side of a living planet, with city lights",
+   "dimension": 3,
+   "note": "镜像 · 行星层（恒星 7J25 的第三颗行星 7J25 d，有生命的世界，生命等级「文明」；夜面上那些光点是人工光源，视点高度约 7,900 km）",
+   "source": "cityF-1.png",
+   "nonBlack": 0.156,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 38.7,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 13.6,
    "thumbSizeQ": 80
   },
   {
@@ -84,6 +136,32 @@
    "thumbSizeQ": 80
   },
   {
+   "file": "20027429-ringed.webp",
+   "thumb": "20027429-ringed-800.webp",
+   "block": 20027429,
+   "hash": "0x971f79a6095d96093a567fb8bc194bd8b90b121fd9f23368544a35443a1daf5f",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "带环的气态巨行星",
+   "viewEn": "Ringed gas giant",
+   "dimension": 3,
+   "note": "镜像 · 行星层（8J2X b，气态巨行星，半径约 14 个地球，90 颗卫星；环的内外半径为 1.57–2.45 倍行星半径）",
+   "source": "ring-a.png",
+   "nonBlack": 0.681,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 72.2,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 25.7,
+   "thumbSizeQ": 80
+  },
+  {
    "file": "18000081-surface.webp",
    "thumb": "18000081-surface-800.webp",
    "block": 18000081,
@@ -107,6 +185,58 @@
     474
    ],
    "thumbSizeKB": 49.7,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "20026445-ice.webp",
+   "thumb": "20026445-ice-800.webp",
+   "block": 20026445,
+   "hash": "0xa25f1021af298e95790376ad036d8667929eb873d530ab160f0296d6b5ba6dbc",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "冰封世界地表",
+   "viewEn": "Surface of an ice world",
+   "dimension": 3,
+   "note": "镜像 · 地表层（2B5T b，冰封行星，平衡温度约 220 K，视点高度 10 km）",
+   "source": "ice-surf-1.png",
+   "nonBlack": 1,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 57.4,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 22.5,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "20027142-desert.webp",
+   "thumb": "20027142-desert-800.webp",
+   "block": 20027142,
+   "hash": "0x8856d6af60f01c1f4791c46bb2c4f7db436547d2506b87ad2668d589d616db32",
+   "outcome": "OBSERVERS_POSSIBLE",
+   "outcomeName": "可能诞生观察者",
+   "view": "沙漠世界地表",
+   "viewEn": "Surface of a desert world",
+   "dimension": 3,
+   "note": "镜像 · 地表层（L6LC b，沙漠行星，平衡温度约 320 K，视点高度 10 km）",
+   "source": "desert-surf-1.png",
+   "nonBlack": 1,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 92.6,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 34.8,
    "thumbSizeQ": 80
   },
   {
@@ -136,6 +266,32 @@
    "thumbSizeQ": 80
   },
   {
+   "file": "20026568-dim5.webp",
+   "thumb": "20026568-dim5-800.webp",
+   "block": 20026568,
+   "hash": "0x34255ed352f3d0d1164f7b0bfbcf13f697efc288de1af898d6f6466d5b7b5853",
+   "outcome": "UNSTABLE_ORBITS",
+   "outcomeName": "无稳定轨道 / 无稳定原子的宇宙",
+   "view": "五维宇宙的 N 体投影（D=5）",
+   "viewEn": "N-body projection of a five-dimensional universe (D=5)",
+   "dimension": 5,
+   "note": "真 5 维 N 体（直接求和 Worker CPU）· 投影到 (x₁,x₂,x₃)，虚线框是模拟盒 · 这是揭开「我们无法观察它」那一屏之后，底下一直在跑的那幅投影",
+   "source": "D5-box.png",
+   "nonBlack": 0.013,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 17.5,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 7,
+   "thumbSizeQ": 80
+  },
+  {
    "file": "9044269-plane.webp",
    "thumb": "9044269-plane-800.webp",
    "block": 9044269,
@@ -159,6 +315,58 @@
     474
    ],
    "thumbSizeKB": 14.1,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "20024641-disk2d.webp",
+   "thumb": "20024641-disk2d-800.webp",
+   "block": 20024641,
+   "hash": "0x2665e08ef0b4b0cbd7e5e912789ec0ad9807e0f37b6b06d293cff8bbd11bbf03",
+   "outcome": "UNSTABLE_ORBITS",
+   "outcomeName": "无稳定轨道 / 无稳定原子的宇宙",
+   "view": "二维世界的圆盘（D=2）",
+   "viewEn": "A disc world in two dimensions (D=2)",
+   "dimension": 2,
+   "note": "镜像 · 2 维模式（示意）· 圆盘就是整个星球，圆周就是它的地面；亮的那半是白昼、暗的那半是黑夜（2TC9 b，被一圈液态水覆盖的圆盘）· D≤2 下引擎判据里没有牛顿吸引，这幅画面是示意，不是结论",
+   "source": "d2-disk-b.png",
+   "nonBlack": 0.414,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 35.3,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 14.2,
+   "thumbSizeQ": 80
+  },
+  {
+   "file": "20374740-blackhole.webp",
+   "thumb": "20374740-blackhole-800.webp",
+   "block": 20374740,
+   "hash": "0x0b6ffd5cda1c8d5cc431bb113a6566283653c3a3b380999c44ef5b43720cbf81",
+   "outcome": "BLACK_HOLE_DOMINATED",
+   "outcomeName": "黑洞主导的宇宙",
+   "view": "黑洞主导的宇宙（晕标注）",
+   "viewEn": "A black-hole-dominated universe (halo labels)",
+   "dimension": 3,
+   "note": "3D PM N 体模拟 · 盒长 200 Mpc/h · 涨落太大，团块在冷却之前就塌成视界：物质几乎全部收进少数几个致密天体，圈出的是识别到的晕",
+   "source": "bh-web-ov2.png",
+   "nonBlack": 0.022,
+   "size": [
+    1600,
+    948
+   ],
+   "sizeKB": 17.6,
+   "sizeQ": 80,
+   "thumbSize": [
+    800,
+    474
+   ],
+   "thumbSizeKB": 6.7,
    "thumbSizeQ": 80
   }
  ],

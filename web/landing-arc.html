@@ -612,16 +612,16 @@ a.cardc:hover code{color:var(--ab-signal)}
 </header>
 
 <!-- ============================ 引擎实况 ============================
-     六张都是模拟器对 **Arc 主网**真实区块引爆后从画布导出的图（web/assets/gallery/index.json
+     十四张都是模拟器对 **Arc 主网**真实区块引爆后从画布导出的图（web/assets/gallery/index.json
      记着每张的区块号 / 哈希 / D / 结局 / 视图 / 尺寸；2026-09-17 换自 BSC 那套，旧图在 gallery-bsc/），
-     没调过色，没截页面外框。卡上标区块号与哈希——这六个高度都是 Arc 主网的真高度，
+     没调过色，没截页面外框。卡上标区块号与哈希——这十四个高度都是 Arc 主网的真高度，
      「引爆同一个哈希」那条深链（app.html?bang=<0x 哈希>）在本站点开就是同一个宇宙。
      合约上线、真有人铸之后，这一条应该改成读链的「最近引爆」，标记不用动。 -->
 <section class="ab-sec" id="live">
   <div class="ab-wrap ab-livehead">
     <div>
       <h2 class="ab-h2">引擎实况</h2>
-      <p class="ab-say">每一张都是引擎实时渲染时截的屏，没修图。第五张的空间维数 D = 18（D 就是空间有几个维度，我们的宇宙是 3），第六张是 2.5 维的黑平面。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。<a href="https://github.com/q3579338/arcbang/tree/main/engine" target="_blank" rel="noopener noreferrer">引擎开源，谁都能自己复算</a>。</p>
+      <p class="ab-say">每一张都是引擎实时渲染时截的屏，没修图。这里有 D = 18 的宇宙（D 就是空间有几个维度，我们的宇宙是 3），有 2.5 维的黑平面，也有 D = 1 的时空图和 D = 2 的圆盘世界。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。<a href="https://github.com/q3579338/arcbang/tree/main/engine" target="_blank" rel="noopener noreferrer">引擎开源，谁都能自己复算</a>。</p>
     </div>
     <!-- 自动漂移超过 5 秒且与其它内容并列，必须给一个看得见的停法（WCAG 2.2.2）——
          只靠 hover 暂停对键盘和触屏用户等于没有。这颗钮同时管窗口里的星场。 -->
@@ -641,6 +641,17 @@ a.cardc:hover code{color:var(--ab-signal)}
         </figcaption>
       </figure>
       <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20024723-worldline.webp" aria-label="查看大图">
+          <img src="assets/gallery/20024723-worldline-800.webp" srcset="assets/gallery/20024723-worldline-800.webp 800w, assets/gallery/20024723-worldline.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="一维宇宙的时空图（D=1）">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0xe4282146cab776a5fa380a9c73204c58b5e93d2851831951b003c2b55222df41" data-oc="无稳定轨道">
+          <span class="ab-tk-hash mono">区块 20,024,723 · 0xe428…df41</span>
+          <span class="ab-tk-v">一维宇宙的时空图（D=1）</span>
+          <span class="ab-tk-tag no">无稳定轨道 · D=1</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0xe4282146cab776a5fa380a9c73204c58b5e93d2851831951b003c2b55222df41">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
+      <figure class="ab-tk-item">
         <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/5000017-galaxy.webp" aria-label="查看大图">
           <img src="assets/gallery/5000017-galaxy-800.webp" srcset="assets/gallery/5000017-galaxy-800.webp 800w, assets/gallery/5000017-galaxy.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="旋臂星系俯视">
         </button>
@@ -649,6 +660,17 @@ a.cardc:hover code{color:var(--ab-signal)}
           <span class="ab-tk-v">旋臂星系俯视</span>
           <span class="ab-tk-tag">可能诞生观察者 · D=3</span>
           <span class="ab-tk-links"><a href="app.html?bang=0x16b9b6dd19192866291f7a86449b15596610fb106b03eb2f1d6186670ea4d503">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
+      <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20024600-night.webp" aria-label="查看大图">
+          <img src="assets/gallery/20024600-night-800.webp" srcset="assets/gallery/20024600-night-800.webp 800w, assets/gallery/20024600-night.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="活行星的夜面与城市灯光">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0xbbd5ef01dbc64f0759b5c6dab063e6c9216730016f56518607dc9023dbf3e7bc" data-oc="可能诞生观察者">
+          <span class="ab-tk-hash mono">区块 20,024,600 · 0xbbd5…e7bc</span>
+          <span class="ab-tk-v">活行星的夜面与城市灯光</span>
+          <span class="ab-tk-tag">可能诞生观察者 · D=3</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0xbbd5ef01dbc64f0759b5c6dab063e6c9216730016f56518607dc9023dbf3e7bc">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
         </figcaption>
       </figure>
       <figure class="ab-tk-item">
@@ -663,6 +685,17 @@ a.cardc:hover code{color:var(--ab-signal)}
         </figcaption>
       </figure>
       <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20027429-ringed.webp" aria-label="查看大图">
+          <img src="assets/gallery/20027429-ringed-800.webp" srcset="assets/gallery/20027429-ringed-800.webp 800w, assets/gallery/20027429-ringed.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="带环的气态巨行星">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0x971f79a6095d96093a567fb8bc194bd8b90b121fd9f23368544a35443a1daf5f" data-oc="可能诞生观察者">
+          <span class="ab-tk-hash mono">区块 20,027,429 · 0x971f…af5f</span>
+          <span class="ab-tk-v">带环的气态巨行星</span>
+          <span class="ab-tk-tag">可能诞生观察者 · D=3</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0x971f79a6095d96093a567fb8bc194bd8b90b121fd9f23368544a35443a1daf5f">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
+      <figure class="ab-tk-item">
         <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/18000081-surface.webp" aria-label="查看大图">
           <img src="assets/gallery/18000081-surface-800.webp" srcset="assets/gallery/18000081-surface-800.webp 800w, assets/gallery/18000081-surface.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="熔岩行星地表">
         </button>
@@ -671,6 +704,28 @@ a.cardc:hover code{color:var(--ab-signal)}
           <span class="ab-tk-v">熔岩行星地表</span>
           <span class="ab-tk-tag">可能诞生观察者 · D=3</span>
           <span class="ab-tk-links"><a href="app.html?bang=0xa2274c464a751150e706d1c1bb80cc2eb5af8afdfbf819bc191d9ace874af4c9">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
+      <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20026445-ice.webp" aria-label="查看大图">
+          <img src="assets/gallery/20026445-ice-800.webp" srcset="assets/gallery/20026445-ice-800.webp 800w, assets/gallery/20026445-ice.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="冰封世界地表">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0xa25f1021af298e95790376ad036d8667929eb873d530ab160f0296d6b5ba6dbc" data-oc="可能诞生观察者">
+          <span class="ab-tk-hash mono">区块 20,026,445 · 0xa25f…6dbc</span>
+          <span class="ab-tk-v">冰封世界地表</span>
+          <span class="ab-tk-tag">可能诞生观察者 · D=3</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0xa25f1021af298e95790376ad036d8667929eb873d530ab160f0296d6b5ba6dbc">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
+      <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20027142-desert.webp" aria-label="查看大图">
+          <img src="assets/gallery/20027142-desert-800.webp" srcset="assets/gallery/20027142-desert-800.webp 800w, assets/gallery/20027142-desert.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="沙漠世界地表">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0x8856d6af60f01c1f4791c46bb2c4f7db436547d2506b87ad2668d589d616db32" data-oc="可能诞生观察者">
+          <span class="ab-tk-hash mono">区块 20,027,142 · 0x8856…db32</span>
+          <span class="ab-tk-v">沙漠世界地表</span>
+          <span class="ab-tk-tag">可能诞生观察者 · D=3</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0x8856d6af60f01c1f4791c46bb2c4f7db436547d2506b87ad2668d589d616db32">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
         </figcaption>
       </figure>
       <figure class="ab-tk-item">
@@ -685,6 +740,17 @@ a.cardc:hover code{color:var(--ab-signal)}
         </figcaption>
       </figure>
       <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20026568-dim5.webp" aria-label="查看大图">
+          <img src="assets/gallery/20026568-dim5-800.webp" srcset="assets/gallery/20026568-dim5-800.webp 800w, assets/gallery/20026568-dim5.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="五维宇宙的 N 体投影（D=5）">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0x34255ed352f3d0d1164f7b0bfbcf13f697efc288de1af898d6f6466d5b7b5853" data-oc="无稳定轨道">
+          <span class="ab-tk-hash mono">区块 20,026,568 · 0x3425…5853</span>
+          <span class="ab-tk-v">五维宇宙的 N 体投影（D=5）</span>
+          <span class="ab-tk-tag no">无稳定轨道 · D=5</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0x34255ed352f3d0d1164f7b0bfbcf13f697efc288de1af898d6f6466d5b7b5853">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
+      <figure class="ab-tk-item">
         <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/9044269-plane.webp" aria-label="查看大图">
           <img src="assets/gallery/9044269-plane-800.webp" srcset="assets/gallery/9044269-plane-800.webp 800w, assets/gallery/9044269-plane.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="黑平面与垂直银线（D=2.50）">
         </button>
@@ -695,9 +761,31 @@ a.cardc:hover code{color:var(--ab-signal)}
           <span class="ab-tk-links"><a href="app.html?bang=0x537a6f0e6b802386737a7b81152a17a82e5714f41c8e33be754fc9c05fa3860c">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
         </figcaption>
       </figure>
+      <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20024641-disk2d.webp" aria-label="查看大图">
+          <img src="assets/gallery/20024641-disk2d-800.webp" srcset="assets/gallery/20024641-disk2d-800.webp 800w, assets/gallery/20024641-disk2d.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="二维世界的圆盘（D=2）">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0x2665e08ef0b4b0cbd7e5e912789ec0ad9807e0f37b6b06d293cff8bbd11bbf03" data-oc="无稳定轨道">
+          <span class="ab-tk-hash mono">区块 20,024,641 · 0x2665…bf03</span>
+          <span class="ab-tk-v">二维世界的圆盘（D=2）</span>
+          <span class="ab-tk-tag no">无稳定轨道 · D=2</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0x2665e08ef0b4b0cbd7e5e912789ec0ad9807e0f37b6b06d293cff8bbd11bbf03">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
+      <figure class="ab-tk-item">
+        <button type="button" class="ab-tk-shot gal-img" data-full="assets/gallery/20374740-blackhole.webp" aria-label="查看大图">
+          <img src="assets/gallery/20374740-blackhole-800.webp" srcset="assets/gallery/20374740-blackhole-800.webp 800w, assets/gallery/20374740-blackhole.webp 1600w" sizes="194px" width="1600" height="948" loading="lazy" decoding="async" alt="黑洞主导的宇宙（晕标注）">
+        </button>
+        <figcaption class="ab-tk-cap gal-cap rc-cap" data-hash="0x0b6ffd5cda1c8d5cc431bb113a6566283653c3a3b380999c44ef5b43720cbf81" data-oc="黑洞主导">
+          <span class="ab-tk-hash mono">区块 20,374,740 · 0x0b6f…bf81</span>
+          <span class="ab-tk-v">黑洞主导的宇宙（晕标注）</span>
+          <span class="ab-tk-tag no">黑洞主导 · D=3</span>
+          <span class="ab-tk-links"><a href="app.html?bang=0x0b6ffd5cda1c8d5cc431bb113a6566283653c3a3b380999c44ef5b43720cbf81">引爆同一个哈希 →</a><a class="rc-share" href="#" target="_blank" rel="noopener noreferrer">分享 ↗</a></span>
+        </figcaption>
+      </figure>
     </div>
   </div>
-  <div class="ab-wrap"><p class="ab-tkhint">横向滑动看全部六个 · 点图看大图</p></div>
+  <div class="ab-wrap"><p class="ab-tkhint">横向滑动看全部十四个 · 点图看大图</p></div>
 </section>
 
 <!-- ============================ 1,387 ============================
@@ -739,7 +827,7 @@ a.cardc:hover code{color:var(--ab-signal)}
       </div>
       <div class="ab-act">
         <h3><span class="n" data-nolang>3</span>转手</h3>
-        <p>铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。成交时 5% 版税，上限 10% 写死在合约里，抬不上去。</p>
+        <p>铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。</p>
         <a class="ab-more" href="market.html">去市场看看 →</a>
       </div>
     </div>
@@ -758,7 +846,7 @@ a.cardc:hover code{color:var(--ab-signal)}
     <form class="ab-find" id="findForm" autocomplete="off">
       <div class="ab-find-box">
         <input id="findInp" name="q" type="search" inputmode="search" spellcheck="false" autocomplete="off"
-               placeholder="区块高度 / 0x 区块哈希 / 钱包地址" aria-label="区块高度、区块哈希或钱包地址">
+               placeholder="区块高度 / 0x 区块哈希" aria-label="区块高度或区块哈希">
         <button type="submit">引爆这个区块</button>
       </div>
       <p class="ab-findmsg" id="findMsg" role="status" hidden></p>
@@ -785,7 +873,7 @@ a.cardc:hover code{color:var(--ab-signal)}
           <tr><td class="k">全网总量</td><td><span class="mono">1,387</span></td><td>宇宙 137.87 亿岁，一枚 NFT 一千万年；写死在合约里</td></tr>
           <tr><td class="k">免费期</td><td><span class="mono">前 387 枚</span></td><td>每地址 1 次，只花 gas（约 0.003 USDC）</td></tr>
           <tr><td class="k">之后</td><td><span class="mono">1 USDC</span></td><td>每地址最多 3 枚；合约把价格夹在 0.1 – 20 USDC 之间</td></tr>
-          <tr><td class="k">二级版税</td><td><span class="mono">5%</span></td><td>OpenSea 这类市场直接读得到，上限 10% 写死在合约里</td></tr>
+          <tr><td class="k">二级版税</td><td><span class="mono">5%</span></td><td>OpenSea 这类市场直接读得到</td></tr>
         </tbody>
       </table></div>
     </div>
@@ -1268,7 +1356,7 @@ a.cardc:hover code{color:var(--ab-signal)}
             T('。'));
         return;
       }
-      say(T('认不出来：给一个区块高度、一个 0x 开头的 64 位区块哈希，或者一个钱包地址。'));
+      say(T('认不出来：给一个区块高度，或者一个 0x 开头的 64 位区块哈希。'));
       inp.focus();
     });
   })();
@@ -1286,7 +1374,7 @@ a.cardc:hover code{color:var(--ab-signal)}
    条本身是静态 HTML（图片 lazy 加载，不靠脚本就能看）；脚本只管「点图看大图」。
    大图地址在 data-full 上（build-web.js 给它打 ?v= 指纹，与 src/srcset 同一套）。
    说明行整段复制进灯箱：语言切换已由 i18n 的 DOM 遍历翻过，不用再翻。
-   克隆出来的那两份没有 gal-img 类，选不中 —— 灯箱里永远只有六张。 */
+   克隆出来的那两份没有 gal-img 类，选不中 —— 灯箱里只认原件那一份。 */
 (function () {
   'use strict';
   var lb = document.getElementById('galLb'), img = document.getElementById('galLbImg'), cap = document.getElementById('galLbCap');

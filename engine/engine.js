@@ -32,7 +32,7 @@
   'use strict';
   if (!Params) throw new Error('MirrorEngine 需要 params.js：浏览器中请在 engine.js 之前引入 <script src="params.js">');
 
-  var VERSION = '2.4.0';
+  var VERSION = '2.5.0';
 
   // ============================================================
   // 常量（我们的宇宙）

@@ -710,6 +710,47 @@
     '现在还差：恒星照常点燃了（这一条要求没有恒星）。': 'Still missing: stars ignite as usual (this condition requires none).',
     '现在还差：气体在宇宙年龄内仍会塌缩（引力还不够弱）。': 'Still missing: the gas still collapses within the age of the universe (gravity is not weak enough).',
     '现在还差：没有稳定的原子或分子没有刚性。': 'Still missing: no stable atoms, or molecules without rigidity.',
-    '现在还差：背景温度没有一段落在分子的液态温区内。': 'Still missing: no stretch of the background temperature falls inside the molecular liquid range.'
+    '现在还差：背景温度没有一段落在分子的液态温区内。': 'Still missing: no stretch of the background temperature falls inside the molecular liquid range.',
+
+    /* ---- 自动推（web/intervene.js 的 renderAutoGo / autoTick）。
+           选了目标就自动往目标推，按钮三态：自动推 / 停 / 推不动了。 ---- */
+    '自动推': 'Auto-push',
+    '停': 'Stop',
+    '推不动了': 'Cannot push further',
+    '这个宇宙推不到这个目标': 'This universe cannot reach this goal',
+    '正在算提示…': 'Working out the hint…',
+    '<b>这个宇宙推不到这个目标。</b>沿这些参数爬过去，找不到四条判据同时成立的落点 —— 换一个目标，或者换一个宇宙。':
+      '<b>This universe cannot reach this goal.</b> Climbing along these parameters, there is no landing point where all four conditions hold — pick another goal, or another universe.',
+    '按当前目标「{n}」一步一步推下去，随时可以停': 'Push step by step toward the current goal "{n}" — stop any time',
+    '正在往「{n}」推，第 {m} 步 —— 点一下收手': 'Pushing toward "{n}", step {m} — click to stop',
+    '已经到「{n}」了': 'Already at "{n}"',
+    '提示判定：沿这些参数爬不到这个终点。换一个目标，或者换一个宇宙。':
+      'The hint module says so: this end point is not reachable along these parameters. Pick another goal, or another universe.',
+    '上一轮自动推没找到能变好的一格。手动推一格、或者撤销一步，再试。':
+      'The last auto-push run found no notch that improves things. Push one by hand, or undo a step, then try again.',
+    '自动推开始：目标「{n}」。想停随时点「停」。': 'Auto-push started, goal "{n}". Click "Stop" whenever you want.',
+    '停了 —— 自动推走了 {n} 步。': 'Stopped — auto-push took {n} steps.',
+    '目标换了，自动推停下了。': 'The goal changed, so auto-push stopped.',
+    '到了：目标「{n}」，自动推一共走了 {m} 步。': 'Arrived: goal "{n}", reached in {m} auto-push steps.',
+    '推了 {m} 秒（{n} 步）还没到，先停下来 —— 再点一次「自动推」可以接着推。':
+      '{m} seconds ({n} steps) and still not there, so it stops here — click "Auto-push" again to carry on.',
+    '推了 {n} 步还没到，先停下来 —— 再点一次「自动推」可以接着推。':
+      '{n} steps and still not there, so it stops here — click "Auto-push" again to carry on.',
+    '自动推 第 {n} 步：': 'Auto-push, step {n}: ',
+    '把维度推到 3（{n} 格）': 'Pushed the dimension to 3 ({n} notches)',
+    '把「{n}」调低 {m} 格': 'Turn "{n}" down by {m} notches',
+    '把「{n}」调高 {m} 格': 'Turn "{n}" up by {m} notches',
+    '提示模块没加载，自动推走不了。': 'The hint module is not loaded, so auto-push cannot run.',
+    '　（总分 {n}/100）': ' (score {n}/100)',
+    '连推 {n} 步总分都没涨，停下来了 —— 贪心在这儿转圈。':
+      '{n} steps in a row without the score moving, so it stopped — the greedy search is going in circles here. ',
+    '提示找不到能变好的一格了，先往坏处推也没能翻过去。':
+      'The hint finds no notch that improves things, and pushing one the wrong way first did not get over the hump either. ',
+    '先往坏处推一格好翻过去 —— ': 'Pushing one notch the wrong way to get over the hump — ',
+    '　还卡在「{n}」这道门上。': ' Still stuck on the "{n}" gate.',
+    '可以撤销一步、手动推一格换个方向，或者换个目标。':
+      'You can undo a step, push one by hand in another direction, or pick another goal.',
+    '把沙盒里这组参数（推了 {n} 格）直接拿去引爆看结果 —— 不上链、不铸造':
+      'Detonate the sandbox parameters as they stand ({n} notches pushed) just to see the result — nothing goes on chain, nothing is minted'
   }, 'tools');
 })(typeof window !== 'undefined' ? window : this);

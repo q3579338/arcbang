@@ -370,46 +370,141 @@
 
   function oceanHit(sim) { return !!(sim && sim.variant === 'ocean'); }
 
+  /* ---------------------------------------------------------- 爬山：分片跑，别霸着主线程
+
+     这一坨是整个沙盒里唯一的**长同步任务**：16 根轴 × 17 个点 × 4 轮 ≈ 4300 次模拟。
+     实测（Chrome / 本机）一次 285–311 ms —— 一口气跑完就是肉眼可见的一次假死，
+     而「自动推」要一步一跑，卡顿会乘以步数。
+
+     所以把坐标下降拆成一台**可暂停的状态机**（oceanJob）：
+       · slice(budget) 跑到预算用完就返回，主线程随时能喘气；
+       * 片与片之间用 MessageChannel（没有就退回 setTimeout 0）把控制权交还浏览器。
+     没选 Worker：站点版是**离线单文件**，Worker 得把 params.js + engine.js 的源码
+     整段塞进 Blob URL 才跑得起来，而那两个文件在包里已经被内联掉、拿不到源文本。
+     分片是同一份代码、同一个结果，风险小得多。
+
+     oceanSolve() 仍然在（Node 自测、server 侧跑分照旧用它）：它只是把 job 一口气跑完，
+     逐字等价于改造前的那段循环 —— 换句话说 bnb / btc 的行为一个字节都没动。 */
+
+  /** 一片最多占用主线程多少毫秒。8 ms ≈ 半帧，浏览器还来得及画一帧 */
+  var OCEAN_SLICE_MS = 8;
+
+  /** 把控制权交还浏览器，下一拍再继续。MessageChannel 比 setTimeout 0 快
+      （后者连排 5 个之后会被钳到 4 ms），两者都没有就同步继续（Node 自测）。 */
+  function yieldToUI(fn) {
+    if (root.MessageChannel) {
+      try {
+        var c = new root.MessageChannel();
+        c.port1.onmessage = function () { c.port1.close(); fn(); };
+        c.port2.postMessage(0);
+        return;
+      } catch (e) { /* 老 WebView 没有它，退回下面 */ }
+    }
+    if (root.setTimeout) { root.setTimeout(fn, 0); return; }
+    fn();
+  }
+
   /**
-   * 本地解：坐标下降，每根轴在 unit 空间上整轴扫一遍取最优。
+   * 坐标下降的**可暂停版**：每根轴在 unit 空间上整轴扫一遍取最优。
    * 用整轴扫而不是小步爬山，理由和维度那条一样 —— 判据里有好几段是**阶跃**的
    * （氘核束不束缚、有没有原子、窗口在不在复合之后），小步长在跨过那一格之前没有梯度。
+   * @returns {slice(budgetMs)→done, done(), result(), scans()}
+   *          result() = {moves, params, hit, score} 或 null（已经是冷液体宇宙 / 爬不动）
+   */
+  function oceanJob(params, modules) {
+    var ms = modules || MODULES_OFF;
+    var origin = Params.normalize(params, ms);
+    var cur = origin, best = -1;
+    var sweep = 0, k = 0, i = 0, u0 = 0, bu = null, bs = -1, improved = false;
+    var fin = false, res = null, scans = 0;
+
+    if (oceanHit(run(origin, ms))) fin = true;                    // 已经到了
+    else best = oceanScore(run(cur, ms));
+
+    /** 换到第 k 根轴：跳过这个模块组合下不存在的轴，记下起点与本轮最好成绩 */
+    function enter() {
+      while (k < OCEAN_KEYS.length && !Params.byKey[OCEAN_KEYS[k]]) k++;
+      if (k >= OCEAN_KEYS.length) return;
+      u0 = Params.toUnit(OCEAN_KEYS[k], cur[OCEAN_KEYS[k]]);
+      bu = null; bs = best; i = 0;
+    }
+    if (!fin) enter();
+
+    function finish() {
+      fin = true;
+      var moves = [], j, key, a, b;
+      for (j = 0; j < OCEAN_KEYS.length; j++) {
+        key = OCEAN_KEYS[j];
+        if (!Params.byKey[key]) continue;
+        a = Params.toUnit(key, origin[key]); b = Params.toUnit(key, cur[key]);
+        if (Math.abs(b - a) > 1e-9) moves.push({ key: key, dir: b > a ? 1 : -1, fromUnit: a, toUnit: b });
+      }
+      // 爬不动：这个宇宙推不成冷液体宇宙
+      res = moves.length ? { moves: moves, params: cur, hit: oceanHit(run(cur, ms)), score: best } : null;
+    }
+
+    return {
+      done: function () { return fin; },
+      result: function () { return res; },
+      scans: function () { return scans; },
+      /** 跑一小片；budget 毫秒用完就停。返回「做完了没有」 */
+      slice: function (budget) {
+        if (fin) return true;
+        var t0 = now(), key, u, q, sc;
+        for (;;) {
+          if (now() - t0 >= budget) return false;
+          if (k >= OCEAN_KEYS.length) {                           // 一轮扫完
+            sweep++;
+            if (!improved || sweep >= OCEAN_SWEEPS) { finish(); return true; }
+            k = 0; improved = false; enter();
+            continue;
+          }
+          key = OCEAN_KEYS[k];
+          if (i > OCEAN_GRID) {                                   // 这根轴扫完
+            if (bu != null) { cur = atUnit(cur, key, bu, ms); best = bs; improved = true; }
+            k++; enter();
+            continue;
+          }
+          u = i / OCEAN_GRID; i++;
+          if (Math.abs(u - u0) < 1e-9) continue;
+          q = atUnit(cur, key, u, ms);
+          sc = oceanScore(run(q, ms)); scans++;
+          if (sc > bs + 1e-9) { bs = sc; bu = u; }
+        }
+      }
+    };
+  }
+
+  /**
+   * 一口气跑完的老接口。**结果与改造前逐字相同**，只是循环搬进了 oceanJob。
    * @returns {moves:[{key,dir,fromUnit,toUnit}], params, hit, score} 或 null（已经是冷液体宇宙 / 依赖没加载）
    */
   function oceanSolve(params, modules) {
     if (!deps()) return null;
-    var ms = modules || MODULES_OFF;
-    var origin = Params.normalize(params, ms);
-    if (oceanHit(run(origin, ms))) return null;                   // 已经到了
-    var cur = origin, best = oceanScore(run(cur, ms));
-    var sweep, k, i, key, u0, u, q, sc, bu, bs, improved;
-    for (sweep = 0; sweep < OCEAN_SWEEPS; sweep++) {
-      improved = false;
-      for (k = 0; k < OCEAN_KEYS.length; k++) {
-        key = OCEAN_KEYS[k];
-        if (!Params.byKey[key]) continue;                         // 这个模块组合下没有这根轴
-        u0 = Params.toUnit(key, cur[key]);
-        bu = null; bs = best;
-        for (i = 0; i <= OCEAN_GRID; i++) {
-          u = i / OCEAN_GRID;
-          if (Math.abs(u - u0) < 1e-9) continue;
-          q = atUnit(cur, key, u, ms);
-          sc = oceanScore(run(q, ms));
-          if (sc > bs + 1e-9) { bs = sc; bu = u; }
-        }
-        if (bu != null) { cur = atUnit(cur, key, bu, ms); best = bs; improved = true; }
+    var job = oceanJob(params, modules);
+    job.slice(Infinity);
+    return job.result();
+  }
+
+  /**
+   * 分片版：同一套爬山，每片 ≤ OCEAN_SLICE_MS 毫秒，片间把主线程还给浏览器。
+   * 界面上一切要算这个方案的地方都走它 —— 同步那条只留给 Node 自测与服务端跑分。
+   * @param onSlice 可选：每片结束时回调 (已扫过的点数)，给「正在算…」那行做进度
+   */
+  function oceanSolveAsync(params, modules, onSlice) {
+    if (!deps()) return Promise.resolve(null);
+    var job;
+    try { job = oceanJob(params, modules); } catch (e) { return Promise.resolve(null); }
+    return new Promise(function (resolve) {
+      function tick() {
+        var done;
+        try { done = job.slice(OCEAN_SLICE_MS); } catch (e) { resolve(null); return; }
+        if (done) { resolve(job.result()); return; }
+        if (onSlice) { try { onSlice(job.scans()); } catch (e) { /* 进度回调不许影响爬山 */ } }
+        yieldToUI(tick);
       }
-      if (!improved) break;
-    }
-    var moves = [];
-    for (k = 0; k < OCEAN_KEYS.length; k++) {
-      key = OCEAN_KEYS[k];
-      if (!Params.byKey[key]) continue;
-      var a = Params.toUnit(key, origin[key]), b = Params.toUnit(key, cur[key]);
-      if (Math.abs(b - a) > 1e-9) moves.push({ key: key, dir: b > a ? 1 : -1, fromUnit: a, toUnit: b });
-    }
-    if (!moves.length) return null;                               // 爬不动：这个宇宙推不成冷液体宇宙
-    return { moves: moves, params: cur, hit: oceanHit(run(cur, ms)), score: best };
+      tick();
+    });
   }
 
   /**
@@ -590,9 +685,17 @@
            区别只有一个 —— 维度那条一次只推一根轴，这条是多轴方案，所以标定把所有轴放在**同一次**
            往返里（发一批"每根轴 1 格"，从回来的参数上逐根读位移），往返次数和维度那条一样是 2 次。 */
 
-    /** 这个宇宙还差多远到冷液体宇宙 —— 有解就返回方案，没有（或已经是）返回 null */
+    /** 这个宇宙还差多远到冷液体宇宙 —— 有解就返回方案，没有（或已经是）返回 null。
+        **同步版**：一口气跑完 ≈ 4300 次模拟（实测浏览器里 285–311 ms）。
+        界面上一个地方都不许再调它 —— 那就是「换目标就假死」的那一下。留着只为 Node 自测。 */
     function oceanPlan() {
       try { return oceanSolve(current().params, modules); } catch (e) { return null; }
+    }
+
+    /** 同上，但**分片跑**：每片 ≤ 8 ms，片间还主线程。界面一律走这一条。 */
+    function oceanPlanAsync(onSlice) {
+      try { return oceanSolveAsync(current().params, modules, onSlice); }
+      catch (e) { return Promise.resolve(null); }
     }
 
     /**
@@ -600,32 +703,57 @@
      *   ① 标定：每根轴各推 1 格，一次发出去，看服务端把每根轴各挪了多远。
      *   ② 按标定出来的格数整批预览一次，拿回服务端算的费用。
      * 总格数超过服务端一次的上限时按比例缩回去（缩完仍然用本地引擎复核落点）。
+     * @param plan0 已经算好的方案（界面刚算过就直接给，省一次爬山）
      * @returns Promise<{ops, costBang, hit, moves} | null>
      */
-    function quoteOcean() {
-      var plan = oceanPlan();
-      if (!plan) return Promise.resolve(null);
-      var one = plan.moves.map(function (m) { return { key: m.key, dir: m.dir, steps: 1 }; });
-      return send(one, false).then(function (p1) {
-        var want = [], total = 0, i;
-        for (i = 0; i < plan.moves.length; i++) {
-          var m = plan.moves[i];
-          var per = Math.abs(Params.toUnit(m.key, p1.params[m.key]) - m.fromUnit);
-          if (!(per > 0)) continue;                               // 这根轴这个方向推不动，放弃它
-          var need = Math.abs(m.toUnit - m.fromUnit);
-          var n = Math.max(1, Math.min(MAX_STEPS, Math.round(need / per)));
-          want.push({ key: m.key, dir: m.dir, steps: n });
-          total += n;
-        }
-        if (!want.length) return null;
-        if (total > OCEAN_MAX_TOTAL) {                            // 缩回服务端一次能接的额度
-          var f = OCEAN_MAX_TOTAL / total;
-          want.forEach(function (w) { w.steps = Math.max(1, Math.round(w.steps * f)); });
-        }
-        return send(want, false).then(function (p2) {
-          var s2 = run(p2.params, modules);
-          return { ops: want, costBang: p2.costBang || '0', hit: oceanHit(s2), moves: plan.moves, outcome: s2 && s2.outcome ? s2.outcome.id : null };
+    function quoteOcean(plan0) {
+      return (plan0 ? Promise.resolve(plan0) : oceanPlanAsync()).then(function (plan) {
+        if (!plan) return null;
+        var one = plan.moves.map(function (m) { return { key: m.key, dir: m.dir, steps: 1 }; });
+        return send(one, false).then(function (p1) {
+          var want = [], total = 0, i;
+          for (i = 0; i < plan.moves.length; i++) {
+            var m = plan.moves[i];
+            var per = Math.abs(Params.toUnit(m.key, p1.params[m.key]) - m.fromUnit);
+            if (!(per > 0)) continue;                               // 这根轴这个方向推不动，放弃它
+            var need = Math.abs(m.toUnit - m.fromUnit);
+            var n = Math.max(1, Math.min(MAX_STEPS, Math.round(need / per)));
+            want.push({ key: m.key, dir: m.dir, steps: n });
+            total += n;
+          }
+          if (!want.length) return null;
+          if (total > OCEAN_MAX_TOTAL) {                            // 缩回服务端一次能接的额度
+            var f = OCEAN_MAX_TOTAL / total;
+            want.forEach(function (w) { w.steps = Math.max(1, Math.round(w.steps * f)); });
+          }
+          return send(want, false).then(function (p2) {
+            var s2 = run(p2.params, modules);
+            return { ops: want, costBang: p2.costBang || '0', hit: oceanHit(s2), moves: plan.moves, outcome: s2 && s2.outcome ? s2.outcome.id : null };
+          });
         });
+      });
+    }
+
+    /**
+     * 方案里的**一根轴**：单独标定、单独推到位，落 trail（所以「撤销一步」退得回来）。
+     * 「自动推」要一步一步看得见指针动，所以按轴拆开走；落点和整批推等价 ——
+     * 坐标下降给的本来就是每根轴各自的绝对落点，先后顺序不改变终点。
+     * @param m {key, dir, fromUnit, toUnit}，oceanPlanAsync() 的 moves 里的一条
+     * @returns Promise<{ok, key?, dir?, steps?, hit?, reason?}>
+     */
+    function solveOceanMove(m) {
+      return send([{ key: m.key, dir: m.dir, steps: 1 }], false).then(function (p1) {
+        var per = Math.abs(Params.toUnit(m.key, p1.params[m.key]) - m.fromUnit);
+        if (!(per > 0)) return { ok: false, reason: T('这一格推不动 —— 换个参数试试') };
+        var need = Math.abs(m.toUnit - m.fromUnit);
+        var n = Math.max(1, Math.min(MAX_STEPS, Math.round(need / per)));
+        return send([{ key: m.key, dir: m.dir, steps: n }], true).then(function () {
+          var s = current().sim;
+          return { ok: true, key: m.key, dir: m.dir, steps: n, hit: oceanHit(s) };
+        });
+      }).then(null, function (e) {
+        if (e && e.code === 'NO_MOVE') return { ok: false, reason: T('这一格推不动 —— 换个参数试试') };
+        return { ok: false, reason: T('服务端算不出这一步：') + ((e && e.message) || e) };
       });
     }
 
@@ -698,7 +826,8 @@
       dimPlan: dimPlan, quoteDimension: quoteDimension, solveDimension: solveDimension,
       /* 目标二（冷液体宇宙）的三个入口，形状与上面那三个一一对应。
          solved() 一个字没改：救活仍然只认 OBSERVERS_POSSIBLE，这条是并列的另一个终点。 */
-      oceanPlan: oceanPlan, quoteOcean: quoteOcean, solveOcean: solveOcean, isOcean: isOcean,
+      oceanPlan: oceanPlan, oceanPlanAsync: oceanPlanAsync, quoteOcean: quoteOcean,
+      solveOcean: solveOcean, solveOceanMove: solveOceanMove, isOcean: isOcean,
       offsetOf: offsetOf, moved: moved, solved: solved,
       /* 「推了几格」是总格数，不是操作次数：一键推维度可能一次就是 261 格，
          把它显示成"推了 1 格"是在骗人（真烧的钱是按位移算的）。
@@ -936,6 +1065,15 @@
        'ocean' = 推成冷液体宇宙（结局仍是 NO_STARS + 引擎的 ocean 变体，**不是新结局**）。
        目标只影响主行动卡上多出来的那颗按钮；solved()、救活判定、铸造那几条路一个字没动。 */
     goal: 'observers', oceanBusy: false, oceanQuote: undefined, oceanQuoteAt: null,
+    /* 自动推（目标下拉旁边那颗按钮）：on = 正在推、stop = 用户点了停（本拍结束收手）、
+       n = 已经走了几步、goal = 开跑那一刻的目标（中途换目标就收手）、
+       last = 最后一步的人话、why = 'stuck' 时按钮显示「推不动了」、whyAt = 那时候的格数
+       （玩家一动手 whyAt 就对不上，按钮自动恢复成「自动推」）。 */
+    auto: { on: false, stop: false, n: 0, goal: null, last: null, t0: 0, why: null, whyAt: 0,
+            best: null, stall: 0, escapes: 0 },
+    /* 假死看门狗要的现场（ui/app.js 的 wdSnapshot → sandbox 那一段）：
+       busyAt = 当前那件重活是什么时候开跑的，lastStep = 最后推下去的那一步。 */
+    busyAt: null, busyWhat: null, lastStep: null,
     /* 连点冻结：lastNudge = 上一次推格的时刻，thaw = 停手后补画那一次的定时器 */
     lastNudge: 0, thaw: null,
     /* 铸成造物（specs/crafted-v1.md §五）：craftBusy = 三步流程（要签名 → 授权 → 铸）
@@ -1384,6 +1522,12 @@
       '        <option value="observers">' + esc(T('可能诞生观察者')) + '</option>',
       '        <option value="ocean">' + esc(T('冷液体宇宙')) + '</option>',
       '      </select></label>',
+      /* 「自动推」。选了目标就该能自动往目标推，而不是只给提示让人一格一格点。
+         三态（自动推 / 停 / 推不动了）全在 renderAutoGo 里判，这里只留一个常驻节点。 */
+      '    <button type="button" class="mi-btn" id="miAutoGo"></button>',
+      /* 「用这组参数引爆」。救没救活都给 —— 推出来的宇宙本来就该能拿去看一眼。
+         救活了的时候藏起来：那一刻庆祝卡上已经有一颗同样的（renderWin）。 */
+      '    <button type="button" class="mi-btn alt" id="miBangGo" hidden></button>',
       '    <span class="mi-note">' + esc(T('沙盒：随便推、不花钱、不上链；关掉之后原宇宙不受影响')) + '</span>',
       '    <button type="button" class="mi-btn" id="miClose">' + esc(T('关闭')) + '</button>',
       '  </div>',
@@ -1423,9 +1567,20 @@
     $('miDim').addEventListener('click', pushDimension);
     // 目标二：换目标只重画，推那一步走 pushOcean（和 pushDimension 同一套骨架）
     $('miOcean').addEventListener('click', pushOcean);
+    // 「自动推」：按当前目标一步一步推下去（三态见 renderAutoGo）
+    $('miAutoGo').addEventListener('click', autoToggle);
+    // 常驻的「用这组参数引爆」。和庆祝卡上那一颗走同一个 bang()，不另起一套
+    $('miBangGo').addEventListener('click', bang);
     $('miGoalSel').addEventListener('change', function () {
       S.goal = $('miGoalSel').value === 'ocean' ? 'ocean' : 'observers';
       S.oceanQuote = undefined; S.oceanQuoteAt = null;
+      /* 换目标先收手：自动推是按**开跑那一刻**的目标推的，目标变了这一串就不该接着走。
+         「推不动了」也一起清掉 —— 那是上一个目标的结论。 */
+      if (S.auto.on) S.auto.stop = true;
+      S.auto.why = null;
+      /* 这一拍**只换 UI**：冷液体宇宙的提示要跑 4000 多次模拟（实测 285–311 ms），
+         在这里同步算就是一次肉眼可见的假死。act() 会把那张卡先画成「正在算提示…」，
+         分片算完（oceanPlanWait）自己再重画一次。 */
       act(S.goal === 'ocean'
         ? T('目标换成「冷液体宇宙」：引力弱到气体不塌缩、没有恒星，但分子还在液态温区里。结局仍是「没有恒星的宇宙」，判据见分析面板的 R_OCEAN（启发式）。')
         : T('目标换回「可能诞生观察者」。'));
@@ -1586,6 +1741,364 @@
     return S.plan ? 'dim' : 'tune';
   }
 
+
+  /* ---------------------------------------------------------- 「重活正在跑」的现场
+
+     面板上任何一件要等的事（爬山、问提示、推格）开跑时记一个时刻，跑完清掉。
+     ui/app.js 的假死看门狗会来取（见下面导出的 wdInfo）：下一次有人报"沙盒卡死"，
+     dump 里就直接写着卡的时候目标是什么、那件重活跑了多久、上一步推的是谁。 */
+  function busyOn(what) { S.busyAt = now(); S.busyWhat = what || null; }
+  function busyOff() { S.busyAt = null; S.busyWhat = null; }
+
+  /** 冷液体宇宙的本地方案，按状态节点缓存 —— 形状照 planOf 抄，只是**分片异步**算。
+      undefined = 正在算；null = 推不到（或已经是）；对象 = 方案。
+      同步算这一坨要 4000 多次模拟（实测 285–311 ms），换目标那一拍跑它就是假死。 */
+  function oceanPlanWait(stt) {
+    if (!stt || !S.box) return Promise.resolve(null);
+    if (stt.oplan !== undefined) return Promise.resolve(stt.oplan);
+    if (stt.oplanP) return stt.oplanP;
+    var t0 = now();
+    busyOn('oceanPlan');
+    stt.oplanP = S.box.oceanPlanAsync().then(function (p) {
+      stt.oplan = p || null; stt.oplanMs = Math.round(now() - t0); stt.oplanP = null;
+      busyOff();
+      if (S.open && S.box && S.box.current() === stt) render();
+      return stt.oplan;
+    }, function () {
+      stt.oplan = null; stt.oplanP = null;
+      busyOff();
+      if (S.open && S.box && S.box.current() === stt) render();
+      return null;
+    });
+    return stt.oplanP;
+  }
+  /** 同上的**同步读法**：给 render 用。没算过就顺手开一次分片计算，这一拍先返回 undefined。 */
+  function oceanPlanOf(stt) {
+    if (!stt) return null;
+    if (stt.oplan !== undefined) return stt.oplan;
+    oceanPlanWait(stt);
+    return undefined;
+  }
+
+  /* ---------------------------------------------------------- 自动推
+
+     选了目标就该能**自动往目标推**，而不是只给提示让人一格一格点。
+     每一步仍然走现成的那条路（服务端算距离、trail 照记），所以推完
+     「撤销一步」「全部重置」一个都没坏 —— 自动推只是替玩家点那些按钮。
+
+     节奏：一步走完歇 AUTO_GAP_MS 再走下一步。不留这口气的话，整段推完
+     屏幕上只是闪一下，仪表指针动没动玩家根本看不见 —— 那就白推了。
+     这口气同时也是**交还主线程**的那一拍：整条链上没有一处同步连推。
+
+     2026-09-17 用户实测（大挤压那个宇宙）报了两件事，下面四条收手规则是为它们加的：
+       ① 提示说「找不到能变好的一格」→ **立刻**停，并把卡住的那道门说出来；
+       ② 连着 AUTO_STALL 步总分（MirrorGauges 的 0–100）一点没涨 → 停，别空转发请求；
+       ③ 服务端说这一格推不动 → 停；
+       ④ 步数封顶 AUTO_MAX_STEPS。
+     ①③④ 早就有；真正让它"一直卡着"的是缺了 ②：贪心在局部最优附近能来回蹭很久，
+     每一步都"成功"了，分数一动不动。 */
+  var AUTO_GAP_MS = 300;
+  /** 步数封顶。有了 ② 那条，正常情况下根本走不到这儿 */
+  var AUTO_MAX_STEPS = 200;
+  /** 连着这么多步总分没涨就收手。实测一个 NO_CARBON_CHEMISTRY 的宇宙要 27 步才活，
+      中间有好几段是平的，所以这个数不能小 —— 小了会把正在爬的路当成转圈掐掉。 */
+  var AUTO_STALL = 8;
+  /** 时间封顶。步数封顶对玩家没有意义（他数不清），"推了一分半还没到"才是他能感觉到的那件事 */
+  var AUTO_MAX_MS = 90000;
+  /** 贪心卡死时最多试几次「先往坏处推一格」的侧移（确定性的，没有随机数） */
+  var AUTO_ESCAPES = 3;
+
+  function goalName() { return S.goal === 'ocean' ? T('冷液体宇宙') : T('可能诞生观察者'); }
+  /** 当前目标到了没有。两个目标各认各的判据，互不影响 */
+  function goalHit() { return S.goal === 'ocean' ? S.box.isOcean() : S.box.solved(); }
+  /** 「把「电磁力有多强（α）」调高 261 格」——人话在前、符号在括号里 */
+  function moveTextN(key, dir, steps) {
+    return (steps > 1)
+      ? TN(dir < 0 ? '把「{n}」调低 {m} 格' : '把「{n}」调高 {m} 格', label(key), steps)
+      : TN(dir < 0 ? '把「{n}」调低一格' : '把「{n}」调高一格', label(key));
+  }
+  /**
+   * 仪表盘的读数。仪表模块缺席就返回 null（那时候不走"分数不涨"这条收手规则）。
+   *   show = 界面上那个 0–100 的整数分；
+   *   fine = **没取整**的同一个东西（过了几道门 × 100 + 连续仪表的平均进度 × 10）。
+   * 判"分数不涨"只能用 fine：整数分一步只动一两点，慢慢变好的一串在它上面看着是平的，
+   * 拿它判会把还在爬的路误判成转圈，当场把玩家的自动推掐死。
+   */
+  function gaugeNow() {
+    var G = root.MirrorGauges;
+    if (!G || typeof G.compute !== 'function') return null;
+    try {
+      var c = G.compute(S.box.sim());
+      if (!c) return null;
+      var ms = c.meters || [], sum = 0, i;
+      for (i = 0; i < ms.length; i++) sum += (ms[i].progress || 0);
+      return {
+        show: typeof c.score === 'number' ? c.score : null,
+        fine: (c.gates ? c.gates.passed : 0) * 100 + (ms.length ? sum / ms.length : 0) * 10
+      };
+    } catch (e) { return null; }
+  }
+  /** 现在卡在哪一道门（人话）。停下来的时候要说出口，不然玩家只看到"推不动了" */
+  function stuckGate() {
+    var H = root.MirrorHint;
+    if (!H || typeof H.diagnose !== 'function') return '';
+    try {
+      var ds = H.diagnose(S.box.sim()) || [];
+      return ds.length ? T(ds[0].label || ds[0].gate) : '';
+    } catch (e) { return ''; }
+  }
+  /** 「推不动了」那一句：带上卡住的门名，比干巴巴一句"没辙"有用得多 */
+  function stuckLine(head) {
+    var g = stuckGate();
+    return head + (g ? TN('　还卡在「{n}」这道门上。', g) : '') +
+      T('可以撤销一步、手动推一格换个方向，或者换个目标。');
+  }
+
+  function autoEnd(why, msg, warn) {
+    S.auto.on = false; S.auto.stop = false;
+    S.auto.why = why || null;
+    S.auto.whyAt = S.box ? S.box.steps() : 0;
+    S.dimBusy = false; S.oceanBusy = false; S.tipBusy = false;
+    busyOff();
+    if (msg) act(msg, warn); else render();
+  }
+
+  /** 按钮本体。开着就是「停」，停着就是「自动推」 */
+  function autoToggle() {
+    var b = $('miAutoGo');
+    if (!b || b.disabled) return;
+    if (S.auto.on) { S.auto.stop = true; render(); return; }
+    S.auto = {
+      on: true, stop: false, n: 0, goal: S.goal, last: null, t0: now(), why: null, whyAt: 0,
+      best: (gaugeNow() || {}).fine, stall: 0, escapes: 0
+    };
+    act(TN('自动推开始：目标「{n}」。想停随时点「停」。', goalName()));
+    autoTick();
+  }
+
+  /** 下一拍。**一定**经过一次 setTimeout —— 主线程在这中间是自由的 */
+  function autoNext() {
+    if (!S.open || !S.auto.on) return;
+    if (root.setTimeout) root.setTimeout(autoTick, AUTO_GAP_MS);
+    else autoTick();
+  }
+
+  /** 一步走完之后的共同收尾：记步、看分数涨没涨、落一句话、歇一拍再走下一步 */
+  function autoStepDone(text) {
+    S.auto.n++;
+    S.auto.last = text;
+    S.lastStep = text;
+    busyOff();
+    /* 分数不涨的那几步要数出来（规则 ②）。分数拿不到（仪表模块缺席）就不数，
+       那时候只剩提示为空 / 推不动 / 步数封顶这三条收手规则。 */
+    var g = gaugeNow(), sc = g ? g.fine : null;
+    if (sc == null || S.auto.best == null) { S.auto.stall = 0; S.auto.best = sc; }
+    else if (sc > S.auto.best + 1e-9) { S.auto.best = sc; S.auto.stall = 0; }
+    else S.auto.stall++;
+    act(TN('自动推 第 {n} 步：', S.auto.n) + text +
+      (g && g.show != null ? TN('　（总分 {n}/100）', g.show) : ''));
+    autoNext();
+  }
+
+  /**
+   * 贪心卡死时的**有限逃逸**：提示自己说的就是「得先往坏处推一格才能翻过去」。
+   * 做法是确定性的，没有随机数 —— 按诊断给出的第一道门的相关参数，依次试
+   * 「调低一格 / 调高一格」，推完再问一次提示：提示有话说就接着自动推，
+   * 没话说就撤销这一格、试下一个候选。最多 AUTO_ESCAPES 次，之后如实宣告推不动。
+   * @returns Promise<bool> 逃出去了没有
+   */
+  function autoEscape() {
+    var H = root.MirrorHint;
+    if (!H || typeof H.diagnose !== 'function') return Promise.resolve(false);
+    if (S.auto.escapes >= AUTO_ESCAPES) return Promise.resolve(false);
+    var ds = [];
+    try { ds = H.diagnose(S.box.sim()) || []; } catch (e) { ds = []; }
+    var keys = (ds[0] && ds[0].params) ? ds[0].params.slice(0, 3) : [];
+    if (!keys.length) return Promise.resolve(false);
+    /* 候选顺序写死：第 k 次逃逸从第 k 个参数起，先低后高。
+       同一个宇宙点两次自动推，走的是同一条路 —— 可复现。 */
+    var cand = [], i;
+    for (i = 0; i < keys.length; i++) { cand.push({ key: keys[i], dir: -1 }); cand.push({ key: keys[i], dir: 1 }); }
+    S.auto.escapes++;
+    function tryOne(j) {
+      if (j >= cand.length || !S.open || !S.auto.on) return Promise.resolve(false);
+      var c = cand[j];
+      return S.box.push(c.key, c.dir).then(function (r) {
+        if (!r.ok) return tryOne(j + 1);
+        return S.box.suggest().then(function (s) {
+          if (s) {                                  // 翻过去了：这一格留着，交回主循环
+            S.auto.stall = 0;
+            S.lastStep = moveTextN(c.key, c.dir, 1);
+            S.auto.last = S.lastStep;
+            S.auto.n++;
+            act(TN('自动推 第 {n} 步：', S.auto.n) +
+              T('先往坏处推一格好翻过去 —— ') + S.lastStep);
+            return true;
+          }
+          S.box.undo();                             // 没翻过去：这一格不留
+          return tryOne(j + 1);
+        }, function () { S.box.undo(); return false; });
+      }, function () { return tryOne(j + 1); });
+    }
+    return tryOne(0);
+  }
+
+  /**
+   * 自动推的一拍。收手的口子见上面那四条 + 用户点「停」 + 换了目标。
+   * D≠3 的宇宙先把维度推到 3（和手动那条同一个道理：维度不对时其余参数的诊断没有意义），
+   * 之后再按目标分流。
+   */
+  function autoTick() {
+    if (!S.open || !S.box || !S.auto.on) return;
+    if (S.auto.stop) { autoEnd(null, TN('停了 —— 自动推走了 {n} 步。', S.auto.n)); return; }
+    if (S.goal !== S.auto.goal) { autoEnd(null, T('目标换了，自动推停下了。')); return; }
+    if (goalHit()) {
+      autoEnd(null, TN('到了：目标「{n}」，自动推一共走了 {m} 步。', goalName(), S.auto.n));
+      return;
+    }
+    if (S.auto.stall >= AUTO_STALL) {               // ② 连着这么多步分数一点没涨
+      autoEnd('stuck', stuckLine(TN('连推 {n} 步总分都没涨，停下来了 —— 贪心在这儿转圈。', S.auto.stall)), true);
+      return;
+    }
+    if (S.auto.n >= AUTO_MAX_STEPS) {               // ④ 步数封顶
+      autoEnd('stuck', TN('推了 {n} 步还没到，先停下来 —— 再点一次「自动推」可以接着推。', S.auto.n), true);
+      return;
+    }
+    if (now() - S.auto.t0 >= AUTO_MAX_MS) {         // ④' 时间封顶
+      autoEnd('stuck', TN('推了 {m} 秒（{n} 步）还没到，先停下来 —— 再点一次「自动推」可以接着推。',
+        S.auto.n, Math.round((now() - S.auto.t0) / 1000)), true);
+      return;
+    }
+
+    /* 这一步开跑先报一句。服务端那一趟实测 2–3 秒，不说话就像是卡住了 */
+    var say = TN('自动推 第 {n} 步：', S.auto.n + 1) + T('正在算…');
+
+    /* ---- ① 维度不对：先把维度推到 3 ---- */
+    if (S.stage === 'dim') {
+      S.dimBusy = true; busyOn('dim'); act(say);
+      S.box.solveDimension(null).then(function (r) {
+        S.dimBusy = false;
+        if (!S.open || !S.auto.on) { busyOff(); return; }
+        if (!r.ok) { autoEnd('stuck', r.reason, true); return; }
+        autoStepDone(TN('把维度推到 3（{n} 格）', r.steps));
+      }, function (e) {
+        S.dimBusy = false;
+        autoEnd('stuck', T('服务端算不出这一步：') + ((e && e.message) || e), true);
+      });
+      return;
+    }
+
+    /* ---- ② 冷液体宇宙：本地爬山出方案，一次推方案里的一根轴 ---- */
+    if (S.goal === 'ocean') {
+      S.oceanBusy = true; busyOn('ocean'); act(say);
+      oceanPlanWait(S.box.current()).then(function (plan) {
+        if (!S.open || !S.auto.on) { S.oceanBusy = false; busyOff(); return; }
+        if (!plan || !plan.moves || !plan.moves.length) {
+          S.oceanBusy = false;
+          autoEnd('stuck', T('这个宇宙推不成冷液体宇宙 —— 沿这些参数爬不到那四条判据同时成立的地方。'), true);
+          return;
+        }
+        var m = plan.moves[0];
+        return S.box.solveOceanMove(m).then(function (r) {
+          S.oceanBusy = false;
+          if (!S.open || !S.auto.on) { busyOff(); return; }
+          if (!r.ok) { autoEnd('stuck', stuckLine(r.reason), true); return; }
+          autoStepDone(moveTextN(r.key, r.dir, r.steps));
+        });
+      }, function (e) {
+        S.oceanBusy = false;
+        autoEnd('stuck', T('服务端算不出这一步：') + ((e && e.message) || e), true);
+      });
+      return;
+    }
+
+    /* ---- ③ 推活：还是问服务端「下一格该推谁」，一步一格 ---- */
+    var H = root.MirrorHint;
+    if (!H) { autoEnd('stuck', T('提示模块没加载，自动推走不了。'), true); return; }
+    S.tipBusy = true; busyOn('suggest'); act(say);
+    S.box.suggest().then(function (s) {
+      S.tipBusy = false;
+      if (!S.open || !S.auto.on) { busyOff(); return; }
+      if (!s) {
+        /* 提示没辙 = 贪心到了局部最优。先做**有限的**逃逸（先往坏处推一格），
+           逃不出去就如实说推不动 —— 绝不在这里继续空转。 */
+        return autoEscape().then(function (out) {
+          if (!S.open || !S.auto.on) { busyOff(); return; }
+          if (out) { busyOff(); autoNext(); return; }
+          autoEnd('stuck', stuckLine(T('提示找不到能变好的一格了，先往坏处推也没能翻过去。')), true);
+        });
+      }
+      var before = S.box.sim();
+      return S.box.push(s.key, s.dir).then(function (r) {
+        if (!S.open || !S.auto.on) { busyOff(); return; }
+        if (!r.ok) { autoEnd('stuck', stuckLine(r.reason), true); return; }
+        var fixed = fixedGates(H, before, S.box.sim());
+        autoStepDone(moveText(s) + (fixed.length ? '　' + T('这一格过了：') + TL(fixed) : ''));
+      });
+    }, function (e) {
+      S.tipBusy = false;
+      autoEnd('stuck', T('提示算不出来：') + ((e && e.message) || e), true);
+    });
+  }
+
+  /** 底栏那颗常驻的「用这组参数引爆」。推过格才出现；救活了就让位给庆祝卡上那一颗 */
+  function renderBangGo() {
+    var b = $('miBangGo');
+    if (!b || !S.box) return;
+    var n = S.box.steps();
+    b.hidden = (n === 0) || S.box.solved();
+    /* 有一步还在飞就先别放行：那一步落地之后参数还会变，
+       这时候引爆的是一组马上就过期的参数。自动推期间同理。 */
+    b.disabled = S.auto.on || S.tipBusy || S.dimBusy || S.oceanBusy || S.box.busy();
+    b.textContent = T('用这组参数引爆');
+    b.title = TN('把沙盒里这组参数（推了 {n} 格）直接拿去引爆看结果 —— 不上链、不铸造', n);
+  }
+
+  /** 目标下拉旁边那颗按钮。三态：自动推 / 停 / 推不动了（外加"已经到了"就没得推） */
+  function renderAutoGo() {
+    var b = $('miAutoGo');
+    if (!b || !S.box) return;
+    var at = goalName();
+    if (S.auto.on) {
+      b.className = 'mi-btn alt';
+      b.textContent = T('停');
+      b.disabled = S.auto.stop;
+      b.title = TN('正在往「{n}」推，第 {m} 步 —— 点一下收手', at, S.auto.n + 1);
+      return;
+    }
+    b.className = 'mi-btn';
+    if (goalHit()) {
+      b.textContent = T('自动推'); b.disabled = true;
+      b.title = TN('已经到「{n}」了', at);
+      return;
+    }
+    /* 「推不到」只在提示模块**确实判定过**的时候才说。维度还没推到 3 的时候不算数：
+       那时候爬山根本没跑（D≠3 的结局到不了 NO_STARS，跑了也是白跑）。
+       冷液体宇宙有两种「推不到」：一根轴都爬不动（plan === null），
+       以及爬到能爬的最好那一点、四条判据仍然凑不齐（plan.hit === false）。
+       两种都不该让「自动推」假装在推 —— 手动那颗「推向冷液体宇宙」不动，
+       它本来就允许你推过去看一眼「还差一点」。 */
+    var op = (S.goal === 'ocean' && S.stage !== 'dim') ? oceanPlanOf(S.box.current()) : undefined;
+    var no = (S.stage === 'doom') ||
+      (S.goal === 'ocean' && S.stage !== 'dim' && (op === null || (op && op.hit === false)));
+    if (no) {
+      b.textContent = T('这个宇宙推不到这个目标'); b.disabled = true;
+      b.title = T('提示判定：沿这些参数爬不到这个终点。换一个目标，或者换一个宇宙。');
+      return;
+    }
+    if (S.auto.why === 'stuck' && S.auto.whyAt === S.box.steps()) {
+      b.textContent = T('推不动了'); b.disabled = true;
+      b.title = T('上一轮自动推没找到能变好的一格。手动推一格、或者撤销一步，再试。');
+      return;
+    }
+    b.textContent = T('自动推');
+    /* 冷液体宇宙的提示还在分片算：先别让人点 —— 点了也只能干等，
+       而且这一刻还不知道推不推得到。算完 render 会自己把它放开。 */
+    var planning = (S.goal === 'ocean' && S.stage !== 'dim' && op === undefined);
+    b.disabled = S.tipBusy || S.dimBusy || S.oceanBusy || planning;
+    b.title = planning ? T('正在算提示…') : TN('按当前目标「{n}」一步一步推下去，随时可以停', at);
+  }
+
   function render() {
     if (!S.open || !S.box) return;
     var box = S.box, st = box.current(), sim = st.sim;
@@ -1656,6 +2169,8 @@
     renderRescue();
     renderTwo();
 
+    renderAutoGo();
+    renderBangGo();
     $('miUndo').disabled = n === 0 || S.tipBusy;
     $('miReset').disabled = n === 0 || S.tipBusy;
     var hb = $('miHint');
@@ -1687,6 +2202,10 @@
       dim.hidden = true; auto.hidden = true; ocean.hidden = false;
       var o = sim && sim.calc ? sim.calc.ocean : null;
       var done = S.box.isOcean();
+      /* 提示（本地爬山）**不在这一拍算**：它要 4000 多次模拟，同步跑就是一次假死。
+         oceanPlanOf 只查缓存、顺手把分片计算排上，算完自己会再重画一次。
+         'done' = 已经到了；undefined = 正在算；null = 爬不到；对象 = 有方案。 */
+      var oplan = done ? 'done' : oceanPlanOf(st);
       $('miActK').textContent = T('目标：冷液体宇宙');
       $('miActT').innerHTML = done
         ? T('已经是冷液体宇宙了。')
@@ -1695,10 +2214,16 @@
       $('miActW').innerHTML = done
         ? T('物质既不聚成天体也不全是气体 —— 判据与全部数值在分析面板的 R_OCEAN 那一条（依据等级：启发式）。')
         : (o ? esc(T(oceanMissing(o))) + '<br>' : '') +
-          T('主要靠压低引力耦合（α_G）、调重子密度 Ω_b 与背景温度 T_CMB。<b>这一步没有确定答案</b>：' +
-            '程序在本地爬山找一组落点，实测一半左右的死宇宙能推到 —— 推不到就会如实说。');
+          (oplan === undefined
+            ? '<i class="mi-spin"></i>' + esc(T('正在算提示…'))
+            : oplan === null
+              ? T('<b>这个宇宙推不到这个目标。</b>沿这些参数爬过去，找不到四条判据同时成立的落点 —— ' +
+                  '换一个目标，或者换一个宇宙。')
+              : T('主要靠压低引力耦合（α_G）、调重子密度 Ω_b 与背景温度 T_CMB。<b>这一步没有确定答案</b>：' +
+                  '程序在本地爬山找一组落点，实测一半左右的死宇宙能推到 —— 推不到就会如实说。'));
       if (!S.oceanBusy) ocean.textContent = done ? T('再推一次') : T('推向冷液体宇宙');
-      ocean.disabled = S.oceanBusy || S.tipBusy || S.dimBusy;
+      // 爬不到就别让它假装在推：按钮直接灰掉（判词已经写在上面那段里）
+      ocean.disabled = S.oceanBusy || S.tipBusy || S.dimBusy || oplan === undefined || oplan === null;
       price.innerHTML = '<i>' + esc(T(ARC ? '（沙盒不收费，推不动就换一个）' : '（沙盒不收费；真烧的费用在推完那一刻由服务端算）')) + '</i>';
       return;
     }
@@ -2030,14 +2555,15 @@
     var H = root.MirrorHint;
     if (!H || S.tipBusy) return;
     S.tipBusy = true;
+    busyOn('suggest');
     if (spinTarget) spinTarget.innerHTML = '<i class="mi-spin"></i>' + esc(spinText);
     render();                                        // 把按钮变灰（render 会读 tipBusy）
     var t0 = now();
     S.box.suggest().then(function (r) {
-      S.tipBusy = false;
+      S.tipBusy = false; busyOff();
       if (S.open) fn(r, now() - t0, null, H);
     }, function (e) {
-      S.tipBusy = false;
+      S.tipBusy = false; busyOff();
       if (S.open) fn(null, now() - t0, e, H);
     });
   }
@@ -2062,10 +2588,12 @@
     var q = (st.quote !== undefined) ? st.quote : null;
     S.dimBusy = true;
     btn.innerHTML = '<i class="mi-spin"></i>' + esc(T('正在推…'));
+    busyOn('dim');
     render();
     var before = S.box.sim();
     S.box.solveDimension(q).then(function (r) {
-      S.dimBusy = false;
+      S.dimBusy = false; busyOff();
+      if (r && r.ok) S.lastStep = TN('把维度推到 3（{n} 格）', r.steps);
       if (!S.open) return;
       if (!r.ok) { act(r.reason, true); return; }
       var fixed = fixedGates(root.MirrorHint, before, S.box.sim());
@@ -2080,7 +2608,7 @@
         act(TN('推完还是 {n} 维 —— 再点一次试试。', r.D == null ? '?' : r.D), true);
       }
     }, function (e) {
-      S.dimBusy = false;
+      S.dimBusy = false; busyOff();
       if (S.open) act(T('服务端算不出这一步：') + ((e && e.message) || e), true);
     });
   }
@@ -2112,9 +2640,15 @@
     if (!btn || btn.disabled || S.oceanBusy) return;
     S.oceanBusy = true;
     btn.innerHTML = '<i class="mi-spin"></i>' + esc(T('正在算…'));
+    busyOn('ocean');
     render();
-    S.box.solveOcean(null).then(function (r) {
-      S.oceanBusy = false;
+    /* 方案已经在换目标那一拍分片算好并缓存住了（oceanPlanWait），这里直接拿来用 ——
+       再爬一遍山就是白白多花 300 ms，而且两次爬山的落点未必一样。 */
+    oceanPlanWait(S.box.current()).then(function (plan) {
+      if (!plan) return { ok: false, reason: T('这个宇宙推不成冷液体宇宙 —— 沿这些参数爬不到那四条判据同时成立的地方。') };
+      return S.box.quoteOcean(plan).then(function (q) { return S.box.solveOcean(q); });
+    }).then(function (r) {
+      S.oceanBusy = false; busyOff();
       if (!S.open) return;
       if (!r.ok) { act(r.reason, true); return; }
       if (r.hit) {
@@ -2125,7 +2659,7 @@
           T('取整之后落点可能被挤出判据边界，再点一次、或者手动微调几格试试。'), true);
       }
     }, function (e) {
-      S.oceanBusy = false;
+      S.oceanBusy = false; busyOff();
       if (S.open) act(T('服务端算不出这一步：') + ((e && e.message) || e), true);
     });
   }
@@ -2146,6 +2680,7 @@
         if (!S.open) return;
         if (!r.ok) { act(r.reason, true); return; }
         var fixed = fixedGates(root.MirrorHint, before, S.box.sim());
+        S.lastStep = moveText(s);
         /* 括号收进词条里：英文用的是半角括号，留在外面会拼出「… （tried only …）」 */
         act(moveText(s) + '　' + T(s.narrowed ? '（只试了相关参数，' : '（全参数搜了一遍，') +
           TN('{n} 次模拟 / {m} ms，都在服务端跑）', s.tried, Math.round(ms)) +
@@ -3548,6 +4083,10 @@
     // 每次打开都从"没有上一帧"重新起算：留着上次的基准会在开面板那一瞬间闪一串假箭头
     S.lastNode = null; S.prevGauge = null; S.hover = false; S.shown = null; S.doom = null;
     S.stage = null; S.plan = null; S.dimBusy = false;
+    /* 自动推不跨面板：关掉再开，上一轮的步数和「推不动了」都不作数 */
+    S.auto = { on: false, stop: false, n: 0, goal: null, last: null, t0: 0, why: null, whyAt: 0,
+               best: null, stall: 0, escapes: 0 };
+    S.busyAt = null; S.busyWhat = null; S.lastStep = null;
     S.lastNudge = 0;
     if (S.thaw) { root.clearTimeout(S.thaw); S.thaw = null; }
 
@@ -3563,6 +4102,12 @@
   function close() {
     if (!S.open) return;
     S.open = false;
+    /* 自动推当场断链：面板关了还留着一串定时器，回到起爆页仍在发请求，
+       而用户以为自己已经退出来了。三个 busy 一起清 —— 只要有一个赖着不走，
+       下次开面板满屏按钮都是灰的（「推了以后什么都点不动」就是这么来的）。 */
+    S.auto.on = false; S.auto.stop = false;
+    S.dimBusy = false; S.oceanBusy = false; S.tipBusy = false;
+    busyOff();
     if (S.el) S.el.hidden = true;
     doc.removeEventListener('keydown', onKey);
   }
@@ -3600,6 +4145,21 @@
     /* 维度求解器。纯本地、只用公开的 params/engine，**不碰生存半径** ——
        导出它是为了 Node 自测能直接对着它跑覆盖率（实测 379/379）。 */
     dimSolve: dimSolve,
+    /* 假死看门狗的取数口（ui/app.js 的 wdSnapshot）。面板没开就是 null；
+       **绝不抛** —— 它是在「页面刚卡完」那一拍被调用的，自己再炸一次就什么都留不下。 */
+    wdInfo: function () {
+      try {
+        if (!S.open || !S.box) return null;
+        return {
+          target: S.goal,                                      // 'observers' / 'ocean'
+          busyMs: S.busyAt ? Math.round(now() - S.busyAt) : 0,  // 这件重活已经跑了多久（0 = 没在跑）
+          busyWhat: S.busyWhat || null,                         // 'oceanPlan' / 'dim' / 'ocean' / 'suggest'
+          lastStep: S.lastStep || null,                         // 最后真推下去的那一步
+          auto: S.auto.on ? { on: true, n: S.auto.n, goal: S.auto.goal } : null,
+          steps: S.box.steps(), moves: S.box.moves()
+        };
+      } catch (e) { return null; }
+    },
     dimPlateau: dimPlateau,
     DIM_KEYS: DIM_KEYS,
     MODULES_OFF: MODULES_OFF
