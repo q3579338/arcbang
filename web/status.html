@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BNBBANG · 系统状态</title>
+<title>ARCBANG · 系统状态</title>
 <meta name="robots" content="noindex, follow">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -328,8 +328,8 @@ footer a:hover{text-decoration:underline}
 })();
 </script>
 <main>
-  <span class="eyebrow" id="eyebrow">BNBBANG · STATUS</span>
-  <h1>BNBBANG <span class="dot">·</span> 系统状态</h1>
+  <span class="eyebrow" id="eyebrow">ARCBANG · STATUS</span>
+  <h1>ARCBANG <span class="dot">·</span> 系统状态</h1>
   <p class="sub">区块链是控制台，这一页是舷窗 —— 读数全部链上现读，随时可复核。</p>
   <div class="beam"><i></i></div>
   <div class="meta">
@@ -345,7 +345,7 @@ footer a:hover{text-decoration:underline}
   <details class="fold" data-fold="mx">
     <summary><h2>合约矩阵</h2><span class="fsum" id="fsMx">—</span></summary>
     <div class="fbody">
-    <p class="why" id="mxWhy">八个合约的地址、在线状态与关键参数。点击进区块浏览器。</p>
+    <p class="why" id="mxWhy">两个合约的地址、在线状态与关键参数。点击进区块浏览器。</p>
     <div class="mx" id="mx">
       <div class="hd">合约</div><div class="hd">地址</div><div class="hd">状态 · 关键参数</div>
     </div>
@@ -356,23 +356,27 @@ footer a:hover{text-decoration:underline}
   <details class="fold" data-fold="mint" open>
     <summary><h2>铸造进度</h2><span class="fsum" id="fsMint">—</span></summary>
     <div class="fbody">
-    <p class="why">宇宙限量 1,707,000 枚；造物没有数量上限，铸一枚烧一次 BANG——成本即闸门。</p>
-    <div class="kline"><span>宇宙 NFT · MirrorUniverse</span>
-      <span><span class="num" id="muSupply">—</span> <span class="dimtx">/ 1,707,000</span></span></div>
+    <p class="why">宇宙限量 1,387 枚 —— 宇宙 137.87 亿岁，一枚 NFT 就是一千万年。铸满即止。</p>
+    <div class="kline"><span>宇宙 NFT · ArcUniverse</span>
+      <span><span class="num" id="muSupply">—</span> <span class="dimtx">/ 1,387</span></span></div>
     <div class="bar"><i class="seg-mint" id="muBar" style="width:0"></i></div>
-    <div class="kline" style="margin-top:16px"><span>造物 NFT · MirrorCrafted</span>
-      <span><span class="num" id="cfSupply">—</span> <span class="dimtx">/ ∞ · 成本即闸门</span></span></div>
+    <!-- ARCBANG 没有造物系列（它的定价整套建在 BANG 上）：这一行删掉，
+         只留一个 hidden 的 id 壳子给下面的 $('cfSupply') 用。 -->
+    <span id="cfSupply" hidden></span>
     </div>
   </details>
 
-  <!-- ============================================ 代币分发全景（默认展开） -->
-  <details class="fold" data-fold="dist" open>
-    <summary><h2>代币分发全景</h2><span class="fsum" id="fsDist">—</span></summary>
+  <!-- ============================================ 代币分发全景：
+       ARCBANG 没有代币，这一整块在这个站上不存在。保留 id 的 hidden 空壳，
+       是因为下面的脚本会按 id 写这些节点 —— 删干净会让整段读数在第一个
+       $('distWhy') 上抛 TypeError，连铸造进度一起黑掉。 -->
+  <details class="fold" data-fold="dist" hidden>
+    <summary><span class="fsum" id="fsDist"></span></summary>
     <div class="fbody">
     <!-- 静态兜底 = 四池口径（v5.1 已按四池部署，config.referral 非空）：
          JS 正常时 renderWhy 会用带 <b> 的整句重写；JS 挂掉时亮的就是这一段，
          **别改成三池**——链上是 6/2/1/1。别拆行：单文本节点才能被 i18n 整段命中。 -->
-    <p class="why" id="distWhy">BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + 邀请返利 2 亿 + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发约 4.74 亿，不到 6 亿，铸造奖励的发放规则一分不变。</p>
+    <p class="why" id="distWhy" hidden></p>
     <!-- 堆叠条：四段都是「毛量」口径 —— 已烧的那些币原本也属于前三类，
          这里按类目并排画出来，是给量级一个直观印象，不是四段相加等于流通量。 -->
     <div class="bar" id="distBar">
@@ -393,16 +397,11 @@ footer a:hover{text-decoration:underline}
     <div class="dist">
       <!-- CAP 数字尽量读链（REWARD_CAP 等都是 public 常量，eth_call 读得到），
            读不到才退回下面这些写死值 —— 写死值按现役 v5.1 四池（6/2/1/1）。 -->
-      <div class="row"><span class="k">铸造奖励已赠送 <b id="dRewardCap">/ 6 亿</b></span>
-        <span class="num" id="dGive">—</span></div>
-      <div class="row" id="rowRef"><span class="k"><span id="dRefCapLabel">邀请返利 2 亿</span> · <span id="dRefFlag">—</span> · 已发放</span>
-        <span class="num" id="dRef">—</span></div>
-      <div class="row"><span class="k"><span id="dDevCapLabel">团队 1 亿</span> · <span id="dDevFlag">—</span> · 已领取</span>
-        <span class="num" id="dDev">—</span></div>
-      <div class="row"><span class="k"><span id="dPromoCapLabel">上交易所费用 1 亿</span> · <span id="dPromoFlag">—</span> · 已发放</span>
-        <span class="num" id="dPromo">—</span></div>
-      <div class="row"><span class="k">累计销毁 <b>—— 拯救全烧、造物烧两成、命名也烧</b></span>
-        <span class="num" id="dBurn">—</span></div>
+      <span id="dRewardCap"></span><span id="dGive"></span><span id="rowRef"></span>
+      <span id="dRefCapLabel"></span><span id="dRefFlag"></span><span id="dRef"></span>
+      <span id="dDevCapLabel"></span><span id="dDevFlag"></span><span id="dDev"></span>
+      <span id="dPromoCapLabel"></span><span id="dPromoFlag"></span><span id="dPromo"></span>
+      <span id="dBurn"></span>
     </div>
     </div>
   </details>
@@ -425,27 +424,13 @@ footer a:hover{text-decoration:underline}
       <a href="index.html">首页</a>
       <a href="app.html">模拟器</a>
       <a href="market.html">市场</a>
-      <a href="economy.html">经济</a>
       <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
-      <a href="mailto:admin@bnbbang.com" data-nolang>admin@bnbbang.com</a>
+      <a href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
     </span>
     <!-- 只在 config.js 的 chain.isTestnet 为真时出现（specs/mainnet-ready.md）；
          主网上整条不渲染。默认 hidden，脚本里的 renderChainText() 才放出来。 -->
     <span id="chainLegal" hidden></span>
-    <!-- 友情链接：satloot 站族五个站。样式只在 nav.js 的共用块里（.sitefriends），
-         文案键在 i18n-site.js；标记静态写在页脚里 —— 爬虫与 /en/ 预渲染要在 HTML 里看得见它。 -->
-    <nav class="sitefriends" aria-label="友情链接">
-      <span class="sitefriends-t">友情链接</span>
-      <a href="https://bang.satloot.com/" rel="noopener">BTCBANG 比特宇宙</a>
-      <a href="https://satloot.com/" rel="noopener">satloot 项目总览</a>
-      <a href="https://sim.satloot.com/" rel="noopener">合约模拟器</a>
-      <a href="https://earn.satloot.com/" rel="noopener">riskdesk 风控面板</a>
-      <a href="https://airdrop.satloot.com/" rel="noopener">空投雷达</a>
-      <a href="https://game.satloot.com/" rel="noopener">satloot 游戏厅</a>
-      <a href="https://tool.satloot.com/" rel="noopener">satloot 工具站</a>
-      <a href="https://trx.satloot.com/" rel="noopener">TRX 质押收益计算器</a>
-      <a href="https://faucet.satloot.com/" rel="noopener">比特币测试币水龙头</a>
-    </nav>
+
   </footer>
 </main>
 
@@ -597,15 +582,12 @@ footer a:hover{text-decoration:underline}
   }
 
   /* ---------------- 合约矩阵 ---------------- */
+  /* ARCBANG（specs/arcbang-v1.md §四）：v1 只部署两个合约 —— 没有代币，
+     命名 / 造物 / 锁仓 / 金库那五行在这个站上不是「未部署」，是永远不会有。 */
   var ROWS = [
     /* [中文名, 合约名, 地址, 参数格填充器 key] */
-    ['BANG 代币', 'BangToken', CFG.bangToken, 'bang'],
-    ['宇宙 NFT', 'MirrorUniverse', CFG.contract, 'mu'],
-    ['市场', 'MirrorMarket', CFG.market, 'market'],
-    ['命名', 'BangNames', CFG.bangNames, 'names'],
-    ['团队锁仓', 'BangVesting', VESTING, 'vesting'],
-    ['上交易所费用金库', 'BangPromo', PROMO, 'promo'],
-    ['造物 NFT', 'MirrorCrafted', CFG.crafted, 'crafted']
+    ['宇宙 NFT', 'ArcUniverse', CFG.contract, 'mu'],
+    ['市场', 'ArcMarket', CFG.market, 'market']
   ];
   /* 返利金库只在 config.referral 配了之后才进矩阵：没配时整行不出现，
      免得「未接入」清单在三池现状下自造一条警报（零回归）。 */
@@ -714,10 +696,8 @@ footer a:hover{text-decoration:underline}
         var v = toBig(hex);
         return v == null ? '—' : (Number(v) / 100) + '%' + (denomTxt || '');
       }
-      st('bang', T('已发行') + ' <span class="num">' + fmtBang(toBig(V.bangSupply)) + '</span>');
       st('mu', gateTxt(V.muSigner));
-      st('market', T('费 BANG ') + bps(V.mktBangFee) + ' / BNB ' + bps(V.mktBnbFee));
-      st('names', T('命名烧 BANG'));
+      st('market', T('成交费 ') + bps(V.mktBnbFee));
       st('vesting', T('未领') + ' <span class="num">' + fmtBang(toBig(V.balVesting)) + '</span>');
       st('promo', T('未发') + ' <span class="num">' + fmtBang(toBig(V.balPromo)) + '</span>');
       if (REF) st('referral', T('未发') + ' <span class="num">' + fmtBang(toBig(V.balRef)) + '</span>');
@@ -727,7 +707,7 @@ footer a:hover{text-decoration:underline}
       var mu = toBig(V.muSupply);
       $('muSupply').textContent = mu == null ? '—' : grp(mu.toString());
       if (mu != null) {
-        var pct = Number(mu * 10000n / 1707000n) / 100;
+        var pct = Number(mu * 10000n / 1387n) / 100;
         $('muBar').style.width = Math.max(pct, mu > 0n ? 0.3 : 0) + '%';
       }
       var cf = toBig(V.cfSupply);
@@ -812,9 +792,7 @@ footer a:hover{text-decoration:underline}
         ? TF('{0} 个合约 · 全部在线', ROWS.length)
         : TX('{0}/{1} 在线', onN, ROWS.length);
       $('fsMx').className = 'fsum' + (onN === ROWS.length ? '' : ' warn');
-      $('fsMint').textContent = TX('宇宙 {0} / 1,707,000 · 造物 {1}',
-        (mu == null ? '—' : grp(mu.toString())), (cf == null ? '—' : grp(cf.toString())));
-      $('fsDist').textContent = TX('已发行 {0} / 10 亿 · 已销毁 {1}', fmtYi(minted), fmtYi(burned));
+      $('fsMint').textContent = TF('宇宙 {0} / 1,387', (mu == null ? '—' : grp(mu.toString())));
       var fNa = $('foldNa');
       if (na.length) {
         var hNa = '';
@@ -841,12 +819,8 @@ footer a:hover{text-decoration:underline}
      随合约退役一起删了 —— 两个分支同一句话，分支只保留结构以便将来再分叉。 */
   function renderWhy() {
     /* 由 JS 用整句词条重写（带 <b> 强调）：英文整段命中。 */
-    $('distWhy').innerHTML = REF
-      ? T('BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + <b>邀请返利 2 亿</b> + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。<br>2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发 4.74 亿 &lt; 6 亿，<b>铸造奖励的发放规则一分不变</b>。这一套合约已按四份部署 —— 下面第二行就是返利池的注入与发放进度。')
-      : T('BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + 邀请返利 2 亿 + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发约 4.74 亿，不到 6 亿，铸造奖励的发放规则一分不变。');
-    $('mxWhy').textContent = REF
-      ? T('八个合约的地址、在线状态与关键参数。点击进区块浏览器。')
-      : T('八个合约的地址、在线状态与关键参数。点击进区块浏览器。');
+    /* ARCBANG：分发全景整块是 hidden 的，这里不再往里写任何一个字 */
+    $('mxWhy').textContent = T('两个合约的地址、在线状态与关键参数。点击进区块浏览器。');
   }
   if (REF) {
     $('rowRef').hidden = false;

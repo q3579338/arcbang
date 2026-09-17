@@ -4,22 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG</title>
-<meta name="description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
+<title>镜像宇宙市场 · 买卖宇宙 NFT · BNBBANG</title>
+<meta name="description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
 <link rel="canonical" href="https://bnbbang.com/market.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="BNBBANG">
 <meta property="og:url" content="https://bnbbang.com/market.html">
-<meta property="og:title" content="镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG">
-<meta property="og:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
+<meta property="og:title" content="镜像宇宙市场 · 买卖宇宙 NFT · BNBBANG">
+<meta property="og:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
 <meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG">
-<meta name="twitter:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
+<meta name="twitter:title" content="镜像宇宙市场 · 买卖宇宙 NFT · BNBBANG">
+<meta name="twitter:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
 <meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -27,7 +27,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0A0F2E">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebPage","name":"镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT","url":"https://bnbbang.com/market.html","inLanguage":["zh-CN","en"],"isPartOf":{"@type":"WebSite","name":"BNBBANG","url":"https://bnbbang.com/"},"about":{"@type":"Thing","name":"Mirror Universe NFT market on BSC"},"publisher":{"@type":"Organization","name":"BNBBANG","url":"https://bnbbang.com/"}}
+{"@context":"https://schema.org","@type":"WebPage","name":"镜像宇宙市场 · 买卖宇宙 NFT","url":"https://bnbbang.com/market.html","inLanguage":["zh-CN","en"],"isPartOf":{"@type":"WebSite","name":"BNBBANG","url":"https://bnbbang.com/"},"about":{"@type":"Thing","name":"Mirror Universe NFT market on Arc"},"publisher":{"@type":"Organization","name":"BNBBANG","url":"https://bnbbang.com/"}}
 </script>
 <!--
   web/market.html —— 宇宙 NFT 的交易市场（独立静态页，与模拟器分开）
@@ -589,12 +589,11 @@ img.uthumb[data-view]{cursor:zoom-in}
         </div>
         <div class="field">
           <label for="fCur">计价</label>
-          <!-- 两种币走合约里两条不同的支付路径：原生币单成交抽 1%、BANG 单抽 5%，
-               都在成交那一刻从买家付的钱里扣，卖家拿其余。挂单本身不区别对待。
-               原生币那一项的文字（tBNB / BNB）由 renderChainText() 按 config.js 的 chain 块填。 -->
+          <!-- ARCBANG 只有一种计价：native，在 Arc 上就是 USDC。成交时先按 ERC-2981 付版税
+               （ArcUniverse 默认 5%，市场侧截断在 10%），再抽 1% 手续费，其余归卖家。
+               这一项的文字由 renderChainText() 按 config.arc.js 的 chain.currency 填。 -->
           <select id="fCur">
             <option value="bnb" id="fCurNative" data-nolang></option>
-            <option value="bang" data-nolang>BANG</option>
           </select>
         </div>
         <div class="field">
@@ -608,7 +607,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         </div>
         <div id="listMsg" class="msg"></div>
         <div class="notice plain">
-          手续费在成交时从买家付的钱里扣：BNB 计价单抽 1%、BANG 计价单抽 5%。授权是一次性的：<span class="mono">setApprovalForAll</span>
+          手续费在成交时从买家付的钱里扣：先按 ERC-2981 付版税（默认 5%），再抽成交价的 1%。授权是一次性的：<span class="mono">setApprovalForAll</span>
           之后市场才有权在成交那一刻把 NFT 转给买家 —— 在那之前东西一直在你自己钱包里。<br>
           没盖章的宇宙（<span class="mono">cardOf == 0</span>，也就是没走服务端引爆的）不在这个下拉里 —— 它们没有参数卡，市场不上架。
         </div>
@@ -722,25 +721,11 @@ img.uthumb[data-view]{cursor:zoom-in}
     合约：<span id="fContract" class="mono">—</span><br>
     <!-- 「这是 XX 测试网。」那半句只在 chain.isTestnet 为真时出现，见 renderChainText()。 -->
     <span id="fChainNote"></span><br>
-    「已验证」= 合约里的 <span class="mono">cardOf</span> 非零，表示这枚 NFT 的参数是服务端算过并签过名的； 「已烧」= <span class="mono">burnedOn</span>，这枚 token 上累计销毁的 BANG，链上可查、伪造不了。<br>
-    <!-- 名字这一句单独一个文本节点：拆成几段再拼，英文的语序对不上（见 i18n-market.js 的第 2 条）。 -->
-    名字 = 持有人烧 BANG 登记的，在本系列内唯一（原生与造物是两套独立名册）；大小写和同形字（O/0、I i L l/1）都算重名，名字跟着 NFT 一起转手。<br>
+    「已验证」= 合约里的 <span class="mono">cardOf</span> 非零，表示这枚 NFT 的参数是服务端算过并签过名的；<br>
+    <!-- 命名（BangNames）整套建在 BANG 上，ARCBANG v1 不上：这一句直接删掉，不改写成含糊话。 -->
     <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
-    <a href="mailto:admin@bnbbang.com" data-nolang>admin@bnbbang.com</a>
-    <!-- 友情链接：satloot 站族五个站。样式只在 nav.js 的共用块里（.sitefriends），
-         文案键在 i18n-site.js；标记静态写在页脚里 —— 爬虫与 /en/ 预渲染要在 HTML 里看得见它。 -->
-    <nav class="sitefriends" aria-label="友情链接">
-      <span class="sitefriends-t">友情链接</span>
-      <a href="https://bang.satloot.com/" rel="noopener">BTCBANG 比特宇宙</a>
-      <a href="https://satloot.com/" rel="noopener">satloot 项目总览</a>
-      <a href="https://sim.satloot.com/" rel="noopener">合约模拟器</a>
-      <a href="https://earn.satloot.com/" rel="noopener">riskdesk 风控面板</a>
-      <a href="https://airdrop.satloot.com/" rel="noopener">空投雷达</a>
-      <a href="https://game.satloot.com/" rel="noopener">satloot 游戏厅</a>
-      <a href="https://tool.satloot.com/" rel="noopener">satloot 工具站</a>
-      <a href="https://trx.satloot.com/" rel="noopener">TRX 质押收益计算器</a>
-      <a href="https://faucet.satloot.com/" rel="noopener">比特币测试币水龙头</a>
-    </nav>
+    <a href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
+
   </footer>
 </div>
 
@@ -853,12 +838,13 @@ img.uthumb[data-view]{cursor:zoom-in}
     activeListings:   '0xaa4df6f0',   // activeListings(uint256,uint256)
     listings:         '0xde74e57b',   // listings(uint256)
     checkListing:     '0x5443b28a',   // checkListing(uint256)
-    /* v5 换了签名：多了第 5 个参数 bool inBang（true = 按 BANG 计价）。
-       旧选择器 0xbb74a1c2 在新合约上打不中任何函数，直接 revert —— 这是故意的，
-       比打中一个语义变了的函数安全。 */
-    list:             '0x05408a26',   // list(address,uint256,uint256,uint256,bool)
+    /* ARCBANG（contracts/src/ArcMarket.sol）：市场只认 ArcUniverse 一个合约、
+       721 数量恒为 1、计价只有 USDC，所以 list 只收 id 和 price 两个参数。 */
+    list:             '0x50fd7367',   // list(uint256,uint256)
     cancel:           '0x40e58ee5',   // cancel(uint256)
-    buy:              '0xd96a094a'    // buy(uint256)
+    buy:              '0xd96a094a',   // buy(uint256)
+    updatePrice:      '0x82367b2d',   // updatePrice(uint256,uint256)  ArcMarket 专有
+    cancelStale:      '0xe333b097'    // cancelStale(uint256)          ArcMarket 专有
   };
   /* 事件 topic = keccak256(事件签名)（不截断）。稀有度只在事件里，合约没有对应的 view，
      所以这是唯一的来源。 */
@@ -1424,9 +1410,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (!seller || !token) return null;
     /* 结构体第 6 槽是 is1155。资源没了，市场页只认 ERC-721，但**这个字段还在链上的
        结构体里**，不解它就找不到后面的 active，所以照读，只用来把非 721 的单子筛掉。 */
-    var is1155 = uw(hex, base + 5), active = uw(hex, base + 6), inBang = uw(hex, base + 7);
-    if (is1155 === null || active === null || inBang === null) return null;
-    if (is1155 > 1n || active > 1n || inBang > 1n) return null;  // 字段顺序对不上
+    var is1155 = uw(hex, base + 5), active = uw(hex, base + 6);
+    if (is1155 === null || active === null) return null;
+    if (is1155 > 1n || active > 1n) return null;                 // 字段顺序对不上
     if (/^0x0{40}$/.test(seller)) return null;
     return {
       id: id,
@@ -1437,7 +1423,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       price: uw(hex, base + 4),
       is1155: is1155 === 1n,
       active: active === 1n,
-      inBang: inBang === 1n            // true = BANG 计价，false = tBNB
+      inBang: false                    // ARCBANG 只有 USDC 一种计价，这个键恒为 false
     };
   }
   /** 解一页 activeListings 的返回。认不出来返回 null（上层退回逐个扫）。 */
@@ -1448,10 +1434,10 @@ img.uthumb[data-view]{cursor:zoom-in}
       var oIds = 3, oItems = Number(uw(hex, 1)) / 32, next = Number(uw(hex, 2));
       var nIds = Number(uw(hex, oIds)), nItems = Number(uw(hex, oItems));
       if (!isFinite(oItems) || !isFinite(nIds) || !isFinite(nItems) || nIds !== nItems) return null;
-      /* 结构体步长是 8：v5 在末尾加了 inBang。前 7 个字段的下标没变，只有步长变了。 */
-      if (words(hex) < oItems + 1 + nItems * 8) return null;
+      /* ARCBANG：结构体步长是 7 —— ArcMarket 没有 inBang 那一格。 */
+      if (words(hex) < oItems + 1 + nItems * 7) return null;
       for (k = 0; k < nItems; k++) {
-        one = decListingStruct(hex, oItems + 1 + k * 8, Number(uw(hex, oIds + 1 + k)));
+        one = decListingStruct(hex, oItems + 1 + k * 7, Number(uw(hex, oIds + 1 + k)));
         if (one) out.push(one);
       }
       return { items: out, next: next };
@@ -1460,9 +1446,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     var len = Number(uw(hex, 1)), rest = words(hex) - 2;
     if (!isFinite(len) || len < 0) return null;
     if (len === 0) return { items: [], next: null };
-    if (rest >= len * 8) {                                       // b) Listing[]，没带 id
+    if (rest >= len * 7) {                                       // b) Listing[]，没带 id
       for (k = 0; k < len; k++) {
-        one = decListingStruct(hex, 2 + k * 8, k);
+        one = decListingStruct(hex, 2 + k * 7, k);
         if (one) out.push(one);
       }
       if (out.length) return { items: out, next: null, needIds: true };
@@ -1614,11 +1600,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     var note = (burned === null || burned === undefined)
       ? T('链上读不到 burnedOn')
       : (has ? T('烧掉的币不会回来 —— 这个数字是这枚 NFT 的成本证明') : T('还没有人为它烧过币'));
-    var html = '<div class="burnbox">'
-      + '<div class="statlab">' + esc(T('已烧掉')) + '</div>'
-      + '<div class="burnval ' + (has ? 'burned' : 'noburn') + '">' + esc(txt)
-      + (burned === null || burned === undefined ? '' : '<span class="unit">BANG</span>') + '</div>'
-      + '<div class="statnote">' + esc(note) + '</div></div>';
+    var html = '';        // ARCBANG：拯救下线，没有 burnedOn 可报，这一格整个不出现
     if (v && v.rescuedAt) {
       html += '<div class="rescuebox"><b>★ ' + esc(T('救活过')) + '</b> · '
         + esc(TF('从「{0}」推回可能诞生观察者', outcomeName(v.fromOutcome)))
@@ -1914,9 +1896,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (isZero32(S.card[id])) return '';
     var m = S.meta[id] || {};
     if (!m.blockHash || isZero32(m.blockHash)) return '';
-    return '<button class="sm fix" data-act="fix" data-id="' + id + '" title="'
-      + esc(T('烧 BANG 改写它的参数，销毁量记进这枚 NFT')) + '">'
-      + esc(T('拯救')) + '</button>';
+    return '';            // ARCBANG：拯救系统下线，卡底不出这颗按钮
   }
 
   /* ============================================================ 2. 宇宙市场 */
@@ -2069,7 +2049,12 @@ img.uthumb[data-view]{cursor:zoom-in}
     return T('现在买不成');
   }
   function tradeBtn(l) {
-    if (isMine(l.seller)) return '<button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button>';
+    if (isMine(l.seller)) {
+      return '<button class="sm" data-act="reprice" data-lid="' + l.id + '">' + esc(T('改价')) + '</button>'
+        + '<button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button>';
+    }
+    // status 2/3 = 卖家不持有 / 撤了授权，正是 cancelStale 认的那两种失效
+    if (l.status === 2 || l.status === 3) return '<button class="sm" data-act="stale" data-lid="' + l.id + '">' + esc(T('清失效挂单')) + '</button>';
     if (l.status) return '<button class="sm" disabled title="' + esc(statusNote(l)) + '">' + esc(T('买不成')) + '</button>';
     return '<button class="sm primary" data-act="buy" data-lid="' + l.id + '">' + esc(T('买入')) + '</button>';
   }
@@ -2132,7 +2117,8 @@ img.uthumb[data-view]{cursor:zoom-in}
             + '<span class="dim"> · token ' + esc(String(l.tokenId)) + '</span>';
         return '<tr><td class="num">' + l.id + '</td><td>' + lbn + '</td>'
           + '<td class="num r">' + fmtPrice(l) + '</td>'
-          + '<td class="r"><button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button></td></tr>';
+          + '<td class="r"><button class="sm" data-act="reprice" data-lid="' + l.id + '">' + esc(T('改价')) + '</button>'
+          + '<button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
   function currentAsset() {
@@ -2185,14 +2171,10 @@ img.uthumb[data-view]{cursor:zoom-in}
               : T('给宇宙取名字烧掉的量。这是第二条销毁通路，和干预分开记')) + '</div></div>';
     }
 
-    $('bangbar').innerHTML =
-      '<div class="stat"><div class="statlab">' + esc(T('我的 BANG 余额')) + '</div>'
-      + '<div class="statval">' + esc(bal) + (ADDR.bang && S.bang != null && S.account ? '<span class="unit">BANG</span>' : '') + '</div>'
-      + '<div class="statnote">' + esc(note) + '</div></div>'
-      + '<div class="stat"><div class="statlab">' + esc(T('全网已销毁')) + '</div>'
-      + '<div class="statval">' + esc(tb) + (S.totalBurned != null ? '<span class="unit">BANG</span>' : '') + '</div>'
-      + '<div class="statnote">' + esc(tbnote) + '</div></div>'
-      + nameStat;
+    /* ARCBANG：没有代币，也没有拯救 —— 「我的 BANG 余额 / 全网已销毁 /
+        命名已销毁」三格一个都不存在，整条数字条连同它的外边距一起收掉。 */
+    $('bangbar').innerHTML = '';
+    $('bangbar').hidden = true;
   }
 
   /* ============================================================ 命名弹窗
@@ -2861,11 +2843,8 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
 
   function shareTextOf(d, link) {
-    if (d.kind === 'c') {
-      return TX('我把一个死宇宙救成了「{0}」（{1} 档造物宇宙 #{2}）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{3}',
-                d.outcome, d.rar, d.id, link).replace(/\s+$/, '');
-    }
-    return TX('我在 BNBBANG 引爆了宇宙 {0}：{1}。每个 BNB 区块哈希都是一套物理定律——来引爆你自己的，前 100 万枚每地址 10 次免费，之后 0.01 BNB。{2}',
+    /* ARCBANG：没有造物系列，价格与免费额度按 specs/arcbang-v1.md */
+    return TX('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}',
               '#' + d.no, d.outcome, link).replace(/\s+$/, '');
   }
   var SHARE_OF = null;                 // 浮层现在摆的是哪张卡（异步回填时要认它）
@@ -2929,12 +2908,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     $('shareWa').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(full);
     /* 激励口径（specs §一，2026-08-21 定稿）：说费率、说人工核对、说专款与反女巫。
        不说"自动到账/立即到账" —— 那是空头支票。 */
+    /* ARCBANG：没有代币，也就没有铸造奖励与邀请返利可言 */
     $('shareNote').textContent =
-      (S.account
-        ? T('链接已带上你的推广地址。邀请好友引爆宇宙：好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。')
-        : T('未连接钱包：链接不带推广地址，照常能广播。连接钱包再广播，好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。'))
-      + ' ' + T('邀请返利专款 2 亿 BANG。')
-      + T('女巫账户（自邀、批量小号、刷量）经人工核对一律不予发放。');
+      T('链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。');
     var msg = $('shareMsg');
     function say(text, warn) {
       msg.hidden = !text;
@@ -3091,7 +3067,7 @@ img.uthumb[data-view]{cursor:zoom-in}
              dim: 'all', ck: '', cmin: '', cmax: '', dev: 'all', adv: false };
   }
   /* 来源筛选（specs/btcbang-v1.md §三）：全部 / ₿ 比特币 / BNB。只在已拉取的数据上筛，来源由服务端索引给 */
-  var SRC_OPTS = [['all', '全部来源'], ['btc', '₿ 比特币'], ['bnb', 'BNB']];
+  var SRC_OPTS = [['all', '全部来源']];   /* ARCBANG：这个市场只有 Arc 宇宙，没有第二种来源 */
   var FIL = (function () {
     var d = { mine: filDefault(), uni: filDefault() };
     try {
@@ -3405,7 +3381,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (sec === 'uni') {
       h += '<select data-f="cur"><option value="all">' + esc(T('全部计价')) + '</option>'
         + '<option value="bnb"' + (f.cur === 'bnb' ? ' selected' : '') + ' data-nolang>' + esc(CUR) + '</option>'
-        + '<option value="bang"' + (f.cur === 'bang' ? ' selected' : '') + ' data-nolang>BANG</option></select>';
+        + '</select>';
     }
     h += '<select data-f="named"><option value="all">' + esc(T('已命名/未命名')) + '</option>'
       + '<option value="yes"' + (f.named === 'yes' ? ' selected' : '') + '>' + esc(T('已命名')) + '</option>'
@@ -3491,7 +3467,24 @@ img.uthumb[data-view]{cursor:zoom-in}
     else if (act === 'fix') gotoRescue(id);
     else if (act === 'share') openShare(id);
     else if (act === 'cancel') runTx(function () { return T('撤单') + ' #' + lid; }, function () { return sendTx(ADDR.market, SEL.cancel + encUint(lid)); });
+    else if (act === 'stale') runTx(function () { return T('清失效挂单') + ' #' + lid; }, function () { return sendTx(ADDR.market, SEL.cancelStale + encUint(lid)); });
+    else if (act === 'reprice') reprice(lid);
   });
+
+  /* 改价（ArcMarket.updatePrice）。新价用 prompt 收 —— 这一页没有现成的输入弹层，
+     为一个只填一个数的动作新建一套灯箱不值当。价格解析不出来或为 0 就一笔都不发：
+     合约那边 price==0 是 revert，白烧一次 gas 不如在这里拦住。 */
+  function reprice(lid) {
+    var l = null;
+    (S.listings || []).forEach(function (x) { if (String(x.id) === String(lid)) l = x; });
+    if (!l) { toast(function () { return T('这一单读不到了，刷新看看'); }, 'err'); return; }
+    var raw = window.prompt(TF('新的总价（{0}）', CUR), fmtBNB(l.price));
+    if (raw === null) return;                       // 点了取消
+    var wei = toWei(raw);
+    if (wei === null || wei <= 0n) { toast(function () { return T('价格填得不对，写成 0.02 这样'); }, 'err'); return; }
+    runTx(function () { return T('改价') + ' #' + lid; },
+          function () { return sendTx(ADDR.market, SEL.updatePrice + encUint(lid) + encUint(wei)); });
+  }
 
   function buy(lid) {
     var l = null;
@@ -3530,8 +3523,8 @@ img.uthumb[data-view]{cursor:zoom-in}
     say('');
     // ERC-721 的数量恒为 1（合约里 list() 对 721 也只接受 1），没有可填的量
     runTx(function () { return TV('挂单'); }, function () {
-      var inBang = $('fCur') && $('fCur').value === 'bang';
-      return sendTx(ADDR.market, SEL.list + encAddr(a.token) + encUint(a.id) + encUint(1) + encUint(wei) + encBool(inBang));
+      // ARCBANG：list(uint256 id, uint256 price)，价格是 USDC 的 wei（1 USDC = 1e18）
+      return sendTx(ADDR.market, SEL.list + encUint(a.id) + encUint(wei));
     });
   });
   $('fAsset').addEventListener('change', syncApproveState);
@@ -3867,12 +3860,10 @@ img.uthumb[data-view]{cursor:zoom-in}
   /* ============================================================ 装配 */
   function renderConfigBar() {
     var rows = [
+      /* ARCBANG：v1 只有两个合约（ArcUniverse + ArcMarket），
+         代币与命名那两行在这里不是「未部署」，是**永远不会有** */
       { k: '宇宙 NFT', v: ADDR.universe, key: 'contract' },
-      { k: 'BANG 代币', v: ADDR.bang, key: 'bangToken' },
-      { k: '市场', v: ADDR.market, key: 'market' },
-      /* 命名合约也列出来。没填地址时它就那么亮着"未部署"——那正是要说的话：
-         这一栏是给运维看的，缺哪一个一眼就知道要去 config.js 里补哪个键。 */
-      { k: '命名', v: ADDR.names, key: 'bangNames' }
+      { k: '市场', v: ADDR.market, key: 'market' }
     ];
     /* 造物那一枚 chip **只在配了地址时才出现** —— 与上面四个"没配也亮着未部署"
        不同：造物没配时页面必须与从前逐像素一致（验收线），配了才有资格进这一栏。 */

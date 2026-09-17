@@ -4005,7 +4005,7 @@
           wdSend(snap, function (ok, why) {
             if (ok) { send.textContent = T('已发送，谢谢'); send.style.background = '#2f7d4f'; }
             else { send.disabled = false; send.style.opacity = '1'; send.style.background = '#8a4b2b';
-              send.textContent = T('发送失败，可复制后发到 admin@bnbbang.com'); if (why) send.title = String(why).slice(0, 120); }
+              send.textContent = T('发送失败，可复制后发到 admin@arcbang.xyz'); if (why) send.title = String(why).slice(0, 120); }
           });
         });
         var sendRow = document.createElement('div');

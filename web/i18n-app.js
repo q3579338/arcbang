@@ -850,7 +850,7 @@
     '已复制，粘贴给开发者即可': 'Copied — paste it to the developers',
     '发送内容：帧耗时、卡住时所在的层级与参数、显卡与浏览器型号、页面路径。不含钱包地址，也不含任何私钥或签名。':
       'What is sent: frame times, the layer and parameters you were on when it stalled, GPU and browser model, and the page path. No wallet address, and no private key or signature of any kind.',
-    '发送失败，可复制后发到 admin@bnbbang.com': 'Sending failed — copy it and email admin@bnbbang.com',
+    '发送失败，可复制后发到 admin@arcbang.xyz': 'Sending failed — copy it and email admin@arcbang.xyz',
     '这个宇宙超出了引擎能算的范围，铸不了；换一个区块试试':
       'This universe is beyond what the engine can compute, so it cannot be minted; try another block',
     '这个宇宙已经被铸走了（宇宙 #{0} · 链上 NFT #{1}）——还能看，但不能再铸造':
