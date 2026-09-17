@@ -30,7 +30,9 @@ const ROOT = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
 const min = argv.includes('--min');
 const siteAt = argv.indexOf('--site');
-const SITE = siteAt >= 0 ? String(argv[siteAt + 1] || '').toLowerCase() : 'bnb';
+/* 独立的 ARCBANG 仓库里没有 web/config.js（那是别的站的），不带 --site 就是 arc。 */
+const SITE = siteAt >= 0 ? String(argv[siteAt + 1] || '').toLowerCase()
+  : (require('fs').existsSync(require('path').join(__dirname, 'config.js')) ? 'bnb' : 'arc');
 if (SITE !== 'bnb' && SITE !== 'btc' && SITE !== 'arc') {
   console.error('--site 只认 bnb / btc / arc，收到「' + SITE + '」');
   process.exit(1);

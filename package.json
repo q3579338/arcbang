@@ -1,10 +1,13 @@
 {
-  "name": "mirror-universe",
-  "version": "1.0.0",
+  "name": "arcbang",
+  "version": "5.0.0",
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "build": "node build.js && node tools/check-dist.js"
+    "build": "node build.js && node web/build-web.js && node tools/check-dist.js",
+    "test": "node engine/test.js && node engine/planet.test.js && node server/selftest.js && cd contracts && node tools/compile.js src/ArcUniverse.sol && node tools/compile.js src/ArcMarket.sol && node tools/arctest.js && node tools/arcmarket-test.js",
+    "dev": "node tools/dev-server.js",
+    "api": "node tools/dev-api.js"
   },
   "devDependencies": {
     "terser": "^5.50.0"

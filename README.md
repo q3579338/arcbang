@@ -179,3 +179,15 @@ specs/       规格：arcbang-v1.md 是这个站的总纲
 ## Security
 
 Vulnerabilities: **admin@arcbang.xyz**. See [SECURITY.md](SECURITY.md).
+
+## 本地开发 · Local development
+
+```bash
+npm ci && (cd server && npm ci) && (cd contracts && npm ci)
+npm run build     # 单文件模拟器 + Arc 站 + 产物自检
+npm run api       # 本地 API（读 Arc 主网区块；合约地址是占位，铸造不可用）
+npm run dev       # http://localhost:8795/
+npm test          # 引擎 / 服务端 / 两份合约的全部测试
+```
+
+This repository is the single source of truth for ARCBANG. It builds and runs on its own.
