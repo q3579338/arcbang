@@ -1,9 +1,9 @@
-# /etc/systemd/system/bnbbang-api-main.service
+# /etc/systemd/system/arcbang-api.service
 #
-# 主网第二实例。与 bnbbang-api.service（测试网 8801）同构，互不影响。
-# 由 server/deploy-api.sh --target main 安装。改这个文件之后要 systemctl daemon-reload。
+# ARCBANG 服务端（Arc 主网）。独立仓库、独立目录（/opt/arcbang）、独立用户（arcbang）、独立密钥与存档，
+# 与这台机器上别的实例互不影响。改这个文件之后要 systemctl daemon-reload。
 #
-# 只监听 127.0.0.1:8802，外面靠 nginx 的 /api/ 反代进来 ——
+# 只监听 127.0.0.1:8803，外面靠 nginx 的 /api/ 反代进来 ——
 # 直接暴露到公网等于把签名服务的端口挂出去，没有任何好处。
 
 [Unit]
@@ -13,27 +13,26 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=bnbbang
-Group=bnbbang
-WorkingDirectory=/opt/bnbbang/server
+User=arcbang
+Group=arcbang
+WorkingDirectory=/opt/arcbang/server
 ExecStart=/usr/bin/node index.js
 Restart=always
 RestartSec=3
 
-# 环境变量从这个文件读。**私钥不写在这里**，见下面的 signer.arc.key
-# 不要用测试网的 /etc/bnbbang/api.env。
-EnvironmentFile=/etc/bnbbang/api.arc.env
+# 环境变量从这个文件读。**私钥不写在这里**，见下面的 signer.key
+EnvironmentFile=/etc/arcbang/api.env
 
-# 签名私钥单独一个文件，600，属主 bnbbang。必须和测试网 signer.key 分开。
+# 签名私钥单独一个文件，600，属主 bnbbang。
 # 服务启动时从 BNBBANG_SIGNER_KEY_FILE 读它（server/sign.js）。
-Environment=BNBBANG_SIGNER_KEY_FILE=/etc/bnbbang/signer.arc.key
+Environment=BNBBANG_SIGNER_KEY_FILE=/etc/arcbang/signer.key
 
 # 端口 / 存档 / 出图缓存钉死在 unit 里，避免 env 漏填时落到测试网默认
 # （BNBBANG_PORT 默认 8801、STORE 默认 .store、CACHE 默认 .cache）。
 Environment=BNBBANG_PORT=8803
-Environment=BNBBANG_STORE=/opt/bnbbang/server/.store-arc
-Environment=BNBBANG_PNG_DIR=/opt/bnbbang/server/.store-arc/png
-Environment=BNBBANG_CACHE=/opt/bnbbang/server/.cache-arc
+Environment=BNBBANG_STORE=/opt/arcbang/server/.store
+Environment=BNBBANG_PNG_DIR=/opt/arcbang/server/.store/png
+Environment=BNBBANG_CACHE=/opt/arcbang/server/.cache
 
 # ---- 收紧权限 ----
 # 这个进程手里握着签名私钥：任何人拿到它就能伪造"带参数"的 NFT。
@@ -53,7 +52,7 @@ LockPersonality=true
 # 只有这两个目录可写：缓存可以随便删（是纯函数的产物，删了能重算），
 # 存档删了就没了（干预记录只在这里，链上只留一个 cardHash）——**必须进备份**。
 # 不把测试网的 .cache / .store 放进来，ProtectSystem=strict 会挡住误写。
-ReadWritePaths=/opt/bnbbang/server/.cache-arc /opt/bnbbang/server/.store-arc
+ReadWritePaths=/opt/arcbang/server/.cache /opt/arcbang/server/.store
 
 # 日志
 StandardOutput=journal
