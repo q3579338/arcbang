@@ -179,16 +179,23 @@
       });
     },
 
-    /* ---------------------------------------------------------------- 白名单
-       三条路都在 server/allowlist.js。要点：
-         · status 只回**问的那个地址自己**的层级 / 登记码 / 邀请数，名单不外泄；
-         · 登记要签的那句话由 status 给（message 字段），**客户端绝不自己拼** ——
+    /* ---------------------------------------------------------------- 积分榜与白名单
+       四条路都在 server/allowlist.js。要点：
+         · **名单是积分榜算出来的**（登记 / 转发 / 邀请 / 分享四项），不是人工一个个批；
+         · board 只给地址缩写 —— 名次和分数是公开规则，完整地址不是；
+         · status 的积分明细 / 登记码 / 下一步只回**问的那个地址自己的**；
+         · 要签的那句话由 status 给（message 字段），**客户端绝不自己拼** ——
            两边各拼一次早晚差一个换行，然后 verifyMessage 恢复出另一个地址，
-           用户看到的是「签名是另一个地址签的」，从签名本身完全看不出错在哪；
-         · 登记 ≠ 进名单。登记只是排队，管理员审完才算数。 */
+           用户看到的是「签名是另一个地址签的」，从签名本身完全看不出错在哪。 */
     allowlistStatus: function (addr) {
       var q = /^0x[0-9a-fA-F]{40}$/.test(String(addr || '')) ? '?addr=' + String(addr).toLowerCase() : '';
       return req('/allowlist/status' + q);
+    },
+
+    /** 公开积分榜。top 最多 1000，服务端和这里都夹一道。 */
+    allowlistBoard: function (top) {
+      var n = Math.max(1, Math.min(Math.floor(Number(top)) || 50, 1000));
+      return req('/allowlist/board?top=' + n);
     },
 
     /** @param sig 对 status().message **原文**的 personal_sign 结果 */
@@ -199,6 +206,23 @@
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body)
+      });
+    },
+
+    /**
+     * 「引爆并分享」那一分。站内广播按钮生成链接时打一发，同地址同一天只计一次。
+     * sig 是**登记时那一次**签名（浏览器留着复用），不再弹钱包 —— 用户拍板「别每次弹」。
+     * 拿不到 sig（没登记过 / 换了浏览器）就根本不该调这条：调了只会 400/403。
+     */
+    allowlistShare: function (address, sig, hash) {
+      return req('/allowlist/share', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          address: String(address).toLowerCase(),
+          sig: sig,
+          hash: String(hash).toLowerCase()
+        })
       });
     },
 

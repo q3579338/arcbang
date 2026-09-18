@@ -579,10 +579,14 @@ async function handle(req, res, u) {
       /* 算卡线程池：0 = 关掉了（或崩太多次自保退回同步）。线上排查「为什么只用一个核」
          先看这个数，不用去猜环境变量。 */
       cardWorkers: CARDPOOL.size(),
-      /* 放号阶段与名单人数（server/allowlist.js）。状态页按它显示「现在开到哪一段」；
-         **只有人数，没有名单** —— 谁是保底层不公开。 */
+      /* 放号阶段与名单人数（server/allowlist.js）。状态页按它显示「现在开到哪一段」、
+         两档人数与榜前 10。名单由积分榜算，frozen=false 时它是**实时的**。 */
       phase: AL.phase(), phaseOpens: AL.opens(), phaseNext: AL.nextOpen(),
-      allowlist: AL.counts(), allowlistApplied: AL.appliedCount()
+      /* **不承诺名额**：定格之前 publicCounts 里的数字全是 null（见 allowlist.js）。
+         /health 是公开接口，不能从这里把 ARCBANG_GTD_TOP 漏出去。 */
+      allowlist: AL.publicCounts(), allowlistApplied: AL.appliedCount(),
+      allowlistBoardSize: AL.board().rows.length,
+      allowlistPts: AL.pointsTable(), allowlistTop: AL.topRows(10)
     });
   }
 
@@ -706,15 +710,25 @@ async function handle(req, res, u) {
     return;
   }
 
-  /* ================================================================ 白名单
-     三条路，一条比一条权限低：
-       GET  /api/allowlist/status?addr=   谁都能问。**只回查询的那个地址自己的**层级、
-                                          登记码、邀请数、排位 —— 名单本身不外泄。
-       POST /api/allowlist/register       登记（排队），不是进名单。要钱包签一句固定文案。
+  /* ================================================================ 积分榜与白名单
+     五条路，权限一条比一条高：
+       GET  /api/allowlist/board?top=     公开的积分榜。**只给地址缩写** ——
+                                          名次和分数是规则的一部分，完整地址不是。
+       GET  /api/allowlist/status?addr=   谁都能问。榜与名额是公开规则；
+                                          积分明细、登记码、下一步只回**查询的那个地址自己的**。
+       POST /api/allowlist/register       登记（上榜 + 拿登记码 + 得登记分）。要钱包签一句固定文案。
+       POST /api/allowlist/share          站内分享按钮生成链接时打一发，同地址同一天只计一次。
        GET  /api/allowlist/applied        导出登记表 CSV，**管理员 IP 才给**。
 
-     写名单的路一条都没有：审核完用命令行 server/tools/allowlist.js approve。
-     名额是钱，发名额这件事不该有自动路径。 */
+     **名单是榜算出来的**，接口里没有任何一条路能改名次或发名额：
+     转发勾要管理员跑 server/tools/allowlist.js verify（X 那边的评论是人工核的），
+     进保底期之前跑一次 freeze 把榜定格。 */
+  if (p === '/allowlist/board' && (req.method === 'GET' || req.method === 'HEAD')) {
+    /* 榜有 30 秒内存缓存（server/allowlist.js 的 BOARD_TTL_MS），响应头也给 30 秒：
+       预热页会被很多人同时刷，而榜是 O(登记数) 的全量重算。 */
+    return json(res, 200, AL.boardView(u.searchParams.get('top')), { 'cache-control': 'public, max-age=30' });
+  }
+
   if (p === '/allowlist/status' && (req.method === 'GET' || req.method === 'HEAD')) {
     const st = await AL.status(u.searchParams.get('addr'));
     return json(res, 200, st, { 'cache-control': 'no-store' });
@@ -726,6 +740,18 @@ async function handle(req, res, u) {
     const parsedAl = parseJsonObject(rb);
     if (parsedAl.error) return json(res, 400, { error: parsedAl.error }, { 'cache-control': 'no-store' });
     const r = AL.register(parsedAl.value, RL.ipOf(req));
+    return json(res, r.status, r.body, { 'cache-control': 'no-store' });
+  }
+
+  /* POST /api/allowlist/share {address, sig, hash}
+     sig 是**登记时那一次**签名（同一句 registerMessage），浏览器留在 localStorage 复用 ——
+     用户拍板「别每次弹钱包」。重放它最多能给签名者自己记一次分，而同一天只记一次。 */
+  if (p === '/allowlist/share' && req.method === 'POST') {
+    const rb = await bodyOf(req, res);
+    if (rb === null) return;
+    const parsedSh = parseJsonObject(rb);
+    if (parsedSh.error) return json(res, 400, { error: parsedSh.error }, { 'cache-control': 'no-store' });
+    const r = AL.share(parsedSh.value, RL.ipOf(req));
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
   }
 
@@ -1437,11 +1463,19 @@ function start() {
          而这件事从别的地方看不出来。 */
       const c = AL.counts();
       const nx = AL.nextOpen();
+      const T = AL.tops();
       console.log('  阶段      ' + AL.phase()
         + (AL.phase() === 'warmup' ? '（预热：不签任何铸造签名）' : '')
         + (nx ? '   下一段 ' + nx.phase + ' ' + (nx.at || '（时间待定）') : '   已是最后一段'));
-      console.log('  白名单    保底 ' + c.gtd + ' · 先到先得 ' + c.fcfs + ' · 登记 ' + AL.appliedCount() + ' 条'
-        + (AL.pinnedPost() ? '' : '   ← 没配 ARCBANG_PINNED_POST_URL，预热页不显示转发按钮'));
+      console.log('  名单      保底 ' + c.gtd + ' · 先到先得 ' + c.fcfs
+        + '（榜前 ' + T.gtd + ' / ' + T.free + ' 名）· 登记 ' + AL.appliedCount() + ' 条'
+        + (c.frozen ? ' · **已定格**' : ' · 实时按积分榜算'));
+      /* 不在预热期却还没定格是真实故障：名单会随积分变，有人可能铸到一半被挤出去。
+         这句必须在启动日志第一屏喊出来，而不是等谁发现。 */
+      if (!c.frozen && AL.phase() !== 'warmup') {
+        console.log('  !! 已经不在预热期，名单却没定格 —— 跑 node server/tools/allowlist.js freeze');
+      }
+      if (!AL.pinnedPost()) console.log('  !! 没配 ARCBANG_PINNED_POST_URL，预热页不显示转发按钮（转发那 30 分没人拿得到）');
     }
     console.log('  stall     ' + (STALL.mailOn ? '报告落盘 + 邮件 → ' + STALL.mailTo : '卡死报告只落盘，未配邮件（要发信就设 ARCBANG_RESEND_KEY）'));
     /* 市场索引后台扫链。**放在 listen 回调里、且不 await** ——

@@ -370,17 +370,23 @@ footer a:hover{text-decoration:underline}
        2026-09-18：铸造分四段（预热 / 保底 / 先到先得 / 公售），由服务端的
        ARCBANG_PHASE 与三个开放时间决定。**这一段读的是 /api/health**，不是链上 ——
        阶段与名单本来就不在链上，链上只有 bangSigned 那个 bool free 的边界。
-       只报人数，不报名单：谁在保底层不公开（用户拍板）。 -->
+       名单由**积分榜**生成（server/allowlist.js），榜是公开的，所以这里给前 10 名 ——
+       但只给地址缩写：名次和分数是规则的一部分，完整地址不是。 -->
   <details class="fold" data-fold="phase" open>
     <summary><h2>放号阶段</h2><span class="fsum" id="fsPhase">—</span></summary>
     <div class="fbody">
     <p class="why">预热期一张铸造签名都不签；保底与先到先得两段只给白名单；公售人人都能铸。
-       免费额度共 387 枚、每地址 1 枚，抢完之后名单里的人也只能付费。</p>
+       白名单按积分榜排，名额数量在榜单定格时公布，上限不超过合约里的 387 枚。
+       免费额度每地址 1 枚，抢完之后名单里的人也只能付费。</p>
     <div class="kline"><span>当前阶段</span><span class="num" id="phNow">—</span></div>
     <div class="kline"><span>下一段开放</span><span id="phNext">—</span></div>
+    <div class="kline"><span>名单</span><span id="phFrozen">—</span></div>
     <div class="kline"><span>白名单 · 保底层</span><span class="num" id="phGtd">—</span></div>
     <div class="kline"><span>白名单 · 先到先得层</span><span class="num" id="phFcfs">—</span></div>
-    <div class="kline"><span>已登记待审</span><span class="num" id="phApplied">—</span></div>
+    <div class="kline"><span>在榜人数</span><span class="num" id="phApplied">—</span></div>
+    <div class="kline"><span>分值</span><span id="phPts">—</span></div>
+    <!-- 榜前 10（只给地址缩写）。完整的榜在预热页，那里也只公布前 100 名。 -->
+    <div class="dist" id="phTop" style="margin-top:14px"></div>
     </div>
   </details>
 
@@ -860,9 +866,44 @@ footer a:hover{text-decoration:underline}
       var nx = h.phaseNext;
       $('phNext').textContent = !nx ? T('已是最后一段')
         : (T(NAME[nx.phase] || nx.phase) + ' · ' + (nx.at ? new Date(nx.at).toLocaleString() : T('时间待定')));
-      $('phGtd').textContent = c.gtd == null ? '—' : String(c.gtd);
-      $('phFcfs').textContent = c.fcfs == null ? '—' : String(c.fcfs);
-      $('phApplied').textContent = h.allowlistApplied == null ? '—' : String(h.allowlistApplied);
+      /* 名单已定格 = 不再随积分变。**不在预热期却还没定格是真实故障**
+         （有人会在铸到一半被后来者挤出名单），所以那一种要标黄。 */
+      var frozen = !!c.frozen;
+      $('phFrozen').textContent = frozen ? T('已定格（不再随积分变）') : T('实时按积分榜算');
+      $('phFrozen').className = (!frozen && p && p !== 'warmup') ? 'bad' : '';
+      /* 定格之前服务端一律回 null（**不承诺名额**）：这里就写「定格时公布」，
+         不要自己拿榜的长度去猜一个数出来。 */
+      $('phGtd').textContent = c.gtd == null ? T('定格时公布') : String(c.gtd);
+      $('phFcfs').textContent = c.fcfs == null ? T('定格时公布') : String(c.fcfs);
+      $('phApplied').textContent = h.allowlistBoardSize == null
+        ? (h.allowlistApplied == null ? '—' : String(h.allowlistApplied))
+        : String(h.allowlistBoardSize);
+      /* 分值全部来自服务端（env 可调）：这一页一个数字都不写死。
+         **整句进词典**，不在这里拼词 —— '分'/'天' 这种单字在预热页的倒计时里
+         已经是 min/sec 的意思了，在这儿按「积分/天数」再翻一次必然撞车。
+         这一页的 TF 只认一个 {0}，所以六个占位用下面这个本地 TN。 */
+      function TN(zh) {
+        var a = Array.prototype.slice.call(arguments, 1);
+        return T(zh).replace(/\{(\d+)\}/g, function (m, i) { return a[i] == null ? m : a[i]; });
+      }
+      var P = h.allowlistPts;
+      $('phPts').textContent = !P ? '—'
+        : TN('登记 {0} · 转发 {1} · 邀请 {2}/人（上限 {3} 人）· 分享 {4}/天（上限 {5} 天）',
+             P.register, P.repost, P.invite, P.inviteMax, P.share, P.shareMaxDays);
+      /* 榜前 10。空榜就写一句，别留个空框。 */
+      var top = h.allowlistTop || [];
+      var TIER = { gtd: '保底', fcfs: '免费' };
+      $('phTop').innerHTML = !top.length
+        ? '<div class="row"><span class="k">' + T('还没有人上榜') + '</span><span class="dimtx">—</span></div>'
+        : top.map(function (r) {
+            return '<div class="row"><span class="k"><b>#' + r.rank + '</b> '
+              + '<span class="mono">' + r.addr + '</span></span>'
+              /* tier 定格之前是 null（不承诺名额）：那就一个字都别写 ——
+                 摆一个「—」在那儿只是噪声，还会让人以为读数坏了。 */
+              + '<span>' + TN('{0} 分', r.points)
+              + (r.tier ? ' · ' + T(TIER[r.tier]) : '')
+              + (r.verified ? '' : ' · ' + T('未核')) + '</span></div>';
+          }).join('');
       $('fsPhase').textContent = p ? T(NAME[p] || p) : '—';
       $('fsPhase').className = 'fsum' + (p === 'warmup' ? ' warn' : '');
     }, function () {

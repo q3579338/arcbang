@@ -796,6 +796,10 @@
     }).then(function (who) {
       if (gen !== SHARE_GEN) return;   // 等短码的空当里浮层被关掉/换成别的宇宙了：这条链作废
       var my = who.my;
+      /* 「引爆并分享」那一分就记在这里 —— **生成分享链接的这一刻**，
+         而不是等用户真去 X 上发（那件事我们看不见，也不该假装看得见）。
+         同地址同一天只计一次由服务端挡；没登记过就静默跳过，一次钱包都不弹。 */
+      alShareTick(my, o.hash);
       var link = shareUrl(o, who.ref);
       var img = shareImgUrl(o);
       var full = shareText(o, link);
@@ -1958,6 +1962,33 @@
       if (S.derived) showMint();                        // 面板开着就顺手重画一次
     }, function () { /* 拿不到就当没有这一层 */ });
   }
+  /* ---- 登记签名（兼作会话令牌） ----
+     预热页登记时签过一次，把 {addr, sig} 留在 localStorage；这里只**读**它，
+     用来给「引爆并分享」那一分打卡（POST /api/allowlist/share）。
+     用户拍板「别每次弹钱包」，所以这条路上一次都不弹：没有存档就静默跳过。
+     键名与 web/warmup-arc.html 里写的那一个必须逐字相同。 */
+  var AL_SIG_KEY = 'arcbang.al.sig';
+  function alSigFor(addr) {
+    if (!addr) return null;
+    try {
+      var raw = root.localStorage && root.localStorage.getItem(AL_SIG_KEY);
+      if (!raw) return null;
+      var j = JSON.parse(raw);
+      if (!j || String(j.addr).toLowerCase() !== String(addr).toLowerCase()) return null;
+      return /^0x[0-9a-fA-F]{130}$/.test(String(j.sig)) ? j.sig : null;
+    } catch (e) { return null; }      // 隐私模式下 localStorage 会抛，不能让它带走整条链
+  }
+  /** 分享打卡。**绝不让它影响分享本身** —— 成败都不报错、不拦浮层。 */
+  function alShareTick(addr, hash) {
+    var sig = alSigFor(addr);
+    if (!sig || !API || !API.allowlistShare || !hash) return;
+    try {
+      API.allowlistShare(addr, sig, hash).then(function () {
+        phaseLoad();                  // 分数变了，榜和「下一步」跟着刷
+      }, function () { /* 没登记 / 今天已记过 / 网络不通：都不该打断分享 */ });
+    } catch (e) { /* 同上 */ }
+  }
+
   /** 本地时间的人话时间。服务端给的是 ISO，直接摆出来没人读得下去。 */
   function fmtWhen(iso) {
     if (!iso) return T('时间待定');

@@ -439,8 +439,23 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
       + (badKeys.length ? '：' + badKeys.join('、') : ''));
     var dcfg = path.join(dist, 'config.js');
     if (fs.existsSync(dcfg)) {
-      var same = fs.readFileSync(dcfg, 'utf8') === c;
-      (same ? ok : bad)('web/dist-arc/config.js 就是 config.arc.js');
+      var dtext = fs.readFileSync(dcfg, 'utf8');
+      /* `node web/build-web.js --testnet` 会**故意**把落盘那一份的链改成 Arc 测试网
+         （排练站要用）。所以这里认两种：与源文件逐字节相同，或者与「源文件套上那几处
+         测试网改写」之后相同。第三种情况才是真错 —— 那说明产物里的 config 被手改过。
+         改写清单必须和 web/build-web.js 里那一段对齐，改一处要改两处。 */
+      var tn = c.replace("'https://rpc.mainnet.arc.io'", "'https://rpc.testnet.arc.io'")
+        .replace('id: 5042,', 'id: 5042002,')
+        .replace("name: 'Arc 主网'", "name: 'Arc 测试网'")
+        .replace("nameEn: 'Arc Mainnet'", "nameEn: 'Arc Testnet'")
+        .replace("explorer: 'https://explorer.arc.io'", "explorer: 'https://explorer.testnet.arc.io'")
+        .replace('isTestnet: false', 'isTestnet: true');
+      /* 合约地址可能被 --contract= / --market= 填过，比较时把这两行抹平 */
+      var flat = function (s) { return s.replace(/contract: '[^']*'/, "contract: ''").replace(/market: '[^']*'/, "market: ''"); };
+      var isMain = dtext === c;
+      var isTest = flat(dtext) === flat(tn);
+      (isMain || isTest ? ok : bad)('web/dist-arc/config.js 就是 config.arc.js'
+        + (isTest && !isMain ? '（--testnet 版：链 5042002）' : ''));
     }
   }
 

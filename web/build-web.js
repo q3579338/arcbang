@@ -43,10 +43,10 @@ const ST = {
      切回正常首页：把这一行改回 false 重新构建，不必动别的地方。 */
   warmupPage: 'warmup-arc.html',
   warmup: false,
-  warmupTitle: 'ARCBANG 预热 · 白名单登记与开放时间',
+  warmupTitle: 'ARCBANG 预热 · 积分榜与白名单',
   warmupEn: {
-    title: 'ARCBANG warm-up — allowlist sign-up and opening times',
-    desc: '1,387 universes in all: the first 387 are free (one per address, allowlist only), then 1 USDC with a cap of 3 per address, and a block hash can only be minted once. Minting has not opened yet — connect a wallet, sign one line and you are on the sign-up list. Detonating and the simulator are free and open right now.'
+    title: 'ARCBANG warm-up — leaderboard and allowlist',
+    desc: 'The allowlist is ranked by points: the top 100 get a guaranteed slot and the top 387 mint free, one per address; everyone else buys at 1 USDC, up to 3 per address, and a block hash can only be minted once. Signing up scores, and so do reposts, invites and detonations you broadcast. Detonating and the simulator are free and open right now.'
   },
   /* 独立页：[源文件, 落盘名]。三份文档整篇是「Arc 链 · USDC · 没有代币」的口径；
      它们不引 doc.css，改引 web/arc-doc.css —— 那是首页「测绘板」那套版式的内页延续。

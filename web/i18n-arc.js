@@ -90,6 +90,28 @@
     '新的总价（{0}）': 'New total price ({0})'
   }, 'market');
 
+  /* ---- 积分榜的通用短词（2026-09-18）----
+     **收在这一册而不是 i18n-arc-site.js**：状态页（status.html）也要用它们，
+     而那一页只加载 i18n / i18n-site / i18n-market 加本册，不加载首页那一册。
+     进全局表（不带 ns）：状态页的 T() 走 'status' 分册，查不到会落回全局。
+     这几个词在中文里短得像标签，英文里也必须短 —— 它们出现在表格的一格里。 */
+  I.add({
+    '保底': 'Guaranteed',
+    '免费': 'Free',
+    '未核': 'unchecked',
+    '已定格（不再随积分变）': 'frozen (no longer follows the board)',
+    '实时按积分榜算': 'live from the leaderboard',
+    '还没有人上榜': 'Nobody on the board yet',
+    '已是最后一段': 'the last round',
+    '定格时公布': 'announced at the freeze',
+    '问不到': 'no answer',
+    /* **整句进词典**：'分' / '天' 这种单字在预热页的倒计时里已经是 min / sec 的意思，
+       在这儿按「积分 / 天数」再收一遍必然撞车（i18n 的 key 是全局唯一的中文原文）。 */
+    '{0} 分': '{0} pts',
+    '登记 {0} · 转发 {1} · 邀请 {2}/人（上限 {3} 人）· 分享 {4}/天（上限 {5} 天）':
+      'Sign-up {0} · repost {1} · invite {2} each (cap {3}) · broadcast {4}/day (cap {5} days)'
+  });
+
   /* ---- 放号分期（2026-09-18）：web/arc-ui.js 在铸造入口上说的话 ----
      **必须收在这一册**，不能收进 i18n-arc-site.js：那一册只有首页与文档页会加载，
      app.html 的注入层（build-web.js 的 LAYER）里没有它 ——

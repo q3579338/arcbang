@@ -2608,18 +2608,20 @@ function call(method, url, body, headers) {
   }
   {
     /* ==================================================================
-       [S4] 放号分期、白名单、登记码与邀请（server/allowlist.js + sign.js 的 free）
+       [S4] 积分榜、名单生成、分期与登记（server/allowlist.js + sign.js 的 free）
 
        这一整节钉的是 2026-09-18 那次事故的修法。事故本身：第一次主网部署上线 20 分钟，
        一个 IP 用 5 个**新地址**、一分钟一枚，把 5 枚免费额度薅走了。
        根因不是 IP 闸太松 —— 是「这一枚该不该免费」由合约按 totalSupply / freeMintCount 现判，
        而每个新地址在合约眼里都是干净的，换地址就等于复制免费额度。
 
-       修法有两半，两半都要在这里当场红：
+       修法有三层，每一层都要在这里当场红：
          1. free 进摘要（合约 bangSigned 的 bool free）→ 免费与否服务端说了算；
-         2. 服务端按名单和阶段决定 free，IP 不再参与任何铸造判断。
+         2. 服务端按**积分榜**算名单，IP 不再参与任何铸造判断；
+         3. 积分里最值钱的两项（转发 30、有效邀请 20/人）都要**人工核过**才计 ——
+            不然造一百个地址登记一遍就能把榜刷穿，而登记是不花钱的。
        ================================================================== */
-    console.log('\n[S4] 放号分期 / 白名单 / 登记码 / 邀请');
+    console.log('\n[S4] 积分榜 / 名单生成 / 分期 / 登记');
     const vm = require('vm');            // 下面那段要在沙箱里跑 web/arc-chain.js
     const ALX = require('./allowlist.js');
     const adir = path.join(TMP, 'al'); fs.mkdirSync(adir, { recursive: true });
@@ -2684,6 +2686,29 @@ function call(method, url, body, headers) {
       for (const k in save) { if (save[k] === undefined) delete process.env[k]; else process.env[k] = save[k]; }
     }
 
+    /* ---- 分值与名额：全部走 env，配歪了退默认而不是变成 0 ---- */
+    {
+      const save = {};
+      const keys = ['ARCBANG_PTS_REGISTER', 'ARCBANG_PTS_REPOST', 'ARCBANG_PTS_INVITE',
+        'ARCBANG_PTS_INVITE_MAX', 'ARCBANG_PTS_SHARE', 'ARCBANG_PTS_SHARE_MAX_DAYS',
+        'ARCBANG_GTD_TOP', 'ARCBANG_FREE_TOP'];
+      for (const k of keys) save[k] = process.env[k];
+      for (const k of keys) delete process.env[k];
+      const P0 = ALX.pointsTable();
+      ok('默认分值：登记 10 / 转发 30 / 邀请 20（上限 20 人）/ 分享 5（上限 5 天）',
+        P0.register === 10 && P0.repost === 30 && P0.invite === 20 && P0.inviteMax === 20
+        && P0.share === 5 && P0.shareMaxDays === 5, JSON.stringify(P0));
+      ok('默认名额：前 100 保底、前 387 免费', ALX.tops().gtd === 100 && ALX.tops().free === 387);
+      process.env.ARCBANG_PTS_REGISTER = 'abc';
+      process.env.ARCBANG_PTS_REPOST = '-5';
+      ok('配歪的分值退回默认，不是静默变成 0（0 分会让整套排名塌掉）',
+        ALX.pointsTable().register === 10 && ALX.pointsTable().repost === 30);
+      process.env.ARCBANG_GTD_TOP = '900';
+      process.env.ARCBANG_FREE_TOP = '387';
+      ok('保底名额配得比免费名额还多 → 夹到免费名额（不是抛错崩掉）', ALX.tops().gtd === 387);
+      for (const k of keys) { if (save[k] === undefined) delete process.env[k]; else process.env[k] = save[k]; }
+    }
+
     /* ---- 登记：验签、去重、自邀、限流 ---- */
     const A1 = new Wallet('0x' + '31'.repeat(32));
     const A2 = new Wallet('0x' + '32'.repeat(32));
@@ -2708,7 +2733,8 @@ function call(method, url, body, headers) {
       ok('签名是别人签的 → 400（不是静默收下）',
         AL.register({ address: a1, xHandle: 'alice', sig: signFor(A2) }, '1.1.1.1').status === 400);
       const r1 = AL.register({ address: A1.address, xHandle: '@alice', sig: signFor(A1) }, '1.1.1.1');
-      ok('合法登记 → 200，回自己的登记码', r1.status === 200 && r1.body.ok === true && r1.body.code === AL.codeOf(a1));
+      ok('合法登记 → 200，回登记码与当前积分', r1.status === 200 && r1.body.ok === true
+        && r1.body.code === AL.codeOf(a1) && r1.body.points === 10, JSON.stringify(r1.body));
       ok('重复登记 → already:true，不重复写',
         AL.register({ address: a1, xHandle: 'alice', sig: signFor(A1) }, '1.1.1.1').body.already === true
         && fs.readFileSync(AL.appliedFile, 'utf8').trim().split('\n').length === 1);
@@ -2718,93 +2744,232 @@ function call(method, url, body, headers) {
         JSON.parse(fs.readFileSync(AL.appliedFile, 'utf8').trim().split('\n')[0]).ip === '1.1.x.x');
     }
 
-    /* ---- 邀请：只在 approve 之后才算数 ---- */
+    /* ---- 积分：四项各算各的，未核的一分不给 ---- */
+    {
+      const s1 = AL.scoreOf(a1);
+      ok('刚登记 = 10 分（登记那一项），其余三项都是 0',
+        s1.total === 10 && s1.pts.register === 10 && s1.pts.repost === 0
+        && s1.pts.invite === 0 && s1.pts.share === 0, JSON.stringify(s1.pts));
+      ok('没登记过的地址不上榜、0 分', AL.scoreOf(a3).registered === false && AL.scoreOf(a3).total === 0);
+      AL.verify(AL.codeOf(a1));
+      ok('verify 打完转发勾 → +30 分（40 分）', AL.scoreOf(a1).total === 40 && AL.isVerified(a1) === true);
+      ok('verify 幂等：再核一次还是 40 分', AL.verify(a1).already === true && AL.scoreOf(a1).total === 40);
+      ok('**verify 不发名额**：它只加分（名单由榜算，不是这里发的）',
+        typeof AL.verify(a1).tier === 'undefined');
+      AL.unverify(a1);
+      ok('unverify 撤回转发勾 → 退回 10 分', AL.scoreOf(a1).total === 10 && AL.isVerified(a1) === false);
+      AL.verify(a1);
+    }
+
+    /* ---- 邀请：**被邀请人 verify 之前一分不算** ---- */
     {
       const r2 = AL.register({ address: a2, xHandle: 'bob', sig: signFor(A2), ref: AL.codeOf(a1) }, '2.2.2.2');
       ok('带别人的邀请码登记 → 200', r2.status === 200);
-      ok('被邀请人还没进名单：邀请数 1，有效邀请 0',
-        AL.inviteStats(a1).invites === 1 && AL.inviteStats(a1).validInvites === 0);
-      AL.approve(AL.codeOf(a2));
-      ok('approve 之后有效邀请才变成 1（光登记不算数，否则造一百个地址就能刷保底）',
-        AL.inviteStats(a1).validInvites === 1);
-      ok('approve 收登记码也收地址，重复 approve 是 already',
-        AL.approve(a2).already === true && AL.tierOf(a2) === 'fcfs');
-      ok('没登记过的地址 approve 不了（名额只发给排过队的人）',
-        AL.approve(a3).ok === false);
-    }
-
-    /* ---- 自动升 gtd 与管理员钉死 ---- */
-    {
-      const saveN = process.env.ARCBANG_GTD_INVITES;
-      process.env.ARCBANG_GTD_INVITES = '2';
-      AL.approve(AL.codeOf(a1));
-      ok('攒到 1 个有效邀请、门槛 2：还是 fcfs', AL.tierOf(a1) === 'fcfs');
-      /* 再拉一个人进来并 approve —— 有效邀请到 2，自动升保底层 */
+      ok('被邀请人还没核转发：邀请数 1，有效邀请 0，邀请分 0',
+        AL.inviteCount(a1) === 1 && AL.validInviteCount(a1) === 0 && AL.scoreOf(a1).pts.invite === 0);
+      AL.verify(AL.codeOf(a2));
+      ok('被邀请人核过之后才算有效邀请 → 邀请人 +20 分',
+        AL.validInviteCount(a1) === 1 && AL.scoreOf(a1).pts.invite === 20 && AL.scoreOf(a1).total === 60);
+      /* 上限：把 inviteMax 调成 1，再拉一个人进来也不再加分 */
+      const savedMax = process.env.ARCBANG_PTS_INVITE_MAX;
+      process.env.ARCBANG_PTS_INVITE_MAX = '1';
       AL.register({ address: A3.address, xHandle: 'carol', sig: signFor(A3), ref: AL.codeOf(a1) }, '3.3.3.3');
-      AL.approve(AL.codeOf(a3));
-      ok('有效邀请到达门槛 → 自动升 tier=gtd', AL.tierOf(a1) === 'gtd');
-      ok('counts 按**生效后**的层算', AL.counts().gtd === 1 && AL.counts().total === 3);
-      AL.setTier(a1, 'fcfs');
-      ok('管理员 tier <地址> fcfs 钉死之后不再自动升回去', AL.tierOf(a1) === 'fcfs');
-      AL.setTier(a1, 'gtd');
-      ok('管理员也能直接钉成 gtd', AL.tierOf(a1) === 'gtd');
-      const tbl = AL.rankTable();
-      ok('rank 按有效邀请降序排（邀了 2 个的排第一）', tbl[0].addr === a1 && tbl[0].validInvites === 2);
-      ok('rankOf 给的是 1 起的名次，不在名单里的是 null',
-        AL.rankOf(a1) === 1 && AL.rankOf('0x' + 'ee'.repeat(20)) === null);
-      if (saveN === undefined) delete process.env.ARCBANG_GTD_INVITES; else process.env.ARCBANG_GTD_INVITES = saveN;
+      AL.verify(AL.codeOf(a3));
+      ok('有效邀请到上限就封顶：第 2 个不再加分（原始数照记）',
+        AL.validInviteCount(a1) === 2 && AL.scoreOf(a1).countedInvites === 1
+        && AL.scoreOf(a1).pts.invite === 20);
+      if (savedMax === undefined) delete process.env.ARCBANG_PTS_INVITE_MAX; else process.env.ARCBANG_PTS_INVITE_MAX = savedMax;
+      ok('上限放开之后两个都算（分值表是现读的，不是加载时定的）',
+        AL.scoreOf(a1).countedInvites === 2 && AL.scoreOf(a1).pts.invite === 40);
     }
 
-    /* ---- CSV 导出：每行带登记码与有效邀请数（人工比对 X 评论要用） ---- */
+    /* ---- 分享：签名要对、同一天只记一次、到顶不再涨 ---- */
+    {
+      const day0 = Date.parse('2026-10-01T10:00:00Z');
+      /* 签名必须是**这个地址自己**签的，所以「没登记过」这一条要用一个真签得出名、
+         但没登记过的钱包来试 —— 拿别人的签名来只会先撞 400（对不上地址）。 */
+      const A8 = new Wallet('0x' + '38'.repeat(32));
+      ok('没登记过的地址分享 → 403（登记是入场券）',
+        AL.share({ address: A8.address, sig: A8.signMessageSync(ALX.registerMessage(A8.address)), hash: '0x' + 'ab'.repeat(32) }, '1.1.1.1', day0).status === 403);
+      ok('签名是别人的 → 400',
+        AL.share({ address: a2, sig: signFor(A1), hash: '0x' + 'ab'.repeat(32) }, '1.1.1.1', day0).status === 400);
+      ok('没给区块哈希 → 400',
+        AL.share({ address: a2, sig: signFor(A2), hash: 'nope' }, '1.1.1.1', day0).status === 400);
+      const before = AL.scoreOf(a2).total;
+      const s1 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'ab'.repeat(32) }, '1.1.1.1', day0);
+      ok('第一次分享 → +5 分', s1.status === 200 && AL.scoreOf(a2).total === before + 5);
+      const s2 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cd'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
+      ok('同一天第二次（换个哈希也一样）→ already，不再加分',
+        s2.body.already === true && AL.scoreOf(a2).total === before + 5);
+      AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cd'.repeat(32) }, '1.1.1.1', day0 + 86400e3);
+      ok('第二天再分享 → 又 +5', AL.scoreOf(a2).total === before + 10 && AL.shareDaysOf(a2) === 2);
+      /* 上限：把 shareMaxDays 调成 2，第三天就不再加分也不再写盘 */
+      const savedD = process.env.ARCBANG_PTS_SHARE_MAX_DAYS;
+      process.env.ARCBANG_PTS_SHARE_MAX_DAYS = '2';
+      const s4 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cd'.repeat(32) }, '1.1.1.1', day0 + 2 * 86400e3);
+      ok('到上限之后 → capped，天数不再增长（也不白写盘）',
+        s4.body.capped === true && AL.shareDaysOf(a2) === 2);
+      if (savedD === undefined) delete process.env.ARCBANG_PTS_SHARE_MAX_DAYS; else process.env.ARCBANG_PTS_SHARE_MAX_DAYS = savedD;
+      ok('分享的「天」按 UTC 算（服务器换时区不会多送一天）',
+        ALX.dayOf(Date.parse('2026-10-01T23:59:59Z')) === '2026-10-01'
+        && ALX.dayOf(Date.parse('2026-10-02T00:00:01Z')) === '2026-10-02');
+    }
+
+    /* ---- 排名：积分降序，同分按登记时间升序 ---- */
+    {
+      const rows = AL.board().rows;
+      ok('榜上只有登记过的人', rows.length === 3);
+      ok('积分降序：邀请了两个人的 a1 排第一',
+        rows[0].addr === a1 && AL.rankOf(a1) === 1, JSON.stringify(rows.map((r) => [r.short, r.points])));
+      /* 同分并列：a3 和另一个同分的人，先登记的在前。造一个同分的新人来对比。 */
+      const A4 = new Wallet('0x' + '34'.repeat(32));
+      const a4 = A4.address.toLowerCase();
+      AL.register({ address: A4.address, xHandle: 'dave', sig: A4.signMessageSync(ALX.registerMessage(A4.address)) }, '4.4.4.4');
+      AL.verify(a4);
+      ok('a3 与 a4 同分（都是 登记+转发 = 40）',
+        AL.scoreOf(a3).total === AL.scoreOf(a4).total);
+      ok('同分时先登记的排前面（a3 比 a4 早登记）', AL.rankOf(a3) < AL.rankOf(a4));
+      ok('榜只给地址缩写，不给完整地址',
+        AL.topRows(10).every((r) => r.addr.indexOf('…') > 0 && r.addr.length < 20));
+    }
+
+    /* ---- 名单：按名额从榜上取，预热期实时 ---- */
+    {
+      const save = { g: process.env.ARCBANG_GTD_TOP, f: process.env.ARCBANG_FREE_TOP };
+      process.env.ARCBANG_GTD_TOP = '1';
+      process.env.ARCBANG_FREE_TOP = '2';
+      AL._reload();
+      const rows = AL.board().rows;
+      ok('名次 1 → gtd，名次 2 → fcfs，名次 3 起不在名单',
+        AL.tierOf(rows[0].addr) === 'gtd' && AL.tierOf(rows[1].addr) === 'fcfs'
+        && AL.tierOf(rows[2].addr) === null);
+      ok('counts 按名额算（不是按登记人数）',
+        AL.counts().gtd === 1 && AL.counts().fcfs === 1 && AL.counts().total === 2);
+      /* publicCounts 是对外那一份：定格之前一个数字都不给（不承诺名额）。 */
+      ok('定格之前 publicCounts 全是 null，counts（管理员那一份）照旧有数',
+        AL.publicCounts().gtd === null && AL.publicCounts().total === null
+        && AL.counts().gtd === 1);
+      /* 实时：给第 3 名加分，它应该立刻挤上来 */
+      const third = rows[2].addr;
+      const wasTier = AL.tierOf(third);
+      for (let d = 0; d < 3; d++) {
+        const w = [A1, A2, A3, new Wallet('0x' + '34'.repeat(32))].find((x) => x.address.toLowerCase() === third);
+        if (w) AL.share({ address: third, sig: w.signMessageSync(ALX.registerMessage(w.address)), hash: '0x' + 'ef'.repeat(32) }, '9.9.9.9', Date.parse('2026-11-0' + (d + 1) + 'T00:00:00Z'));
+      }
+      AL._reload();
+      ok('预热期名单是**实时**的：第 3 名攒够分就立刻进名单',
+        wasTier === null && AL.tierOf(third) !== null, 'tier=' + AL.tierOf(third));
+
+      /* ---- 定格：freeze 之后榜再变也不动名单 ---- */
+      const frozenTier = {};
+      for (const r of AL.board().rows) frozenTier[r.addr] = AL.tierOf(r.addr);
+      const fz = AL.freeze();
+      ok('freeze 把当下的榜写进名单并打上 frozen', fz.ok === true && AL.isFrozen() === true && fz.total === 2);
+      /* 定格之后给一个名单外的人猛加分，名单不该变 */
+      const outsider = AL.board().rows.find((r) => AL.tierOf(r.addr) === null);
+      if (outsider) {
+        const w = [A1, A2, A3, new Wallet('0x' + '34'.repeat(32))].find((x) => x.address.toLowerCase() === outsider.addr);
+        if (w) for (let d = 0; d < 4; d++) {
+          AL.share({ address: outsider.addr, sig: w.signMessageSync(ALX.registerMessage(w.address)), hash: '0x' + 'ef'.repeat(32) }, '9.9.9.9', Date.parse('2026-12-0' + (d + 1) + 'T00:00:00Z'));
+        }
+        AL._reload();
+        ok('定格之后榜照旧在动，但名单一动不动（不然有人会铸到一半被挤出去）',
+          AL.tierOf(outsider.addr) === null);
+      } else {
+        ok('定格之后名单一动不动（这次没有名单外的人可试，跳过加分那一步）', true);
+      }
+      ok('定格之后 counts 数的是文件里的那一份', AL.counts().frozen === true && AL.counts().total === 2);
+      /* 人工覆盖：allowlist.json 里的条目永远赢，定格没定格都算 */
+      const stranger = '0x' + 'ee'.repeat(20);
+      AL.setTier(stranger, 'gtd');
+      ok('人工 tier 能把一个连登记都没登记过的地址钉进名单（应急口）', AL.tierOf(stranger) === 'gtd');
+      AL.removeAddresses([stranger]);
+      ok('remove 之后立刻生效', AL.tierOf(stranger) === null);
+      AL.unfreeze();
+      ok('unfreeze 之后榜重新说了算', AL.isFrozen() === false);
+      if (save.g === undefined) delete process.env.ARCBANG_GTD_TOP; else process.env.ARCBANG_GTD_TOP = save.g;
+      if (save.f === undefined) delete process.env.ARCBANG_FREE_TOP; else process.env.ARCBANG_FREE_TOP = save.f;
+      AL._reload();
+    }
+
+    /* ---- 离下一档差几分 / 下一步做什么 ---- */
+    {
+      const save = { g: process.env.ARCBANG_GTD_TOP, f: process.env.ARCBANG_FREE_TOP };
+      process.env.ARCBANG_GTD_TOP = '1';
+      process.env.ARCBANG_FREE_TOP = '1';
+      AL._reload();
+      const rows = AL.board().rows;
+      ok('已经在档里 → 差 0 分', AL.gapTo(rows[0].addr, 1) === 0);
+      const behind = rows[1];
+      const need = AL.gapTo(behind.addr, 1);
+      ok('落后的人要**超过**档位边界那一分（同分时先登记的在前，所以要 +1）',
+        need === rows[0].points - behind.points + 1, 'need=' + need);
+      if (save.g === undefined) delete process.env.ARCBANG_GTD_TOP; else process.env.ARCBANG_GTD_TOP = save.g;
+      if (save.f === undefined) delete process.env.ARCBANG_FREE_TOP; else process.env.ARCBANG_FREE_TOP = save.f;
+      AL._reload();
+      ok('名额还没坐满 → 差 0 分（现在进去不用加分）', AL.gapTo(a1, 387) === 0);
+
+      const A9 = new Wallet('0x' + '39'.repeat(32));
+      ok('没登记的人：下一步是登记', AL.nextStep(A9.address).key === 'register');
+      AL.register({ address: A9.address, xHandle: 'eve', sig: A9.signMessageSync(ALX.registerMessage(A9.address)) }, '5.5.5.5');
+      ok('登记完没核转发：下一步是转发', AL.nextStep(A9.address).key === 'repost');
+      AL.verify(A9.address.toLowerCase());
+      ok('核过转发：下一步是邀请', AL.nextStep(A9.address).key === 'invite');
+    }
+
+    /* ---- CSV 导出：人工比对 X 评论要用 ---- */
     {
       const csv = AL.appliedCsv().trim().split('\n');
-      ok('CSV 表头带 code / ref / valid_invites',
-        /(^|,)code(,|$)/.test(csv[0]) && /(^|,)ref(,|$)/.test(csv[0]) && /(^|,)valid_invites(,|$)/.test(csv[0]));
-      const row = csv.find((l) => l.indexOf(a1) === 0);
-      ok('CSV 行里那个码就是从地址算出来的那个', !!row && row.split(',')[1] === AL.codeOf(a1));
+      ok('CSV 表头带 rank / points / verified / valid_invites / share_days',
+        /(^|,)rank(,|$)/.test(csv[0]) && /(^|,)points(,|$)/.test(csv[0])
+        && /(^|,)verified(,|$)/.test(csv[0]) && /(^|,)valid_invites(,|$)/.test(csv[0])
+        && /(^|,)share_days(,|$)/.test(csv[0]), csv[0]);
+      ok('CSV 按积分从高到低排（审核时一眼看得出谁在前面）',
+        Number(csv[1].split(',')[4]) >= Number(csv[2].split(',')[4]));
     }
 
     /* ---- 闸：四个阶段 × 在不在名单 × 链上还给不给免费 ---- */
     {
       const save = {};
-      for (const k of ['ARCBANG_PHASE', 'ARCBANG_GTD_OPEN_AT', 'ARCBANG_FCFS_OPEN_AT', 'ARCBANG_PUBLIC_OPEN_AT']) save[k] = process.env[k];
+      for (const k of ['ARCBANG_PHASE', 'ARCBANG_GTD_OPEN_AT', 'ARCBANG_FCFS_OPEN_AT', 'ARCBANG_PUBLIC_OPEN_AT',
+        'ARCBANG_GTD_TOP', 'ARCBANG_FREE_TOP']) save[k] = process.env[k];
       for (const k in save) delete process.env[k];
+      /* 名额调成 1/2，让第一名是 gtd、第二名是 fcfs、其余不在名单 —— 三种身份都能测到 */
+      process.env.ARCBANG_GTD_TOP = '1';
+      process.env.ARCBANG_FREE_TOP = '2';
+      AL._reload();
+      const rows = AL.board().rows;
+      const gtdAddr = rows[0].addr, fcfsAddr = rows[1].addr;
+      const stranger = '0x' + 'ee'.repeat(20);
       const yes = async () => true;         // 链上：还能走免费
       const no = async () => false;         // 链上：额度用完 / 这个地址用过了
       const down = async () => null;        // 链上：这一刻读不到
-      const stranger = '0x' + 'ee'.repeat(20);
-      // a1 = gtd（上面钉死过），a2 = fcfs，stranger 不在名单
 
       process.env.ARCBANG_PHASE = 'warmup';
-      const gw = await AL.gate(a1, yes);
-      ok('warmup：连保底层都不签，403 + WARMUP',
+      const gw = await AL.gate(gtdAddr, yes);
+      ok('warmup：连榜首都不签，403 + WARMUP',
         gw.ok === false && gw.status === 403 && gw.code === 'WARMUP' && /还没开/.test(gw.error));
-      /* denyReason 是同一套判断里**不碰链**的那一半：/api/bang 用它在取块算卡之前就挡人。
-         预热期每个点击都白算一张卡的话，预热本身就成了免费的算力消耗接口。 */
+      /* denyReason 是同一套判断里**不碰链**的那一半：/api/bang 用它在取块算卡之前就挡人。 */
       let probed = 0;
-      await AL.gate(a1, async () => { probed++; return true; });
+      await AL.gate(gtdAddr, async () => { probed++; return true; });
       ok('warmup 段不打一次 RPC（denyReason 先挡住）', probed === 0);
-      ok('denyReason 与 gate 的拒绝口径一致，且 public 段名单外的人它不拦',
-        AL.denyReason(a1).code === 'WARMUP'
-        && (process.env.ARCBANG_PHASE = 'public', AL.denyReason(stranger) === null)
-        && (process.env.ARCBANG_PHASE = 'warmup', true));
 
       process.env.ARCBANG_PHASE = 'gtd';
-      ok('gtd：保底层签 free=true', (await AL.gate(a1, yes)).free === true);
-      const g2 = await AL.gate(a2, yes);
-      ok('gtd：先到先得层还没轮到 → 403 NOT_GTD', g2.ok === false && g2.code === 'NOT_GTD');
+      ok('gtd：榜前 1 名签 free=true', (await AL.gate(gtdAddr, yes)).free === true);
+      const g2 = await AL.gate(fcfsAddr, yes);
+      ok('gtd：只在免费档的人还没轮到 → 403 NOT_GTD', g2.ok === false && g2.code === 'NOT_GTD');
       const g3 = await AL.gate(stranger, yes);
-      ok('gtd：名单外 → 403 NOT_GTD，话里给出后面两段的时间', g3.ok === false && g3.code === 'NOT_GTD');
+      ok('gtd：名单外 → 403 NOT_GTD', g3.ok === false && g3.code === 'NOT_GTD');
 
       process.env.ARCBANG_PHASE = 'fcfs';
-      ok('fcfs：两层都签 free=true',
-        (await AL.gate(a1, yes)).free === true && (await AL.gate(a2, yes)).free === true);
+      ok('fcfs：两档都签 free=true',
+        (await AL.gate(gtdAddr, yes)).free === true && (await AL.gate(fcfsAddr, yes)).free === true);
       const g4 = await AL.gate(stranger, yes);
       ok('fcfs：名单外 → 403 NOT_LISTED', g4.ok === false && g4.code === 'NOT_LISTED');
-      const g5 = await AL.gate(a2, no);
+      const g5 = await AL.gate(fcfsAddr, no);
       ok('fcfs：链上免费额度用完 → 仍然签，但签的是 free=false（名单的意义是能铸，不是白送）',
         g5.ok === true && g5.free === false && g5.freeGone === true);
-      const g6 = await AL.gate(a2, down);
+      const g6 = await AL.gate(fcfsAddr, down);
       ok('fcfs：链上读不到 → **关闸** 503，不是放行（上一次就是趁 RPC 抖动被薅的）',
         g6.ok === false && g6.status === 503 && g6.code === 'CHAIN_DOWN');
 
@@ -2813,39 +2978,59 @@ function call(method, url, body, headers) {
       ok('public：名单外的人也能签，但一律 free=false（387 枚是留给名单的）',
         g7.ok === true && g7.free === false);
       ok('public：名单里还没用掉免费额度的仍然 free=true',
-        (await AL.gate(a2, yes)).free === true);
+        (await AL.gate(fcfsAddr, yes)).free === true);
       ok('public：名单里但额度用完 → free=false，照常付费铸',
-        (await AL.gate(a2, no)).free === false);
+        (await AL.gate(fcfsAddr, no)).free === false);
       let asked = 0;
       await AL.gate(stranger, async () => { asked++; return true; });
       ok('public 段名单外的人不去打 RPC（付费不需要核对免费额度）', asked === 0);
 
       for (const k in save) { if (save[k] === undefined) delete process.env[k]; else process.env[k] = save[k]; }
+      AL._reload();
     }
 
-    /* ---- status：只回问的那个地址自己的东西 ---- */
+    /* ---- status / board：公开的是规则，私密的只对本人 ---- */
     {
       const st = await AL.status(a1);
-      ok('status 回自己的层 / 码 / 邀请数 / 排位',
-        st.tier === 'gtd' && st.code === AL.codeOf(a1) && st.validInvites === 2 && st.rank === 1);
+      ok('status 回自己的积分、明细、名次、登记码',
+        st.registered === true && st.points === AL.scoreOf(a1).total
+        && st.breakdown.register === 10 && st.rank === AL.rankOf(a1) && st.code === AL.codeOf(a1));
+      ok('status 带上分值表（页面上一个分值都不写死）', st.pts.register === 10);
+      /* **不承诺名额**（2026-09-18 用户拍板）：定格之前人数与名额上限一律 null，
+         不然 ARCBANG_GTD_TOP 会从「前 100 名是保底」这句话里被反推出来。 */
+      ok('定格之前 status 的人数与名额全是 null，只给合约那个 387 硬上限',
+        st.counts.frozen === false && st.counts.gtd === null && st.counts.total === null
+        && st.counts.gtdTop === null && st.counts.freeTop === null && st.cap === 387,
+        JSON.stringify(st.counts));
       ok('status 带上要签的那句话（客户端原样签，不自己拼）',
         typeof st.message === 'string' && st.message.indexOf(a1) > 0 && st.message.indexOf('domain:') > 0);
       const anon = await AL.status(null);
-      ok('不带地址时不泄露任何个人字段，只给阶段与人数',
-        anon.tier === null && anon.code === null && anon.rank === null
-        && typeof anon.counts.total === 'number');
-      ok('counts 只有人数，没有名单本身（谁是保底不公开）',
-        Object.keys(anon.counts).sort().join(',') === 'fcfs,gtd,total');
+      ok('不带地址时不泄露任何个人字段，只给阶段、名额与在榜人数',
+        anon.code === null && anon.rank === null && anon.points === 0
+        && anon.registered === false && typeof anon.boardSize === 'number');
+      const bv = AL.boardView(3);
+      ok('board 只给缩写、分数、名次、名额与「核没核」，没有完整地址',
+        bv.rows.length === 3 && bv.rows[0].rank === 1
+        && Object.keys(bv.rows[0]).sort().join(',') === 'addr,points,rank,tier,verified');
+      /* 定格之前 tier 也不出门：某一行是 gtd 还是 fcfs 等于把名额分界线画在榜上。 */
+      ok('定格之前榜上不带 tier（画出分界线就等于公布名额）',
+        AL.isFrozen() === false && bv.rows.every((r) => r.tier === null)
+        && bv.gtdTop === null && bv.freeTop === null);
+      /* **榜只公布前 100 名**：要 1000 也只给 100（上限在服务端夹死，前端改不了）。 */
+      ok('board 的 top 参数被夹在 100 以内', AL.topRows(1000).length <= 100
+        && ALX.BOARD_PUBLIC_MAX === 100 && AL.boardView(1000).publicMax === 100);
     }
 
     /* ---- 命令行工具改完文件，跑着的服务端下一次请求就看得到（按 mtime 失效） ---- */
     {
       const AL2 = ALX.create({ storeDir: adir });
       AL2.addAddresses(['0x' + 'ab'.repeat(20)], 'gtd', '手工');
-      ok('另一个实例写的名单，这个实例立刻读得到（审核完不必重启 API）',
+      ok('另一个实例写的名单，这个实例立刻读得到（审完不必重启 API）',
         AL.tierOf('0x' + 'ab'.repeat(20)) === 'gtd');
       AL2.removeAddresses(['0x' + 'ab'.repeat(20)]);
       ok('remove 之后也立刻生效', AL.tierOf('0x' + 'ab'.repeat(20)) === null);
+      const AL3 = ALX.create({ storeDir: adir });
+      ok('重启之后积分从盘上读回来，一分不差', AL3.scoreOf(a1).total === AL.scoreOf(a1).total);
     }
 
     /* ---- 前端那一侧：arc 站的 calldata 必须带 bool free，且 sig 偏移是 256 ---- */
@@ -2899,6 +3084,14 @@ function call(method, url, body, headers) {
       ok('放号还没轮到时一步都不走：不弹钱包、不去要签名',
         ui.indexOf('var blockedHere = phaseBlock();') >= 0
         && ui.indexOf('var blockedHere = phaseBlock();') < ui.indexOf('if (!C.hasWallet())'));
+      /* 分享那一分在**生成分享链接**的那一刻记，而且一次钱包都不弹（复用登记签名） */
+      ok('广播时给分享记一次分，用的是存下来的登记签名，不弹钱包',
+        ui.indexOf('alShareTick(my, o.hash)') >= 0
+        && ui.indexOf("var AL_SIG_KEY = 'arcbang.al.sig'") >= 0
+        && ui.indexOf('personal_sign') < 0);
+      /* 两个文件里的 localStorage 键名必须逐字相同 —— 不同就永远记不上分，且一个错都不报 */
+      ok('预热页与模拟器页的会话签名键名一致',
+        readWeb2('warmup-arc.html').indexOf("var AL_SIG_KEY = 'arcbang.al.sig'") >= 0);
       ok('IP 闸已经从服务端删干净（免费与否只由名单决定）',
         fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8').indexOf('FREE_PER_IP_DAY') < 0);
     }
