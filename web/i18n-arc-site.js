@@ -274,6 +274,15 @@
     '邀请码（可选，别人给你的 6 位码）': 'Invite code (optional — the 6 characters someone gave you)',
     '6 位大写字母数字': '6 characters, A–Z and 0–9',
     '签名并登记': 'Sign and register',
+    /* 登记之后不能改（2026-09-18 用户拍板）：表单换成只读的「已登记」卡片。 */
+    '这两项提交之后就不能改了，先核对一遍。': 'Neither of these can be changed once submitted — check them over first.',
+    '已登记': 'Signed up',
+    '登记码': 'Sign-up code',
+    'X 用户名': 'X handle',
+    '登记时间': 'Signed up at',
+    '登记内容不能修改。填错了 X 用户名就来信说一声，我们人工改。':
+      'What you submitted cannot be edited. If the X handle is wrong, write to us and we will fix it by hand.',
+    '这个地址已经登记过了，登记内容不能修改。': 'This address is already signed up, and what it submitted cannot be edited.',
     '你的登记码（同时也是邀请码）': 'Your sign-up code (it doubles as your invite code)',
     '去转发置顶推并回复登记码': 'Repost the pinned post and reply with your code',
     '去引爆一个并广播': 'Go detonate one and broadcast it',

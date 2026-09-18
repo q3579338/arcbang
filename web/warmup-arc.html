@@ -330,17 +330,35 @@ button,input{font-family:inherit}
         <span class="mono" id="whoAddr"></span>
       </div>
 
-      <label class="ab-field"><span>你的 X 用户名（不带 @）</span>
-        <input class="ab-in" id="inX" type="text" inputmode="text" autocomplete="off"
-               spellcheck="false" maxlength="15" placeholder="例如 arcbang_xyz"></label>
+      <!-- 表单整块：**已登记的地址看不到它**（登记之后不能改，摆一个填了也没用的
+           输入框只会让人以为能改）。连钱包后由 renderForm() 按 status.registered 切换。 -->
+      <div id="joinForm">
+        <label class="ab-field"><span>你的 X 用户名（不带 @）</span>
+          <input class="ab-in" id="inX" type="text" inputmode="text" autocomplete="off"
+                 spellcheck="false" maxlength="15" placeholder="例如 arcbang_xyz"></label>
 
-      <label class="ab-field" id="refWrap"><span>邀请码（可选，别人给你的 6 位码）</span>
-        <input class="ab-in mono" id="inRef" type="text" autocomplete="off" spellcheck="false"
-               maxlength="6" placeholder="6 位大写字母数字"></label>
+        <label class="ab-field" id="refWrap"><span>邀请码（可选，别人给你的 6 位码）</span>
+          <input class="ab-in mono" id="inRef" type="text" autocomplete="off" spellcheck="false"
+                 maxlength="6" placeholder="6 位大写字母数字"></label>
 
-      <div class="ab-row">
-        <button class="ab-btn" type="button" id="btnJoin" disabled>签名并登记</button>
+        <p class="ab-qc-d" style="margin-top:14px">这两项提交之后就不能改了，先核对一遍。</p>
+
+        <div class="ab-row">
+          <button class="ab-btn" type="button" id="btnJoin" disabled>签名并登记</button>
+        </div>
       </div>
+
+      <!-- 已登记：只读地摆出当时填的那一份 -->
+      <div id="joinDone" hidden>
+        <div class="ab-qc-hd"><h3 class="ab-qc-t">已登记</h3><span class="ab-st ok">已完成</span></div>
+        <table class="ab-tbl">
+          <tr><th>登记码</th><td class="mono" id="doneCode">—</td></tr>
+          <tr><th>X 用户名</th><td class="mono" id="doneX">—</td></tr>
+          <tr><th>登记时间</th><td id="doneAt">—</td></tr>
+        </table>
+        <p class="ab-qc-d" style="margin-top:14px">登记内容不能修改。填错了 X 用户名就来信说一声，我们人工改。</p>
+      </div>
+
       <p class="ab-msg" id="joinMsg"></p>
 
       <!-- 登记之后才出现：积分明细、登记码、邀请卡 -->
@@ -585,6 +603,7 @@ button,input{font-family:inherit}
     if (intent) { bp.hidden = false; bp.href = intent; } else { bp.hidden = true; }
 
     renderTasks(st, intent);
+    renderForm(st);
     renderMine(st);
   }
 
@@ -641,6 +660,25 @@ button,input{font-family:inherit}
       if (p.act.blank) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       else { a.removeAttribute('target'); a.removeAttribute('rel'); }
     });
+  }
+
+  /**
+   * 登记表单 vs.「已登记」卡片。
+   * **登记之后就不能改了**（服务端第二次一律 409），所以已登记的地址根本不该看见
+   * 那两个输入框 —— 摆一个填了也没用的表单，只会让人以为能改。
+   * 刷新页面也保持这个状态：判据是 status.registered，不是本地存的什么标记。
+   */
+  function renderForm(st) {
+    var done = !!(ADDR && st && st.registered);
+    $('joinForm').hidden = done;
+    $('joinDone').hidden = !done;
+    if (!done) return;
+    $('doneCode').textContent = st.code || '——';
+    $('doneX').textContent = st.x ? '@' + st.x : '—';
+    var at = st.registeredAt ? new Date(st.registeredAt) : null;
+    var txt = '—';
+    if (at && !isNaN(at.getTime())) { try { txt = at.toLocaleString(); } catch (e) { txt = st.registeredAt; } }
+    $('doneAt').textContent = txt;
   }
 
   /** 我的那一块：总分、名次、离两档各差几分、四项明细、邀请卡。 */
@@ -804,10 +842,15 @@ button,input{font-family:inherit}
         body: JSON.stringify({ address: ADDR, xHandle: x, sig: sig, ref: ref || undefined })
       });
     }).then(function (r) {
-      msg(r.already ? T('你已经登记过了，下面是你的分数和登记码。')
-                    : T('登记完成，先拿到登记分。接着去转发置顶推 —— 那一项分最多。'), 'ok');
+      msg(T('登记完成，先拿到登记分。接着去转发置顶推 —— 那一项分最多。'), 'ok');
       return load();
     }).catch(function (e) {
+      /* 409 = 这个地址早就登记过了（登记之后不能改）。这不是错误，是状态：
+         把话说清楚，然后 load() 会把表单换成「已登记」卡片。 */
+      if (e && e.status === 409) {
+        msg(T('这个地址已经登记过了，登记内容不能修改。'), 'ok');
+        return load();
+      }
       msg((e && e.code === 4001) ? T('你在钱包里取消了') : ((e && e.message) || String(e)), 'err');
     }).then(function () { btn.disabled = !ADDR; });
   });

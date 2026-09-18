@@ -14,6 +14,7 @@
  *   node server/tools/allowlist.js verify <登记码|地址…>        ← 打转发勾（+分）
  *   node server/tools/allowlist.js unverify <登记码|地址…>      ← 核错了撤回
  *   node server/tools/allowlist.js who <登记码|地址>            ← 看某人的积分明细
+ *   node server/tools/allowlist.js setx <登记码|地址> <新X名>   ← **唯一**能改登记内容的路
  *   node server/tools/allowlist.js freeze                       ← **进 gtd 段前必跑**
  *   node server/tools/allowlist.js unfreeze                     ← 定格错了要重来
  *   node server/tools/allowlist.js add <地址…> [--tier=gtd]     ← 人工覆盖（永远赢）
@@ -154,6 +155,15 @@ function main() {
       const a = ALX._normAddr(args[0]) || AL.addrOfCode(args[0]);
       if (!a) die('认不出这个登记码或地址');
       showOne(a);
+      break;
+    }
+    /* 登记之后用户自己改不了（接口第二次一律 409）。人工修正只有这一条路：
+       它写进状态文件的 xfix，**不动登记流水** —— 流水只追加是那条规矩的根据。 */
+    case 'setx': {
+      if (args.length < 2) die('用法：setx <登记码|地址> <新X名>');
+      const r = AL.setX(args[0], args[1]);
+      if (!r.ok) die(r.error);
+      console.log('✓ ' + r.code + ' ' + r.addr + '：@' + (r.was || '?') + ' → @' + r.now);
       break;
     }
     case 'freeze': {

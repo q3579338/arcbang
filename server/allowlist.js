@@ -74,9 +74,25 @@
  *   登记码兼作邀请码：登记时带 ref=<别人的码>。自己邀自己直接拒。
  *
  * ---------------------------------------------------------------------------
+ * **登记之后就不能改了**（2026-09-18 用户拍板）
+ *
+ *   同一个地址第二次调 /api/allowlist/register 一律 **409**，连带把原记录
+ *   （登记码 / X 名 / 登记时间）回给页面，让它直接渲染「已登记」卡片。
+ *   X 用户名与邀请码首次写下就定死 —— 接口上没有任何一条路能改它们。
+ *
+ *   为什么是 409 而不是「静默当成功」：改不了这件事必须**看得见**。
+ *   静默成功的话，改了 X 名的人会一直以为改上了，直到审核对不上评论才发现。
+ *
+ *   真要修只有一条路：管理员命令行 `allowlist.js setx <地址> <新X名>`，
+ *   它写进状态文件的 xfix，**不动流水**（流水只追加，这条规矩就是靠它保证的）。
+ *
+ * ---------------------------------------------------------------------------
  * 三份盘上的文件（都在 .store/）
- *   allowlist-applied.jsonl 登记流水，一行一条 { addr, x, ref, inviter, ip, at }。追加式。
- *   allowlist-state.json    会变的那部分：{ verified: {addr: ISO}, shares: {addr: [YYYY-MM-DD]} }
+ *   allowlist-applied.jsonl 登记流水，一行一条 { addr, x, ref, inviter, ip, at }。
+ *                           **只追加，永不改写** —— 「登记之后不能改」的根据就在这里。
+ *   allowlist-state.json    会变的那部分：
+ *                           { verified: {addr: ISO}, shares: {addr: [YYYY-MM-DD]},
+ *                             xfix: {addr: 新X名} }
  *   allowlist.json          **定格后**的名单与人工覆盖：
  *                           { updatedAt, frozen, frozenAt, addresses: [{addr, tier, src, at}] }
  *                           也认老式的纯地址数组（一律当 tier='fcfs'）。
@@ -373,9 +389,11 @@ function create(opts) {
 
   /* ---------------------------------------------------------------- 会变的那一半
      verified：转发勾（管理员人工核过 X 评论）。shares：每个地址记过分的那些天。
-     单独一个文件，不跟追加式流水混：这两样都会被改写，而流水必须只追加。 */
-  let stateCache = null;             // { mtimeMs, size, verified:Map, shares:Map }
-  const EMPTY_STATE = () => ({ mtimeMs: -1, size: -1, verified: new Map(), shares: new Map() });
+     xfix：管理员人工修正过的 X 用户名（**接口改不了，只有命令行 setx 能写**）。
+     单独一个文件，不跟追加式流水混：这三样都会被改写，而流水必须只追加 ——
+     「登记之后就不能改」这条规矩正是靠流水只追加来保证的。 */
+  let stateCache = null;             // { mtimeMs, size, verified:Map, shares:Map, xfix:Map }
+  const EMPTY_STATE = () => ({ mtimeMs: -1, size: -1, verified: new Map(), shares: new Map(), xfix: new Map() });
   function state() {
     let st = null;
     try { st = fs.statSync(stateFile); } catch (e) { /* 还没有 */ }
@@ -394,6 +412,11 @@ function create(opts) {
         const days = Array.isArray(j.shares[k]) ? j.shares[k].filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)) : [];
         if (days.length) next.shares.set(a, Array.from(new Set(days)).sort());
       }
+      for (const k in (j && j.xfix) || {}) {
+        const a = normAddr(k);
+        const x = normX(j.xfix[k]);
+        if (a && x) next.xfix.set(a, x);
+      }
     } catch (e) { console.error('[allowlist] 状态文件读不出来：' + (e && e.message)); }
     next.mtimeMs = st.mtimeMs; next.size = st.size;
     stateCache = next;
@@ -401,16 +424,47 @@ function create(opts) {
     return stateCache;
   }
   function saveState(s) {
-    const verified = {}, shares = {};
+    const verified = {}, shares = {}, xfix = {};
     for (const [k, v] of s.verified) verified[k] = v;
     for (const [k, v] of s.shares) shares[k] = v;
+    for (const [k, v] of (s.xfix || new Map())) xfix[k] = v;
     fs.mkdirSync(path.dirname(stateFile), { recursive: true });
-    writeAtomic(stateFile, JSON.stringify({ updatedAt: new Date().toISOString(), verified, shares }, null, 2) + '\n');
+    writeAtomic(stateFile, JSON.stringify({ updatedAt: new Date().toISOString(), verified, shares, xfix }, null, 2) + '\n');
     stateCache = null;              // 强制下次重读（mtime 立刻就变了，但别赌这个）
     boardCache = null;
   }
+  /** 改状态的通用入口：**必须整份拷出来再改**，直接动 state() 返回的那份会被 mtime 缓存吞掉。 */
+  function mutState(fn) {
+    const s = state();
+    const next = { verified: new Map(s.verified), shares: new Map(s.shares), xfix: new Map(s.xfix) };
+    fn(next);
+    saveState(next);
+  }
   function isVerified(addr) { const a = normAddr(addr); return !!a && state().verified.has(a); }
   function shareDaysOf(addr) { const a = normAddr(addr); const d = a ? state().shares.get(a) : null; return d ? d.length : 0; }
+  /** 这个地址算数的 X 用户名：管理员修正过就用修正的，否则用登记时那一份。 */
+  function xOf(addr) {
+    const a = normAddr(addr);
+    if (!a) return null;
+    const fix = state().xfix.get(a);
+    if (fix) return fix;
+    const rec = loadApplied().get(a);
+    return rec ? rec.x : null;
+  }
+  /**
+   * 管理员人工改 X 用户名。**只有命令行走得到这里** —— 接口上没有任何一条路能改登记内容。
+   * 写进状态文件而不是改流水：流水是只追加的，「登记之后不能改」靠的就是这一点。
+   */
+  function setX(token, xRaw) {
+    const a = normAddr(token) || addrOfCode(token);
+    if (!a) return { ok: false, error: '认不出这个登记码或地址' };
+    if (!loadApplied().has(a)) return { ok: false, error: '这个地址没有登记过：' + a };
+    const x = normX(xRaw);
+    if (!x) return { ok: false, error: 'X 用户名不对（1–15 位字母、数字或下划线）' };
+    const was = xOf(a);
+    mutState((n) => { n.xfix.set(a, x); });
+    return { ok: true, addr: a, code: codeOf(a), was, now: x };
+  }
 
   /* ---------------------------------------------------------------- 积分与榜
      榜是全量重算（O(登记数)），预热页会被很多人同时刷，所以缓存 30 秒；
@@ -693,9 +747,7 @@ function create(opts) {
     if (!ap) return { ok: false, error: '这个地址没有登记过：' + a };
     const s = state();
     if (s.verified.has(a)) return { ok: true, already: true, addr: a, code: ap.code, x: ap.x };
-    const next = { verified: new Map(s.verified), shares: new Map(s.shares) };
-    next.verified.set(a, new Date().toISOString());
-    saveState(next);
+    mutState((n) => { n.verified.set(a, new Date().toISOString()); });
     return { ok: true, addr: a, code: ap.code, x: ap.x, points: scoreOf(a).total };
   }
   /** 撤销转发勾（核错了）。 */
@@ -704,9 +756,7 @@ function create(opts) {
     if (!a) return { ok: false, error: '认不出这个登记码或地址' };
     const s = state();
     if (!s.verified.has(a)) return { ok: true, already: true, addr: a };
-    const next = { verified: new Map(s.verified), shares: new Map(s.shares) };
-    next.verified.delete(a);
-    saveState(next);
+    mutState((n) => { n.verified.delete(a); });
     return { ok: true, addr: a };
   }
 
@@ -742,9 +792,24 @@ function create(opts) {
       return { status: 400, body: { error: '签名是另一个地址签的，和你填的地址对不上' } };
     }
 
+    /* **登记之后就不能改了**（2026-09-18 用户拍板）：第二次提交一律 409，
+       X 用户名与邀请码首次写下就定死。
+       为什么是 409 而不是「静默当成功」：改不了这件事必须**看得见** ——
+       静默成功的话，改了 X 名的人会一直以为改上了，直到审核时对不上评论才发现。
+       回原记录（码 / X 名 / 登记时间），页面拿它直接渲染「已登记」卡片。
+       真要修的只有一条路：管理员命令行 `allowlist.js setx <地址> <新X名>`。 */
     const seen = loadApplied();
     const old = seen.get(addr);
-    if (old) return { status: 200, body: { ok: true, already: true, code: old.code, points: scoreOf(addr).total } };
+    if (old) {
+      return {
+        status: 409,
+        body: {
+          error: '这个地址已经登记过了，登记内容不能修改。要改 X 用户名请联系我们。',
+          already: true, code: old.code, x: xOf(addr), at: old.at,
+          ref: old.ref || null, points: scoreOf(addr).total
+        }
+      };
+    }
 
     if (typeof take === 'function') {
       const r = take('alreg:' + (ip || '?'), REGISTER_PER_IP_DAY, DAY);
@@ -807,9 +872,7 @@ function create(opts) {
     }
     days.push(day);
     days.sort();
-    const next = { verified: new Map(s.verified), shares: new Map(s.shares) };
-    next.shares.set(addr, days);
-    try { saveState(next); }
+    try { mutState((n) => { n.shares.set(addr, days); }); }
     catch (e) {
       console.error('[allowlist] 分享记不下去：' + (e && e.message));
       return { status: 500, body: { error: '暂时存不下，稍后再试' } };
@@ -822,6 +885,7 @@ function create(opts) {
     return Array.from(loadApplied().values()).map((r) => {
       const s = scoreOf(r.addr);
       return Object.assign({}, r, {
+        x: xOf(r.addr),                       // 管理员修正过就用修正的
         verified: s.verified,
         invites: s.invites,
         validInvites: s.validInvites,
@@ -874,6 +938,10 @@ function create(opts) {
       /* ---- 本人那一份 ---- */
       registered: s.registered,
       verified: s.verified,
+      /* 登记内容（登记之后不可改）：页面刷新后靠这两个字段直接渲染「已登记」卡片，
+         不必再让用户看见一个填了也没用的表单。 */
+      x: addr ? xOf(addr) : null,
+      registeredAt: (addr && appliedOf(addr) && appliedOf(addr).at) || null,
       code: addr ? codeOf(addr) : null,            // 登记码 = 邀请码，从地址现算
       points: s.total,
       breakdown: s.pts,                            // {register, repost, invite, share}
@@ -987,7 +1055,7 @@ function create(opts) {
     tierOf, counts, publicCounts, isFrozen, freeze, unfreeze,
     addAddresses, removeAddresses, setTier, listFile, appliedFile, stateFile,
     // 登记 / 核验 / 分享
-    register, share, verify, unverify, registerMessage, codeOf, addrOfCode, appliedOf,
+    register, share, verify, unverify, setX, xOf, registerMessage, codeOf, addrOfCode, appliedOf,
     appliedCount, appliedRows, appliedCsv, domain,
     // 接口
     status, gate, denyReason,

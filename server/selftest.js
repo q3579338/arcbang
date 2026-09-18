@@ -2735,9 +2735,30 @@ function call(method, url, body, headers) {
       const r1 = AL.register({ address: A1.address, xHandle: '@alice', sig: signFor(A1) }, '1.1.1.1');
       ok('合法登记 → 200，回登记码与当前积分', r1.status === 200 && r1.body.ok === true
         && r1.body.code === AL.codeOf(a1) && r1.body.points === 10, JSON.stringify(r1.body));
-      ok('重复登记 → already:true，不重复写',
-        AL.register({ address: a1, xHandle: 'alice', sig: signFor(A1) }, '1.1.1.1').body.already === true
-        && fs.readFileSync(AL.appliedFile, 'utf8').trim().split('\n').length === 1);
+      /* ---- **登记之后就不能改了**（2026-09-18 用户拍板）---- */
+      const dup = AL.register({ address: a1, xHandle: 'alice', sig: signFor(A1) }, '1.1.1.1');
+      ok('第二次登记 → 409，并把原记录（码 / X 名 / 登记时间）回给页面',
+        dup.status === 409 && dup.body.already === true && dup.body.code === AL.codeOf(a1)
+        && dup.body.x === 'alice' && typeof dup.body.at === 'string', JSON.stringify(dup.body));
+      ok('第二次登记不往流水里多写一行（流水只追加，这条规矩就是靠它保证的）',
+        fs.readFileSync(AL.appliedFile, 'utf8').trim().split('\n').length === 1);
+      /* 换个 X 名、换个邀请码再提交一次：照样 409，而且一个字都没改进去。 */
+      const beforeLine = fs.readFileSync(AL.appliedFile, 'utf8');
+      const reX = AL.register({ address: a1, xHandle: 'alice_v2', sig: signFor(A1), ref: 'ABC123' }, '1.1.1.1');
+      ok('想改 X 名 / 邀请码 → 409，内容一个字都没变',
+        reX.status === 409 && AL.appliedOf(a1).x === 'alice' && AL.xOf(a1) === 'alice'
+        && fs.readFileSync(AL.appliedFile, 'utf8') === beforeLine);
+      /* 唯一能改的路：管理员命令行 setx。它写状态文件的 xfix，**不动流水**。 */
+      const fix = AL.setX(AL.codeOf(a1), '@alice_fixed');
+      ok('管理员 setx 能人工修正 X 名，且流水原封不动',
+        fix.ok === true && fix.was === 'alice' && fix.now === 'alice_fixed'
+        && AL.xOf(a1) === 'alice_fixed' && AL.appliedOf(a1).x === 'alice'
+        && fs.readFileSync(AL.appliedFile, 'utf8') === beforeLine);
+      ok('修正后的 X 名进 CSV 与导出（审核看的是它）',
+        AL.appliedRows().find((r) => r.addr === a1).x === 'alice_fixed');
+      ok('setx 认不出的地址 / 不合法的 X 名一律拒',
+        AL.setX('0x' + 'ee'.repeat(20), 'bob').ok === false && AL.setX(a1, 'a b!').ok === false);
+      AL.setX(a1, 'alice');                 // 改回去，别影响后面的断言
       ok('用自己的码邀请自己 → 400',
         AL.register({ address: a2, xHandle: 'bob', sig: signFor(A2), ref: AL.codeOf(a2) }, '1.1.1.1').status === 400);
       ok('落盘只留 IP 前缀，不留完整地址',
