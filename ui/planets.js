@@ -2297,10 +2297,10 @@
     var tho = vp.tholin || 0, thoC = vp.tholinColor || [0.74, 0.42, 0.34];
     /* 条数：太阳系四颗用各自的定值（样子要认得出），其余由行星种子给 7–17 条。上限 20 —— 着色器的带表就是 20 个槽。
        明暗对比留一个下限：第 III–V 类本来就「几乎看不出带纹」，但完全没有结构就成了一个磨砂球，
-       所以只把亮度差托到 0.10，色相仍按分类走（偏离真实反照率的程度写在 HUD 的云顶说明里）。 */
+       所以只把亮度差托到 0.22，色相仍按分类走（另有一道按反照率的显示曝光补偿，见 materialUniforms 的 gexp）（偏离真实反照率的程度写在 HUD 的云顶说明里）。 */
     var nFix = { jupiter: 16, saturn: 14, uranus: 8, neptune: 9 }[style];
     var nB = clamp(Math.round(nFix || ((vp.style && vp.style.bandN) || 11)), 4, 20);
-    if (con != null) con = Math.max(con, 0.10);
+    if (con != null) con = Math.max(con, 0.22);
     var ws = [], wsum = 0, bi;
     for (bi = 0; bi < nB; bi++) { var wv = 0.62 + rnd() * 0.80; ws.push(wv); wsum += wv; }
     for (bi = 0; bi < nB; bi++) { var w = ws[bi] / wsum, c; var lightBand = bi % 2 === 0;
@@ -2810,11 +2810,17 @@
     '  vec3 st=vec3(d0.x, d0.y*3.6, d0.z);',
     '  float fine = td4(st*0.85+uDetOff).b*0.62 + td4(st*2.1+uDetOff+0.33).a*0.38;',
     '  col *= 1.0 + fine*0.075*(0.55+0.65*uDetail);',
-    '  if(uDetail>0.02){ vec3 st2=vec3(d0.x, d0.y*4.4, d0.z);',
+    '  if(uDetail>0.02){',
+    /* 贴近了再加一级更细的旋涡扭曲 —— 光把噪声压扁只会得到一层「毛」，
+       细纹自己也得被卷过才有丝缕和小涡。 */
+    '    vec3 f4=td4(d0*1.35+uDetOff+0.63).xyz;',
+    '    vec3 d1=normalize(d0+cross(n,f4)*0.0042*turb*(0.30+edge)*uDetail);',
+    '    vec3 st2=vec3(d1.x, d1.y*4.4, d1.z);',
+    '    col *= 1.0 + td4(st2*7.2+uDetOff+0.61).a*0.075*uDetail;',
     /* 贴脸时才淡入的两档：带内的细丝与小尺度对流胞。频率取到「一个纹素约三个像素」，
        再细就开始起噪点了（那正是第一版糊+闪的原因）。 */
     '    col *= 1.0 + (td4(st2*5.0+uDetOff+0.55).r*0.58 + td4(st2*11.5+uDetOff+0.81).g*0.42)*0.115*uDetail;',
-    '    col *= 1.0 + td4(vec3(d0.x,d0.y*5.4,d0.z)*24.0+uDetOff+0.29).b*0.055*uDetail; }',
+    '    col *= 1.0 + td4(vec3(d1.x,d1.y*5.4,d1.z)*16.0+uDetOff+0.29).b*0.060*uDetail; }',
     /* 带界的亮暗卷曲（羽流本体） */
     '  col = mix(col, min(col*1.28+0.03,vec3(1.0)), edge*smoothstep(0.0,0.75,fest)*0.55*turb);',
     '  col = mix(col, col*0.84, edge*smoothstep(0.0,0.75,-fest)*0.35*turb);',
@@ -2849,7 +2855,7 @@
     'void main(){',
     '  vec3 n=normalize(vN); vec3 Nw=normalize(uRot*n); vec3 V=normalize(uCamW-vW); vec3 L=uSunW; float ndl=dot(Nw,L);',
     '  vec3 col = gasShade(n, uTime);',
-    '  float diff=max(ndl,0.0); vec3 lit = col*uSunTint*(diff*1.05*uLumK+0.03*uAmbK);',
+    '  float diff=max(ndl,0.0); vec3 lit = col*max(uGasP2.w,1.0)*uSunTint*(diff*1.05*uLumK+0.03*uAmbK);',
     '  float rimA; vec3 rimC=limbGlow(Nw,V,ndl,rimA); lit += rimC*rimA*(0.30+1.05*diff);',
     /* 自身热辐射（超热木星）：整个盘面都在发暗红的光，边缘因为斜穿的光程更长而明显更亮；夜面也留一点。 */
     '  if(uGasGlow>0.001){ float lg=pow(1.0-max(dot(Nw,V),0.0),2.0);',
@@ -3937,7 +3943,10 @@
       var st2 = vp.style;
       u.uGasP = [st2 ? st2.bandTurb : 0.8, (vp.gasStyle === 'saturn' ? 1 : (st2 && st2.hexPole ? 1 : 0)), st2 ? st2.darkPole : 0.4, vp.gasIce ? 1 : 0];
       /* (带内子带条数, 子带相位, 亮云强度, 备用)。冰巨星的亮云更显（海王星那种白色絮状条） */
-      u.uGasP2 = [st2 ? st2.subBands : 5, st2 ? st2.subPhase : 0, vp.gasIce ? 0.90 : 0.38, 0];
+      /* 显示曝光：第 III/IV 类的几何反照率只有 0.03–0.22，照实算出来就是一个黑球 —— 带纹、风暴、极区全看不见。
+         这里按反照率把整体亮度拉回中灰附近（只是**显示**上的曝光补偿，反照率本身与 HUD 上的数值一个字不改）。 */
+      var gexp = clamp(0.42 / Math.max(vp.gasAlbedo != null ? vp.gasAlbedo : 0.4, 0.045), 1, 4.5);
+      u.uGasP2 = [st2 ? st2.subBands : 5, st2 ? st2.subPhase : 0, vp.gasIce ? 0.90 : 0.38, gexp];
     } else { u.uBandN = 0; u.uGasP = [0, 0, 0, 0]; u.uGasP2 = [0, 0, 0, 0]; }
     return u;
   }
@@ -5276,7 +5285,8 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
          能看见的就只剩反照率噪点了。 */
       var eps = clamp((d - 1) * 0.8 / (H / dpr) * 1.6, 2e-5, 6e-3), slope = clamp(1.6 + 5.2 * smoothstep(3.0, 1.45, d) - 2.6 * smoothstep(1.45, 1.04, d), 1.4, 7);
       var octC = clamp(3 + Math.log2(1 / Math.max(d - 1, 0.01)), 2, 6), oct = Math.max(2, Math.ceil(octC)), octF = clamp(octC - (oct - 1), 0.001, 1);
-      var detail = smoothstep(2.4, 1.10, d);
+      /* 细节权重：从 2.8 就开始起、1.25 就满 —— 半屏（d≈1.55）那一档要看得到丝缕，不能等贴脸才淡入 */
+      var detail = smoothstep(2.8, 1.25, d);
       var mu = materialUniforms(vp, g, elapsed, globeCam.spin * 0.12 + elapsed * 0.006, oct);
       mu.uOctF = octF; mu.uDetail = detail;
       if (!vp.exists) { // 尚未形成：只画一团尘埃
