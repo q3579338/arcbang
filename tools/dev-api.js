@@ -9,7 +9,10 @@ Object.assign(process.env, {
   BNBBANG_SIGNER_KEY: process.env.BNBBANG_SIGNER_KEY || '0x' + '11'.repeat(32),
   BNBBANG_STORE: process.env.BNBBANG_STORE || path.join(tmp, 'store'),
   BNBBANG_CACHE: process.env.BNBBANG_CACHE || path.join(tmp, 'cache'),
-  BNBBANG_PUBLIC_BASE: process.env.BNBBANG_PUBLIC_BASE || 'http://localhost:8795'
+  BNBBANG_PUBLIC_BASE: process.env.BNBBANG_PUBLIC_BASE || 'http://localhost:8795',
+  BNBBANG_BRAND: process.env.BNBBANG_BRAND || 'ARCBANG',
+  BNBBANG_CHAIN_WORD: process.env.BNBBANG_CHAIN_WORD || 'Arc',
+  BNBBANG_REPO_URL: process.env.BNBBANG_REPO_URL || 'https://github.com/q3579338/arcbang'
 });
 /* server/index.js 只在被直接运行时才监听端口（require.main 判断），所以这里起一个子进程 */
 const child = require('child_process').spawn(process.execPath, [path.join(__dirname, '..', 'server', 'index.js')], { stdio: 'inherit', env: process.env });
