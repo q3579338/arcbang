@@ -2558,15 +2558,17 @@
          那次连接本来就是铸造流程的一步，下面的 C.connect() 会复用结果，不弹第二次。
          签名即将绑 msg.sender：已连钱包时把 minter 一并带上（小写 0x 40 hex）；
          未连则不加该字段。现役服务端忽略多余字段。 */
+      /* v2 签名绑 msg.sender（服务端 SIG_V2=1 时没有 minter 直接 400）：所以铸造前**必须**先连上钱包，
+         不再有「没连钱包也先去要签名」这条路 —— 2026-09-18 上线第一枚就撞上「v2 签名必须带铸造人地址」。 */
       return C.account().then(function (a) {
         if (a) return a;
-        if (!refAddr) return null;
         return C.connect();
-      }).then(null, function () { return null; });
+      });
     }).then(function (acct) {
       var extra = {};
       var m = minterOf(acct);
-      if (m) extra.minter = m;
+      if (!m) throw new Error(T('要铸造得先连接钱包（签名会绑定你的地址）'));
+      extra.minter = m;
       if (refAddr && m && refAddr !== m) extra.ref = refAddr;
       /* BTCBANG：POST /api/btc/bang {height, minter, ref}，响应与 /api/bang 同形，下面的检查原样适用 */
       if (BTC) return API.btcBang(btcHeight0, extra.minter || extra.ref ? extra : null);
