@@ -1441,6 +1441,10 @@
       '  <div class="mi-head">',
       '    <span class="mi-out" id="miOut">—</span>',
       '    <span class="mi-say" id="miSay"></span>',
+      /* 「用这组参数引爆」放在顶栏（2026-09-18 用户：「引爆窗口不要挪到下面啊」）——
+         引爆是这个面板的出口，得在一打开就看得见的地方，不能压在滚动区下面的工具条里。
+         救没救活都给；救活了的时候藏起来：那一刻庆祝卡上已经有一颗同样的（renderWin）。 */
+      '    <button type="button" class="mi-btn alt" id="miBangGo" hidden></button>',
       '    <label class="mi-mode" id="miModeBox" title="' + esc(T('简明视图：只显示当前卡住的门和相关参数')) + '">',
       '      <input type="checkbox" id="miMode"><span id="miModeTxt">' + esc(T('简明视图')) + '</span></label>',
       '    <button type="button" class="mi-btn" id="miX" title="' + esc(T('Esc 也可以关')) + '">' + esc(T('关闭')) + '</button>',
@@ -1525,9 +1529,6 @@
       /* 「自动推」。选了目标就该能自动往目标推，而不是只给提示让人一格一格点。
          三态（自动推 / 停 / 推不动了）全在 renderAutoGo 里判，这里只留一个常驻节点。 */
       '    <button type="button" class="mi-btn" id="miAutoGo"></button>',
-      /* 「用这组参数引爆」。救没救活都给 —— 推出来的宇宙本来就该能拿去看一眼。
-         救活了的时候藏起来：那一刻庆祝卡上已经有一颗同样的（renderWin）。 */
-      '    <button type="button" class="mi-btn alt" id="miBangGo" hidden></button>',
       '    <span class="mi-note">' + esc(T('沙盒：随便推、不花钱、不上链；关掉之后原宇宙不受影响')) + '</span>',
       '    <button type="button" class="mi-btn" id="miClose">' + esc(T('关闭')) + '</button>',
       '  </div>',
@@ -2041,7 +2042,7 @@
     });
   }
 
-  /** 底栏那颗常驻的「用这组参数引爆」。推过格才出现；救活了就让位给庆祝卡上那一颗 */
+  /** 顶栏那颗常驻的「用这组参数引爆」。推过格才出现；救活了就让位给庆祝卡上那一颗 */
   function renderBangGo() {
     var b = $('miBangGo');
     if (!b || !S.box) return;
