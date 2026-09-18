@@ -511,7 +511,24 @@
    * 要用服务端返回的那个，不能用页面自己算的）—— 差一个字段 ecrecover
    * 就恢复出别的地址，合约直接 BadSig，而链上报错看不出是哪一项错了。
    */
+  /* ArcUniverse 没有 payWithBang（没有代币），bangSigned 是 7 个参数：
+     选择器与 sig 的偏移都不一样，按旧的 8 参编码发过去会 revert（2026-09-18 上线第一枚撞上）。 */
+  function isArcSite() {
+    var c = root.BNBBANG_CONFIG || {};
+    return String(root.BNBBANG_SITE || c.site || '') === 'arc';
+  }
   function bangSignedData(o) {
+    if (isArcSite()) {
+      return selector('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes)')
+        + encBytes32(o.blockHash)
+        + encUint(o.blockNumber)
+        + encUint(o.outcome)
+        + encUint(o.rarity)
+        + encBytes32(o.cardHash)
+        + encUint(o.deadline)
+        + encUint(7 * 32)                  // sig 是第 7 个参数，头部 7 个槽 → 偏移 224
+        + encBytes(o.sig);
+    }
     return selector('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes,bool)')
       + encBytes32(o.blockHash)
       + encUint(o.blockNumber)
