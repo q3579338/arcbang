@@ -337,11 +337,13 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
   if (!fs.existsSync(idx)) { skip('web/dist-arc/index.html 不存在（node web/build-web.js --site arc），ARCBANG 产物检查'); return; }
 
   /* a. 该有的页都在 */
-  /* warmup.html 必须永远在：app.html 的铸造面板在放号还没轮到时把人指过去，
-     那个链接不能有「今天不存在」的时候（首页切不切成预热页是另一回事）。 */
+  /* quest.html 必须永远在：首页横幅、顶栏页签、app.html 的铸造面板（放号还没轮到时）
+     都指着它，那个链接不能有「今天不存在」的时候。
+     warmup.html 是它的旧名，留一张跳转页 —— 发出去的邀请链接还带着旧路径。 */
   var want = ['index.html', 'app.html', 'market.html', 'status.html', 'profile.html',
-              'faq.html', 'how-it-works.html', 'verify.html', 'deploy.html', 'warmup.html', 'admin.html',
-              'en/index.html', 'en/faq.html', 'en/how-it-works.html', 'en/verify.html', 'en/warmup.html',
+              'faq.html', 'how-it-works.html', 'verify.html', 'deploy.html', 'quest.html', 'warmup.html', 'admin.html',
+              'en/index.html', 'en/faq.html', 'en/how-it-works.html', 'en/verify.html',
+              'en/quest.html', 'en/warmup.html',
               'config.js', 'theme.js', 'nav.js', 'tokens.css', 'arc-doc.css'];
   var lack = want.filter(function (f) { return !fs.existsSync(path.join(dist, f)); });
   (lack.length ? bad : ok)('web/dist-arc 页面齐全（' + (want.length - lack.length) + '/' + want.length + '）'

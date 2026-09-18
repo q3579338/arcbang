@@ -3128,7 +3128,7 @@ function call(method, url, body, headers) {
         && ui.indexOf('personal_sign') < 0);
       /* 两个文件里的 localStorage 键名必须逐字相同 —— 不同就永远记不上分，且一个错都不报 */
       ok('预热页与模拟器页的会话签名键名一致',
-        readWeb2('warmup-arc.html').indexOf("var AL_SIG_KEY = 'arcbang.al.sig'") >= 0);
+        readWeb2('quest-arc.html').indexOf("var AL_SIG_KEY = 'arcbang.al.sig'") >= 0);
       ok('IP 闸已经从服务端删干净（免费与否只由名单决定）',
         fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8').indexOf('FREE_PER_IP_DAY') < 0);
     }
@@ -3502,7 +3502,7 @@ function call(method, url, body, headers) {
       const fakeFetch = async (u, o) => { calls.push(String(u)); return String(u).indexOf('request_token') >= 0 ? leg1 : leg3; };
       const XA5 = XAUTH.create({ storeDir: xdir, publicBase: 'https://arcbang.xyz', fetch: fakeFetch });
 
-      ok('没配凭证时 configured() 为假（接口据此回 404，预热页退回手填 X 名）', XA5.configured() === false);
+      ok('没配凭证时 configured() 为假（接口据此回 404，任务页退回手填 X 名）', XA5.configured() === false);
       ok('没配凭证时连 cookie 都签不出来（签得出来就等于谁都能伪造一个登录态）',
         XA5.signCookie({ id: '1', handle: 'a', exp: Date.now() + 1000 }) === null);
       ok('没配凭证时第一腿直接回 404，不去打 X', (await XA5.begin()).status === 404 && calls.length === 0);
@@ -3731,6 +3731,84 @@ function call(method, url, body, headers) {
       if (savedPin6 === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = savedPin6;
     }
 
+    /* ---- 「我关注了」在接了 API 之后不再算数 ----
+       2026-09-18 用户反馈：任务卡显示「已完成」，旁边还留着「去关注」，
+       而那个「已完成」其实只是他自己点出来的。改成：接了 API 就只认 API。 */
+    {
+      const cdir = path.join(TMP, 'claim5'); fs.mkdirSync(cdir, { recursive: true });
+      const AL7 = ALX5.create({ storeDir: cdir });
+      const savedPin7 = process.env.ARCBANG_PINNED_POST_URL;
+      process.env.ARCBANG_PINNED_POST_URL = 'https://x.com/arcbang_xyz/status/1234567890123';
+
+      const W = new Wallet('0x' + '5a'.repeat(32));
+      const sig = W.signMessageSync(ALX5.registerMessage(W.address));
+      AL7.register({ address: W.address, sig }, '7.7.7.7', { id: '55', handle: 'joe' });
+      const a = W.address.toLowerCase();
+
+      /* 没接 API：老样子，点一下就算，来源是 trust。 */
+      let r = AL7.claim({ address: a, sig, task: 'follow' });
+      ok('没接 X API 时「我关注了」还是立刻算数（来源 trust）',
+        r.status === 200 && !r.body.pending && AL7.hasCheck(a, 'follow')
+        && AL7.checkBy(a, 'follow') === 'trust');
+
+      /* 接上 API。先把刚才那个 trust 的勾撤掉，回到干净状态。 */
+      AL7.unverify(a, 'follow');
+      let apiRows = { follow: new Set(), like: new Set(), repost: new Set() };
+      let lastRunAt = null;
+      AL7.setApiProbe(() => ({ configured: true, lastRunAt, everyMin: 10 }));
+
+      r = AL7.claim({ address: a, sig, task: 'follow' });
+      ok('接了 API 之后「我关注了」**不再直接打勾**，只把这一项推进「审核中」',
+        r.status === 200 && r.body.pending === true && AL7.hasCheck(a, 'follow') === false
+        && (AL7.claimOf(a, 'follow') || {}).status === 'pending');
+      ok('重复点不会堆积，还是同一条待核记录',
+        AL7.claim({ address: a, sig, task: 'follow' }).body.pending === true);
+
+      let st = await AL7.status(a);
+      ok('status 报出 apiOn / 下一轮什么时候 —— 页面靠它写「约几分钟后出结果」',
+        st.apiOn === true && st.checkEveryMin === 10 && st.claims.follow.status === 'pending'
+        && st.followed === false);
+
+      /* 下一轮 API 没查到他 → 未通过，写明原因，可以再点。 */
+      lastRunAt = new Date().toISOString();
+      AL7.syncApi(apiRows);
+      ok('API 这一轮没在 X 上查到他 → 标 failed（页面写「X 上没查到关注」）',
+        (AL7.claimOf(a, 'follow') || {}).status === 'failed' && AL7.hasCheck(a, 'follow') === false);
+      st = await AL7.status(a);
+      ok('status 把失败带出去，并给出上次核对时间与下一次的时间',
+        st.claims.follow.status === 'failed' && st.lastCheckAt === lastRunAt
+        && st.nextCheckAt === new Date(new Date(lastRunAt).getTime() + 600000).toISOString());
+
+      r = AL7.claim({ address: a, sig, task: 'follow' });
+      ok('失败之后可以再点一次，回到「审核中」', r.body.pending === true
+        && (AL7.claimOf(a, 'follow') || {}).status === 'pending');
+
+      /* 这一轮 X 上查到了 → 打勾，来源 api，自称记录清掉。 */
+      apiRows.follow.add('55');
+      AL7.syncApi(apiRows);
+      ok('API 查到了 → 打勾，来源是 api，自称那条记录清掉',
+        AL7.hasCheck(a, 'follow') === true && AL7.checkBy(a, 'follow') === 'api'
+        && AL7.claimOf(a, 'follow') === null);
+      st = await AL7.status(a);
+      ok('status 的 verifiedBy 告诉页面这一项是 X 上核实的（胶囊写「已完成 · X 已核实」）',
+        st.verifiedBy.follow === 'api' && st.followed === true);
+
+      /* 退关 → 勾自动掉。 */
+      apiRows.follow.delete('55');
+      AL7.syncApi(apiRows);
+      ok('他退关了 → 下一轮自动掉勾（这正是接 API 换来的东西）',
+        AL7.hasCheck(a, 'follow') === false);
+
+      /* 管理员手打的勾不归 API 管，胶囊也不写「X 已核实」。 */
+      AL7.verify(a, 'like');
+      AL7.syncApi(apiRows);
+      st = await AL7.status(a);
+      ok('管理员手打的勾，API 这一轮不动它，verifiedBy 也照实写 admin',
+        st.liked === true && st.verifiedBy.like === 'admin');
+
+      if (savedPin7 === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = savedPin7;
+    }
+
     /* ---- 接线：路由与页面上的那几处 ---- */
     {
       const srcIdx = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
@@ -3740,9 +3818,9 @@ function call(method, url, body, headers) {
         srcIdx.indexOf('AL.register(parsedAl.value, RL.ipOf(req), xSess)') > 0
         && srcIdx.indexOf("needX: true") > 0);
       ok('回调处理完把一次性 state cookie 删掉', srcIdx.indexOf('stateCookieHeader(null)') > 0);
-      const w = fs.readFileSync(path.join(__dirname, '..', 'web', 'warmup-arc.html'), 'utf8');
-      ok('预热页带 cookie 请求（会话就是一个 HttpOnly cookie）', w.indexOf("credentials: 'include'") > 0);
-      ok('预热页在没开通时退回手填 X 名', w.indexOf("XL.configured ? XL.handle :") > 0);
+      const w = fs.readFileSync(path.join(__dirname, '..', 'web', 'quest-arc.html'), 'utf8');
+      ok('任务页带 cookie 请求（会话就是一个 HttpOnly cookie）', w.indexOf("credentials: 'include'") > 0);
+      ok('任务页在没开通时退回手填 X 名', w.indexOf("XL.configured ? XL.handle :") > 0);
       const a = fs.readFileSync(path.join(__dirname, '..', 'web', 'admin-arc.html'), 'utf8');
       ok('管理员页有 X 登录设置与自动核账单两块',
         a.indexOf('/admin/xauth') > 0 && a.indexOf('/admin/xverify') > 0 && a.indexOf('xvCost') > 0);

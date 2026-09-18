@@ -528,6 +528,10 @@ const XA = require('./xauth.js').create({ storeDir: STORE_DIR });
    自动打勾也自动掉勾。**要花钱**（Owned Reads $0.001 一条），所以没配
    Bearer / Access Token 时它整个不动，三连退回原来的信任模式。 */
 const XV = require('./xverify.js').create({ storeDir: STORE_DIR, xauth: XA, allowlist: AL });
+/* 回接：名单那边要知道「自动核开没开、上一轮什么时候拉的」——
+   开着的时候「我关注了」不再直接算数，只把那一项推进「审核中」，等 API 去查。
+   **后接而不是构造时传**：XV 依赖 AL，AL 再依赖 XV 就成环了。 */
+AL.setApiProbe(() => XV.info());
 XV.start();
 /* 自动核推文的重试队列：每分钟推一次（取不到推文的那些 1/5/30 分钟后再试）。unref 让它不挡进程退出。 */
 if (typeof AL.runProofQueue === 'function') {
@@ -756,7 +760,7 @@ async function handle(req, res, u) {
       /* 失败也跳回预热页（?xerr=…）而不是回 5xx：Cloudflare 会把源站的 502/503 换成它自己的错误页，
          用户看到的就只剩 "error code: 502"。 */
       if (!r.ok) {
-        const back = (process.env.ARCBANG_PUBLIC_BASE || '').replace(/\/+$/, '') + '/warmup.html';
+        const back = (process.env.ARCBANG_PUBLIC_BASE || '').replace(/\/+$/, '') + '/quest.html';
         return send(res, 302, '', { location: back + '?xerr=' + encodeURIComponent(r.error || 'failed'), 'cache-control': 'no-store' });
       }
       /* 直接 302 过去。把 URL 回给前端再跳也行，但那样会多一次「点了没反应」的窗口。
@@ -770,7 +774,7 @@ async function handle(req, res, u) {
       const r = await XA.finish(q, XA.stateFromReq(req));
       /* 回调是浏览器跟过来的，所以**不回 JSON 回跳转** —— 失败也跳回去，
          把原因塞在 query 里让页面说人话。 */
-      const back = (process.env.ARCBANG_PUBLIC_BASE || '').replace(/\/+$/, '') + '/warmup.html';
+      const back = (process.env.ARCBANG_PUBLIC_BASE || '').replace(/\/+$/, '') + '/quest.html';
       /* 不管成没成，那个一次性 state cookie 都当场删掉。 */
       const killState = XA.stateCookieHeader(null);
       if (!r.ok) {

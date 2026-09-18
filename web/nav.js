@@ -229,6 +229,9 @@
      brandTag：见文件头「站名口径」。渲染一致，只是文档结构各取所需。 */
   var PAGES = [
     { key: 'simulator', href: '/app.html',     id: 'navSim',     label: '模拟器', brandTag: 'span' },
+    /* 任务页（积分榜 / 白名单）：**只有 ARCBANG 有**，别站的导航里不出现。
+       位置排在模拟器之后 —— 先是产品，再是这一季的活动。 */
+    { key: 'quest',     href: '/quest.html',   id: 'navQuest',   label: '任务',   brandTag: 'h1', arcOnly: true },
     { key: 'market',    href: '/market.html',  id: 'navMarket',  label: '市场',   brandTag: 'h1' },
     /* 状态页正文自带 h1（「BNBBANG · 系统状态」），站名用 span —— 口径见文件头。 */
     { key: 'status',    href: '/status.html',  id: 'navStatus',  label: '状态',   brandTag: 'span' }
@@ -289,6 +292,7 @@
     s += '<nav class="pagenav" id="pageNav" aria-label="站点页面">';
     for (var i = 0; i < PAGES.length; i++) {
       var p = PAGES[i], cur = (p.key === pg.key);
+      if (p.arcOnly && siteOf() !== 'arc') continue;
       s += '<a class="pagelink" id="' + p.id + '" href="' + p.href + '"'
          + (cur ? ' aria-current="page"' : '') + '>' + p.label + '</a>';
     }

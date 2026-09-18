@@ -36,16 +36,22 @@ const ST = {
   title: '镜像宇宙模拟器 · 引爆任意 Arc 区块 · ARCBANG',
   desc: '在线宇宙模拟器：把任意 Arc 区块哈希读成 23 个物理常数，从奇点算到热寂，看它能不能长出原子、恒星、行星和观察者。免费引爆，喜欢再铸成 NFT。',
   landing: 'landing-arc.html',
-  /* 预热页（web/warmup-arc.html → dist-arc/warmup.html + en/warmup.html）。
-     它**永远落盘**：铸造页在放号还没轮到时把人指过去，那个链接不能有「今天不存在」的时候。
-     warmup:true（或命令行 --landing=warmup）时首页 index.html 也换成它 ——
-     预热期首页该讲的是「什么时候开、怎么进名单」，而不是「来引爆吧」。
-     切回正常首页：把这一行改回 false 重新构建，不必动别的地方。 */
-  warmupPage: 'warmup-arc.html',
+  /* 任务页（web/quest-arc.html → dist-arc/quest.html + en/quest.html）。
+     它**永远落盘**：铸造页在放号还没轮到时把人指过去，首页横幅与顶栏页签也指着它，
+     那个链接不能有「今天不存在」的时候。
+
+     2026-09-18 改名：原来叫 warmup.html，首页一度整个换成它。用户的话是
+     「别人不会把这些放首页，都放任务界面」—— 现在首页是正常落地页，
+     首屏下方只留一条横幅，任务全在这一页。旧的 /warmup.html 落一张跳转页，
+     线上还有一条 nginx 的 302（web/nginx-arcbang.xyz.conf）。
+
+     warmup:true（或命令行 --landing=warmup）仍能把首页整个换成它 ——
+     开关留着以备万一，但**默认不用**。 */
+  questPage: 'quest-arc.html',
   warmup: false,
-  warmupTitle: 'ARCBANG 预热 · 积分榜与白名单',
+  warmupTitle: 'ARCBANG 任务 · 积分榜与白名单',
   warmupEn: {
-    title: 'ARCBANG warm-up — leaderboard and allowlist',
+    title: 'ARCBANG quests — leaderboard and allowlist',
     desc: 'The allowlist is ranked by points: the top 100 get a guaranteed slot and the top 387 mint free, one per address; everyone else buys at 1 USDC, up to 3 per address, and a block hash can only be minted once. Signing up scores, and so do reposts, invites and detonations you broadcast. Detonating and the simulator are free and open right now.'
   },
   /* 独立页：[源文件, 落盘名]。三份文档整篇是「Arc 链 · USDC · 没有代币」的口径；
@@ -355,9 +361,9 @@ function stampGallery(h) {
   return h.replace(/assets\/gallery\/([A-Za-z0-9._-]+)(\?v=[0-9a-f]+)?/g, (m, f) => GAL_FP[f] ? 'assets/gallery/' + f + '?v=' + GAL_FP[f] : m);
 }
 
-/* 预热页：web/warmup-arc.html → dist-arc/warmup.html（中文）+ dist-arc/en/warmup.html（英文）。
-   落盘改写与其他独立页一致。**无条件落盘**：app.html 的铸造面板在放号还没轮到时
-   把人指向 warmup.html，那个链接不能因为「今天不是预热期」就 404。 */
+/* 任务页：web/quest-arc.html → dist-arc/quest.html（中文）+ dist-arc/en/quest.html（英文）。
+   落盘改写与其他独立页一致。**无条件落盘**：首页横幅、顶栏页签、以及 app.html 的
+   铸造面板在放号还没轮到时都指向 quest.html，那个链接不能因为「今天不是预热期」就 404。 */
 function prepHtml(srcPath) {
   let h = fs.readFileSync(srcPath, 'utf8');
   h = h.replace(/(<script[^>]*\ssrc=")config\.js(?:\?v=[0-9a-f]+)?(")/g, '$1config.js?v=' + cfgVer + '$2');
@@ -376,19 +382,36 @@ function enDocLinks(file) {
   fs.writeFileSync(file, eh);
   return n;
 }
-let warmupHtml = null;
+/** 旧路径的跳转页：没有 nginx 的场合（本地预览、别的静态托管）也不能让老链接落空。
+    `?ref=` 要原样带过去 —— 那是邀请链接，丢了等于把邀请人的分弄没了。 */
+function redirectStub(to, title) {
+  return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>' + title + '</title>'
+    + '<link rel="canonical" href="' + ST.base + to + '">'
+    + '<meta name="robots" content="noindex">'
+    + '<meta http-equiv="refresh" content="0; url=' + to + '">'
+    + '<script>location.replace(' + JSON.stringify(to) + ' + location.search + location.hash);</scr' + 'ipt>'
+    + '</head><body><p>已搬到 <a href="' + to + '">' + to + '</a></p></body></html>\n';
+}
+let questHtml = null;
 {
-  const wp = path.join(__dirname, ST.warmupPage || '');
-  if (ST.warmupPage && fs.existsSync(wp)) {
-    warmupHtml = prepHtml(wp);
-    fs.writeFileSync(path.join(outDir, 'warmup.html'), warmupHtml);
-    console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/warmup.html（预热页）');
-    const enW = require('./prerender-en.js').build(warmupHtml, outDir,
-      { base: ST.base, page: 'warmup.html', title: ST.warmupEn.title, desc: ST.warmupEn.desc, dicts: ST.enDicts });
-    const nW = enDocLinks(path.join(outDir, 'en', 'warmup.html'));
-    console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/en/warmup.html（英文预渲染：命中 ' + enW.hits + ' 处，文档链接改指 /en/ ' + nW + ' 处）');
-  } else if (ST.warmupPage) {
-    console.log('  ○ ' + ST.warmupPage + '（缺席，跳过预热页）');
+  const wp = path.join(__dirname, ST.questPage || '');
+  if (ST.questPage && fs.existsSync(wp)) {
+    questHtml = prepHtml(wp);
+    fs.writeFileSync(path.join(outDir, 'quest.html'), questHtml);
+    console.log('  + ' + ST.questPage + ' → ' + ST.dist + '/quest.html（任务页）');
+    const enW = require('./prerender-en.js').build(questHtml, outDir,
+      { base: ST.base, page: 'quest.html', title: ST.warmupEn.title, desc: ST.warmupEn.desc, dicts: ST.enDicts });
+    const nW = enDocLinks(path.join(outDir, 'en', 'quest.html'));
+    console.log('  + ' + ST.questPage + ' → ' + ST.dist + '/en/quest.html（英文预渲染：命中 ' + enW.hits + ' 处，文档链接改指 /en/ ' + nW + ' 处）');
+    /* 旧名 /warmup.html：线上有 nginx 302，这两张页是没有 nginx 时的兜底。 */
+    fs.writeFileSync(path.join(outDir, 'warmup.html'), redirectStub('/quest.html', 'ARCBANG 任务'));
+    fs.mkdirSync(path.join(outDir, 'en'), { recursive: true });
+    fs.writeFileSync(path.join(outDir, 'en', 'warmup.html'), redirectStub('/en/quest.html', 'ARCBANG quests'));
+    console.log('  + warmup.html / en/warmup.html → 跳转到 quest.html（旧链接不落空）');
+  } else if (ST.questPage) {
+    console.log('  ○ ' + ST.questPage + '（缺席，跳过任务页）');
   }
 }
 
@@ -400,19 +423,19 @@ let warmupHtml = null;
 const wantWarmupLanding = ST.warmup === true
   || argv.some((a) => a === '--landing=warmup' || a === '--warmup');
 const landing = path.join(__dirname, ST.landing);
-if (wantWarmupLanding && warmupHtml) {
-  /* 预热页当首页：canonical / og:url / hreflang 从 /warmup.html 改回站点根，
-     否则搜索引擎会看到「首页自称是 /warmup.html」，两个 URL 互相抢。 */
+if (wantWarmupLanding && questHtml) {
+  /* 任务页当首页：canonical / og:url / hreflang 从 /quest.html 改回站点根，
+     否则搜索引擎会看到「首页自称是 /quest.html」，两个 URL 互相抢。 */
   const rootify = (h) => h
-    .replace(new RegExp(ST.base.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\/warmup\\.html', 'g'), ST.base + '/')
-    .replace(new RegExp(ST.base.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\/en\\/warmup\\.html', 'g'), ST.base + '/en/');
-  const h = rootify(warmupHtml);
+    .replace(new RegExp(ST.base.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\/quest\\.html', 'g'), ST.base + '/')
+    .replace(new RegExp(ST.base.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\/en\\/quest\\.html', 'g'), ST.base + '/en/');
+  const h = rootify(questHtml);
   fs.writeFileSync(path.join(outDir, 'index.html'), h);
-  console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/index.html（**首页切成预热页**）');
+  console.log('  + ' + ST.questPage + ' → ' + ST.dist + '/index.html（**首页切成任务页**）');
   const en = require('./prerender-en.js').build(h, outDir,
     { base: ST.base, title: ST.warmupEn.title, desc: ST.warmupEn.desc, dicts: ST.enDicts });
   const nI = enDocLinks(path.join(outDir, 'en', 'index.html'));
-  console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/en/index.html（英文预渲染：命中 ' + en.hits + ' 处，文档链接改指 /en/ ' + nI + ' 处）');
+  console.log('  + ' + ST.questPage + ' → ' + ST.dist + '/en/index.html（英文预渲染：命中 ' + en.hits + ' 处，文档链接改指 /en/ ' + nI + ' 处）');
 } else if (fs.existsSync(landing)) {
   let h = prepHtml(landing);
   h = stampGallery(h);

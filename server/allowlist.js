@@ -373,6 +373,25 @@ function create(opts) {
   const take = o.take;                    // ratelimit.take(key, limit, windowMs)
   /** 读链上免费余量（枚）。index.js 传进来，返回 BigInt/Number 或 null（读不到）。 */
   const readFreeLeft = typeof o.freeLeft === 'function' ? o.freeLeft : null;
+  /** X 自动核那一套的现状（server/xverify.js 的 info()）。
+      **后接**：xverify 在 index.js 里晚于本模块创建，所以给一个 setter，
+      而不是在 create 的时候要一个已经存在的实例。
+      没接上时一律当「没开」—— 那是原来的信任模式，行为一个字不变。 */
+  let apiProbe = typeof o.apiInfo === 'function' ? o.apiInfo : null;
+  function setApiProbe(fn) { apiProbe = typeof fn === 'function' ? fn : null; }
+  function apiInfo() {
+    if (!apiProbe) return { configured: false, lastRunAt: null, everyMin: null };
+    try {
+      const j = apiProbe() || {};
+      return {
+        configured: !!j.configured,
+        lastRunAt: j.lastRunAt || null,
+        everyMin: Number(j.everyMin) || null
+      };
+    } catch (e) { return { configured: false, lastRunAt: null, everyMin: null }; }
+  }
+  /** 接了 X API 之后，关注 / 点赞 / 转发**不再接受用户自称**。 */
+  function apiOn() { return apiInfo().configured; }
 
   /* ---------------------------------------------------------------- 名单文件
      按 mtime 失效：命令行工具改完文件，跑着的服务端下一次请求就看得到，不用重启。 */
@@ -484,6 +503,10 @@ function create(opts) {
     mtimeMs: -1, size: -1,
     follow: new Map(), repost: new Map(), like: new Map(),
     shares: new Map(), xfix: new Map(), proof: new Map(), posts: new Map(),
+    /* 「我关注了」那一下的**去向**（键是 '<地址>|<任务>'）：
+       接了 X API 之后，用户自称不再直接算数 —— 它只是让这一项进「审核中」，
+       等下一轮 API 去 X 上查。查到了才打勾，查不到就 'failed'，他可以再点一次。 */
+    claims: new Map(),
     distrust: new Map(), phase: null
   });
   function state() {
@@ -541,6 +564,19 @@ function create(opts) {
           tries: Number(x.tries) || 0, nextAt: x.nextAt || null, via: x.via || null
         })));
       }
+      for (const k in (j && j.claims) || {}) {
+        const v = j.claims[k];
+        const i = String(k).indexOf('|');
+        const a = i > 0 ? normAddr(String(k).slice(0, i)) : null;
+        const t = i > 0 ? String(k).slice(i + 1) : '';
+        if (a && CHECKS.indexOf(t) >= 0 && v) {
+          next.claims.set(a + '|' + t, {
+            at: v.at || null,
+            status: v.status === 'failed' ? 'failed' : 'pending',
+            checkedAt: v.checkedAt || null
+          });
+        }
+      }
       for (const k in (j && j.distrust) || {}) {
         const a = normAddr(k);
         if (a) next.distrust.set(a, j.distrust[k] || true);
@@ -568,6 +604,8 @@ function create(opts) {
     for (const [k, v] of (s.proof || new Map())) out.proof[k] = v;
     out.posts = {};
     for (const [k, v] of (s.posts || new Map())) out.posts[k] = v;
+    out.claims = {};
+    for (const [k, v] of (s.claims || new Map())) out.claims[k] = v;
     out.distrust = {};
     for (const [k, v] of (s.distrust || new Map())) out.distrust[k] = v;
     out.phase = s.phase || null;
@@ -580,7 +618,7 @@ function create(opts) {
   function mutState(fn) {
     const s = state();
     const next = { shares: new Map(s.shares), xfix: new Map(s.xfix), proof: new Map(s.proof),
-      posts: new Map(s.posts), distrust: new Map(s.distrust), phase: s.phase || null };
+      posts: new Map(s.posts), claims: new Map(s.claims), distrust: new Map(s.distrust), phase: s.phase || null };
     for (const key of CHECKS) next[key] = new Map(s[key]);
     fn(next);
     saveState(next);
@@ -1026,8 +1064,34 @@ function create(opts) {
     if (hasCheck(addr, task)) {
       return { status: 200, body: { ok: true, already: true, task, points: scoreOf(addr).total } };
     }
-    mutState((n) => { n[task].set(addr, { at: new Date(now == null ? Date.now() : now).toISOString(), by: 'trust' }); });
+    const iso = new Date(now == null ? Date.now() : now).toISOString();
+    /* **接了 X API 就不认自称**（2026-09-18 用户反馈：「这里没做核验」）。
+       点这一下只把这一项推进「审核中」，真正的勾要等下一轮去 X 上查到人。
+       查不到就 failed，页面写「X 上没查到关注」，他改完再点一次。
+
+       为什么不干脆把按钮拿掉：**用户需要一个「我做完了」的动作**。
+       没有它的话，从关注到打勾中间最多隔十分钟，那十分钟里页面上什么都没发生，
+       看着就像点了没用 —— 而这正是这次反馈的由来。 */
+    if (apiOn()) {
+      const key = addr + '|' + task;
+      const cur = claimOf(addr, task);
+      if (cur && cur.status === 'pending') {
+        return { status: 200, body: { ok: true, pending: true, task, claim: cur, points: scoreOf(addr).total } };
+      }
+      mutState((n) => { n.claims.set(key, { at: iso, status: 'pending' }); });
+      return {
+        status: 200,
+        body: { ok: true, pending: true, task, claim: { at: iso, status: 'pending' }, points: scoreOf(addr).total }
+      };
+    }
+    mutState((n) => { n[task].set(addr, { at: iso, by: 'trust' }); });
     return { status: 200, body: { ok: true, task, points: scoreOf(addr).total } };
+  }
+  /** 这个地址在这一项上自称过没有，结果如何。 */
+  function claimOf(addr, task) {
+    const a = normAddr(addr);
+    if (!a || CHECKS.indexOf(task) < 0) return null;
+    return state().claims.get(a + '|' + task) || null;
   }
   /**
    * X API 那一轮拉回来的结果，一次性写进来（server/xverify.js 每 10 分钟调一次）。
@@ -1064,6 +1128,17 @@ function create(opts) {
           const by = cur ? ((typeof cur === 'object' && cur.by) ? cur.by : 'admin') : null;
           if (on && !cur) { n[k].set(addr, { at: iso, by: 'api' }); added[k]++; }
           else if (!on && by === 'api') { n[k].delete(addr); removed[k]++; }
+          /* 他点过「我关注了」的那一项，这一轮给个交代：
+             查到了就把自称记录清掉（勾已经打上了），查不到就标 failed ——
+             页面据此写「未通过 · X 上没查到关注」，他修好再点一次。
+             **不清掉 failed 的话页面永远停在「审核中」**，那比没有反馈还糟。 */
+          const ck = addr + '|' + k;
+          if (n.claims.has(ck)) {
+            if (on || n[k].has(addr)) n.claims.delete(ck);
+            else if (n.claims.get(ck).status !== 'failed') {
+              n.claims.set(ck, { at: n.claims.get(ck).at, status: 'failed', checkedAt: iso });
+            }
+          }
         }
       }
       seen = byXid.size;
@@ -1642,6 +1717,7 @@ function create(opts) {
     const addr = normAddr(addrRaw);
     const s = scoreOf(addr);
     const T = tops();
+    const API = apiInfo();
     let freeLeft = null;
     if (readFreeLeft) {
       try { const v = await readFreeLeft(); freeLeft = v == null ? null : Number(v); }
@@ -1670,6 +1746,21 @@ function create(opts) {
       proof: addr ? proofOf(addr) : null,
       distrusted: addr ? isDistrusted(addr) : false,
       checkBy: addr ? { follow: checkBy(addr, 'follow'), repost: checkBy(addr, 'repost'), like: checkBy(addr, 'like') } : null,
+      /* 这一项是**谁**核的：'api'（X 上查到的）/ 'auto'（贴链接自动核的）/
+         'trust'（用户自称，待复核）/ 'admin'（人工打的）。页面拿它写胶囊上那半句。 */
+      verifiedBy: addr ? { follow: checkBy(addr, 'follow'), repost: checkBy(addr, 'repost'), like: checkBy(addr, 'like') } : null,
+      /* 自称过但还没被 API 认下来的那些：{status:'pending'|'failed'} */
+      claims: addr ? {
+        follow: claimOf(addr, 'follow'), repost: claimOf(addr, 'repost'), like: claimOf(addr, 'like')
+      } : null,
+      /* X 自动核的现场：开没开、上次什么时候拉的、下一次大概什么时候。
+         页面把它写进「审核中」那个胶囊里 —— 不写的话那十分钟等待看着就像卡住了。 */
+      apiOn: API.configured,
+      lastCheckAt: API.lastRunAt,
+      checkEveryMin: API.everyMin,
+      nextCheckAt: (API.configured && API.lastRunAt && API.everyMin)
+        ? new Date(new Date(API.lastRunAt).getTime() + API.everyMin * 60000).toISOString()
+        : null,
       proofMaxSubmits: PROOF_MAX_SUBMITS,
       /* 登记内容（登记之后不可改）：页面刷新后靠这两个字段直接渲染「已登记」卡片，
          不必再让用户看见一个填了也没用的表单。 */
@@ -1853,7 +1944,8 @@ function create(opts) {
     submitProof, proofOf, checkProof, fetchTweet, runProofQueue, rejectProof,
     submitPost, postsOf, checkPost, runPostQueue, postsThisWeek,
     warmupWindow, inviteMilestones,
-    claim, distrust, retrust, isDistrusted, checkBy, pinnedTweetId, syncApi,
+    claim, claimOf, distrust, retrust, isDistrusted, checkBy, pinnedTweetId, syncApi,
+    setApiProbe, apiInfo, apiOn,
     // 后台切段
     setPhase, phaseBase, phaseNow, nextOpenNow,
     appliedCount, appliedRows, appliedCsv, domain,

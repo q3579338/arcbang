@@ -81,9 +81,10 @@
      所以用相对链接直接跳走，不要在单页里模拟路由。 */
   var MARKET_URL = 'market.html';
   /* 预热页（倒计时 / 规则 / 登记白名单）。放号还没轮到时，铸造面板给的就是这个出口。
-     首页被切成预热页时（build-web 的 --landing=warmup）它俩是同一份内容，
-     但 warmup.html 永远在，所以链接一律指它。 */
-  var WARMUP_URL = 'warmup.html';
+     首页被切成任务页时（build-web 的 --landing=warmup）它俩是同一份内容，
+     但 quest.html 永远在，所以链接一律指它。
+     2026-09-18 改名：原来叫 warmup.html，旧路径有 302 兜着，但新链接直接写新名。 */
+  var WARMUP_URL = 'quest.html';
 
   var S = { hash: null, blockNumber: null, derived: null, minted: null, busy: false, revealed: false };
 
@@ -1966,7 +1967,7 @@
      预热页登记时签过一次，把 {addr, sig} 留在 localStorage；这里只**读**它，
      用来给「引爆并分享」那一分打卡（POST /api/allowlist/share）。
      用户拍板「别每次弹钱包」，所以这条路上一次都不弹：没有存档就静默跳过。
-     键名与 web/warmup-arc.html 里写的那一个必须逐字相同。 */
+     键名与 web/quest-arc.html 里写的那一个必须逐字相同。 */
   var AL_SIG_KEY = 'arcbang.al.sig';
   function alSigFor(addr) {
     if (!addr) return null;

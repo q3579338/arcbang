@@ -437,6 +437,42 @@
       'Sign in with X → connect a wallet → sign. No gas.',
     '先用 X 登录': 'Sign in with X first',
     '用 X 登录，连钱包，签个名。': 'Sign in with X, connect a wallet, sign.',
+
+    /* ---- 任务页：邀请宽卡 / 核验状态 ---- */
+    '你的邀请码': 'Your invite code', '邀请链接': 'Invite link',
+    '复制链接': 'Copy link', '分享到 X': 'Share on X',
+    '点一下复制': 'Tap to copy', '登记后生成': 'Created when you sign up',
+    '先登记，再把链接发出去。': 'Sign up first, then share the link.',
+    '每邀到一个 +{0} 分，最多 {1} 个。': '+{0} points each, up to {1}.',
+    '朋友用你的链接登记，并做完转发那一项，才算一个有效邀请。':
+      'An invite counts once your friend signs up through your link and finishes the repost quest.',
+    '我在 ARCBANG 攒分领免费宇宙，用我的链接登记：{0} @{1}':
+      'I am scoring points on ARCBANG for a free universe. Sign up with my link: {0} @{1}',
+    '回去做任务': 'Back to the quests',
+    'X 已核实': 'verified on X', '待复核': 'pending review', '自动核过': 'auto-checked',
+    'X 上没查到关注': 'no follow found on X',
+    'X 上没查到点赞': 'no like found on X',
+    'X 上没查到转发': 'no repost found on X',
+    '我关注了': 'I followed', '我点了': 'I liked',
+    '做好了，再核一次': 'Done — check again',
+    '关注完回来点一下，我们去 X 上核实。': 'Follow, then tap here. We verify it on X.',
+    '点完赞回来点一下，我们去 X 上核实。': 'Like it, then tap here. We verify it on X.',
+    '收到了，我们去 X 上核实你的关注。': 'Got it. We are checking the follow on X.',
+    '收到了，我们去 X 上核实你的赞。': 'Got it. We are checking the like on X.',
+    '在 X 上查到了你的关注。': 'Your follow was found on X.',
+    '在 X 上查到了你的赞。': 'Your like was found on X.',
+    '已记下，复核时会在 X 上对一遍。': 'Recorded. We will check it on X during review.',
+    '在 X 上没查到你的关注。做好了再点一次。': 'No follow found on X. Do it, then tap again.',
+    '在 X 上没查到你的赞。做好了再点一次。': 'No like found on X. Do it, then tap again.',
+    '自动核对，约 {0} 分钟后出结果': 'Auto-check, result in about {0} min',
+    '自动核对，最长 {0} 分钟': 'Auto-check, up to {0} min',
+    '上次核对 {0}': 'Last checked {0}',
+
+    /* ---- 首页预热横幅 ---- */
+    '预热进行中 · 剩 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人':
+      'Warm-up is on · <b>{0}</b> days left · <b>{1}</b> signed up',
+    '预热进行中 · 已登记 <b>{0}</b> 人': 'Warm-up is on · <b>{0}</b> signed up',
+    '去做任务攒分': 'Go score points',
     '用 X 登录绑定': 'via Sign in with X',
     '核对 @{0} 发的那条': 'We check the post from @{0}',
     'X 连上了。接着连钱包，然后签名登记。':

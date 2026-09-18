@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- 预热页（web/warmup-arc.html → dist-arc/warmup.html）
+<!-- 任务页（web/quest-arc.html → dist-arc/quest.html）
      2026-09-18：第一次主网部署上线 20 分钟，一个 IP 用 5 个新地址一分钟一枚薅走 5 枚免费额度，
      那次部署作废。重开的方式是**预热 + 积分榜白名单**，这一页就是预热期的门面。
 
@@ -20,16 +20,16 @@
 
      **文案里带换行的整段必须写成一行**：i18n 的词条 key 是「trim 之后逐字相等」，
      源码里换行加缩进会把文本节点里塞进 \n 和一串空格，词典就再也命中不了。踩过一次。 -->
-<title>ARCBANG 预热 · 积分榜与白名单</title>
+<title>ARCBANG 任务 · 积分榜与白名单</title>
 <meta name="description" content="ARCBANG 全网 1,387 枚宇宙 NFT。白名单按积分榜排：免费名额从榜的前列产生，数量在预热结束定格榜单时公布，上限不超过合约的 387 枚。登记、转发、邀请、引爆分享都算分；引爆和模拟器随时免费玩。">
-<link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/warmup.html">
-<link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/warmup.html">
-<link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/warmup.html">
-<link rel="canonical" href="https://arcbang.xyz/warmup.html">
+<link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/quest.html">
+<link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/quest.html">
+<link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/quest.html">
+<link rel="canonical" href="https://arcbang.xyz/quest.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ARCBANG">
-<meta property="og:url" content="https://arcbang.xyz/warmup.html">
-<meta property="og:title" content="ARCBANG 预热 · 积分榜与白名单">
+<meta property="og:url" content="https://arcbang.xyz/quest.html">
+<meta property="og:title" content="ARCBANG 任务 · 积分榜与白名单">
 <meta property="og:description" content="白名单按积分榜排。登记 10 分、转发置顶推 30 分、每个有效邀请 20 分、引爆并分享 5 分/天。免费名额从榜的前列产生，数量定格时公布。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="ARCBANG 预热 · 积分榜与白名单">
+<meta name="twitter:title" content="ARCBANG 任务 · 积分榜与白名单">
 <meta name="twitter:description" content="白名单按积分榜排。登记 10 分、转发置顶推 30 分、每个有效邀请 20 分、引爆并分享 5 分/天。免费名额从榜的前列产生，数量定格时公布。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
@@ -116,6 +116,15 @@ button,input{font-family:inherit}
   font-size:var(--t-xs);font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap;
   transition:border-color .15s ease,background-color .15s ease}
 .ab-btn3:hover{border-color:var(--ab-ink);background:rgba(19,33,74,.05)}
+/* 「我关注了」这类确认按钮：**一张卡上只该有一颗带框的主按钮**，
+   这一颗降成文字按钮 —— 它是做完之后回来点的第二步，不该和「去关注」抢。
+   仍然是 44px 高，触控面积不打折。 */
+.ab-btn4{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 4px;
+  border:0;background:none;color:var(--ab-graphite);font-family:inherit;
+  font-size:var(--t-xs);font-weight:600;cursor:pointer;white-space:nowrap;
+  text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--ab-hair);
+  transition:color .15s ease,text-decoration-color .15s ease}
+.ab-btn4:hover{color:var(--ab-ink);text-decoration-color:var(--ab-ink)}
 .ab-cta{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-top:30px}
 
 /* ---- 首屏：一句话 + 倒计时 ---- */
@@ -215,7 +224,12 @@ button,input{font-family:inherit}
 .ab-group{margin:var(--sp-1) 0 10px;font-size:var(--t-xs);font-weight:700;
   letter-spacing:.08em;color:var(--ab-graphite)}
 .ab-group:first-child{margin-top:0}
-.ab-rows{display:grid;gap:10px}
+.ab-rows{display:grid;gap:12px}
+/* 桌面两列，手机一列。两列的断点按**卡片自己的最小可读宽度**（360px）定，
+   不按屏幕宽度 —— 侧边栏、缩放、分屏都算得对。 */
+@media (min-width:860px){ .ab-rows{grid-template-columns:repeat(2,minmax(0,1fr))} }
+/* 整行占满的卡：要塞输入框的那两张（转发 / 创作）在半栏里挤成两行。 */
+.ab-rows > .wide{grid-column:1 / -1}
 .ab-qr{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:0 16px;align-items:start;
   padding:16px 18px;background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r);
   transition:border-color .15s ease,background-color .15s ease}
@@ -272,6 +286,40 @@ button,input{font-family:inherit}
 .ab-dots i.on{background:var(--ab-signal);border-color:var(--ab-signal)}
 .ab-dots i.bad{background:var(--ab-bad);border-color:var(--ab-bad)}
 .ab-dots span{margin-left:6px;font-size:var(--t-xs);color:var(--ab-graphite)}
+
+/* ---- 邀请：一张独立的宽卡 ----
+   2026-09-18 用户反馈「邀请界面做得太粗糙，文字堆叠」。重做成三栏：
+   左边大号邀请码（点一下复制）、中间链接与两颗按钮、右边有效邀请数与里程碑轨道。
+   三栏之间用**分隔线**而不是只靠间距 —— 间距在窄屏折行之后就没了，线还在。 */
+.ab-invc{margin-top:12px;padding:0;background:#fff;border:1px solid var(--ab-hair);
+  border-radius:var(--r);overflow:hidden}
+.ab-invc-hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;
+  padding:18px 22px 0}
+.ab-invc-t{margin:0;font-size:var(--t-m);font-weight:600}
+.ab-invc-body{display:grid;gap:0;padding:18px 0 4px}
+@media (min-width:980px){
+  .ab-invc-body{grid-template-columns:minmax(200px,auto) minmax(0,1fr) minmax(250px,auto)}
+  .ab-invc-col + .ab-invc-col{border-left:1px solid var(--ab-hair)}
+}
+@media (max-width:979px){
+  .ab-invc-col + .ab-invc-col{border-top:1px solid var(--ab-hair)}
+}
+.ab-invc-col{padding:14px 22px 20px;min-width:0}
+.ab-invc-k{display:block;font-size:var(--t-xs);color:var(--ab-graphite);margin-bottom:10px}
+/* 大号邀请码：整块可点，点一下复制。用 button 不用 div —— 键盘也要够得着。 */
+.ab-invc-code{appearance:none;display:block;width:100%;text-align:left;cursor:pointer;
+  font-family:var(--mono);font-size:clamp(28px,4.4vw,40px);font-weight:700;letter-spacing:.14em;
+  line-height:1;color:var(--ab-ink);background:none;border:0;padding:0;
+  transition:opacity .15s ease}
+.ab-invc-code:hover{opacity:.62}
+.ab-invc-hint{display:block;margin-top:10px;font-size:11px;color:var(--ab-graphite)}
+.ab-invc-row{display:flex;flex-wrap:wrap;gap:8px}
+.ab-invc-row .ab-inv{flex:1 1 240px;min-width:0}
+.ab-invc-n{display:flex;align-items:baseline;gap:8px}
+.ab-invc-n b{font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:clamp(28px,4.4vw,40px);font-weight:700;line-height:1;letter-spacing:-.02em}
+.ab-invc-n span{font-size:var(--t-xs);color:var(--ab-graphite)}
+.ab-invc-foot{padding:0 22px 18px;font-size:var(--t-xs);line-height:1.65;color:var(--ab-graphite)}
 
 /* 邀请里程碑轨道：一条线 + 三个节点，走到哪亮到哪 */
 .ab-track{position:relative;margin:14px 0 4px;padding-top:16px}
@@ -337,7 +385,7 @@ button,input{font-family:inherit}
 <a class="ab-skip" href="#main">跳到主要内容</a>
 
 <div id="siteNavMount"></div>
-<script>if (window.MirrorNav) MirrorNav.mount({ page: 'home' });</script>
+<script>if (window.MirrorNav) MirrorNav.mount({ page: 'quest' });</script>
 
 <main id="main">
 
@@ -436,23 +484,23 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3l7.6 9.8L3.4 21h1.9l6.2-7.1 5.5 7.1H21l-8-10.3L20.3 3h-1.9l-6 6.8L7.2 3z" stroke="none" fill="currentColor"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">关注 @arcbang_xyz</h4><span class="ab-qr-p" data-pts>+10</span></div>
-            <p class="ab-qr-d">关注完回来点「我关注了」。</p>
+            <p class="ab-qr-d" data-how>关注完回来点「我关注了」。</p>
             <button class="ab-chip" type="button" data-copy="@arcbang_xyz">@arcbang_xyz</button>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去关注</a>
-            <button class="ab-btn3" type="button" data-claim="follow" hidden>我关注了</button></div>
+            <button class="ab-btn4" type="button" data-claim="follow" hidden>我关注了</button></div>
         </article>
 
         <article class="ab-qr" data-task="like">
           <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">点赞置顶推</h4><span class="ab-qr-p" data-pts>+10</span></div>
-            <p class="ab-qr-d">点个赞，回来点「我点了」。</p>
+            <p class="ab-qr-d" data-how>点个赞，回来点「我点了」。</p>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去点赞</a>
-            <button class="ab-btn3" type="button" data-claim="like" hidden>我点了</button></div>
+            <button class="ab-btn4" type="button" data-claim="like" hidden>我点了</button></div>
         </article>
 
         <article class="ab-qr" data-task="repost">
@@ -478,24 +526,44 @@ button,input{font-family:inherit}
       </div>
 
       <h3 class="ab-group">进阶</h3>
-      <div class="ab-rows">
-        <article class="ab-qr" data-task="invite">
-          <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-          <div class="ab-qr-mid">
-            <div class="ab-qr-hd"><h4 class="ab-qr-t">邀请朋友</h4><span class="ab-qr-p" data-pts>+20</span></div>
-            <p class="ab-qr-d">他登记并做完转发，你就拿分。</p>
-            <!-- 里程碑轨道：当前人数走到哪，三个节点各奖多少 -->
-            <div class="ab-track" id="msTrack" aria-hidden="true"></div>
-            <div class="ab-inline" id="inviteRow" hidden>
-              <input class="ab-inv mono" id="inviteUrl" readonly value="">
-              <button class="ab-btn3" type="button" id="btnCopy">复制</button>
-            </div>
-          </div>
-          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
-            <a class="ab-btn3" href="#join" data-act>拿链接</a></div>
-        </article>
 
-        <article class="ab-qr" data-task="post">
+      <!-- 邀请：独立一张宽卡（2026-09-18 重做）。三栏之间留足留白，不堆文字。 -->
+      <section class="ab-invc" data-task="invite">
+        <div class="ab-invc-hd">
+          <h4 class="ab-invc-t">邀请朋友</h4>
+          <span class="ab-qr-p" data-pts>+20</span>
+          <span class="ab-st todo" data-st>未完成</span>
+        </div>
+        <div class="ab-invc-body">
+
+          <div class="ab-invc-col">
+            <span class="ab-invc-k">你的邀请码</span>
+            <button class="ab-invc-code" type="button" id="invCode" data-copy="">——</button>
+            <span class="ab-invc-hint" id="invCodeHint">登记后生成</span>
+          </div>
+
+          <div class="ab-invc-col">
+            <span class="ab-invc-k">邀请链接</span>
+            <div class="ab-invc-row">
+              <input class="ab-inv mono" id="inviteUrl" readonly value="" aria-label="邀请链接">
+              <button class="ab-btn3" type="button" id="btnCopy">复制链接</button>
+              <a class="ab-btn3" id="btnInvX" href="#" target="_blank" rel="noopener noreferrer">分享到 X</a>
+            </div>
+            <span class="ab-invc-hint" id="inviteHint2">先登记，再把链接发出去。</span>
+          </div>
+
+          <div class="ab-invc-col">
+            <span class="ab-invc-k">有效邀请</span>
+            <div class="ab-invc-n"><b id="invN">0</b><span id="invMax">/ 20</span></div>
+            <div class="ab-track" id="msTrack" aria-hidden="true"></div>
+          </div>
+
+        </div>
+        <p class="ab-invc-foot" id="inviteHint">朋友用你的链接登记，并做完转发那一项，才算一个有效邀请。</p>
+      </section>
+
+      <div class="ab-rows">
+        <article class="ab-qr wide" data-task="post">
           <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">创作推文</h4><span class="ab-qr-p" data-pts>+20</span></div>
@@ -519,7 +587,7 @@ button,input{font-family:inherit}
 
       <h3 class="ab-group">每日</h3>
       <div class="ab-rows">
-        <article class="ab-qr" data-task="share">
+        <article class="ab-qr wide" data-task="share">
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆一个宇宙并广播</h4><span class="ab-qr-p" data-pts>+5</span></div>
@@ -610,38 +678,11 @@ button,input{font-family:inherit}
 
       <p class="ab-msg" id="joinMsg"></p>
 
-      <div id="mine" hidden>
-        <div class="ab-score">
-          <b class="ab-score-n" id="myPoints">0</b><span class="ab-score-u">分</span>
-          <span class="ab-score-r" id="myRank">#—</span>
-        </div>
-        <p class="ab-gap" id="myGap"></p>
-
-        <div class="ab-kv">
-          <div><b class="ab-kv-v" id="bkRegister">—</b><span class="ab-kv-k">登记</span></div>
-          <div><b class="ab-kv-v" id="bkFollow">—</b><span class="ab-kv-k">关注</span></div>
-          <div><b class="ab-kv-v" id="bkRepost">—</b><span class="ab-kv-k">转发</span></div>
-          <div><b class="ab-kv-v" id="bkLike">—</b><span class="ab-kv-k">点赞</span></div>
-          <div><b class="ab-kv-v" id="bkInvite">—</b><span class="ab-kv-k">邀请</span></div>
-          <div><b class="ab-kv-v" id="bkShare">—</b><span class="ab-kv-k">广播</span></div>
-        </div>
-
-        <p class="ab-when" style="margin-top:22px">你的码</p>
-        <b class="ab-code" id="myCode">——</b>
-        <div class="ab-row">
-          <a class="ab-btn" id="btnPost" href="#" target="_blank" rel="noopener noreferrer" hidden>转发并回复这个码</a>
-          <a class="ab-btn2" href="app.html">去引爆</a>
-        </div>
-
-        <div class="ab-invcard">
-          <div class="ab-qc-hd"><h3 class="ab-qc-t">邀请链接</h3>
-            <span class="ab-qc-p"><span id="invValid">0</span> / <span id="invAll">0</span></span></div>
-          <div class="ab-invrow">
-            <input class="ab-inv" id="inviteUrl" readonly value="">
-            <button class="ab-btn3" type="button" id="btnCopy">复制</button>
-          </div>
-          <p class="ab-qc-d" id="inviteHint">朋友登记并做完转发，你拿分。</p>
-        </div>
+      <!-- 「我的」那一整块搬去上面的标签页了（总分进统计格、明细进「我的记录」、
+           邀请进那张宽卡）。同一件事在一页里出现两次，两处都会有人改漏。 -->
+      <div class="ab-row" id="doneGo" hidden>
+        <a class="ab-btn" href="#tasks">回去做任务</a>
+      </div>
       </div>
     </div>
   </div>
@@ -882,14 +923,13 @@ button,input{font-family:inherit}
     if (P.post != null) setPts('post', TF('+{0} / 条', P.post));
     if (P.share != null) setPts('share', TF('+{0} / 天', P.share));
 
-    /* 置顶推：env 没配 ARCBANG_PINNED_POST_URL 就整颗按钮不出现 ——
+    /* 转发置顶推的一键链接：正文预填登记码，url 带上置顶推本身。
+       env 没配 ARCBANG_PINNED_POST_URL 就是 null —— 转发那张卡的按钮跟着消失，
        给一个点了没反应的按钮比没有按钮糟。 */
     var pin = st.pinnedPost;
     var intent = (pin && st.code)
       ? 'https://x.com/intent/post?text=' + encodeURIComponent('ARCBANG 登记码 ' + st.code) + '&url=' + encodeURIComponent(pin)
       : null;
-    var bp = $('btnPost');
-    if (intent) { bp.hidden = false; bp.href = intent; } else { bp.hidden = true; }
 
     renderStats(st);
     renderTasks(st, intent);
@@ -972,6 +1012,11 @@ button,input{font-family:inherit}
     }
     renderWho();
     syncJoinBtn();
+  }
+  /** 邀请链接。按**当前这一页的地址**拼：首页被切成任务页时它就是 /，
+      独立发布时它是 /quest.html。写死任何一个都会在另一种情况下指错。 */
+  function inviteLink(st) {
+    return location.origin + location.pathname + '?ref=' + ((st && st.code) || '');
   }
   /** 两张要交链接的卡上写清楚「按谁核」：自动核的第一关就是比作者，
       作者对不上直接不通过 —— 那就该在他贴链接之前说，而不是之后。
@@ -1164,21 +1209,63 @@ button,input{font-family:inherit}
       IS_RETWEET: '转发不算创作', NO_MENTION: '没提到 @arcbang_xyz', NO_HASHTAG: '没带 #ARCBANG'
     };
     var bad = pf && (pf.status === 'pending' || pf.status === 'partial' || pf.status === 'rejected');
+
+    /* ---- 关注 / 点赞这两项的状态怎么算 ----
+       接了 X API（st.apiOn）之后**不认自称**：点「我关注了」只把这一项推进
+       「审核中」，等下一轮去 X 上查。查到了才是「已完成 · X 已核实」，
+       查不到就是「未通过 · X 上没查到关注」，可以再点一次。
+       没接 API 时还是老样子：点一下就算，胶囊写「已完成 · 待复核」。 */
+    /* 整句进词典，不拆成「X 上没查到」+「关注」——
+       这个仓库吃过这个亏：单个词在别的地方是另一个词性，英文必然有一处别扭。 */
+    var NOTFOUND = { follow: 'X 上没查到关注', like: 'X 上没查到点赞', repost: 'X 上没查到转发' };
+    function trio(key, on, act) {
+      var by = (st.verifiedBy && st.verifiedBy[key]) || null;
+      /* 自称记录只在**接着 API** 的时候算数。API 被关掉之后还认它的话，
+         那些没人再去核的「审核中」会永远停在那儿。 */
+      var cl = (st.apiOn && st.claims && st.claims[key]) || null;
+      if (on) {
+        return {
+          done: true, state: 'ok',
+          /* 胶囊上那半句：谁核的。'api' 是 X 上真查到的，别的都还要人再看一眼。 */
+          note: by === 'api' ? 'X 已核实' : (by === 'trust' ? '待复核' : (by === 'auto' ? '自动核过' : '')),
+          how: by === 'api'
+            ? (key === 'follow' ? '在 X 上查到了你的关注。' : '在 X 上查到了你的赞。')
+            : (key === 'follow' ? '已记下，复核时会在 X 上对一遍。' : '已记下，复核时会在 X 上对一遍。'),
+          act: null                                  // **做完就把按钮收起来**，一行只剩一颗胶囊
+        };
+      }
+      if (cl && cl.status === 'pending') {
+        return {
+          done: false, state: 'wait', wait: 'api', act: act, claim: false,
+          how: key === 'follow' ? '收到了，我们去 X 上核实你的关注。' : '收到了，我们去 X 上核实你的赞。'
+        };
+      }
+      if (cl && cl.status === 'failed') {
+        return {
+          done: false, state: 'bad',
+          note: NOTFOUND[key] || 'X 上没查到',
+          act: act,
+          how: key === 'follow' ? '在 X 上没查到你的关注。做好了再点一次。' : '在 X 上没查到你的赞。做好了再点一次。',
+          claim: reg && !st.distrusted, claimText: '做好了，再核一次'
+        };
+      }
+      return {
+        done: false, state: 'todo', act: act,
+        claim: reg && !st.distrusted,
+        claimText: key === 'follow' ? '我关注了' : '我点了',
+        how: st.apiOn
+          ? (key === 'follow' ? '关注完回来点一下，我们去 X 上核实。' : '点完赞回来点一下，我们去 X 上核实。')
+          : (key === 'follow' ? '关注完回来点「我关注了」。' : '点个赞，回来点「我点了」。')
+      };
+    }
+
     var plan = {
       register: {
         done: reg, state: reg ? 'ok' : 'todo',
         act: reg ? null : { text: '去登记', href: '#join' }
       },
-      follow: {
-        done: !!st.followed, state: st.followed ? 'ok' : 'todo',
-        act: reg ? { text: '去关注', href: st.followUrl, blank: true } : { text: '先登记', href: '#join' },
-        claim: reg && !st.followed && !st.distrusted
-      },
-      like: {
-        done: !!st.liked, state: st.liked ? 'ok' : 'todo',
-        act: (reg && st.likeUrl) ? { text: '去点赞', href: st.likeUrl, blank: true } : { text: '先登记', href: '#join' },
-        claim: reg && !st.liked && !st.distrusted
-      },
+      follow: trio('follow', st.followed, reg ? { text: '去关注', href: st.followUrl, blank: true } : { text: '先登记', href: '#join' }),
+      like: trio('like', st.liked, (reg && st.likeUrl) ? { text: '去点赞', href: st.likeUrl, blank: true } : { text: '先登记', href: '#join' }),
       repost: {
         done: !!st.reposted,
         state: st.reposted ? 'ok' : (bad ? 'bad' : (pf ? 'wait' : 'todo')),
@@ -1188,7 +1275,7 @@ button,input{font-family:inherit}
       invite: {
         done: (st.validInvites || 0) >= (P.inviteMax || 20),
         state: (st.validInvites || 0) > 0 ? 'ok' : 'todo',
-        act: { text: '拿链接', href: '#join' }
+        act: null                                    // 这张卡自己带着链接和两颗按钮
       },
       post: {
         done: (st.okPosts || 0) >= (P.postMax || 5),
@@ -1207,9 +1294,18 @@ button,input{font-family:inherit}
       share: reg ? TF('{0} 天', st.shareDays || 0) : ''
     };
     var LABEL = { todo: '未完成', wait: '审核中', ok: '已完成', bad: '未通过' };
+    /* 「审核中」那句话要写清楚**等多久、上次什么时候查的** ——
+       不写的话，那十分钟里页面上什么都不动，看着就像点了没用。 */
+    function waitNote() {
+      var every = st.checkEveryMin || 10;
+      var nx = st.nextCheckAt ? new Date(st.nextCheckAt).getTime() - Date.now() : null;
+      var mins = (nx != null && nx > 0) ? Math.max(1, Math.ceil(nx / 60000)) : null;
+      if (mins != null) return TF('自动核对，约 {0} 分钟后出结果', mins);
+      return TF('自动核对，最长 {0} 分钟', every);
+    }
 
     Object.keys(plan).forEach(function (k) {
-      var c = document.querySelector('.ab-qr[data-task="' + k + '"]');
+      var c = document.querySelector('[data-task="' + k + '"]');
       if (!c) return;
       var p = plan[k];
       /* 只在「从没完成变成完成」的那一次弹 */
@@ -1223,13 +1319,22 @@ button,input{font-family:inherit}
       var stEl = c.querySelector('[data-st]');
       var label = p.done ? 'ok' : p.state;
       stEl.className = 'ab-st ' + label;
-      stEl.textContent = p.done ? T(LABEL.ok)
-        : (p.why ? T(LABEL[p.state]) + ' · ' + T(p.why)
-          : (p.state === 'wait' ? T(LABEL.wait) + ' · ' + T('自动核对，通常几分钟')
-            : (progress[k] ? T(LABEL[p.state]) + ' · ' + progress[k] : T(LABEL[p.state]))));
+      /* 胶囊 = 四个状态词之一，后面最多再跟半句。半句的来源按序：
+         明写的 note（谁核的 / 为什么没过）→ 失败原因 → 「审核中」的等待说明 → 进度。 */
+      var tail = p.note ? T(p.note)
+        : (p.why ? T(p.why)
+          : (p.state === 'wait' ? (p.wait === 'api' ? waitNote() : T('自动核对，通常几分钟'))
+            : (progress[k] || '')));
+      stEl.textContent = T(LABEL[label]) + (tail ? ' · ' + tail : '');
+      /* 上次核对时间挂成 title：写进胶囊会太长，但要查得到。 */
+      if (st.apiOn && st.lastCheckAt) {
+        stEl.title = TF('上次核对 {0}', new Date(st.lastCheckAt).toLocaleString());
+      } else { stEl.removeAttribute('title'); }
+
       var a = c.querySelector('[data-act]');
       if (a) {
-        if (!p.act || !p.act.href) { a.hidden = true; }
+        /* **做完就把动作按钮收起来**（2026-09-18 用户反馈：已完成旁边还留着「去关注」）。 */
+        if (!p.act || !p.act.href || p.done) { a.hidden = true; }
         else {
           a.hidden = false;
           a.textContent = T(p.act.text);
@@ -1238,8 +1343,17 @@ button,input{font-family:inherit}
           else { a.removeAttribute('target'); a.removeAttribute('rel'); }
         }
       }
+      /* 说明那一行也跟着核验方式变：接了 API 就明说「在 X 上核实」——
+         用户看到的必须是真的在核，而不是一句「点一下就算」。 */
+      var how = c.querySelector('[data-how]');
+      if (how && p.how) how.textContent = T(p.how);
+
       var cb = c.querySelector('[data-claim]');
-      if (cb) cb.hidden = !p.claim;
+      if (cb) {
+        cb.hidden = !p.claim || p.done;
+        /* 文案每次都写死：从「再核一次」回到「我关注了」也要跟着变回去。 */
+        cb.textContent = T(p.claimText || (cb.getAttribute('data-claim') === 'follow' ? '我关注了' : '我点了'));
+      }
     });
 
     renderWho();
@@ -1277,8 +1391,31 @@ button,input{font-family:inherit}
       + ms.map(function (m) {
         return '<b class="' + (m.hit ? 'hit' : '') + '">' + esc(TF('{0} 人 +{1}', m.at, m.pts)) + '</b>';
       }).join('') + '</span>';
-    $('inviteRow').hidden = !reg;
-    if (reg) $('inviteUrl').value = location.origin + location.pathname + '?ref=' + (st.code || '');
+    /* 邀请码：大号、点一下复制。没登记时是「——」，点它不复制空串。 */
+    var codeBtn = $('invCode');
+    codeBtn.textContent = (reg && st.code) ? st.code : '——';
+    codeBtn.setAttribute('data-copy', (reg && st.code) ? st.code : '');
+    codeBtn.disabled = !(reg && st.code);
+    $('invCodeHint').textContent = (reg && st.code) ? T('点一下复制') : T('登记后生成');
+
+    var link = inviteLink(st);
+    $('inviteUrl').value = reg ? link : '';
+    $('inviteUrl').placeholder = reg ? '' : T('登记后生成');
+    $('btnCopy').disabled = !reg;
+    /* 分享到 X：把链接和文案一起塞进 intent。**文案里带上 @arcbang_xyz** ——
+       转出去的每一条都顺手把官号带上，这比多写一句「记得 @ 我们」管用。 */
+    var inv = $('btnInvX');
+    if (reg) {
+      inv.hidden = false;
+      inv.href = 'https://x.com/intent/post?text='
+        + encodeURIComponent(TF('我在 ARCBANG 攒分领免费宇宙，用我的链接登记：{0} @{1}',
+          link, st.xHandle || 'arcbang_xyz'));
+    } else { inv.hidden = true; }
+    $('invN').textContent = String(st.validInvites || 0);
+    $('invMax').textContent = '/ ' + (P.inviteMax || 20);
+    $('inviteHint2').textContent = reg
+      ? TF('每邀到一个 +{0} 分，最多 {1} 个。', P.invite || 20, P.inviteMax || 20)
+      : T('先登记，再把链接发出去。');
 
     /* 创作推文：五个点 + 提交框 */
     var pmax = P.postMax || 5;
@@ -1323,43 +1460,12 @@ button,input{font-family:inherit}
     $('doneAt').textContent = txt;
   }
 
-  /** 我的那一块：总分、名次、离两档各差几分、四项明细、邀请卡。 */
+  /** 登记卡底下那颗「回去做任务」：登记完了就该回上面接着做，
+      而不是停在一张只写着「已登记」的卡上。
+      （总分 / 明细 / 邀请全在上面的标签页里，这里不再重复一份。） */
   function renderMine(st) {
-    if (!ADDR || !st.registered) { $('mine').hidden = true; return; }
-    $('mine').hidden = false;
-    var b = st.breakdown || {};
-    $('myPoints').textContent = String(st.points || 0);
-    $('myRank').textContent = st.rank ? '#' + st.rank : '#—';
-    $('bkRegister').textContent = String(b.register || 0);
-    $('bkFollow').textContent = String(b.follow || 0);
-    $('bkRepost').textContent = String(b.repost || 0);
-    $('bkLike').textContent = String(b.like || 0);
-    $('bkInvite').textContent = String(b.invite || 0);
-    $('bkShare').textContent = String(b.share || 0);
-    $('myCode').textContent = st.code || '——';
-    $('invValid').textContent = String(st.validInvites || 0);
-    $('invAll').textContent = String(st.invites || 0);
-
-    /* **一处都不提「前 X 名」** —— 名额没定下来之前那是承诺，不是事实。 */
-    var gap;
-    if (st.tier === 'gtd') gap = T('你在保底那一档。榜定格前多攒一点更稳。');
-    else if (st.tier === 'fcfs') gap = TF('你在免费那一档。再 {0} 分够到保底。', st.gapToGtd);
-    else gap = TF('还没进免费那一档。再 {0} 分就进去。', st.gapToFree);
-    var ns = st.nextStep && st.nextStep.key;
-    var hint = ns === 'follow' ? T('下一步：关注。')
-      : ns === 'repost' ? T('下一步：转发并回复你的码。')
-      : ns === 'like' ? T('下一步：点赞。')
-      : ns === 'invite' ? T('下一步：把邀请链接发出去。')
-      : ns === 'share' ? T('下一步：引爆一个并广播。')
-      : ns === 'done' ? T('都做完了，等开放。')
-      : '';
-    $('myGap').textContent = gap + (hint ? ' ' + hint : '');
-
-    $('inviteHint').textContent = TF('朋友登记并做完转发，你 +{0} 分。最多 {1} 个。',
-      (st.pts && st.pts.invite) || 20, (st.pts && st.pts.inviteMax) || 20);
-    /* 邀请链接按**当前这一页的地址**拼：首页被切成预热页时它就是 /，
-       独立发布时它是 /warmup.html。写死任何一个都会在另一种情况下指错。 */
-    $('inviteUrl').value = location.origin + location.pathname + '?ref=' + (st.code || '');
+    var go = $('doneGo');
+    if (go) go.hidden = !(ADDR && st && st.registered);
   }
 
   /* ---------------- 积分榜（只公布前 100 名） ---------------- */
