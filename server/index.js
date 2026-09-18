@@ -703,7 +703,7 @@ async function handle(req, res, u) {
       // RPC 全挂 ≠ 哈希是假的。这两件事必须分开报，否则一次网络故障
       // 会被用户读成"我的哈希被判定成假的"。
       console.error('[bang] RPC 不通：' + (e && e.message));
-      return json(res, 503, { error: '链上节点暂时打不通，请稍后再试' });
+      return json(res, 424, { error: '链上节点暂时打不通，请稍后再试' });   // 不用 503：Cloudflare 会换成自己的错误页
     }
     if (!blk) {
       // C3：查不到就拒绝，不回退常量
@@ -753,7 +753,12 @@ async function handle(req, res, u) {
 
     if (p === '/x/login' && (req.method === 'GET' || req.method === 'HEAD')) {
       const r = await XA.begin();
-      if (!r.ok) return json(res, r.status || 502, { error: r.error }, { 'cache-control': 'no-store' });
+      /* 失败也跳回预热页（?xerr=…）而不是回 5xx：Cloudflare 会把源站的 502/503 换成它自己的错误页，
+         用户看到的就只剩 "error code: 502"。 */
+      if (!r.ok) {
+        const back = (process.env.ARCBANG_PUBLIC_BASE || '').replace(/\/+$/, '') + '/warmup.html';
+        return send(res, 302, '', { location: back + '?xerr=' + encodeURIComponent(r.error || 'failed'), 'cache-control': 'no-store' });
+      }
       /* 直接 302 过去。把 URL 回给前端再跳也行，但那样会多一次「点了没反应」的窗口。
          同时下发一次性的 state cookie —— 回调那一步要拿它验，见 server/xauth.js。 */
       return send(res, 302, '', { location: r.url, 'set-cookie': r.cookie, 'cache-control': 'no-store' });
@@ -1388,7 +1393,7 @@ async function handle(req, res, u) {
       /* 与 /bang 同一口径：节点全挂是我们的故障，必须报 503。
          报成 404 的话，一次网络抖动会让市场以为这枚 NFT 被烧了。 */
       console.error('[token] RPC 不通：' + (e && e.message));
-      return json(res, 503, { error: '链上节点暂时打不通，请稍后再试' });
+      return json(res, 424, { error: '链上节点暂时打不通，请稍后再试' });   // 不用 503：Cloudflare 会换成自己的错误页
     }
     if (!chain) return json(res, 404, { error: '链上没有这枚 NFT' });
     const { meta } = buildMetadata(chain, {

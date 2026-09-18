@@ -318,14 +318,14 @@ function create(opts) {
       text = await r.text();
       if (!r.ok) {
         console.error('[xauth] request_token 失败：' + r.status + ' ' + String(text).slice(0, 200));
-        return { ok: false, status: 502, error: 'X 那边没给临时凭证（' + r.status + '）' };
+        return { ok: false, status: 424, error: (r.status === 403 && /Callback URL not approved/i.test(String(text))) ? '回调地址还没在 X 开发者后台登记（User authentication settings → Callback URI）' : 'X 那边没给临时凭证（' + r.status + '）' };
       }
     } catch (e) {
       console.error('[xauth] request_token 打不通：' + (e && e.message));
-      return { ok: false, status: 502, error: 'X 那边打不通，稍后再试' };
+      return { ok: false, status: 424, error: 'X 那边打不通，稍后再试' };
     }
     const j = parseForm(text);
-    if (!j.oauth_token || !j.oauth_token_secret) return { ok: false, status: 502, error: 'X 的回复看不懂' };
+    if (!j.oauth_token || !j.oauth_token_secret) return { ok: false, status: 424, error: 'X 的回复看不懂' };
     /* oauth_callback_confirmed 必须是 true：不是的话说明回调地址没在后台登记，
        这时候跳过去用户会看到 X 的报错页，而我们这边一点线索都没有。 */
     if (String(j.oauth_callback_confirmed) !== 'true') {
@@ -388,7 +388,7 @@ function create(opts) {
       }
     } catch (e) {
       console.error('[xauth] access_token 打不通：' + (e && e.message));
-      return { ok: false, status: 502, error: 'X 那边打不通，稍后再试' };
+      return { ok: false, status: 424, error: 'X 那边打不通，稍后再试' };
     }
     const j = parseForm(text);
     /* **这一响应里就有 user_id 与 screen_name** —— 这正是选 1.0a 的理由：

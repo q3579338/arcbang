@@ -1476,7 +1476,7 @@ function call(method, url, body, headers) {
     // 3. 节点全挂：这是我们的故障，必须 503 —— 报 404 会让市场以为这枚 NFT 被烧了
     ethCallStub = () => { const e = new Error('所有 RPC 节点都打不通'); e.rpcDown = true; throw e; };
     const down = await call('GET', '/api/token/5');
-    ok('节点全挂 → 503，不是 404 也不是 502', down.status === 503, down.status + '');
+    ok('节点全挂 → 424（不用 5xx：Cloudflare 会换成自己的错误页），不是 404 也不是 502', down.status === 424, down.status + '');
 
     // 4. 合约在、能读、这个 id 没铸过：这才是 404
     ethCallStub = () => '0x' + '00'.repeat(32);
