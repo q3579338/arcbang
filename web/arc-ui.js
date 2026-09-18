@@ -2746,15 +2746,19 @@
         '<div class="hud-msg">' + iv + '</div>';
       return;
     }
+    /* 「广播这个宇宙」在三种状态下都给（2026-09-18 用户：「引爆以后没有广播啊」）——
+       预热期的「引爆并广播」任务靠它记分，而那时合约往往还没部署、也还没铸。走 data-bnbshare 委托。 */
     if (!C.contract()) {
       HUD.el.innerHTML = '<div class="hud-title">' + esc(hudWhich(d)) + '</div>' +
-        '<div class="hud-msg">' + esc(T('合约还没部署，暂时不能铸造。')) + '</div>';
+        '<div class="hud-msg">' + esc(T('合约还没部署，暂时不能铸造。')) + '</div>' +
+      '<div class="hud-msg"><button type="button" class="bnb-share-inline" data-bnbshare="' + esc(S.hash || '') + '">' + esc(T('广播这个宇宙')) + '</button></div>';
       return;
     }
     if (S.minted) {
       HUD.el.innerHTML = '<div class="hud-title">' + esc(T('这个宇宙已经被铸走了')) + '</div>' +
         '<div class="hud-msg">' + (S.minted > 0 ? esc(TF('宇宙 #{0}（链上 NFT #{1}）', S.blockNumber != null ? S.blockNumber : '—', S.minted)) : esc(T('刚刚铸造成功'))) +
-        ' · <a href="' + MARKET_URL + '">' + esc(T('到市场看看')) + '</a></div>';
+        ' · <a href="' + MARKET_URL + '">' + esc(T('到市场看看')) + '</a></div>' +
+      '<div class="hud-msg"><button type="button" class="bnb-share-inline" data-bnbshare="' + esc(S.hash || '') + '">' + esc(T('广播这个宇宙')) + '</button></div>';
       return;
     }
     var oid = outcomeOf(d), idx = OUTCOME_ORDER.indexOf(oid);
@@ -2771,7 +2775,8 @@
          点之前就知道这一下要花多少，而不是钱包弹出来才发现要收钱。 */
       (idx < 0 ? '<div class="hud-msg bnb-err">' + esc(T('这个结局算不出来，铸不了')) + '</div>'
                : '<button type="button" id="bnbHudMint" class="hud-btn">' + esc(paidMintLabel() || T('把这个宇宙收下')) + '</button>') +
-      '<div id="bnbHudMsg" class="hud-msg"></div>';
+      '<div id="bnbHudMsg" class="hud-msg"></div>' +
+      '<div class="hud-msg"><button type="button" class="bnb-share-inline" data-bnbshare="' + esc(S.hash || '') + '">' + esc(T('广播这个宇宙')) + '</button></div>';
     var b = $('bnbHudMint');
     if (b) b.addEventListener('click', function () {
       mint(idx, hudMsg, function () { return $('bnbHudMint'); });
