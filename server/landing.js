@@ -92,21 +92,14 @@ const shortAddr = a => (a && /^0x[0-9a-fA-F]{40}$/.test(a)) ? a.slice(0, 6) + '�
  * @param {string} o.canonical         这张页自己的完整 URL
  * @param {string} o.ogImage           1200×630 的 og 图完整 URL
  * @param {string} o.cardImage         页面正文里那张方卡的完整 URL
- * @param {string} o.base              PUBLIC_BASE（btc 站是 btc 站的根）
- * @param {string} [o.origin]          'btc' → 比特币宇宙变体（specs/btcbang-v1.md §五）：标题 Bitcoin block #n、
- *                                     徽章、前导零、verified=false 属正常态的解释。不传时输出**逐字节不变**。
- * @param {object} [o.btc]             {height, time, badges:[{key,label,labelEn}], zeros, base}
+ * @param {string} o.base              PUBLIC_BASE
  */
 function landingHTML(o) {
   const card = o.card || null;
-  const isBtc = o.origin === 'btc';
-  const chainWord = isBtc ? 'Bitcoin' : chainWordOf();
-  const brand = isBtc ? 'BTCBANG' : brandOf();
-  const bt = (isBtc && o.btc) || {};
+  const chainWord = chainWordOf();
+  const brand = brandOf();
   const N = Number.isSafeInteger(o.blockNumber) ? o.blockNumber : null;
-  /* 标题 / 表格里用的高度：比特币宇宙的哈希链接也知道高度（注册表里有），照印；
-     上一块 / 下一块仍只看 URL 里的 N —— 哈希链接在哪个站都可能被打开，/s/<n±1> 的解释跟着 Host 走。 */
-  const BN = N != null ? N : (isBtc && Number.isSafeInteger(bt.height) ? bt.height : null);
+  const BN = N;
   const numTxt = BN != null ? '#' + grp(BN) : '';
   const hashShort = o.hash ? o.hash.slice(0, 10) + '…' : '';
   const subject = BN != null ? 'Universe from ' + chainWord + ' block ' + numTxt : 'Universe ' + hashShort;
@@ -169,18 +162,7 @@ function landingHTML(o) {
   const row = (k, v, r) => rows.push('<tr><th>' + k + '</th><td class="n">' + v + '</td><td class="r">' + (r || '') + '</td></tr>');
   if (BN != null) row(esc(chainWord) + ' block', numTxt);
   if (o.hash) {
-    /* 比特币宇宙：哈希旁边给一条去 mempool.space 复核的链接（§1.1「谁都能复核」）。BNB 那行不动。 */
-    row('Block hash', '<code>' + esc(o.hash) + '</code>', isBtc
-      ? '<a href="https://mempool.space/block/' + esc(o.hash.replace(/^0x/, '')) + '" rel="noopener">mempool.space</a>' : '');
-  }
-  if (isBtc) {
-    if (Number.isSafeInteger(bt.time) && bt.time > 0) {
-      row('Block time', esc(new Date(bt.time * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'));
-    }
-    if (Number.isSafeInteger(bt.zeros)) row('Leading zeros', String(bt.zeros) + ' hex digits');
-    if (Array.isArray(bt.badges) && bt.badges.length) {
-      row('Badges', bt.badges.map((b) => esc(b.labelEn || b.key)).join(' · '));
-    }
+    row('Block hash', '<code>' + esc(o.hash) + '</code>', '');
   }
   if (card) {
     if (D != null) {
@@ -219,24 +201,11 @@ function landingHTML(o) {
     if (N >= 1) nav += '<a href="/s/' + (N - 1) + '" rel="prev">← Block #' + grp(N - 1) + '</a>';
     nav += '<a href="/s/' + (N + 1) + '" rel="next">Block #' + grp(N + 1) + ' →</a>';
   }
-  /* 「回首页」那一行写的是本站域名。非 btc 的那一支从前写死 bnbbang.com ——
-     ARCBANG 那个实例（BNBBANG_PUBLIC_BASE=https://arcbang.xyz）跟着就把访客指去了别人家。
-     改成读 o.base：bnb 实例的 base 就是 https://bnbbang.com，取出来仍是 bnbbang.com，
-     产物逐字节不变；没传 base 时也退回同一个字面量。 */
-  nav += '<a href="/">Back to ' + (isBtc ? esc(String(bt.base || 'https://bang.satloot.com').replace(/^https?:\/\//, ''))
-    : esc(String(o.base || 'https://bnbbang.com').replace(/^https?:\/\//, '').replace(/\/+$/, ''))) + '</a>';
+  /* 「回首页」那一行写的是本站域名（BNBBANG_PUBLIC_BASE）。没传 base 时退回字面量。 */
+  nav += '<a href="/">Back to '
+    + esc(String(o.base || 'https://bnbbang.com').replace(/^https?:\/\//, '').replace(/\/+$/, '')) + '</a>';
 
-  /* 比特币宇宙必须把 verified=false 说清楚（规格 §一）：合约里的 blockhash(height) 查的是 BSC，
-     对不上比特币哈希是必然的，_bang 只记 false 不 revert。不解释的话，链上那个 false
-     会被读成「这枚是假的」。 */
-  const btcNote = isBtc
-    ? '<p><small>On-chain, this universe lives in the same MirrorUniverse contract on BNB Chain as every BNBBANG universe, '
-      + 'with blockHash = the Bitcoin block hash and blockNumber = its Bitcoin height'
-      + (BN != null ? ' (' + grp(BN) + ')' : '') + '. '
-      + 'The contract’s <code>verified</code> flag is <code>false</code> for every Bitcoin-origin universe: '
-      + 'BNB Chain cannot look up a Bitcoin hash, so the flag simply does not apply — that is the expected state, not an error. '
-      + 'Anyone can confirm the origin by fetching this height from any Bitcoin node or explorer and comparing the hash.</small></p>'
-    : '';
+  const btcNote = '';
 
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">'
     + '<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32"><link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">'

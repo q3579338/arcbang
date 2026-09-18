@@ -176,16 +176,8 @@ function bangWhole(v) {
  *   unknown     cardOf 非零但两边都对不上。见下面的处理。
  */
 function buildMetadata(chain, deps) {
-  const { cardFor, storeGet, publicBase, version, btcOf, btcBadgesOf } = deps;
+  const { cardFor, storeGet, publicBase, version } = deps;
   const art = publicBase + '/api/art/';
-
-  /* 比特币宇宙（specs/btcbang-v1.md §五）：注册表认得这个哈希，或 (blockHash, blockNumber)
-     与比特币缓存对得上。来源判定谁都能复核（§1.1），这里只是把结论印进 metadata；
-     没注入 btcOf（marketindex-test / 老调用方）就当没有比特币这回事，输出一个字不变。 */
-  let btcO = null;
-  try { btcO = typeof btcOf === 'function' ? btcOf(chain.blockHash, chain.blockNumber) : null; }
-  catch (e) { btcO = null; }
-  const btcNo = btcO ? (chain.blockNumber == null ? btcO.height : chain.blockNumber) : null;
 
   let source = 'none', card = null, image = null;
   if (chain.cardHash) {
@@ -252,13 +244,6 @@ function buildMetadata(chain, deps) {
   push('Block proof', chain.verified == null ? null : (chain.verified ? 'on-chain' : 'off-chain'));
   push('Block', chain.blockNumber);
   push('Block hash', chain.blockHash);
-  if (btcO) {
-    push('Origin', 'Bitcoin');
-    push('BTC block', btcNo);
-    let badges = [];
-    try { badges = typeof btcBadgesOf === 'function' ? btcBadgesOf(btcNo) : []; } catch (e) { badges = []; }
-    if (badges.length) push('Badges', badges.map((b) => b.labelEn || b.key).join(', '));
-  }
 
   /* 救活记录 —— economy-v4 §11 的结论是整个项目真正稀缺的只有这一样：
      区块要多少有多少，烧掉的币不是。所以它必须印在 metadata 上，而且数字要
@@ -277,14 +262,9 @@ function buildMetadata(chain, deps) {
   const named = cleanName(chain.name);
   if (named) push('Name', named);
 
-  let desc = 'A universe grown from ' + (btcO ? 'Bitcoin' : 'BNB') + ' block ' + chain.blockNumber
+  let desc = 'A universe grown from BNB block ' + chain.blockNumber
     + '. One block hash, one set of genesis parameters, one outcome. '
     + 'Derived by an integer formula anyone can recompute from the block hash alone.';
-  if (btcO) {
-    /* verified=false 是比特币宇宙的正常态（规格 §一），metadata 里必须说，否则 Block proof=off-chain 会被读成假货 */
-    desc += ' Minted into the same MirrorUniverse contract on BNB Chain; its on-chain verified flag is false by design'
-      + ' (BNB Chain cannot look up a Bitcoin hash), and the origin can be checked against any Bitcoin node.';
-  }
   if (source === 'none') {
     desc += ' This one was minted without detonating: the chain carries no parameter stamp for it,'
       + ' so none are shown.';
@@ -319,7 +299,7 @@ function buildMetadata(chain, deps) {
      名字可以改、可以放弃，区块号不能，出问题时要靠它把一枚 NFT 对回链上。 */
   const meta = {
     // 比特币宇宙的名字把来源写进去：两站共用一个市场，「Universe #840000」看不出它是哪条链的块
-    name: named || (btcO ? 'Bitcoin Block #' + btcNo + ' Universe' : 'Universe #' + uniNo),
+    name: named || ('Universe #' + uniNo),
     description: desc,
     external_url: publicBase + '/',      // 还没有按 token 的深链页面，指站点根，别造死链
     attributes: attrs

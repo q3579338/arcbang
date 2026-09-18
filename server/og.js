@@ -58,7 +58,6 @@ function wrap2(s, max) {
  * @param {string|null} o.blockNumber  纯数字字符串；没有就不印那一行
  * @param {object|null} o.card         拿得到就印结局与常数；拿不到只印编号和域名
  * @param {string} [o.blockHash]       右栏底部那行短哈希
- * @param {string} [o.origin]          'btc' → 编号那行印 Bitcoin block #n（specs/btcbang-v1.md §五）；
  *                                     不传时输出逐字节不变。水印仍是 BNBBANG，域名那行也不动（系列名）。
  */
 function composeOG(cardSVG, o) {
@@ -109,7 +108,7 @@ function composeOG(cardSVG, o) {
   }
 
   const num = o.blockNumber != null && /^\d{1,12}$/.test(String(o.blockNumber))
-    ? (o.origin === 'btc' ? 'Bitcoin block #' : 'BNB block #') + grp(o.blockNumber) : '';
+    ? 'BNB block #' + grp(o.blockNumber) : '';
   const short = o.blockHash ? String(o.blockHash).slice(0, 10) + '…' + String(o.blockHash).slice(-6) : '';
 
   return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'

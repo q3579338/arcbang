@@ -137,13 +137,10 @@ const MONO = 'ui-monospace,Menlo,Consolas,monospace';
 /**
  * @param thumb 出缩略图档：画布尺寸不变（矢量内容照旧按 1200 排版，
  *              缩放由渲染方决定），只把内嵌的底图换成小的。
- * @param {object} [opts] BTCBANG（specs/btcbang-v1.md §五）：{origin:'btc', height}
- *              → 角标印 BTC BLOCK #n 而不是 UNIVERSE #n。水印仍是 BNBBANG（系列名）。
  *              不传 opts 时输出**逐字节不变**：原生 / 干预卡的图是 tokenURI 指着的东西。
  */
 function renderSVG(blockHash, card, withParams, thumb, opts) {
   opts = opts || {};
-  const isBtc = opts.origin === 'btc';
   const iv = card && card.intervention;
   const rescued = !!(iv && iv.rescued);
   const t = rescued ? Object.assign({}, TIER[(card.tier && card.tier.id) || 'whisper'] || TIER.whisper, GOLD)
@@ -215,12 +212,10 @@ function renderSVG(blockHash, card, withParams, thumb, opts) {
       + ' font-family="' + MONO + '" font-size="19">' + short + '</text>';
   }
 
-  /* 宇宙编号 = 区块号。比特币宇宙的高度从 opts 来（注册表里的，是哈希的函数），
-     不依赖 card.blockNumber —— 出图那条路的 card 是规范形态、blockNumber 恒为 null（见 index.js cardFor）。 */
-  const no = isBtc && opts.height != null ? opts.height
-    : (card && card.blockNumber != null ? card.blockNumber : null);
+  /* 宇宙编号 = 区块号。出图那条路的 card 是规范形态、blockNumber 恒为 null（见 index.js cardFor）。 */
+  const no = card && card.blockNumber != null ? card.blockNumber : null;
   const num = no != null ? '#' + grp(no) : '';
-  const numLabel = isBtc ? 'BTC BLOCK ' : 'UNIVERSE ';
+  const numLabel = 'UNIVERSE ';
 
   return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
     + ' viewBox="0 0 ' + S + ' ' + S + '" width="' + S + '" height="' + S + '">'
@@ -269,7 +264,7 @@ function renderSVG(blockHash, card, withParams, thumb, opts) {
 /**
  * 造物出图：在原宇宙图上叠「销毁 X」。
  * **不改 renderSVG 的默认输出** —— 原生 / 干预卡的指纹必须一字不动。
- * @param {object} [opts] { thumb, burned, paid, burnBps, origin?, height? }（origin/height 透传给 renderSVG）
+ * @param {object} [opts] { thumb, burned, paid, burnBps }
  */
 function renderCraftedSVG(blockHash, card, opts) {
   opts = opts || {};

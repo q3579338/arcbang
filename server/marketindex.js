@@ -1155,7 +1155,7 @@ const soft = { nullOnRevert: true };
 
 let cardSrc = null;
 /** index.js 在模块加载时调它，把带磁盘缓存的 cardFor/storeGet/cardCached 注进来；
-    originOf（btc.js）也走这条：哈希 → 是不是比特币块（specs/btcbang-v1.md §五） */
+ */
 function setCardSource(s) {
   cardSrc = (s && typeof s === 'object') ? s : null;
   return !!cardSrc;
