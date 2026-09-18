@@ -2280,6 +2280,9 @@
     for (var i = 0; i < 3; i++) {
       st.storms.push([(rnd() * 2 - 1) * PI, (rnd() * 1.3 - 0.65), 0.05 + rnd() * 0.13, 0.35 + rnd() * 0.65, rnd() < 0.5 ? -1 : 1]);
     }
+    /* 巨行星带内的子带：每条带里再分 3–8 条细条纹（条数与相位随种子） */
+    st.subBands = 3 + Math.floor(rnd() * 6);
+    st.subPhase = rnd() * TAU;
     return st;
   }
 
@@ -2733,54 +2736,106 @@
     'void main(){ vN=aPos; vSN=shapeNrm(aPos); vec4 w=uModel*vec4(shapeP(aPos),1.0); vW=w.xyz; gl_Position=uVP*w; }'
   ].join('\n');
   /* 巨行星 / 冰巨星的球面：只有云带，没有高度场 —— 单独一个程序，别和地形挤在一个着色器里。 */
+  /* ---- 巨行星的云顶 ----------------------------------------------------------
+     纬向带与区，靠四件事撑起层次，而不是「一层低频色块 + 一把撒上去的米粒」：
+       1) 多尺度流场：三级切向旋涡域扭曲，扭曲强度在带界处最大（Kelvin–Helmholtz 不稳定
+          本来就发生在两条反向急流之间），于是卷曲只长在带界，带内保持纬向；
+       2) 沿流线拉长：细纹在**扭曲之后**才把纬向压扁 —— 先卷再压得到的是卷须，
+          先压再卷（旧写法）得到的是横向刮痕；
+       3) 带内子带：每条带里再分 3–8 条（条数与相位随种子）色相/明度细条纹；
+       4) 带界羽状拖尾（festoon）：带界的锯齿状扰动，木星的带界就是这个样子。
+     风暴斑：少量椭圆、长轴沿纬向、内部螺旋、下游拖出一条扰动带纹的尾迹。
+     亮云：沿流线拉长的絮状条，按纬度成群出现 —— 不是全球均匀撒点。
+     细节全部走那张公共平铺贴图（采样，不是内联噪声），所以这一层加得起。 */
   var GLSL_GAS = [
     'uniform sampler2D uPal;',
     'uniform vec3 uAtm, uSunTint, uGasGlowCol;',
     'uniform float uAtmDensity, uTime, uGasGlow, uDetail;',
     'uniform float uBandY[20]; uniform vec3 uBandC[20]; uniform int uBandN;',
-    'uniform vec4 uStormA, uStormB, uStormC, uGasP;',
-    'vec3 curlW(vec3 n, float f, float amp){ vec3 w=vec3(snoise(n*f+3.1), snoise(n*f+9.7), snoise(n*f+17.3)); return normalize(n + cross(n,w)*amp); }',
+    'uniform vec4 uStormA, uStormB, uStormC, uGasP, uGasP2;',
+    'uniform highp sampler3D uDetTex; uniform vec3 uDetOff;',
+    'vec4 td4(vec3 p){ return texture(uDetTex, p) * 2.0 - 1.0; }',
+    'float td(vec3 p){ return texture(uDetTex, p).r * 2.0 - 1.0; }',
     'float wrapPi(float a){ return mod(a+3.14159265, 6.28318531)-3.14159265; }',
+    /* 风暴斑：椭圆长轴沿纬向，内部按半径旋进（螺旋），外圈一道亮环 */
     'vec3 stormPatch(vec3 col, vec4 sp, float lon, float y, float lat, float sgn){',
     '  if(sp.w<=0.001) return col;',
     '  vec2 d = vec2(wrapPi(lon-sp.x)*max(cos(lat),0.10), y-sp.y);',
-    '  float r = length(d/vec2(max(sp.z,0.01)*2.1, max(sp.z,0.01)));',
-    '  float a = atan(d.y,d.x) + sgn*(1.0-clamp(r,0.0,1.0))*2.6;',
-    '  float swirl = 0.5+0.5*sin(a*3.0+r*8.0);',
-    '  float m = smoothstep(1.05,0.30,r)*sp.w;',
+    '  float r = length(d/vec2(max(sp.z,0.01)*2.3, max(sp.z,0.01)));',
+    '  float a = atan(d.y,d.x) + sgn*(1.0-clamp(r,0.0,1.0))*2.8;',
+    '  float swirl = 0.5+0.5*sin(a*3.0+r*7.0);',
+    '  float m = smoothstep(1.05,0.28,r)*sp.w;',
     '  vec3 sc = mix(col*vec3(1.55,0.82,0.58), col*vec3(1.10,1.02,0.92), swirl*0.55);',
     '  col = mix(col, sc, m);',
-    '  return mix(col, min(col*1.45+0.05,vec3(1.0)), smoothstep(0.26,0.0,abs(r-0.94))*0.55*sp.w); }',
+    '  return mix(col, min(col*1.45+0.05,vec3(1.0)), smoothstep(0.24,0.0,abs(r-0.94))*0.55*sp.w); }',
+    /* 尾迹：风暴下游一条被扰动的带纹。只在下游、只在风暴那一档纬度上。 */
+    'float stormWake(vec4 sp, float lon, float y, float lat, float sgn){',
+    '  if(sp.w<=0.001) return 0.0;',
+    '  float dl = wrapPi(lon-sp.x)*max(cos(lat),0.10);',
+    '  float q = (y-sp.y)/max(sp.z*1.7,0.02);',
+    '  float down = smoothstep(0.0, -1.1, dl*sgn);',
+    '  return down*exp(-q*q)*sin(dl*13.0)*sp.w; }',
     'vec3 gasShade(vec3 n, float t){',
-    /* 带的纵坐标用纬度而不是 sin 纬度：木星的带在纬度上大致等宽，用 sin 会把赤道那几条拉得特别肥 */
     '  float y=clamp(n.y,-1.0,1.0), lat=asin(y), lon=atan(-n.z,n.x), by=lat*0.3183098862+0.5;',
     '  float turb=max(uGasP.x,0.15);',
-    '  float edge=0.0;',
-    '  for(int i=0;i<20;i++){ if(i>=uBandN-1) break; edge=max(edge, smoothstep(0.022,0.0,abs(by-uBandY[i]))); }',
-    '  vec3 q=curlW(n, 2.6, 0.12*turb*(0.35+edge));',
-    '  q=curlW(q, 7.5, 0.055*turb*(0.30+edge));',
-    '  float adv=t*0.010;',
-    '  float w1=snoise(vec3(q.x*1.7+adv, q.y*9.0, q.z*1.7));',
-    '  float w2=snoise(vec3(q.x*4.2-adv*1.6, q.y*22.0, q.z*4.2)+7.0);',
-    '  float w3=snoise(vec3(q.x*0.85+adv*0.4, q.y*3.2, q.z*0.85)+3.0);',
-    '  float byw=clamp(by + (w1*0.5+w2*0.22+w3*0.45)*0.013*turb*(0.30+1.60*edge), 0.0, 1.0);',
-    '  float sw=0.006+0.012*turb;',
+    /* 带界距离（卷曲只长在这儿）与本带的纬向风向（相邻带反向） */
+    '  float edge=0.0, wind=1.0;',
+    '  for(int i=0;i<20;i++){ if(i>=uBandN-1) break;',
+    '    edge=max(edge, smoothstep(0.026,0.0,abs(by-uBandY[i])));',
+    '    if(by>uBandY[i]) wind=-wind; }',
+    /* 三级切向旋涡域扭曲：强度随带界升高 —— 带内几乎不扭，带界卷成丝 */
+    '  float adv=t*0.00006*wind;',
+    '  vec3 d0=n;',
+    '  vec3 f1=td4(d0*0.085+uDetOff+vec3(adv,0.0,0.0)).xyz;',
+    '  d0=normalize(d0+cross(n,f1)*0.055*turb*(0.30+edge));',
+    '  vec3 f2=td4(d0*0.21+uDetOff+0.21).xyz;',
+    '  d0=normalize(d0+cross(n,f2)*0.022*turb*(0.26+edge));',
+    '  vec3 f3=td4(d0*0.52+uDetOff+0.47).xyz;',
+    '  d0=normalize(d0+cross(n,f3)*0.008*turb*(0.22+edge));',
+    /* 带坐标的扰动：大尺度蜿蜒 + 带界的羽状拖尾 + 风暴下游的尾迹 */
+    '  float mnd=td(d0*0.045+uDetOff);',
+    '  float fest=td4(d0*0.30+uDetOff+0.70).g;',
+    '  float wake=stormWake(uStormA,lon,y,lat,1.0)+stormWake(uStormB,lon,y,lat,-1.0)+stormWake(uStormC,lon,y,lat,1.0);',
+    '  float byw=clamp(by + (mnd*0.50 + fest*0.62*edge + wake*0.35)*0.018*turb, 0.0, 1.0);',
+    /* 带查表：边缘按湍流宽度柔化 */
+    '  float sw=(0.005+0.011*turb)*(1.0-0.62*uDetail);',
     '  vec3 col=uBandC[0];',
     '  for(int i=1;i<20;i++){ if(i>=uBandN) break; col=mix(col, uBandC[i], smoothstep(uBandY[i-1]-sw, uBandY[i-1]+sw, byw)); }',
-    '  col *= 1.0 + snoise(vec3(q.x*7.0+adv, q.y*46.0, q.z*7.0))*0.035*(0.45+0.55*uDetail);',
-    '  col = mix(col, min(col*1.30+0.03,vec3(1.0)), edge*smoothstep(0.05,0.75,w1*0.5+0.5)*0.55*turb);',
-    '  col = mix(col, col*0.82, edge*smoothstep(0.05,0.75,-w1*0.5+0.5)*0.35*turb);',
+    /* 带内子带：每条带里 3–8 条纬向细条纹（条数与相位随种子） */
+    '  float sub=sin(byw*6.2831853*uGasP2.x + uGasP2.y);',
+    '  col *= 1.0 + sub*0.040;',
+    '  col = mix(col, col*vec3(1.035,0.995,0.960), sub*0.5+0.5);',
+    /* 沿流线拉长的细纹：**先卷后压**，压的是纬向 —— 得到的是卷须，不是刮痕。
+       两档，近距离时第二档再加权（远看是干净的带，拉近能看到丝状结构）。 */
+    '  vec3 st=vec3(d0.x, d0.y*3.6, d0.z);',
+    '  float fine = td4(st*0.85+uDetOff).b*0.62 + td4(st*2.1+uDetOff+0.33).a*0.38;',
+    '  col *= 1.0 + fine*0.075*(0.55+0.65*uDetail);',
+    '  if(uDetail>0.02){ vec3 st2=vec3(d0.x, d0.y*4.4, d0.z);',
+    /* 贴脸时才淡入的两档：带内的细丝与小尺度对流胞。频率取到「一个纹素约三个像素」，
+       再细就开始起噪点了（那正是第一版糊+闪的原因）。 */
+    '    col *= 1.0 + (td4(st2*5.0+uDetOff+0.55).r*0.58 + td4(st2*11.5+uDetOff+0.81).g*0.42)*0.115*uDetail;',
+    '    col *= 1.0 + td4(vec3(d0.x,d0.y*5.4,d0.z)*24.0+uDetOff+0.29).b*0.055*uDetail; }',
+    /* 带界的亮暗卷曲（羽流本体） */
+    '  col = mix(col, min(col*1.28+0.03,vec3(1.0)), edge*smoothstep(0.0,0.75,fest)*0.55*turb);',
+    '  col = mix(col, col*0.84, edge*smoothstep(0.0,0.75,-fest)*0.35*turb);',
     '  col = stormPatch(col, uStormA, lon, y, lat,  1.0);',
     '  col = stormPatch(col, uStormB, lon, y, lat, -1.0);',
     '  col = stormPatch(col, uStormC, lon, y, lat,  1.0);',
+    /* 亮云：沿流线拉长的絮状条，按纬度成群 —— 不是全球均匀撒点 */
+    '  if(uGasP2.z>0.01){',
+    '    float grp = smoothstep(0.10,0.72, td(vec3(uDetOff.x, by*1.35+uDetOff.y, uDetOff.z)));',
+    '    vec3 sc2 = vec3(d0.x, d0.y*7.5, d0.z);',
+    '    float streak = td4(sc2*1.5+uDetOff+0.9).r*0.65 + td4(sc2*3.4+uDetOff+0.13).g*0.35;',
+    '    float br = smoothstep(0.30,0.80,streak)*grp*uGasP2.z;',
+    '    col = mix(col, min(col*1.85+0.10,vec3(1.0)), br*0.62); }',
+    /* 极区：暗化，偶尔是土星那样的六边形 */
     '  float pl=abs(y);',
     '  if(uGasP.y>0.5){ float th=atan(n.z,n.x); float hr=0.79+0.060*cos(6.0*th);',
     '    col = mix(col, col*0.78+vec3(0.015,0.025,0.04), smoothstep(hr-0.03,hr+0.03,pl)*uGasP.z);',
     '    col = mix(col, min(col*1.30+0.03,vec3(1.0)), smoothstep(0.035,0.0,abs(pl-hr))*0.65); }',
     '  else col = mix(col, col*(1.0-0.50*uGasP.z), smoothstep(0.70,0.99,pl));',
-    '  if(uGasP.w>0.5){ float br=smoothstep(0.78,0.96, snoise(vec3(q.x*5.0+adv*2.0, q.y*13.0, q.z*5.0)+21.0));',
-    '    col = mix(col, min(col*2.0+0.14,vec3(1.0)), br*0.55); }',
     '  return col; }',
+    /* 大气的边缘散射：光程 ∝ 1/μ、瑞利 λ⁻⁴ 把蓝端加权、向光侧亮而背光侧消失 */
     'vec3 limbGlow(vec3 Nw, vec3 V, float ndl, out float amt){',
     '  float mu=max(dot(Nw,V),0.0);',
     '  float thick=pow(1.0-mu,3.0)*(0.40+0.75*clamp(uAtmDensity,0.0,1.6));',
@@ -3881,7 +3936,9 @@
       var gs = gasStormUniforms(vp); for (var tk in gs) u[tk] = gs[tk];
       var st2 = vp.style;
       u.uGasP = [st2 ? st2.bandTurb : 0.8, (vp.gasStyle === 'saturn' ? 1 : (st2 && st2.hexPole ? 1 : 0)), st2 ? st2.darkPole : 0.4, vp.gasIce ? 1 : 0];
-    } else { u.uBandN = 0; u.uGasP = [0, 0, 0, 0]; }
+      /* (带内子带条数, 子带相位, 亮云强度, 备用)。冰巨星的亮云更显（海王星那种白色絮状条） */
+      u.uGasP2 = [st2 ? st2.subBands : 5, st2 ? st2.subPhase : 0, vp.gasIce ? 0.90 : 0.38, 0];
+    } else { u.uBandN = 0; u.uGasP = [0, 0, 0, 0]; u.uGasP2 = [0, 0, 0, 0]; }
     return u;
   }
 
