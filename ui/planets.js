@@ -58,6 +58,27 @@
   function fmtKm(m) { if (m < 1000) return fmt(m, 0) + ' m'; if (m < 1e5) return fmt(m / 1000, 1) + ' km'; return fmt(m / 1000, 0) + ' km'; }
   var romans = ['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'];
 
+  /* ============================================================ 打点
+     「换一颗行星」这一路各段的耗时。环形缓冲 400 条，不看的时候代价就是两次 now()。
+     加它的缘由：GPU 帧时间一直很好看，但换星那一帧的 **CPU** 同步段没人量过 ——
+     实测整张 512×256 的高度/反照率贴图要 127–178 ms，主线程就是在这里假死的。 */
+  var PERF = { on: true, cap: 4000, ring: new Array(4000), n: 0 };
+  function perfNow() { return (typeof performance === 'object' && performance && performance.now) ? performance.now() : Date.now(); }
+  function perfAdd(name, ms, tag) { if (!PERF.on || ms < 0.05) return; PERF.ring[PERF.n % PERF.cap] = { name: name, tag: tag || '', ms: ms, at: perfNow() }; PERF.n++; }
+  function perfWrap(name, tag, fn) { if (!PERF.on) return fn(); var t = perfNow(); try { return fn(); } finally { perfAdd(name, perfNow() - t, tag); } }
+  function perfStats(opts) {
+    opts = opts || {};
+    var by = {}, k, e, i, m = Math.min(PERF.n, PERF.cap);
+    for (i = 0; i < m; i++) { e = PERF.ring[i]; if (!e) continue; k = e.name + (e.tag ? '[' + e.tag + ']' : ''); (by[k] = by[k] || []).push(e.ms); }
+    var out = [];
+    for (k in by) { var a = by[k].sort(function (x, y) { return x - y; });
+      out.push({ name: k, n: a.length, p50: +a[Math.floor(a.length * 0.5)].toFixed(2), p95: +a[Math.min(a.length - 1, Math.floor(a.length * 0.95))].toFixed(2), max: +a[a.length - 1].toFixed(2), sum: +a.reduce(function (x, y) { return x + y; }, 0).toFixed(1) }); }
+    out.sort(function (x, y) { return y.max - x.max; });
+    return opts.limit ? out.slice(0, opts.limit) : out;
+  }
+  function perfClear() { PERF.ring = new Array(PERF.cap); PERF.n = 0; }
+  /* 只记 >0.05 ms 的：pumpMaps 空转每帧都来一条，会把环形缓冲冲掉 */
+
   /* ============================================================ 噪声（Simplex 3D，CPU/GPU 共用置换表，保证两侧一致） */
   var GRAD3 = [[1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0], [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1], [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]];
   var F3 = 1 / 3, G3 = 1 / 6;
@@ -1871,17 +1892,58 @@
 
   var ZERO_BASIN = { h: 0, inBasin: 0 };
   var mapCache = {}; var mapCacheKeys = [];
-  function getMaps(planet, size) {
-    size = size || 512;
-    var key = (planet.seed >>> 0) + ':' + (planet.visualKey || planet.type) + ':' + size;
-    if (mapCache[key]) return mapCache[key];
-    var m = buildMaps(planet, size, size / 2);
+  function mapKeyOf(planet, size) { return (planet.seed >>> 0) + ':' + (planet.visualKey || planet.type) + ':' + size; }
+  function mapCachePut(key, m) {
     mapCache[key] = m; mapCacheKeys.push(key);
-    while (mapCacheKeys.length > 14) { var k0 = mapCacheKeys.shift(); delete mapCache[k0]; }
+    while (mapCacheKeys.length > 24) { var k0 = mapCacheKeys.shift(); delete mapCache[k0]; }
     return m;
   }
+  /* 同步取图：要么命中缓存，要么当场算完（Node 侧、地表查询、以及任何等不起的调用走这里）。 */
+  function getMaps(planet, size) {
+    size = size || 512;
+    var key = mapKeyOf(planet, size);
+    if (mapCache[key]) return mapCache[key];
+    var m = perfWrap('buildMaps', planet.type + ':' + size, function () { return buildMaps(planet, size, size / 2); });
+    return mapCachePut(key, m);
+  }
+  function mapCached(planet, size) { return mapCache[mapKeyOf(planet, size)] || null; }
 
-  function buildMaps(planet, W, H) {
+  /* 分片作业队列：每片只跑若干行，跑完一片就把主线程还回去。
+     一片的行数按上一片的实测耗时自适应（目标 6 ms/片），慢机器自动切得更碎。 */
+  var mapQueue = [];
+  function mapQueuePush(planet, size) {
+    var key = mapKeyOf(planet, size);
+    if (mapCache[key]) return null;
+    for (var i = 0; i < mapQueue.length; i++) if (mapQueue[i].key === key) return mapQueue[i];
+    var e = { key: key, planet: planet, size: size, job: null, y: 0, rows: 8, done: null, type: planet.type };
+    mapQueue.push(e); return e;
+  }
+  /* 推进队列，最多用掉 budgetMs 毫秒。返回本次完成的作业数组（调用方据此换贴图）。 */
+  function mapQueueStep(budgetMs) {
+    var t0 = perfNow(), finished = [];
+    while (mapQueue.length && perfNow() - t0 < budgetMs) {
+      var e = mapQueue[0];
+      if (!e.job) { e.job = perfWrap('mapJobStart', e.type, function () { return mapJobStart(e.planet, e.size, e.size / 2); }); continue; }
+      var H = e.job.H, y1 = Math.min(H, e.y + e.rows), t1 = perfNow();
+      mapJobRows(e.job, e.y, y1);
+      var dt = perfNow() - t1;
+      perfAdd('mapSlice', dt, e.type);
+      e.y = y1;
+      e.rows = clamp(Math.round(e.rows * (6 / Math.max(dt, 0.25))), 2, 64);
+      if (e.y >= H) {
+        var m = perfWrap('mapJobFinish', e.type, function () { return mapJobFinish(e.job); });
+        mapCachePut(e.key, m); e.done = m; finished.push(e); mapQueue.shift();
+      }
+    }
+    return finished;
+  }
+  function mapQueuePending() { return mapQueue.length; }
+
+  /* ---------------------------------------------------------- 贴图生成：开工 / 跑若干行 / 收工
+     拆成三段**只为了能让出主线程**：行与行之间没有任何依赖，跑 0..H 一次和分成若干片跑，
+     结果逐像素完全一样（归一化与打包仍然在收工那一步一次做完）。
+     以前是在「换行星」的那一帧里同步跑完整张 512×256 —— 实测 127–178 ms，主线程就是在这里假死的。 */
+  function mapJobStart(planet, W, H) {
     var N = makeNoise(planet.seed), vis = planet.visual || baseVisual(planet.type), key = planet.visualKey || planet.type;
     var h = new Float32Array(W * H), rough = new Float32Array(W * H), moist = new Float32Array(W * H);
     var x, y, i, sea = vis.sea, earth = null;
@@ -1894,10 +1956,20 @@
     var basinSeed = (planet.seed ^ 0xBA51A0) >>> 0, raySeed = (planet.seed ^ 0x2A75) >>> 0;
     if (key === 'earth') earth = rasterEarth(W, H);
     var oceanFrac = { ocean: 0.9, living: 0.66, lava: 0.22 }[planet.type];
-    if (vis.gas) { // 气态：不需要高度，仅生成湍流通道
-      for (y = 0; y < H; y++) for (x = 0; x < W; x++) { i = y * W + x; var lat = ((y + 0.5) / H - 0.5) * PI, lon = ((x + 0.5) / W - 0.5) * TAU, cl = Math.cos(lat); var nx = cl * Math.cos(lon), ny = Math.sin(lat), nz = -cl * Math.sin(lon); h[i] = 0.5 + 0.5 * N.fbm(nx * 4, ny * 4, nz * 4, 4); rough[i] = 0.5 + 0.5 * N.fbm(nx * 9 + 3, ny * 30, nz * 9, 3); moist[i] = 0.5; }
+    return { planet: planet, W: W, H: H, y: 0, N: N, vis: vis, key: key, h: h, rough: rough, moist: moist,
+      sea: sea, earth: earth, st: st, special: special, cf: cf, wf: wf, wa: wa, rf: rf, rvf: rvf,
+      basinSeed: basinSeed, raySeed: raySeed, oceanFrac: oceanFrac };
+  }
+  function mapJobRows(J, y0, y1) {
+    var planet = J.planet, W = J.W, H = J.H, N = J.N, vis = J.vis, key = J.key;
+    var h = J.h, rough = J.rough, moist = J.moist, sea = J.sea, earth = J.earth, st = J.st;
+    var special = J.special, cf = J.cf, wf = J.wf, wa = J.wa, rf = J.rf, rvf = J.rvf;
+    var basinSeed = J.basinSeed, raySeed = J.raySeed, oceanFrac = J.oceanFrac;
+    var x, y, i;
+    if (vis.gas) {
+      for (y = y0; y < y1; y++) for (x = 0; x < W; x++) { i = y * W + x; var lat = ((y + 0.5) / H - 0.5) * PI, lon = ((x + 0.5) / W - 0.5) * TAU, cl = Math.cos(lat); var nx = cl * Math.cos(lon), ny = Math.sin(lat), nz = -cl * Math.sin(lon); h[i] = 0.5 + 0.5 * N.fbm(nx * 4, ny * 4, nz * 4, 4); rough[i] = 0.5 + 0.5 * N.fbm(nx * 9 + 3, ny * 30, nz * 9, 3); moist[i] = 0.5; }
     } else {
-      for (y = 0; y < H; y++) {
+      for (y = y0; y < y1; y++) {
         var lat = ((y + 0.5) / H - 0.5) * PI, cl = Math.cos(lat), sl = Math.sin(lat), v = (y + 0.5) / H, alat = Math.abs(lat) / (PI / 2);
         for (x = 0; x < W; x++) {
           i = y * W + x; var lon = ((x + 0.5) / W - 0.5) * TAU, u = (x + 0.5) / W;
@@ -2012,6 +2084,12 @@
           h[i] = hh; rough[i] = clamp(rg, 0, 1); moist[i] = clamp(mo, 0, 1);
         }
       }
+    }
+  }
+  function mapJobFinish(J) {
+    var planet = J.planet, W = J.W, H = J.H, N = J.N, vis = J.vis, key = J.key;
+    var h = J.h, rough = J.rough, moist = J.moist, sea = J.sea, oceanFrac = J.oceanFrac, i;
+    if (!vis.gas) {
       // 归一化：非地球行星把海平面对齐到 vis.sea（按海洋覆盖率取分位数），整体压到 0..1
       var mn = Infinity, mx = -Infinity; for (i = 0; i < h.length; i++) { if (h[i] < mn) mn = h[i]; if (h[i] > mx) mx = h[i]; }
       if (key !== 'earth') {
@@ -2026,6 +2104,12 @@
     var data = new Uint8Array(W * H * 4), hq = new Float32Array(W * H);
     for (i = 0; i < W * H; i++) { var q16 = Math.round(clamp(h[i], 0, 1) * 65535); hq[i] = q16 / 65535; data[i * 4] = q16 >> 8; data[i * 4 + 1] = q16 & 255; data[i * 4 + 2] = Math.round(rough[i] * 255); data[i * 4 + 3] = Math.round(moist[i] * 255); }
     return { W: W, H: H, h: hq, rough: rough, moist: moist, data: data, noise: N, planetSeed: planet.seed };
+  }
+  /* 同步版：Node 侧与任何「就要结果」的调用走这里，行为与从前逐字节相同。 */
+  function buildMaps(planet, W, H) {
+    var J = mapJobStart(planet, W, H);
+    mapJobRows(J, 0, H);
+    return mapJobFinish(J);
   }
 
   // 双线性采样（与 GLSL mapSample 一致）：返回 [h, rough, moist]
@@ -2273,10 +2357,17 @@
        旧代码靠「按到相机的距离砍倍频」把尖刺藏起来，代价就是镜头一动地形自己变形。
        现在倍频数固定、幅度收敛：最细一档只剩几米，砍不砍都看不出来，也就不需要相机相关的 LOD 了。
        DETAIL_BOOST 让总起伏的均方根与旧口径持平（地形分类的阈值、山脉的量级都不用改）。 */
+    /* DETAIL_MAX：展开这个循环的上限。球面视图那条路的倍频数最高只给到 6（见 drawGlobe），
+       但循环按 12 展开的话，FXC 要多内联一大堆 snoise —— globe 那个片元着色器实测要编 40 秒，
+       第一次用到它的时候主线程就钉在驱动里等着，用户点「随机一颗」卡死就是这么来的。
+       给球面视图的程序 #define DETAIL_MAX 6，输出逐像素不变（循环本来也跑不到第 7 次）。 */
+    '#ifndef DETAIL_MAX',
+    '#define DETAIL_MAX 12',
+    '#endif',
     'const float DETAIL_GAIN=0.55, DETAIL_BOOST=2.2;',
     'float detailN(vec3 m, float rough, int oct){ float a=uDetailAmp*(0.15+1.35*rough)*DETAIL_BOOST, f=uDetailFreq, s=0.0, ridge=smoothstep(0.4,0.9,rough);',
 '  if(oct>=5){ m += vec3(snoise(m*3000.0+1.0), snoise(m*3000.0+2.0), snoise(m*3000.0+3.0))*0.00006; } /* 域扭曲：形成蜿蜒的山脊/谷地 */',
-'  for(int o=0;o<12;o++){ if(o>=oct) break; float v=snoise(m*f); v=mix(v,(1.0-abs(v))*1.6-0.8,ridge); s+=a*v*((o==oct-1)?uOctF:1.0); f*=2.05; a*=DETAIL_GAIN; } return s; }',
+'  for(int o=0;o<DETAIL_MAX;o++){ if(o>=oct) break; float v=snoise(m*f); v=mix(v,(1.0-abs(v))*1.6-0.8,ridge); s+=a*v*((o==oct-1)?uOctF:1.0); f*=2.05; a*=DETAIL_GAIN; } return s; }',
 'uniform float uRivers;',
 'float riverAt(vec3 m, float moist, float elev){ if(uRivers<0.5) return 0.0; vec3 mw=m+vec3(snoise(m*140.0+1.0),snoise(m*140.0+5.0),snoise(m*140.0+9.0))*0.0025; float valley=smoothstep(0.45,0.8,1.0-abs(snoise(m*70.0+4.0))); float w1=1.0-abs(snoise(mw*520.0+2.0)); float w2=1.0-abs(snoise(mw*2900.0+8.0)); float rv=max(smoothstep(0.982,0.997,w1)*(0.4+0.6*valley), smoothstep(0.988,0.999,w2)*0.7*valley); return rv*smoothstep(0.3,0.65,moist)*(1.0-smoothstep(0.06,0.35,elev)); }',
 /* 只取高度的轻量版：不做河道雕刻。球面视图的法线差分用它 ——
@@ -2590,7 +2681,7 @@
     '  return uAtm*mix(vec3(1.0),uSunTint,0.45)*vec3(1.06,0.94,0.86); }'
   ].join('\n');
   SH.gasGlobeF = GLSL_HEAD + GLSL_NOISE + '\n' + GLSL_GAS + '\n' + [
-    'in vec3 vN; in vec3 vW; in vec3 vSN; uniform vec3 uCamW, uSunW; uniform mat3 uRot; uniform float uLumK, uAmbK, uStarlit, uForming; out vec4 fragColor;',
+    'in vec3 vN; in vec3 vW; in vec3 vSN; uniform vec3 uCamW, uSunW; uniform mat3 uRot; uniform float uLumK, uAmbK, uStarlit, uForming, uAlpha; out vec4 fragColor;',
     'void main(){',
     '  vec3 n=normalize(vN); vec3 Nw=normalize(uRot*n); vec3 V=normalize(uCamW-vW); vec3 L=uSunW; float ndl=dot(Nw,L);',
     '  vec3 col = gasShade(n, uTime);',
@@ -2602,10 +2693,45 @@
     '    lit += uGasGlowCol*uGasGlow*uGasGlow*vec3(0.55,0.13,0.05)*0.5; }',
     '  if(uForming<1.0){ float g2=0.5+0.5*snoise(n*6.0+uTime*0.1); lit=mix(vec3(0.6,0.35,0.2)*(g2*0.8+0.4)*(max(ndl,0.0)+0.2), lit, uForming); }',
     '  if(uStarlit>0.0) lit=mix(lit, lit*vec3(0.74,0.82,1.0), uStarlit);',
-    '  fragColor=vec4(lit,1.0); }'
+    '  fragColor=vec4(lit,uAlpha); }'
   ].join('\n');
-  SH.globeF = GLSL_HEAD + GLSL_NOISE + '\n' + GLSL_FIELD + '\n' + GLSL_SURF + '\n' + [
-    'in vec3 vN; in vec3 vW; in vec3 vSN; uniform vec3 uCamW, uSunW; uniform mat3 uRot; uniform float uEps, uSlope, uForming, uLumK, uAmbK, uStarlit; out vec4 fragColor;',
+  /* 球面视图的占位着色器。
+     缘由：globe 那个片元着色器在 D3D 上要编 40 秒（FXC 的优化在这个体量上是超线性的），
+     而驱动的并行编译只是「不占主线程」，**第一次用到它的时候仍然要等**。
+     以前就是在那一下把主线程钉住的 —— 用户点「随机一颗」就卡死。
+     现在：正式的那个没编好之前先用这个顶着（几十毫秒就能编完），编好了再换过去。
+     它只读贴图里已经算好的高度/粗糙度/湿度，不跑任何噪声，所以便宜。 */
+  SH.globeLoF = GLSL_HEAD + [
+    'uniform sampler2D uMap, uPal; uniform vec2 uMapSize;',
+    'uniform float uSea, uIceHeight, uIceLat, uAtmDensity, uAlpha, uLumK, uAmbK, uStarlit, uGas, uGreen;',
+    'uniform vec3 uCamW, uSunW, uAtm, uSunTint, uOceanShallow, uOceanDeep, uIceColor, uVeg0;',
+    'in vec3 vN; in vec3 vW; in vec3 vSN; uniform mat3 uRot; out vec4 fragColor;',
+    'vec3 decMap(vec4 t){ return vec3((floor(t.r*255.0+0.5)*256.0+floor(t.g*255.0+0.5))/65535.0, t.b, t.a); }',
+    'vec2 sph2uvLo(vec3 n){ return vec2(atan(-n.z,n.x)/6.2831853+0.5, asin(clamp(n.y,-1.0,1.0))/3.14159265+0.5); }',
+    'void main(){',
+    '  vec3 n=normalize(vN); vec3 Nw=normalize(uRot*normalize(vSN)); vec3 V=normalize(uCamW-vW); float ndl=dot(Nw,uSunW);',
+    '  vec2 uv=sph2uvLo(n); vec2 fp=clamp(uv*uMapSize, vec2(0.0), uMapSize-vec2(1.0));',
+    '  vec3 t=decMap(texelFetch(uMap, ivec2(fp), 0));',
+    '  float h=t.x, moist=t.z, lat=abs(n.y);',
+    '  bool land = uSea<0.0 || h>=uSea;',
+    '  float elev = uSea<0.0 ? h : clamp((h-uSea)/(1.0-uSea),0.0,1.0);',
+    '  float climate = clamp(lat*lat*1.2 + elev*uIceHeight*0.45, 0.0, 1.0);',
+    '  vec3 col;',
+    '  if(uGas>0.5) col = texture(uPal, vec2(0.55, clamp(n.y*0.5+0.5,0.0,1.0))).rgb;',
+    '  else if(land){ col = texture(uPal, vec2(elev, climate)).rgb;',
+    '    col = mix(col, uVeg0, uGreen*smoothstep(0.25,0.6,moist)*(1.0-smoothstep(0.45,0.9,climate))*0.85);',
+    '    col = mix(col, uIceColor, smoothstep(uIceLat-0.05, uIceLat+0.03, lat)); }',
+    '  else { col = mix(uOceanShallow, uOceanDeep, pow(clamp((uSea-h)/max(uSea,1e-4),0.0,1.0),0.45));',
+    '    col = mix(col, uIceColor*0.95, smoothstep(uIceLat+0.02, uIceLat+0.09, lat)); }',
+    '  float diff=max(ndl,0.0)*smoothstep(-0.12,0.06,ndl);',
+    '  vec3 lit = col*uSunTint*(diff*1.05*uLumK+0.045*uAmbK);',
+    '  float rim=pow(1.0-max(dot(Nw,V),0.0),3.0)*clamp(uAtmDensity,0.0,1.6)*smoothstep(-0.28,0.18,ndl);',
+    '  lit += uAtm*mix(vec3(1.0),uSunTint,0.45)*rim*(0.32+1.0*max(ndl,0.0));',
+    '  if(uStarlit>0.0) lit=mix(lit, lit*vec3(0.74,0.82,1.0), uStarlit);',
+    '  fragColor=vec4(lit,uAlpha); }'
+  ].join('\n');
+  SH.globeF = GLSL_HEAD + '#define DETAIL_MAX 6\n' + GLSL_NOISE + '\n' + GLSL_FIELD + '\n' + GLSL_SURF + '\n' + [
+    'in vec3 vN; in vec3 vW; in vec3 vSN; uniform vec3 uCamW, uSunW; uniform mat3 uRot; uniform float uEps, uSlope, uForming, uLumK, uAmbK, uStarlit, uAlpha; out vec4 fragColor;',
     'void main(){',
     '  vec3 n=normalize(vN); vec3 gn=normalize(vSN); vec3 Nw=normalize(uRot*gn); vec3 V=normalize(uCamW-vW); vec3 L=uSunW; float ndl=dot(Nw,L); vec3 lit;',
     '  vec3 Lo = L*uRot; /* 光照方向转到物体空间（uRot 正交，转置=逆） */',
@@ -2633,7 +2759,7 @@
     '  if(uForming<1.0){ float g=0.5+0.5*snoise(n*6.0+uTime*0.1); lit=mix(vec3(0.6,0.35,0.2)*(g*0.8+0.4)*(max(ndl,0.0)+0.2), lit, uForming); }',
     /* 只靠星光照明（流浪行星）：星光偏蓝白（多数光子来自远处的热星与银河背景），亮度是示意 */
     '  if(uStarlit>0.0) lit=mix(lit, lit*vec3(0.74,0.82,1.0), uStarlit);',
-    '  fragColor=vec4(lit,1.0); }'
+    '  fragColor=vec4(lit,uAlpha); }'
   ].join('\n');
   /* 恒星表面（近距离观察，安全距离外的示意）：米粒组织 + 临边昏暗 + 黑子 + 谱斑。
      文献：
@@ -3325,6 +3451,7 @@
     };
     this.progsPending = function () { return self.pendOrder.length; };
     function compile(name, vs, fs) { issue(name, vs, fs); }
+    compile('globeLo', SH.globeV, SH.globeLoF);   // 先发这个：它编得最快，正式的没好之前顶着
     compile('globe', SH.globeV, SH.globeF); compile('gasglobe', SH.globeV, SH.gasGlobeF); compile('atm', SH.globeV, SH.atmF); compile('ring', SH.ringV, SH.ringF); compile('sky', SH.skyV, SH.skyF);
     compile('terrain', SH.terrainV, SH.terrainF); compile('water', SH.waterV, SH.waterF); compile('cloud', SH.waterV, SH.cloudF); compile('gas', SH.gasV, SH.gasF);
     compile('sprite', SH.spriteV, SH.spriteF); compile('line', SH.lineV, SH.lineF); compile('tex', SH.texV, SH.texF); compile('bldg', SH.bldgV, SH.bldgF);
@@ -3354,9 +3481,14 @@
     this.permDefault = this.tex2D(makeNoise(0x9E37).tex, 256, 1, { ui: true });
     this.lost = false;
   }
+  /* 已经收好货的才算就绪。渲染路径只画就绪的程序，没就绪就退到 globeLo —— 绝不在这里等驱动。 */
+  GLR.prototype.ready = function (name) { return !!this.progs[name]; };
   GLR.prototype.use = function (name, uniforms, textures) {
     // 还没收货就当场收这一个（等一个程序 ≪ 构造时等十五个）；正常情况下 pump 早就收完了
-    var gl = this.gl, P = this.progs[name] || this.finishProg(name); gl.useProgram(P.p);
+    var self0 = this, gl = this.gl;
+    /* 走到 finishProg 就意味着**当场同步等驱动链接**（预热没赶上）。单独打点，验收时这一项应该是 0 次。 */
+    var P = this.progs[name] || perfWrap('shaderLinkSync', name, function () { return self0.finishProg(name); });
+    gl.useProgram(P.p);
     if (textures) for (var i = 0; i < textures.length; i++) { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, textures[i]); }
     for (var k in uniforms) { var u = P.u[k]; if (!u) continue; var v = uniforms[k];
       switch (u.type) {
@@ -3378,16 +3510,68 @@
     return t;
   };
   // 行星 GPU 资源：置换贴图、地形贴图、调色板（一次生成缓存）
+  /* 换行星时不再同步生成整张贴图：
+       · 先出一版 1/4 边长（像素数 1/16，实测 ~10 ms）的立刻上屏；
+       · 全分辨率排进 mapQueue，由每帧的 mapQueueStep 分片跑，跑完再换上去并交叉淡入。
+     缓存命中（同一颗再回来）时两条路都不走，和从前一样直接复用。 */
   GLR.prototype.planetGPU = function (planet, vp, size) {
-    var key = (planet.seed >>> 0) + ':' + (planet.visualKey || planet.type) + ':' + (size || 512);
+    size = size || 512;
+    var key = (planet.seed >>> 0) + ':' + (planet.visualKey || planet.type) + ':' + size;
     var g = this.gpu[key]; if (g) return g;
-    var maps = getMaps(planet, size || 512), pal = buildPalette(planet, vp), gl = this.gl;
-    g = { maps: maps, perm: this.tex2D(maps.noise.tex, 256, 1, { ui: true }), map: this.tex2D(maps.data, maps.W, maps.H, { nearest: true, repeat: true }), pal: this.tex2D(pal.data, pal.W, pal.H, {}) };
-    var cities = cityListFor(planet); g.cities = cities; g.city = null;
-    if (cities && cities.list.length) { var ct = buildCityTexture(cities); g.city = this.tex2D(ct.data, ct.W, ct.H, { repeat: true }); }
+    var gl = this.gl, maps = mapCached(planet, size), lowres = false;
+    if (!maps) {
+      if (size >= 128 && this.progressiveMaps !== false) {
+        maps = getMaps(planet, clamp(size >> 3, 32, 64));   // 占位：1/8 边长（512 → 64×32 约 3 ms，128 → 32×16 约 1 ms）
+        lowres = true;
+        mapQueuePush(planet, size);
+      } else maps = getMaps(planet, size);
+    }
+    var pal = perfWrap('buildPalette', planet.type, function () { return buildPalette(planet, vp); });
+    var self1 = this;
+    g = perfWrap('gpuUpload', planet.type, function () {
+      return { maps: maps, perm: self1.tex2D(maps.noise.tex, 256, 1, { ui: true }), map: self1.tex2D(maps.data, maps.W, maps.H, { nearest: true, repeat: true }), pal: self1.tex2D(pal.data, pal.W, pal.H, {}) };
+    });
+    g.lowres = lowres; g.fullSize = size; g.planet = planet; g.mapOld = null; g.fade = 1;
+    g.cities = null; g.city = null; g.citiesTodo = true;
+    if (!lowres) this.buildCities(g, planet);
     this.gpu[key] = g; this.gpuKeys.push(key);
-    while (this.gpuKeys.length > 12) { var k0 = this.gpuKeys.shift(), old = this.gpu[k0]; gl.deleteTexture(old.perm); gl.deleteTexture(old.map); gl.deleteTexture(old.pal); if (old.city) gl.deleteTexture(old.city); delete this.gpu[k0]; }
+    while (this.gpuKeys.length > 24) { var k0 = this.gpuKeys.shift(), old = this.gpu[k0]; gl.deleteTexture(old.perm); gl.deleteTexture(old.map); gl.deleteTexture(old.pal); if (old.mapOld) gl.deleteTexture(old.mapOld); if (old.city) gl.deleteTexture(old.city); delete this.gpu[k0]; }
     return g;
+  };
+  /* 每帧推一把贴图队列。跑完一张就把它换到对应的 GPU 对象上，旧的留着做交叉淡入。 */
+  GLR.prototype.buildCities = function (g, planet) {
+    if (!g || !g.citiesTodo) return;
+    g.citiesTodo = false;
+    var cities = perfWrap('cityList', planet.type, function () { return cityListFor(planet); });
+    g.cities = cities;
+    if (cities && cities.list.length) {
+      var ct = perfWrap('cityTex', planet.type + ':' + cities.list.length, function () { return buildCityTexture(cities); });
+      g.city = this.tex2D(ct.data, ct.W, ct.H, { repeat: true });
+    }
+  };
+  GLR.prototype.gpuCached = function (planet, size) {
+    return this.gpu[(planet.seed >>> 0) + ':' + (planet.visualKey || planet.type) + ':' + (size || 512)] || null;
+  };
+  GLR.prototype.pumpMaps = function (budgetMs) {
+    if (!mapQueuePending()) return 0;
+    var done = mapQueueStep(budgetMs == null ? 6 : budgetMs), gl = this.gl;
+    for (var i = 0; i < done.length; i++) {
+      var e = done[i], k = (e.planet.seed >>> 0) + ':' + (e.planet.visualKey || e.planet.type) + ':' + e.size;
+      var g = this.gpu[k]; if (!g) continue;
+      var tex = this.tex2D(e.done.data, e.done.W, e.done.H, { nearest: true, repeat: true });
+      g.mapOld = g.map; g.mapsOld = g.maps; g.map = tex; g.maps = e.done; g.lowres = false; g.fade = 0;
+      this.buildCities(g, e.planet);   // 这时全分辨率贴图已在缓存里，选址不再触发重算
+    }
+    return done.length;
+  };
+  /* 淡入推进：0 → 1 约 0.35 s。到 1 就把占位那张贴图删掉。 */
+  GLR.prototype.stepFade = function (g, dt) {
+    if (!g || g.fade >= 1) return 1;
+    /* 每帧至少推进 1/120 秒的量：dt 可能是 0（宿主把时钟冻住做逐像素比对时就是这样），
+       不给下限的话淡入会永远停在 0，屏幕上一直是那张低分辨率的占位图。 */
+    g.fade = Math.min(1, g.fade + Math.max(dt, 1 / 120) / 0.35);
+    if (g.fade >= 1 && g.mapOld) { this.gl.deleteTexture(g.mapOld); g.mapOld = null; g.mapsOld = null; }
+    return g.fade;
   };
   GLR.prototype.textTex = function (text, size, color) {
     var key = text + '|' + size + '|' + (color || ''); var t = this.textCache[key]; if (t) return t;
@@ -3517,7 +3701,7 @@
       uGasGlow: vp.gasGlow || 0, uGasGlowCol: vp.gasGlowCol || [0, 0, 0], uSunTint: vp.sunTint || [1, 1, 1],
       /* 缺省：细节全开、最细八度满权重 —— 地表飞越走的就是这一档，与 CPU 的 fieldAtCPU 逐位一致。
          球面视图会按到相机的距离把这两项改小（见 drawGlobe）。 */
-      uDetail: 1, uOctF: 1 };
+      uDetail: 1, uOctF: 1, uAlpha: 1 };
     var sty = styleUniforms(vp); for (var sk in sty) u[sk] = sty[sk];
     if (vp.gas) {
       var gb = gasBandUniforms(vp, (g && g.maps) ? (g.maps.planetSeed >>> 0) : 0); for (var bk in gb) u[bk] = gb[bk];
@@ -3544,7 +3728,7 @@
     // 画布自己铺黑底：宿主页面没给 background 时（浅色主题）不会在还没画出第一帧前透出白底
     try { if (canvas.style && !canvas.style.background) canvas.style.background = '#000'; } catch (e) { /* ignore */ }
     var sysCam = { yaw: 0.9, tilt: 0.95, dist: 10, fit: 10 }, globeCam = { yaw: 0.6, pitch: 0.25, dist: 3.2, spin: 0 }, surf = { lat: 0, lon: 0, alt: 10000, heading: 0, pitch: -0.55, groundZ: 0, under: false };
-    var animYr = 0, planetPos = [], starScreen = [], keys = {}, drag = null, lastClick = 0, moveDirty = false, hoverInfo = null, quality = 1, dtEma = 0.016, qTimer = 0;
+    var animYr = 0, planetPos = [], starScreen = [], keys = {}, drag = null, lastClick = 0, moveDirty = false, hoverInfo = null, quality = 1, dtEma = 0.016, qTimer = 0, lastDt = 0.016;
     var showMoons = opts.showMoons === true;   // 恒星系视图：是否给所有行星都画放大的卫星示意（默认只画选中/悬停的那颗；M 键切换）
     var moonPick = [];                          // globe 视图里这一帧画出的卫星（双击可进入）
     function emit(evt, payload) { (listeners[evt] || []).forEach(function (cb) { try { cb(payload); } catch (e) { console.error(e); } }); }
@@ -3566,7 +3750,7 @@
     }
     function initGL() {
       if (!gl) return false;
-      try { R = new GLR(gl); S.webgl = true; pvCreateMs.issueShaders = pvMark(); pvCreateMs.parallel = !!R.parallel; pvCreateMs.pendingAtStart = R.progsPending(); return true; } catch (e) { console.warn('[MirrorPlanets] WebGL2 初始化失败，回退 Canvas 2D：', e && e.message); R = null; return false; }
+      try { R = new GLR(gl); R.progressiveMaps = opts.progressiveMaps !== false; S.webgl = true; pvCreateMs.issueShaders = pvMark(); pvCreateMs.parallel = !!R.parallel; pvCreateMs.pendingAtStart = R.progsPending(); return true; } catch (e) { console.warn('[MirrorPlanets] WebGL2 初始化失败，回退 Canvas 2D：', e && e.message); R = null; return false; }
     }
     if (!initGL()) { fallback = createFallback2D(target2D()); gl = null; S.webgl = false; }
     function onCtxLost(e) { e.preventDefault(); if (R) R.lost = true; }
@@ -4445,6 +4629,9 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       var dt = lastT ? Math.min((now - lastT) / 1000, 0.1) : 0.016; lastT = now; elapsed += dt;
       // 着色器收货：每帧最多收 2 个**已经编好的**程序，藏起来的时候也照收（预热就靠这个）
       if (R && R.progsPending && R.progsPending()) { R.pump(2); if (!R.progsPending()) pvCreateMs.finishShaders = pvMark(); }
+      lastDt = dt;
+      /* 贴图分片：每帧最多 6 ms。着色器还没收完货时先让给着色器（那个更要紧，不然会当场同步链接）。 */
+      if (R && R.pumpMaps && !(R.progsPending && R.progsPending())) perfWrap('pumpMaps', '', function () { R.pumpMaps(6); });
       /* 画布被宿主藏起来时（镜像退到星系层就会这样）不画：视图现在会跨层保活（见 mirror.js 的 syncPV），
          不加这道闸就会对着看不见的画布一直渲染。rAF 照常转，一露头就接着画。 */
       if (canvas.hidden || (canvas.offsetParent === null && canvas.style.position !== 'fixed')) return;
@@ -4777,7 +4964,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
           var mu2 = materialUniforms(vp, g, elapsed, i * 1.3, Math.max(oct - 2, 2)); mu2.uOctF = 1; mu2.uDetail = 0;
           mu2.uVP = M.vp; mu2.uModel = mm; mu2.uRot = m3of(m4rotY(elapsed * 0.09 + i)); mu2.uCamW = M.eye; mu2.uSunW = sunW; mu2.uEps = eps / sc; mu2.uSlope = slope; mu2.uForming = 1;
           applyBodyLook(mu2, { shape: shapeOf(hash32((p.seed >>> 0) ^ (i + 11) * 0x9E3779B9), 0) });
-          R.use('globe', mu2, [g.perm, g.map, g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
+          R.use(globeProgFor(vp), mu2, [g.perm, g.map, g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
         }
         gl.disable(gl.CULL_FACE);
         cap = TRN(p.name) + ' · ' + TR(p.pclassCn) + ' · ' + (p.belt ? TR(p.belt.cn) : TR('带内天体')) + ' ' + fmt(p.orbitAU, 2) + ' AU · ' + TR('平均半径 ') + fmt(p.radiusKm, p.radiusKm < 20 ? 2 : 0) + ' km';
@@ -4831,6 +5018,12 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       S.caption = cap; drawHud(lines);
     }
 
+    /* 球面视图选哪个着色器：正式的收货了就用正式的，没有就用占位的。
+       R.use 里那条「没收货就当场 finishProg」的兜底仍然在，但正常路径永远走不到它了。 */
+    function globeProgFor(vp0) {
+      var want = vp0 && vp0.gas ? 'gasglobe' : 'globe';
+      return (R && R.ready(want)) ? want : ((R && R.ready('globeLo')) ? 'globeLo' : want);
+    }
     function drawGlobe() {
       var p = S.planet, vp = S.vp, M = globeMatrices(); gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       var sunW = globeSunDir(), starCol = starRGB(p.star || (S.system && S.system.star));
@@ -4855,24 +5048,41 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
       mu.uVP = M.vp; mu.uModel = model; mu.uRot = rot; mu.uCamW = M.eye; mu.uSunW = sunW; mu.uEps = eps; mu.uSlope = slope; mu.uForming = vp.forming;
       applyBodyLook(mu, p);   // 不规则形状（小行星/彗核）与"只有星光"的照明（流浪行星）
-      R.use(vp.gas ? 'gasglobe' : 'globe', mu, [g.perm, g.map, g.pal, g.city || g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
+      /* 正式的那个还没收货就先用占位的：宁可少几层细节，也不能把主线程钉在驱动里等编译。 */
+      var globeProg = globeProgFor(vp);
+      gl.bindVertexArray(R.sphereVAO);
+      if (g.mapOld && R.stepFade(g, lastDt) < 1) {
+        /* 全分辨率那张刚做好：先画占位的低分辨率，再把新的按 alpha 叠上去 —— 换图不跳。
+           只有这 0.35 s 会画两遍球，其余时间和从前一样一遍。 */
+        mu.uMapSize = [g.mapsOld.W, g.mapsOld.H]; mu.uAlpha = 1;
+        R.use(globeProg, mu, [g.perm, g.mapOld, g.pal, g.city || g.pal]); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0);
+        gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        mu.uMapSize = [g.maps.W, g.maps.H]; mu.uAlpha = g.fade;
+        R.use(globeProg, mu, [g.perm, g.map, g.pal, g.city || g.pal]); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0);
+        gl.disable(gl.BLEND);
+      } else {
+        R.use(globeProg, mu, [g.perm, g.map, g.pal, g.city || g.pal]); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0);
+      }
+      gl.bindVertexArray(null);
       if (p.isSmallBody || p.isRogue) return drawSmallBodyExtras(p, vp, M, g, sunW, model, rot, eps, slope, oct);
       // 卫星（显示距离压缩到 2.5–7 R）
-      var moonsDrawn = [];
+      var moonsDrawn = [], moonBuilt = 0;
       /* 卫星：真实轨道半径在这个视图里根本进不了画面（月球在 60 R⊕，而相机只离行星 3 R），
          所以把显示距离压到 1.55–2.45 R 之间（按真实轨道排序），大小仍用真实比例，HUD 里注明压缩倍数。
          以前用的是 clamp(真实距离, 2.5, 7+k)：月球被摆在 7 R 上，早就跑到画面外了——「卫星生成了却看不见」就是这么来的。 */
       var moonCompress = null;
       (p.moons || []).forEach(function (mo, k) { if (!mo.radiusRel || mo.radiusRel / p.radiusRel < 0.02) return; if (k > 3) return;
         var mp = moonBody(p, mo, k);   // 与「进入这颗卫星」用的是同一个天体对象：看到的和进去的必须是同一颗
-        var mvp = visualParams(mp, S.timeYr), mg = R.planetGPU(mp, mvp, 128), rr = mo.radiusRel / p.radiusRel;
+        var mvp = visualParams(mp, S.timeYr), mg = R.gpuCached(mp, 128);
+        if (!mg) { if (moonBuilt >= 1) return; moonBuilt++; mg = R.planetGPU(mp, mvp, 128); }
+        var rr = mo.radiusRel / p.radiusRel;
         var realR = (mo.orbitKm * 1000) / (p.radiusM || EARTH_R_M);                                  // 真实轨道半径（行星半径为单位）
         var nMoon = Math.min((p.moons || []).length, 4), dist = 1.55 + rr + (nMoon > 1 ? k / (nMoon - 1) : 0.35) * 0.9;
         if (moonCompress == null || realR / dist > moonCompress) moonCompress = realR / dist;
         var ang = elapsed * 0.35 / Math.max(mo.periodDays || 10, 0.4) * 6 + k * 2.1 + (mo.seed % 100) * 0.06;
         var pos = [dist * Math.cos(ang), 0.16 * dist * Math.sin(ang * 0.7), -dist * Math.sin(ang)], mm = m4mul(m4trans(pos), m4mul(m4scale(rr), m4rotY(elapsed * 0.05)));
         var mmu = materialUniforms(mvp, mg, elapsed, 0, Math.max(oct - 2, 2)); mmu.uOctF = 1; mmu.uDetail = detail * 0.25; mmu.uVP = M.vp; mmu.uModel = mm; mmu.uRot = m3of(m4rotY(elapsed * 0.05)); mmu.uCamW = M.eye; mmu.uSunW = sunW; mmu.uEps = eps / rr; mmu.uSlope = slope; mmu.uForming = 1;
-        R.use(mvp.gas ? 'gasglobe' : 'globe', mmu, [mg.perm, mg.map, mg.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
+        R.use(globeProgFor(mvp), mmu, [mg.perm, mg.map, mg.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0); gl.bindVertexArray(null);
         moonsDrawn.push({ name: TRN(mo.name) + TR('（半径 ') + fmtKm(mo.radiusRel * EARTH_R_M) + TR('，轨道 ') + fmtKm(mo.orbitKm * 1000) + TR('，周期 ') + fmt(mo.periodDays, 2) + TR(' 天') + (mo.tidalHeated ? TR(' · 潮汐加热：冰壳下可能有液态水海洋') : '') + TR('）'), pos: pos, r: rr, tidal: !!mo.tidalHeated, index: k, body: mp }); });
       moonPick = moonsDrawn;   // 双击可进入：记下这一帧每颗卫星的位置
       // 光环
@@ -5171,6 +5381,8 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
         return fetch(o.url || '/__save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, dataUrl: dataUrl }) }).then(function (r) { return r.json(); }).then(function (j) { j.w = W; j.h = H; return j; }); },
       // 着色器就绪情况：宿主进层时若未就绪可以先画骨架，就绪了再切（见 mirror.js 的 ensurePV）
       shadersPending: function () { return R && R.progsPending ? R.progsPending() : 0; },
+      /* 某个着色器程序收货没有。宿主/验收脚本用它判断「还在用占位图吗」。 */
+      shaderReady: function (n) { return !!(R && R.ready && R.ready(n)); },
       warmShaders: function (n) { if (R && R.pump) R.pump(n || 4); return R && R.progsPending ? R.progsPending() : 0; },
       createMs: function () { return pvCreateMs; },
       setTimeScale: function (m) { setSpeedMul(m); return view; }, getTimeScale: function () { return { mul: speedMul, yrPerSec: orbitSpeed }; },
@@ -5369,7 +5581,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       var spin = el * 0.12, model = m4mul(m4trans([2.5, -0.9, -2]), m4mul(m4scale(4.2), m4mul(m4rotZ(planet.tilt * DEG), m4rotY(spin))));
       var mu = materialUniforms(vp, g, el, spin * 0.2, 4); mu.uVP = VP; mu.uModel = model; mu.uRot = m3of(m4mul(m4rotZ(planet.tilt * DEG), m4rotY(spin))); mu.uCamW = eye; mu.uSunW = sun; mu.uEps = 1.5e-3; mu.uSlope = 6; mu.uForming = 1;
       gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
-      R.use('globe', mu, [g.perm, g.map, g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0);
+      R.use(R.ready('globe') ? 'globe' : 'globeLo', mu, [g.perm, g.map, g.pal]); gl.bindVertexArray(R.sphereVAO); gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0);
       // 银色洋面
       gl.disable(gl.CULL_FACE); R.use('ocean', { uVP: VP, uSize: 260, uCam: eye, uSun: sun, uTime: el, uPerm: 0 }, [g.perm]); gl.bindVertexArray(R.quadVAO); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       // 大气边缘
@@ -5452,10 +5664,11 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
     // D 维引力的唯一口径（核归一 / 力律指数 / 软化长度）——ui/hyper.js 的 D 维 N 体只读这里，保证两处数值一致
     dimGravity: DIMG,
     noise: { make: makeNoise, mulberry32: mulberry32, xorshift32: xorshift32, hash32: hash32 },
+    perf: { stats: perfStats, clear: perfClear, mapsPending: function () { return mapQueuePending(); }, enable: function (v) { PERF.on = v !== false; } },
     moonBody: moonBody, moonsOf: moonsOfPlanet,
     // 小天体 / 恒星本体：与 moonBody 同一套「记录 → 可进入的天体」的升格函数（Node 侧也能直接调，便于校验）
     smallBodies: { asteroidBody: asteroidBody, beltBodiesOf: beltBodiesOf, cometBody: cometBody, cometBodiesOf: cometBodiesOf, cometStateAt: cometStateAt, rogueBodiesOf: rogueBodiesOf, starBody: starBody, shapeOf: shapeOf, smallBodyG: smallBodyG, escapeV: escapeV },
     asteroidBody: asteroidBody, cometBody: cometBody, starBody: starBody, cometStateAt: cometStateAt,
-    _internal: { SH: SH, EARTH_LAND: EARTH_LAND, GLR: GLR, m4: { persp: m4persp, lookAt: m4lookAt, mul: m4mul, invert: m4invert, pt: m4pt, id: m4id }, fieldAtCPU: fieldAtCPU, localBasis: localBasis, llToN: llToN, nToLL: nToLL, terrainOctOf: terrainOctOf, normEpsOf: normEpsOf, gasBandAt: gasBandAt, hRefOf: hRefOf, shapeUniformsOf: shapeUniformsOf }
+    _internal: { mapJobStart: mapJobStart, mapJobRows: mapJobRows, mapJobFinish: mapJobFinish, SH: SH, EARTH_LAND: EARTH_LAND, GLR: GLR, m4: { persp: m4persp, lookAt: m4lookAt, mul: m4mul, invert: m4invert, pt: m4pt, id: m4id }, fieldAtCPU: fieldAtCPU, localBasis: localBasis, llToN: llToN, nToLL: nToLL, terrainOctOf: terrainOctOf, normEpsOf: normEpsOf, gasBandAt: gasBandAt, hRefOf: hRefOf, shapeUniformsOf: shapeUniformsOf }
   };
 });

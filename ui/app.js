@@ -3915,6 +3915,17 @@
         if (ps) { c.pvMode = ps.mode; c.sysDim = ps.dim; c.pvDimMode = ps.dimMode; }
         var ts = pv.getTimeScale ? pv.getTimeScale() : null;
         if (ts) { c.speedMul = ts.mul; c.yrPerSec = ts.yrPerSec; }
+        /* 卡住那一刻在画哪颗行星、它的贴图做到哪一步。
+           用户报「点随机一个星球卡死」时，dump 里只有 stallMs，看不出是贴图生成还是着色器链接；
+           这一段把类型/种子/各段耗时/还有几张贴图在排队一起带出来。 */
+        if (ps && ps.planet) {
+          var pp = ps.planet, mp = window.MirrorPlanets;
+          var ph = mp && mp.perf ? mp.perf.stats() : null;
+          var slow = null;
+          if (ph && ph.length) slow = ph.slice(0, 4).map(function (e) { return e.name + ' ' + e.p50 + '/' + e.max + 'ms×' + e.n; });
+          c.planet = { type: pp.type || null, seed: (pp.seed >>> 0) || 0, key: pp.visualKey || null,
+            phase: ps.mode, buildMs: slow, mapsPending: (mp && mp.perf) ? mp.perf.mapsPending() : null };
+        }
       }
     } catch (e) { c.pv = 'failed: ' + String(e && e.message || e); }
     try {
