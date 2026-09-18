@@ -26,6 +26,10 @@ const sel = (sig) => keccakId(sig).slice(0, 10);
    为什么从 env 直接读，而不是像 CONTRACT 那样由 index.js 传进来：
    readToken 的调用方只有 index.js 那一处，加一个参数就要动那边；而这一层是
    纯附加的，不该逼着上游改签名。给 readToken 留了第三个可选参数，测试用它注入。 */
+/* 描述里那个链名。**写死，不读 env** —— tokenURI 是要被市场抓走存档的链上内容，
+   必须和合约自己那份链上兜底 metadata 一字不差（ArcUniverse.sol 的 tokenURI 里
+   写的就是 "A universe grown from Arc block …"）。 */
+const CHAIN_WORD = 'Arc';
 const NAMES = (process.env.ARCBANG_NAMES || '').toLowerCase();
 /* 造物系列的名册（BangNames2）。没配就不打那一笔，metadata 其余部分一个字不变。 */
 const NAMES2 = (process.env.ARCBANG_NAMES2 || '').toLowerCase();
@@ -253,7 +257,7 @@ function buildMetadata(chain, deps) {
     push('Rescued from', OUTCOME_EN[chain.rescue.fromOutcome] || null);
     push('Interventions', chain.rescue.steps);
   }
-  if (chain.burned > 0n) push('BANG burned', bangWhole(chain.burned));
+  if (chain.burned > 0n) push('Burned', bangWhole(chain.burned));
 
   /* 名字。**单独一条 trait**，即使它同时也是上面的 name 字段 ——
      市场按 trait 筛选，只写在标题里的话筛不到「已命名」这一批。
@@ -262,7 +266,7 @@ function buildMetadata(chain, deps) {
   const named = cleanName(chain.name);
   if (named) push('Name', named);
 
-  let desc = 'A universe grown from BNB block ' + chain.blockNumber
+  let desc = 'A universe grown from ' + CHAIN_WORD + ' block ' + chain.blockNumber
     + '. One block hash, one set of genesis parameters, one outcome. '
     + 'Derived by an integer formula anyone can recompute from the block hash alone.';
   if (source === 'none') {
@@ -273,13 +277,13 @@ function buildMetadata(chain, deps) {
       + ' reproduce — it was minted under an older derivation, or its intervention record is missing.'
       + ' No image is shown rather than a wrong one.';
   } else if (source === 'intervened') {
-    desc += ' Its parameters were moved by burning BANG'
-      + (chain.rescue.at ? ', and it was rescued into a universe that can hold observers.' : '.');
+    desc += ' Its parameters were moved away from the ones this block hash derives'
+      + (chain.rescue.at ? ', into a universe that can hold observers.' : '.');
   }
-  /* 命名这件事要在描述里说一句，而且要说清是**持有人**取的、是**烧掉 BANG** 换来的。
+  /* 命名这件事要在描述里说一句，而且要说清是**持有人**取的。
      不说的话，市场上一个叫 "earth" 的 NFT 看起来就像是发行方给的官方名字。 */
   if (named) {
-    desc += ' Its holder burned BANG to name it "' + named + '" — names are unique across the'
+    desc += ' Its holder named it "' + named + '" — names are unique across the'
       + ' collection and travel with the token.';
   }
 
@@ -420,20 +424,20 @@ function buildCraftedMetadata(chain, deps) {
   if (burn.amount != null) {
     const n = bangWhole(burn.amount);
     push('销毁', burn.estimated ? (n + '（按当前费率折算）') : n);
-    push('BANG burned', n);
+    push('Burned', n);
     if (burn.estimated) push('Burn source', 'estimated at current burnBps');
   }
 
   const named = cleanName(chain.name);
   if (named) push('Name', named);
 
-  let desc = 'A universe derived from BNB block '
+  let desc = 'A universe derived from ' + CHAIN_WORD + ' block '
     + (chain.originBlock != null ? chain.originBlock : '?')
     + ' and reshaped by a recorded sequence of interventions. Replay origin hash + ops through the open engine to recompute this exact card.';
   const burnLabel = craftedBurnLabel(chain.burned, chain.paid, chain.burnBps);
   if (burnLabel) desc += ' ' + burnLabel + '.';
   if (named) {
-    desc += ' Its holder burned BANG to name it "' + named + '" — names are unique across the'
+    desc += ' Its holder named it "' + named + '" — names are unique across the'
       + ' crafted collection and travel with the token.';
   }
 

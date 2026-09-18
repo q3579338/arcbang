@@ -19,6 +19,10 @@ const fs = require('fs');
 const path = require('path');
 
 const S = 1200;
+/* 卡面上那行水印 = 系列名。**写死，不读 env** —— 这张图就是 NFT 本身
+   （tokenURI 的 image 指着它），必须是 blockHash 的纯函数：换一台服务器、
+   换一份 env 都得渲出一模一样的字节，否则「谁都能复算出同一张图」这条就不成立了。 */
+const BRAND = 'ARCBANG';
 const BASE_FILE = path.join(__dirname, 'base', 'universe-base.jpg');
 /* 缩略图档的底图。由 tools/make-base-thumb.py 从上面那张生成（400×400 / q80）。
    缺了不算错 —— 退回用全尺寸那张，只是慢，不该让出图整个挂掉。 */
@@ -234,7 +238,7 @@ function renderSVG(blockHash, card, withParams, thumb, opts) {
     // 顶部压一层暗，否则大字压在亮星系上读不清
     + '<rect x="0" y="0" width="' + S + '" height="230" fill="url(#topscrim)"/>'
     + '<text x="' + (S / 2) + '" y="104" text-anchor="middle" fill="' + t.tint + '" font-family="' + F
-    + '" font-size="54" font-weight="300" letter-spacing="20">BNBBANG</text>'
+    + '" font-size="54" font-weight="300" letter-spacing="20">' + BRAND + '</text>'
     /* 救活的宇宙：整幅加一道金边 + 右上角一枚印记。
        金边是为了在列表缩略图里也能一眼分辨 —— 那时候字已经小到看不清了。 */
     + (rescued

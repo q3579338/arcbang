@@ -899,8 +899,8 @@ function call(method, url, body, headers) {
   ok('干预过 → 图按 cardHash 索引', mIv.meta.image.indexOf('/api/art/card/' + j.cardHash) > 0);
   /* 销毁量必须取链上的 burnedOn，不能取 card 里那个服务端算的报价：
      报价是"要烧多少"，链上那个才是"真烧了多少"，印在 NFT 上的数字得经得起核对。 */
-  ok('干预过 → 印的是链上的真实销毁量', attr(mIv.meta, 'BANG burned') === '1234',
-    String(attr(mIv.meta, 'BANG burned')));
+  ok('干预过 → 印的是链上的真实销毁量', attr(mIv.meta, 'Burned') === '1234',
+    String(attr(mIv.meta, 'Burned')));
   ok('干预过 → 印救活记录', attr(mIv.meta, 'Rescued') === 'yes'
     && attr(mIv.meta, 'Interventions') === 2);
 
@@ -941,15 +941,48 @@ function call(method, url, body, headers) {
     ok('命名过 → 区块号和 tokenId 照样在属性里',
       attr(named.meta, 'Block') === 123 && attr(named.meta, 'Token ID') === '7',
       attr(named.meta, 'Block') + ' / ' + attr(named.meta, 'Token ID'));
-    ok('命名过 → 描述里说清是持有人烧 BANG 换来的（不是官方给的名字）',
-      /holder burned BANG to name it "first-light"/.test(named.meta.description));
+    ok('命名过 → 描述里说清是持有人取的（不是官方给的名字）',
+      /holder named it "first-light"/.test(named.meta.description));
 
     const unnamed = buildMetadata(Object.assign({}, baseChain, { cardHash: natHash }), deps);
     ok('没命名 → 标题退回 Universe #区块号', unnamed.meta.name === 'Universe #123', unnamed.meta.name);
     /* 不印 "unnamed"：**"没有名字"和"名字读不到"是两回事**，而这里分不出来，
        分不出来就都不说 —— 和 C3 是同一条规矩。 */
     ok('没命名 → 一条 Name 属性都不印', attr(unnamed.meta, 'Name') === undefined);
-    ok('没命名 → 描述里不提命名这件事', !/burned BANG to name/.test(unnamed.meta.description));
+    ok('没命名 → 描述里不提命名这件事', !/ name it /.test(unnamed.meta.description));
+
+    /* ---- 品牌与链名：这三样是**要上链 / 被市场存档**的内容，印错一个字就得重部署 ----
+       tokenURI 的描述必须与合约自己那份链上兜底 metadata 一字不差
+       （ArcUniverse.sol 的 tokenURI：'A universe grown from Arc block …'）。
+       卡面水印是 NFT 图本体，写死不读 env（renderSVG 必须是 blockHash 的纯函数）。 */
+    ok('tokenURI 描述写的是 Arc block，整份 metadata 不带 BNB / BNBBANG',
+      /^A universe grown from Arc block 123\./.test(unnamed.meta.description)
+      && JSON.stringify(unnamed.meta).indexOf('BNBBANG') < 0
+      && !/BNB/.test(JSON.stringify(unnamed.meta)),
+      unnamed.meta.description.slice(0, 60));
+    {
+      const svgBrand = renderSVG(H[0], buildCard(H[0], 123).card, true, false);
+      ok('卡面 SVG 的水印是 ARCBANG，且不含 BNBBANG',
+        svgBrand.indexOf('>ARCBANG</text>') > 0 && svgBrand.indexOf('BNBBANG') < 0);
+      const OGB = require('./og.js');
+      const savedB = process.env.ARCBANG_BRAND, savedW = process.env.ARCBANG_CHAIN_WORD,
+            savedP = process.env.ARCBANG_PUBLIC_BASE;
+      delete process.env.ARCBANG_BRAND; delete process.env.ARCBANG_CHAIN_WORD;
+      process.env.ARCBANG_PUBLIC_BASE = 'https://arcbang.xyz';
+      const og0 = OGB.composeOG(svgBrand, { blockNumber: '123', card: buildCard(H[0], 123).card, blockHash: H[0] });
+      ok('分享图不配 env 时也是 ARCBANG / Arc block / arcbang.xyz，不含 BNBBANG',
+        og0.indexOf('>ARCBANG</text>') > 0 && og0.indexOf('Arc block #123') > 0
+        && og0.indexOf('>arcbang.xyz</text>') > 0 && og0.indexOf('BNBBANG') < 0
+        && og0.indexOf('bnbbang.com') < 0);
+      process.env.ARCBANG_BRAND = 'OTHER'; process.env.ARCBANG_CHAIN_WORD = 'Foo';
+      const og1 = OGB.composeOG(svgBrand, { blockNumber: '123', card: buildCard(H[0], 123).card, blockHash: H[0] });
+      ok('分享图的站名 / 链名跟着 env 走（卡面水印不跟 —— 它是 NFT 本体）',
+        og1.indexOf('>OTHER</text>') > 0 && og1.indexOf('Foo block #123') > 0
+        && og1.indexOf('>ARCBANG</text>') > 0);   // 内嵌的那张卡仍写 ARCBANG
+      if (savedB === undefined) delete process.env.ARCBANG_BRAND; else process.env.ARCBANG_BRAND = savedB;
+      if (savedW === undefined) delete process.env.ARCBANG_CHAIN_WORD; else process.env.ARCBANG_CHAIN_WORD = savedW;
+      if (savedP === undefined) delete process.env.ARCBANG_PUBLIC_BASE; else process.env.ARCBANG_PUBLIC_BASE = savedP;
+    }
 
     /* 名字来自**另一个合约**，而那个地址由 ARCBANG_NAMES 配置决定 —— 配错就可能
        返回任意字节。合约那边已经把规则钉死了，这里独立再验一遍，验不过一律当没名字。
