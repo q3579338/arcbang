@@ -208,7 +208,6 @@
       'Universes made out of block hashes. Free to detonate; mint the ones you like.',
     '怎么运作': 'How it works',
     '自己验证': 'Verify it yourself',
-    'BNBBANG 镜像宇宙': 'BNBBANG mirror universe'
   });
 
 })(typeof window !== 'undefined' ? window : this);

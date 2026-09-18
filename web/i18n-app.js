@@ -306,7 +306,6 @@
     '暂停': 'Pause',
     '宇宙时间（对数刻度）': 'Cosmic time (log scale)',
     '回到进入时刻': 'Back to entry time',
-    '镜像宇宙 · BNBBANG': 'Mirror Universe · BNBBANG',
     '引擎结局：大挤压于 ': 'Engine outcome: Big Crunch at ',
     '引擎结局：': 'Engine outcome: ',
     '永恒膨胀': 'eternal expansion',
@@ -703,19 +702,6 @@
        第二条是预览图右下角的来源小签（另一种来源「卡面图」在市场分册，两页共用）。 */
     '宇宙 {0} · {1}': 'Universe {0} · {1}',
     '实况截图': 'Live shot',
-    '我在 BNBBANG 引爆了宇宙 {0}：{1}。每个 BNB 区块哈希都是一套物理定律——来引爆你自己的，前 100 万枚每地址 10 次免费，之后 0.01 BNB。{2}':
-      'I detonated universe {0} on BNBBANG: {1}. Every BNB block hash is a complete set of physical laws — come detonate your own; the first 1M mints are free (10 per address), then 0.01 BNB. {2}',
-    '我把一个死宇宙救成了「{0}」（{1} 档造物宇宙 #{2}）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{3}':
-      'I rescued a dead universe into "{0}" (Grade {1} Crafted Universe #{2}). Burn BANG to rewrite the physical constants — on BNBBANG, universes can be handmade. {3}',
-    '我把一个死宇宙救成了「{0}」（{1} 档造物宇宙）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{2}':
-      'I rescued a dead universe into "{0}" (a Grade {1} Crafted Universe). Burn BANG to rewrite the physical constants — on BNBBANG, universes can be handmade. {2}',
-    '链接已带上你的推广地址。邀请好友引爆宇宙：好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。':
-      "Your referral address is on the link. Invite friends to detonate universes: 10% of a friend's mint reward goes to you, plus 5% from friends of friends — paid from the 200M referral treasury after manual review, with an on-chain trail.",
-    '未连接钱包：链接不带推广地址，照常能广播。连接钱包再广播，好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。':
-      "No wallet connected: the link carries no referral address, and broadcasting still works. Connect a wallet before broadcasting and 10% of a friend's mint reward goes to you, plus 5% from friends of friends — paid from the 200M referral treasury after manual review, with an on-chain trail.",
-    '邀请返利专款 2 亿 BANG。': 'A dedicated 200M BANG fund backs referral rewards. ',
-    '女巫账户（自邀、批量小号、刷量）经人工核对一律不予发放。':
-      'Sybil accounts (self-referrals, bulk wallets, farmed volume) will be rejected in manual review.',
 
     /* ---------------- 站点版管理目录的过滤提示（ui/app.js） ---------------- */
     '{0} 条非区块宇宙已隐藏（离线版可见）': '{0} non-block universes hidden (visible in the offline build)',
@@ -739,7 +725,6 @@
     '确认交易：{0} {1}': 'Confirm the transaction: {0} {1}',
     /* v5 一口价（2026-08-21）：按稀有度报区间那句随 priceBnb 一起删了。
        {0}=价格 {1}=币符号 {2}=每枚发的 BANG，全部现读链上，不在词条里写死。 */
-    '{0} {1} 铸造 · 得 {2} BANG': 'Mint for {0} {1} · earn {2} BANG',
     '{0} {1} 铸造': 'Mint for {0} {1}'
   }, 'app');
 
@@ -749,7 +734,6 @@
      Rescue（拯救）—— 与核心词典、市场分册同一套口径。 ---- */
   I.add({
     /* 标题与首屏 */
-    '镜像宇宙 · BNBBANG': 'Mirror Universe · BNBBANG',
     '每个 BNB 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命':
       'Every BNB block hash is a complete set of physical laws: detonate it and see whether such a universe can grow life',
     '免费引爆，喜欢再铸造': 'Detonate free — mint the ones you like',
@@ -880,7 +864,6 @@
       'The server signed a different block hash than the universe you pressed mint on — no transaction was sent. Reopen that universe and mint again.',
     '模拟铸造被链上回滚（真发也必败，交易没有发出去）：{0}':
       'The mint simulation was reverted on-chain (a real send would fail too; no transaction was sent): {0}',
-    '确认交易：免费期，只花 gas（会发 BANG）': 'Confirm the transaction: free period, gas only (BANG will be paid out)',
     '看交易': 'View the transaction',
     '刚才那个宇宙铸造成功了（你现在看的已经是另一个了）　':
       'The universe from before was minted (what you are looking at now is a different one)　',
@@ -896,8 +879,6 @@
     '区块 {0}': 'Block {0}',
     ' · 已干预': ' · intervened',
     '干预后的宇宙': 'A universe after intervention',
-    '参数已经不是这个哈希派生出来的了，所以不能拿它去铸原哈希 —— 那等于往链上写一个别人复算不出来的结局。<br>正路是：先回起爆页把<b>原始宇宙</b>铸下来，再烧 BANG <b data-nolang>拯救</b>它 —— 服务端会验证并签名你的干预，改过的参数就能合法上链。':
-      'These parameters are no longer what this hash derives, so it cannot be minted against the original hash — that would write an outcome on-chain that nobody else can recompute.<br>The right path: go back to the launch page and mint the <b>original universe</b> first, then burn BANG to <b>rescue</b> it — the server verifies and signs your intervention, and the changed parameters go on-chain legitimately.',
     '合约还没部署，暂时不能铸造。': 'The contract is not deployed yet — minting is unavailable.',
     '这个宇宙已经被铸走了': 'This universe is already minted',
     '刚刚铸造成功': 'just minted',
@@ -1160,8 +1141,6 @@
     '开始玩': 'Start playing',
     '先拿一个宇宙。BNB 链的一个区块哈希，就是一套完整的物理定律。':
       'Start by getting a universe. One BNB Chain block hash is one complete set of physical laws.',
-    '先拿一个宇宙。比特币的一个区块哈希，就是一套完整的物理定律。':
-      'Start by getting a universe. One Bitcoin block hash is one complete set of physical laws.',
     '先拿一个宇宙。Arc 链的一个区块哈希，就是一套完整的物理定律。':
       'Start by getting a universe. One Arc block hash is one complete set of physical laws.',
     '这就是那套定律：物理常数和它注定的结局。D 是空间有几个维度——我们的宇宙是 3。':

@@ -217,8 +217,6 @@
     '这个宇宙是结构性死亡，推参数救不回来 —— 关掉沙盒，去引爆下一个':
       'This universe is structurally dead; nudging parameters will not bring it back — close the sandbox and go detonate the next one',
     '这个宇宙没有区块哈希，服务端没法定位它': 'This universe has no block hash, so the server cannot locate it',
-    '这个宇宙现在能诞生观察者：共 {n} 格，真烧要 {m} BANG（沙盒不收费）。':
-      'This universe can give rise to observers now: {n} notches in all, a real burn would cost {m} BANG (the sandbox is free).',
     '这是维数判据直接给出的结论：引力与库仑势的形状不对，行星绕不成圈、电子也落不进壳层。这不是差几格余量，是几何本身的问题。':
       'This comes straight out of the dimension criteria: the gravitational and Coulomb potentials have the wrong shape, so planets cannot hold an orbit and electrons cannot settle into shells. This is not a few notches of margin — it is the geometry itself.',
     '门': 'Gates',
