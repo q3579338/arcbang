@@ -90,6 +90,30 @@
     '新的总价（{0}）': 'New total price ({0})'
   }, 'market');
 
+  /* ---- 放号分期（2026-09-18）：web/arc-ui.js 在铸造入口上说的话 ----
+     **必须收在这一册**，不能收进 i18n-arc-site.js：那一册只有首页与文档页会加载，
+     app.html 的注入层（build-web.js 的 LAYER）里没有它 ——
+     收错地方的表现是英文站上这几句仍然是中文，而且一个错都不报。踩过一次。
+
+     口径：**不点名谁是保底层**（名单构成不公开），只说段名。
+     命名空间 'app'：arc-ui.js 的 T()/TF()/TX() 查的就是它（查不到会落回全局表）。 */
+  I.add({
+    '时间待定': 'to be announced',
+    '看开放时间 · 登记白名单': 'See the opening times · join the allowlist',
+    '铸造还没开：{0} 开放白名单铸造。现在可以先去登记白名单；引爆和模拟器随时都能玩。':
+      'Minting has not opened: the allowlist round starts {0}. You can sign up for the allowlist now; detonating and the simulator are open regardless.',
+    '现在是保底期，还没轮到你。先到先得期 {0} 开。':
+      'The guaranteed round is running and it is not your turn yet. The first-come round starts {0}.',
+    '你不在白名单里。先到先得期 {0} 开，公售 {1} 开。':
+      'You are not on the allowlist. The first-come round starts {0} and the public sale {1}.',
+    '你不在白名单里，公售 {0} 开，到时候人人都能铸。':
+      'You are not on the allowlist. The public sale starts {0}, and then anyone can mint.',
+    /* 免费额度是白名单的：名单外的人看到的必须是价格，不能是「首批免费」——
+       展示和真报价打架比不显示糟得多（钱包弹出来要 1 USDC）。 */
+    '{0} {1} 铸造（免费额度只给白名单）': 'Mint for {0} {1} (the free tier is allowlist only)',
+    '免费额度只给白名单，你这边按固定价铸造': 'The free tier is allowlist only; you mint at the flat price'
+  }, 'app');
+
   /* ---- web/status.html 的 arc 改写（命名空间 'status'） ---- */
   I.add({
     '两个合约的地址、在线状态与关键参数。点击进区块浏览器。':

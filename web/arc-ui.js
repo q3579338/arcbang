@@ -80,6 +80,10 @@
   /* 市场页是独立 HTML，和站点版同目录（web/build-web.js 把 market.html 一起拷进 dist）。
      所以用相对链接直接跳走，不要在单页里模拟路由。 */
   var MARKET_URL = 'market.html';
+  /* 预热页（倒计时 / 规则 / 登记白名单）。放号还没轮到时，铸造面板给的就是这个出口。
+     首页被切成预热页时（build-web 的 --landing=warmup）它俩是同一份内容，
+     但 warmup.html 永远在，所以链接一律指它。 */
+  var WARMUP_URL = 'warmup.html';
 
   var S = { hash: null, blockNumber: null, derived: null, minted: null, busy: false, revealed: false };
 
@@ -1930,10 +1934,71 @@
     if (el) { el.className = 'bnb-note ' + (cls || ''); el.innerHTML = html; }
   }
 
-  /** 按钮该不该能点：合约没部署、或这个哈希已经被铸走，都不该给一个点了必然失败的按钮 */
+  /* ---------------------------------------------------------- 放号阶段（白名单）
+     2026-09-18 起铸造分四段：warmup（不开）/ gtd（保底层）/ fcfs（名单先到先得）/ public。
+     判断在服务端（server/allowlist.js），**这里只是提前把话说清楚** ——
+     没有这一层的话，预热期点「铸造」会先弹钱包、再拿回一个 403，
+     用户已经在钱包里确认过一次了才被告知「还没开」。
+
+     所以 PH 只用来**决定要不要弹钱包**，不用来决定能不能铸：真正算数的仍是服务端那道闸。
+     拿不到状态（接口没起来、老服务端）时一律不拦 —— 宁可让人点下去看服务端怎么说，
+     也不能因为一次网络抖动把铸造按钮永久灰掉。 */
+  var PH = { got: false, phase: null, tier: null, listed: false, opens: {}, next: null, addr: null };
+  function phaseLoad() {
+    if (!API || !API.allowlistStatus) return;
+    var a = W.addr || null;
+    API.allowlistStatus(a).then(function (st) {
+      if ((W.addr || null) !== a) return;              // 问的过程中换了地址就作废
+      PH = {
+        got: true, phase: st.phase || null, tier: st.tier || null, listed: !!st.listed,
+        opens: st.opens || {}, next: st.next || null, addr: a
+      };
+      syncMintNow();
+      if (!$('bnbMintBox') || $('bnbMintBox').hidden) return;
+      if (S.derived) showMint();                        // 面板开着就顺手重画一次
+    }, function () { /* 拿不到就当没有这一层 */ });
+  }
+  /** 本地时间的人话时间。服务端给的是 ISO，直接摆出来没人读得下去。 */
+  function fmtWhen(iso) {
+    if (!iso) return T('时间待定');
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return T('时间待定');
+    try { return d.toLocaleString(); } catch (e) { return iso; }
+  }
+  /** 段名的人话。**不点名谁是保底层**（用户拍板：名单构成不公开）。 */
+  function phaseWord(p) {
+    return p === 'gtd' ? T('保底期') : p === 'fcfs' ? T('先到先得期') : p === 'public' ? T('公售') : T('预热');
+  }
+  /**
+   * 现在这个地址能不能点铸造。能就回 null，不能就回一句给人看的话。
+   * 只在**确知**不行时才拦：状态没拿到、或者钱包还没连（不知道在不在名单）一律放行。
+   */
+  function phaseBlock() {
+    if (!PH.got || !PH.phase) return null;
+    var o = PH.opens || {};
+    if (PH.phase === 'warmup') {
+      return TF('铸造还没开：{0} 开放白名单铸造。现在可以先去登记白名单；引爆和模拟器随时都能玩。',
+        fmtWhen(o.gtd || (PH.next && PH.next.at)));
+    }
+    if (!W.addr) return null;                   // 没连钱包就不知道在不在名单，别提前拦
+    if (PH.phase === 'gtd' && PH.tier !== 'gtd') {
+      return PH.listed
+        ? TF('现在是保底期，还没轮到你。先到先得期 {0} 开。', fmtWhen(o.fcfs))
+        : TF('你不在白名单里。先到先得期 {0} 开，公售 {1} 开。', fmtWhen(o.fcfs), fmtWhen(o.public));
+    }
+    if (PH.phase === 'fcfs' && !PH.listed) {
+      return TF('你不在白名单里，公售 {0} 开，到时候人人都能铸。', fmtWhen(o.public));
+    }
+    return null;
+  }
+
+  /** 按钮该不该能点：合约没部署、放号还没轮到、或这个哈希已经被铸走，
+      都不该给一个点了必然失败的按钮 */
   function syncMintNow() {
     var b = $('bnbMintNow');
     if (!b) return;
+    var blocked = phaseBlock();
+    if (blocked) { b.disabled = true; b.title = blocked; nowMsg(esc(blocked)); return; }
     if (!C.contract()) {
       b.disabled = true;
       b.title = TF('合约还没部署到 {0}，暂时不能铸造', chainName());
@@ -1948,6 +2013,8 @@
 
   function mintNow() {
     if (!S.derived) return;
+    var blockedNow = phaseBlock();
+    if (blockedNow) { nowMsg(esc(blockedNow), 'bnb-warn'); return; }
     if (!C.contract()) { nowMsg(esc(TF('合约还没部署到 {0}，暂时不能铸造（引爆和干预都不受影响）', chainName()))); return; }
     if (S.minted) {
       nowMsg(S.minted > 0 ? esc(T('这个宇宙已经被别人铸走了，换一个区块吧'))
@@ -2131,7 +2198,13 @@
       : '';
 
     var mintPart;
-    if (!C.contract()) {
+    var blockedMint = phaseBlock();
+    if (blockedMint) {
+      /* 放号还没轮到：**一个按钮都不给**，免得人点下去先弹钱包再被 403 打回来。
+         这里顺手给出预热页的入口 —— 那页上有倒计时、规则和登记白名单。 */
+      mintPart = '<div class="bnb-row"><span class="bnb-warn">' + esc(blockedMint) + '</span></div>' +
+        '<div class="bnb-row"><a class="bnb-btn" href="' + WARMUP_URL + '">' + esc(T('看开放时间 · 登记白名单')) + '</a></div>';
+    } else if (!C.contract()) {
       mintPart = '<div class="bnb-note">' + esc(TF('（合约还没部署到 {0}，铸造暂时不可用；引爆和干预都不受影响）', chainName())) + '</div>';
     } else if (S.minted) {
       /* S.minted 有两种非零值：**>0** 是链上查到的 tokenId（别人、或你以前铸的），
@@ -2189,6 +2262,10 @@
     report = report || mintMsg;
     btnOf = btnOf || function () { return $('bnbMint'); };
     if (S.busy) return;
+    /* 放号还没轮到就**一步都不走**：不弹钱包、不去要签名。
+       服务端那道闸才是算数的（server/allowlist.js），这里只是别让人白确认一次钱包。 */
+    var blockedHere = phaseBlock();
+    if (blockedHere) { report(esc(blockedHere), 'bnb-warn'); return; }
     if (!C.hasWallet()) {
       /* 手机浏览器多半没有注入环境：选择器会给「在 Binance App 里打开」的深链；
          桌面端它会说去装扩展。话术不再点名小狐狸 —— 币安钱包同样是正路。 */
@@ -2227,10 +2304,22 @@
         rarity: d2r(stamp),
         cardHash: stamp.cardHash,
         deadline: stamp.deadline,
+        /* free 是服务端签进摘要的那个标志（走不走免费额度）。**原样转发，不许自己决定** ——
+           改一位 ecrecover 就恢复出别的地址，合约当场 BadSig。
+           它同时决定 msg.value：free=true 必须正好 0，free=false 必须正好 price。 */
+        free: stamp.free === true,
         sig: stamp.sig,
         payWithBang: false,
         valueWei: wei
       };
+    }
+    /* 这一笔该付多少。**跟着 stamp.free 走**，不再去链上猜：
+       服务端签的是免费就必须 0，签的是付费就必须一口价。
+       老服务端不回 free 字段时才退回原来那条「问链上还给不给免费」的路。 */
+    function valueForStamp() {
+      if (stamp.free === true) return Promise.resolve(0n);
+      if (stamp.free === false) return C.price();
+      return C.mintValueFor(acct, d2r(stamp));
     }
     var refAddr = refStored();
     Promise.resolve(null).then(function () {
@@ -2294,7 +2383,7 @@
       return C.connect();
     }).then(function (from) {
       acct = from;
-      return C.mintValueFor(from, d2r(stamp));
+      return valueForStamp();
     }).then(function (wei) {
       /* 发交易前用**同一个 from/value/calldata** 先 eth_call 模拟一遍（拯救路径
          mintRescueGo 的先例）：报价和上链之间不是原子的 —— 最后一枚全局免费、
@@ -2302,7 +2391,7 @@
          已经在钱包里确认过了。模拟失败就重报一次价再模拟；仍失败就报错停下 ——
          钱包一次都不弹、一分 gas 不花。 */
       return C.simulateBangSigned(txArgs(wei), acct).then(function () { return wei; }, function () {
-        return C.mintValueFor(acct, d2r(stamp)).then(function (wei2) {
+        return valueForStamp().then(function (wei2) {
           return C.simulateBangSigned(txArgs(wei2), acct).then(function () { return wei2; }, function (e2) {
             var er = new Error(TF('模拟铸造被链上回滚（真发也必败，交易没有发出去）：{0}', (e2 && e2.message) || e2));
             er.rpcData = e2 && e2.rpcData;   // WrongPrice 的选择器在 revert data 里，下面的人话翻译要靠它
@@ -2741,6 +2830,9 @@
       现网那版旧合约没有这两个 getter（freeStatus 吞掉 revert 返回 supported:false），
       回退 usedFree 的一次性判定 —— 计数行不显示，但免费/付费的判断照旧成立。 */
   function refreshFreeStatus() {
+    /* 换了地址，「在不在名单、是哪一层」也跟着变 —— 免费计数和放号资格是一对，
+       只刷一半的话按钮会按上一个地址的资格显示。 */
+    if ((W.addr || null) !== PH.addr) phaseLoad();
     if (!W.addr || !C.contract()) { W.fc = null; W.usedFree = null; walletSync(); return; }
     var a = W.addr;
     C.freeStatus(a).then(function (st) {
@@ -2779,8 +2871,11 @@
     /* 列表/选择一变（6963 公告到得晚、选择器换了钱包、断开忘记）就把监听迁过去 */
     if (root.MirrorWallet && root.MirrorWallet.onChange) root.MirrorWallet.onChange(bindWalletEvents);
     // 已经授权过的话，静默恢复地址（不弹窗）
-    C.account().then(function (a) { if (a) { W.addr = a; walletSync(); refreshFreeStatus(); } });
+    C.account().then(function (a) { if (a) { W.addr = a; walletSync(); refreshFreeStatus(); } phaseLoad(); });
     loadPrices();                    // 原来这里问的是 C.price()，见 priceLine 处的说明
+    /* 放号阶段先问一次（不依赖钱包：warmup 段谁都铸不了），连上钱包后 refreshFreeStatus
+       会再问一次带地址的 —— 那一次才知道这个地址在不在名单、是哪一层。 */
+    phaseLoad();
   }
 
   /* 顶栏 chip 的适配器：壳只管画（UI 四页同一份），行为在这里 ——
@@ -2845,6 +2940,7 @@
      还有免费次数（或还不知道）时也返回 null —— 免费口的按钮不标价。 */
   function paidMintLabel() {
     var exhausted =
+      (PH.got && W.addr && !PH.listed) ||                                    // 不在白名单：免费额度跟你无关（09-18）
       (W.free != null && W.free <= 0n) ||                                    // 免费期整个发完了
       (W.fc && W.fc.supported && W.fc.cap != null && W.fc.used >= W.fc.cap) || // 新合约：10 次用光
       (W.fc && !W.fc.supported && W.usedFree === true);                      // 旧合约：那一次用过了
@@ -2867,6 +2963,14 @@
      无顶栏的退路（浮空 #bnbWallet）里也还是它。 */
   function priceLine() {
     var paid = paidMintLabel();
+    /* 免费额度是**白名单的**（2026-09-18）：链上还剩 387 枚不等于你能免费领。
+       不先判这一条的话，公售段一个名单外的路人会看到「首批免费，只花 gas」，
+       点下去钱包却要 1 USDC —— 展示和真报价打架，比不显示糟得多。
+       状态还没问到（PH.got=false）时照旧按链上读数说话，不因为一次网络抖动改口径。 */
+    if (PH.got && W.addr && !PH.listed) {
+      return (W.price != null ? TX('{0} {1} 铸造（免费额度只给白名单）', C.fmtBNB(W.price), chainCur())
+        : T('免费额度只给白名单，你这边按固定价铸造'));
+    }
     if (W.free != null && W.free > 0n) {
       /* 未连钱包：按地址的计数根本没得问，给一句中性的 —— 连上才知道你还剩几次 */
       if (!W.addr) return T('首批免费，只花 gas（连接钱包看你的免费次数）');

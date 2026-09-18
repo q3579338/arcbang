@@ -208,6 +208,106 @@
       'Universes made out of block hashes. Free to detonate; mint the ones you like.',
     '怎么运作': 'How it works',
     '自己验证': 'Verify it yourself',
+
+    /* ======================================================================
+       预热页（web/warmup-arc.html，2026-09-18）
+       ----------------------------------------------------------------------
+       口径：**不点名谁是保底层**（用户拍板名单构成不公开），段名一律说
+       「保底期 / 先到先得期 / 公售」。英文这边同样只给段名，不解释名单怎么来的。
+       这一页的动态文案（倒计时那行、登记流程的每一句）也全在这里 ——
+       它们由页内脚本调 MirrorI18n.t() 现翻，漏一条英文版就是半英半中。 */
+    'ARCBANG 预热 · 白名单登记与开放时间': 'ARCBANG warm-up · allowlist sign-up and opening times',
+    '现在是': 'Currently in',
+    '预热期': 'warm-up',
+    '保底期': 'guaranteed round',
+    '先到先得期': 'first-come round',
+    '公售': 'public sale',
+    '保底': 'Guaranteed',
+    '先到先得': 'First-come',
+    '待审': 'Under review',
+    '铸造还没开。先把名字留下。': 'Minting has not opened. Leave your name first.',
+    '全网 1,387 枚宇宙，前 387 枚给白名单免费领（每地址 1 枚）。预热期不签任何铸造签名 —— 但引爆、模拟、看结局这些本来就免费，随时都能玩。':
+      '1,387 universes in all; the first 387 go free to the allowlist, one per address. No mint signature is issued during the warm-up — but detonating, simulating and reading the outcome were always free, and they are open right now.',
+    '天': 'days', '时': 'hrs', '分': 'min', '秒': 'sec',
+    '正在问服务端开放时间…': 'Asking the server for the opening times…',
+    '登记白名单': 'Join the allowlist',
+    '先去引爆一个宇宙（免费）': 'Go detonate a universe first (free)',
+    '开放时间': 'Opening times',
+    '四段依次开。到点自动往下走，页面上的倒计时读的就是服务端那一份，不是我们在这里写死的数字。':
+      'The four rounds open in order and advance on their own. The countdown reads the server’s own clock, not a number hard-coded into this page.',
+    '名单里的一部分地址先铸，不跟人抢': 'Part of the list mints first, with nothing to race for',
+    '名单里的人都能铸，387 枚免费额度抢完为止': 'Everyone on the list can mint, until the 387 free slots run out',
+    '人人都能铸，1 USDC 一枚，每地址最多 3 枚': 'Open to all, 1 USDC each, up to 3 per address',
+    '时间待定': 'to be announced',
+    '规则': 'The rules',
+    '总量': 'Supply',
+    '1,387 枚，永远不增发': '1,387, and never any more',
+    '一枚宇宙算一千万年，铸满正好 137.87 亿年 —— 这个宇宙的岁数':
+      'One universe stands for ten million years, so the full set comes to 13.787 billion — the age of this universe',
+    '免费额度': 'Free tier',
+    '387 枚，每地址 1 枚，只给白名单': '387, one per address, allowlist only',
+    '免费不等于白送：要先真的跑完一次引爆流程才拿得到签名':
+      'Free is not the same as handed out: you only get a signature after actually running a detonation',
+    '公售价': 'Public price',
+    '1 USDC 一枚，每地址最多 3 枚': '1 USDC each, up to 3 per address',
+    'Arc 上 gas 就是 USDC，一次铸造的 gas 约 0.003 USDC':
+      'Gas on Arc is USDC; a mint costs about 0.003 USDC of it',
+    '一个哈希只铸一次': 'One hash, one mint',
+    '某个区块被谁引爆并铸走，它就没了': 'Once a block has been detonated and minted, it is gone',
+    '同一个哈希，谁来引爆都是同一个宇宙': 'The same hash is the same universe, whoever detonates it',
+    '没有代币': 'No token',
+    '不发币、不预售、不做返利池': 'No token, no presale, no rebate pool',
+    '收入只有铸造款和二级市场版税两项': 'The only income is mint proceeds and secondary royalties',
+    '连钱包 → 签一句话（不花 gas、不动任何资产）→ 填你的 X 用户名 → 提交。登记不等于进名单：我们人工审完才会把地址放进去。':
+      'Connect a wallet, sign one line (no gas, nothing moves), give your X handle, submit. Signing up is not the same as being on the list — we review by hand before an address goes in.',
+    /* '连接钱包' / '已复制' 已经在 i18n.js 的全局表里且值逐字相同，这里**不重收** */
+    '换一个钱包': 'Switch wallet',
+    '你的 X 用户名（不带 @）': 'Your X handle (without the @)',
+    '邀请码（可选，别人给你的 6 位码）': 'Invite code (optional — the 6 characters someone gave you)',
+    '6 位大写字母数字': '6 characters, A–Z and 0–9',
+    '签名并登记': 'Sign and register',
+    '你的登记码（同时也是邀请码）': 'Your sign-up code (it doubles as your invite code)',
+    '当前层级': 'Your tier',
+    '有效邀请': 'Valid invites',
+    '排位': 'Rank',
+    '把下面这条链接发给朋友。对方登记并通过审核之后才算一个有效邀请。':
+      'Send the link below to a friend. It counts as a valid invite once they have signed up and passed review.',
+    '复制邀请链接': 'Copy invite link',
+    '去转发置顶推并回复登记码': 'Repost the pinned post and reply with your code',
+    '任务：关注 @arcbang_xyz，转发置顶那条推，并在评论里回复你的登记码。我们按登记码人工比对，所以码一定要原样贴上去。':
+      'The task: follow @arcbang_xyz, repost the pinned post, and reply to it with your sign-up code. We match those codes by hand, so paste yours exactly.',
+    '已登记地址': 'Addresses signed up',
+    '已进名单': 'On the list',
+    '免费额度余量': 'Free slots left',
+    '引爆随时可以玩': 'Detonating is open right now',
+    '预热的是铸造，不是模拟器。粘一个 Arc 区块高度或哈希进去，引擎会把它读成 23 个物理常数，从奇点算到热寂 —— 这件事不花钱、不连钱包、不上链，现在就能做。':
+      'It is the minting that is in warm-up, not the simulator. Paste an Arc block height or hash and the engine reads it as 23 physical constants and runs it from the singularity to heat death — free, no wallet, nothing on-chain.',
+    '打开模拟器': 'Open the simulator',
+    '先看它是怎么算的': 'See how it computes first',
+    /* ---- 动态那几句（页内脚本现翻）---- */
+    '距离{0}开放': '{0} opens in',
+    '{0}的时间还没定，定了会写在这里；登记随时可以。':
+      'The time for the {0} is not set yet; it will appear here once it is. Signing up is open regardless.',
+    '已经开到最后一段了，直接去模拟器铸造吧。': 'The last round is already open — head to the simulator and mint.',
+    '时间到了，正在刷新状态…': 'Time is up — refreshing…',
+    '服务端这一刻问不到（{0}）。刷新试试；模拟器不受影响。':
+      'The server is not answering right now ({0}). Try refreshing; the simulator is unaffected.',
+    '把下面这条链接发给朋友。对方登记并通过审核之后才算一个有效邀请；攒够 {0} 个有效邀请会自动升到保底层。':
+      'Send the link below to a friend. It counts as a valid invite once they have signed up and passed review; {0} valid invites move you into the guaranteed tier automatically.',
+    '先连钱包': 'Connect a wallet first',
+    'X 用户名填 1–15 位字母、数字或下划线，不带 @': 'An X handle is 1–15 letters, digits or underscores, without the @',
+    '邀请码是 6 位大写字母数字；没有就留空': 'An invite code is 6 characters, A–Z and 0–9. Leave it empty if you have none',
+    '正在问服务端要那句话…': 'Asking the server for the line to sign…',
+    '服务端没给出要签的文案': 'The server did not return a line to sign',
+    '请在钱包里签名（不花 gas，不动任何资产）': 'Sign in your wallet (no gas, nothing moves)',
+    '正在提交…': 'Submitting…',
+    '你已经登记过了，下面就是你的登记码。': 'You had already signed up — here is your code.',
+    '登记成功。审核通过后你的地址会出现在名单里 —— 下面是你的登记码。':
+      'You are signed up. Your address goes on the list once it passes review — here is your code.',
+    '没检测到钱包扩展': 'No wallet extension detected',
+
+    /* 铸造页（web/arc-ui.js）那几句放号文案收在 **i18n-arc.js** 里 ——
+       app.html 的注入层（build-web.js 的 LAYER）不加载本册，收在这里英文站上就永远是中文。 */
   });
 
 })(typeof window !== 'undefined' ? window : this);

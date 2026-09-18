@@ -2606,6 +2606,304 @@ function call(method, url, body, headers) {
       MI3._internals.CFG.chunk <= 5000
       && MI3.chunkRanges(1, 45000, MI3._internals.CFG.chunk).every(([a, b]) => b - a + 1 <= 20000));
   }
+  {
+    /* ==================================================================
+       [S4] 放号分期、白名单、登记码与邀请（server/allowlist.js + sign.js 的 free）
+
+       这一整节钉的是 2026-09-18 那次事故的修法。事故本身：第一次主网部署上线 20 分钟，
+       一个 IP 用 5 个**新地址**、一分钟一枚，把 5 枚免费额度薅走了。
+       根因不是 IP 闸太松 —— 是「这一枚该不该免费」由合约按 totalSupply / freeMintCount 现判，
+       而每个新地址在合约眼里都是干净的，换地址就等于复制免费额度。
+
+       修法有两半，两半都要在这里当场红：
+         1. free 进摘要（合约 bangSigned 的 bool free）→ 免费与否服务端说了算；
+         2. 服务端按名单和阶段决定 free，IP 不再参与任何铸造判断。
+       ================================================================== */
+    console.log('\n[S4] 放号分期 / 白名单 / 登记码 / 邀请');
+    const vm = require('vm');            // 下面那段要在沙箱里跑 web/arc-chain.js
+    const ALX = require('./allowlist.js');
+    const adir = path.join(TMP, 'al'); fs.mkdirSync(adir, { recursive: true });
+
+    /* ---- 摘要：free 是不是真的签进去了 ---- */
+    {
+      const CA = '0x' + 'aa'.repeat(20);
+      const M = '0x' + 'bb'.repeat(20);
+      const ch = '0x' + 'cc'.repeat(32);
+      const saved = process.env.ARCBANG_SIG_V2;
+      process.env.ARCBANG_SIG_V2 = '1';
+      const dFree = digestOf(5042, CA, H[0], 42, 9, 0, ch, 1900000000, M, true);
+      const dPaid = digestOf(5042, CA, H[0], 42, 9, 0, ch, 1900000000, M, false);
+      const dNone = digestOf(5042, CA, H[0], 42, 9, 0, ch, 1900000000, M);
+      ok('free=true 与 free=false 的摘要不同（改一位就是 BadSig）', dFree !== dPaid);
+      ok('不传 free 时摘要与 v2 老向量逐字节相同（BNB 那条路一个字节都不动）',
+        dNone !== dFree && dNone !== dPaid && dNone === digestOf(5042, CA, H[0], 42, 9, 0, ch, 1900000000, M, null));
+      process.env.ARCBANG_SIG_V2 = '';
+      let threw = false;
+      try { digestOf(5042, CA, H[0], 42, 9, 0, ch, 1900000000, M, true); } catch (e) { threw = true; }
+      ok('v1 摘要里传 free 直接抛错（合约那边 msg.sender 与 free 是一起加的）', threw);
+      if (saved === undefined) delete process.env.ARCBANG_SIG_V2; else process.env.ARCBANG_SIG_V2 = saved;
+    }
+
+    /* ---- 阶段：env 是下限，到点的时间只往后推 ---- */
+    {
+      const save = {};
+      for (const k of ['ARCBANG_PHASE', 'ARCBANG_GTD_OPEN_AT', 'ARCBANG_FCFS_OPEN_AT', 'ARCBANG_PUBLIC_OPEN_AT']) save[k] = process.env[k];
+      const setEnv = (o) => { for (const k in save) delete process.env[k]; for (const k in o) process.env[k] = o[k]; };
+
+      setEnv({});
+      ok('什么都不配 → warmup（默认最保守：一张铸造签名都不签）', ALX.phaseAt() === 'warmup');
+      setEnv({ ARCBANG_PHASE: 'PUBLIC' });
+      ok('ARCBANG_PHASE 不分大小写', ALX.phaseAt() === 'public');
+      setEnv({ ARCBANG_PHASE: 'nonsense' });
+      ok('看不懂的阶段名退回 warmup，不是放行', ALX.phaseAt() === 'warmup');
+
+      const T0 = Date.parse('2026-10-01T00:00:00Z');
+      setEnv({
+        ARCBANG_GTD_OPEN_AT: '2026-10-01T00:00:00Z',
+        ARCBANG_FCFS_OPEN_AT: '2026-10-02T00:00:00Z',
+        ARCBANG_PUBLIC_OPEN_AT: '2026-10-03T00:00:00Z'
+      });
+      ok('到点自动切段：开前 warmup / gtd / fcfs / public 依次到位',
+        ALX.phaseAt(T0 - 1) === 'warmup' && ALX.phaseAt(T0) === 'gtd'
+        && ALX.phaseAt(T0 + 86400e3) === 'fcfs' && ALX.phaseAt(T0 + 2 * 86400e3) === 'public');
+      setEnv({
+        ARCBANG_PHASE: 'fcfs',
+        ARCBANG_GTD_OPEN_AT: '2026-10-01T00:00:00Z',
+        ARCBANG_FCFS_OPEN_AT: '2026-10-02T00:00:00Z'
+      });
+      ok('手动推到 fcfs 之后，还没到的 gtd 时间不会把它拉回去（只前进不后退）',
+        ALX.phaseAt(T0 - 86400e3) === 'fcfs');
+      setEnv({ ARCBANG_GTD_OPEN_AT: '2026-09-01T00:00:00Z', ARCBANG_FCFS_OPEN_AT: '2026-10-02T00:00:00Z' });
+      const nx = ALX.nextOpen(T0);
+      ok('nextOpen 给出下一段与时间（倒计时读的就是它）',
+        nx && nx.phase === 'fcfs' && typeof nx.at === 'string', JSON.stringify(nx));
+      setEnv({ ARCBANG_PHASE: 'warmup' });
+      const nx2 = ALX.nextOpen();
+      ok('时间没配时 nextOpen 回 at:null（页面显示「时间待定」，不编一个日期出来）',
+        nx2 && nx2.phase === 'gtd' && nx2.at === null);
+      for (const k in save) { if (save[k] === undefined) delete process.env[k]; else process.env[k] = save[k]; }
+    }
+
+    /* ---- 登记：验签、去重、自邀、限流 ---- */
+    const A1 = new Wallet('0x' + '31'.repeat(32));
+    const A2 = new Wallet('0x' + '32'.repeat(32));
+    const A3 = new Wallet('0x' + '33'.repeat(32));
+    const a1 = A1.address.toLowerCase(), a2 = A2.address.toLowerCase(), a3 = A3.address.toLowerCase();
+    const alTakes = [];
+    const AL = ALX.create({
+      storeDir: adir,
+      take: (k, limit) => { alTakes.push(k); return { ok: alTakes.filter((x) => x === k).length <= limit }; }
+    });
+    const signFor = (w) => w.signMessageSync(ALX.registerMessage(w.address));
+    {
+      /* 大小写不敏感：钱包给的是 EIP-55 校验和写法，页面上贴的多半是小写，
+         两者必须算出同一个码 —— 不然同一个人会拿到两个码，人工比对就乱了。 */
+      ok('登记码是 6 位大写字母数字，且从地址可复现、大小写不敏感（服务端不存码表）',
+        /^[A-Z0-9]{6}$/.test(AL.codeOf(a1)) && AL.codeOf(a1) === AL.codeOf(A1.address)
+        && A1.address !== a1);
+      ok('不同地址不同码', AL.codeOf(a1) !== AL.codeOf(a2));
+
+      ok('地址不合法 → 400', AL.register({ address: 'nope', xHandle: 'abc', sig: '0x' + '11'.repeat(65) }, '1.1.1.1').status === 400);
+      ok('X 用户名不合法 → 400', AL.register({ address: a1, xHandle: 'a b!', sig: '0x' + '11'.repeat(65) }, '1.1.1.1').status === 400);
+      ok('签名是别人签的 → 400（不是静默收下）',
+        AL.register({ address: a1, xHandle: 'alice', sig: signFor(A2) }, '1.1.1.1').status === 400);
+      const r1 = AL.register({ address: A1.address, xHandle: '@alice', sig: signFor(A1) }, '1.1.1.1');
+      ok('合法登记 → 200，回自己的登记码', r1.status === 200 && r1.body.ok === true && r1.body.code === AL.codeOf(a1));
+      ok('重复登记 → already:true，不重复写',
+        AL.register({ address: a1, xHandle: 'alice', sig: signFor(A1) }, '1.1.1.1').body.already === true
+        && fs.readFileSync(AL.appliedFile, 'utf8').trim().split('\n').length === 1);
+      ok('用自己的码邀请自己 → 400',
+        AL.register({ address: a2, xHandle: 'bob', sig: signFor(A2), ref: AL.codeOf(a2) }, '1.1.1.1').status === 400);
+      ok('落盘只留 IP 前缀，不留完整地址',
+        JSON.parse(fs.readFileSync(AL.appliedFile, 'utf8').trim().split('\n')[0]).ip === '1.1.x.x');
+    }
+
+    /* ---- 邀请：只在 approve 之后才算数 ---- */
+    {
+      const r2 = AL.register({ address: a2, xHandle: 'bob', sig: signFor(A2), ref: AL.codeOf(a1) }, '2.2.2.2');
+      ok('带别人的邀请码登记 → 200', r2.status === 200);
+      ok('被邀请人还没进名单：邀请数 1，有效邀请 0',
+        AL.inviteStats(a1).invites === 1 && AL.inviteStats(a1).validInvites === 0);
+      AL.approve(AL.codeOf(a2));
+      ok('approve 之后有效邀请才变成 1（光登记不算数，否则造一百个地址就能刷保底）',
+        AL.inviteStats(a1).validInvites === 1);
+      ok('approve 收登记码也收地址，重复 approve 是 already',
+        AL.approve(a2).already === true && AL.tierOf(a2) === 'fcfs');
+      ok('没登记过的地址 approve 不了（名额只发给排过队的人）',
+        AL.approve(a3).ok === false);
+    }
+
+    /* ---- 自动升 gtd 与管理员钉死 ---- */
+    {
+      const saveN = process.env.ARCBANG_GTD_INVITES;
+      process.env.ARCBANG_GTD_INVITES = '2';
+      AL.approve(AL.codeOf(a1));
+      ok('攒到 1 个有效邀请、门槛 2：还是 fcfs', AL.tierOf(a1) === 'fcfs');
+      /* 再拉一个人进来并 approve —— 有效邀请到 2，自动升保底层 */
+      AL.register({ address: A3.address, xHandle: 'carol', sig: signFor(A3), ref: AL.codeOf(a1) }, '3.3.3.3');
+      AL.approve(AL.codeOf(a3));
+      ok('有效邀请到达门槛 → 自动升 tier=gtd', AL.tierOf(a1) === 'gtd');
+      ok('counts 按**生效后**的层算', AL.counts().gtd === 1 && AL.counts().total === 3);
+      AL.setTier(a1, 'fcfs');
+      ok('管理员 tier <地址> fcfs 钉死之后不再自动升回去', AL.tierOf(a1) === 'fcfs');
+      AL.setTier(a1, 'gtd');
+      ok('管理员也能直接钉成 gtd', AL.tierOf(a1) === 'gtd');
+      const tbl = AL.rankTable();
+      ok('rank 按有效邀请降序排（邀了 2 个的排第一）', tbl[0].addr === a1 && tbl[0].validInvites === 2);
+      ok('rankOf 给的是 1 起的名次，不在名单里的是 null',
+        AL.rankOf(a1) === 1 && AL.rankOf('0x' + 'ee'.repeat(20)) === null);
+      if (saveN === undefined) delete process.env.ARCBANG_GTD_INVITES; else process.env.ARCBANG_GTD_INVITES = saveN;
+    }
+
+    /* ---- CSV 导出：每行带登记码与有效邀请数（人工比对 X 评论要用） ---- */
+    {
+      const csv = AL.appliedCsv().trim().split('\n');
+      ok('CSV 表头带 code / ref / valid_invites',
+        /(^|,)code(,|$)/.test(csv[0]) && /(^|,)ref(,|$)/.test(csv[0]) && /(^|,)valid_invites(,|$)/.test(csv[0]));
+      const row = csv.find((l) => l.indexOf(a1) === 0);
+      ok('CSV 行里那个码就是从地址算出来的那个', !!row && row.split(',')[1] === AL.codeOf(a1));
+    }
+
+    /* ---- 闸：四个阶段 × 在不在名单 × 链上还给不给免费 ---- */
+    {
+      const save = {};
+      for (const k of ['ARCBANG_PHASE', 'ARCBANG_GTD_OPEN_AT', 'ARCBANG_FCFS_OPEN_AT', 'ARCBANG_PUBLIC_OPEN_AT']) save[k] = process.env[k];
+      for (const k in save) delete process.env[k];
+      const yes = async () => true;         // 链上：还能走免费
+      const no = async () => false;         // 链上：额度用完 / 这个地址用过了
+      const down = async () => null;        // 链上：这一刻读不到
+      const stranger = '0x' + 'ee'.repeat(20);
+      // a1 = gtd（上面钉死过），a2 = fcfs，stranger 不在名单
+
+      process.env.ARCBANG_PHASE = 'warmup';
+      const gw = await AL.gate(a1, yes);
+      ok('warmup：连保底层都不签，403 + WARMUP',
+        gw.ok === false && gw.status === 403 && gw.code === 'WARMUP' && /还没开/.test(gw.error));
+      /* denyReason 是同一套判断里**不碰链**的那一半：/api/bang 用它在取块算卡之前就挡人。
+         预热期每个点击都白算一张卡的话，预热本身就成了免费的算力消耗接口。 */
+      let probed = 0;
+      await AL.gate(a1, async () => { probed++; return true; });
+      ok('warmup 段不打一次 RPC（denyReason 先挡住）', probed === 0);
+      ok('denyReason 与 gate 的拒绝口径一致，且 public 段名单外的人它不拦',
+        AL.denyReason(a1).code === 'WARMUP'
+        && (process.env.ARCBANG_PHASE = 'public', AL.denyReason(stranger) === null)
+        && (process.env.ARCBANG_PHASE = 'warmup', true));
+
+      process.env.ARCBANG_PHASE = 'gtd';
+      ok('gtd：保底层签 free=true', (await AL.gate(a1, yes)).free === true);
+      const g2 = await AL.gate(a2, yes);
+      ok('gtd：先到先得层还没轮到 → 403 NOT_GTD', g2.ok === false && g2.code === 'NOT_GTD');
+      const g3 = await AL.gate(stranger, yes);
+      ok('gtd：名单外 → 403 NOT_GTD，话里给出后面两段的时间', g3.ok === false && g3.code === 'NOT_GTD');
+
+      process.env.ARCBANG_PHASE = 'fcfs';
+      ok('fcfs：两层都签 free=true',
+        (await AL.gate(a1, yes)).free === true && (await AL.gate(a2, yes)).free === true);
+      const g4 = await AL.gate(stranger, yes);
+      ok('fcfs：名单外 → 403 NOT_LISTED', g4.ok === false && g4.code === 'NOT_LISTED');
+      const g5 = await AL.gate(a2, no);
+      ok('fcfs：链上免费额度用完 → 仍然签，但签的是 free=false（名单的意义是能铸，不是白送）',
+        g5.ok === true && g5.free === false && g5.freeGone === true);
+      const g6 = await AL.gate(a2, down);
+      ok('fcfs：链上读不到 → **关闸** 503，不是放行（上一次就是趁 RPC 抖动被薅的）',
+        g6.ok === false && g6.status === 503 && g6.code === 'CHAIN_DOWN');
+
+      process.env.ARCBANG_PHASE = 'public';
+      const g7 = await AL.gate(stranger, yes);
+      ok('public：名单外的人也能签，但一律 free=false（387 枚是留给名单的）',
+        g7.ok === true && g7.free === false);
+      ok('public：名单里还没用掉免费额度的仍然 free=true',
+        (await AL.gate(a2, yes)).free === true);
+      ok('public：名单里但额度用完 → free=false，照常付费铸',
+        (await AL.gate(a2, no)).free === false);
+      let asked = 0;
+      await AL.gate(stranger, async () => { asked++; return true; });
+      ok('public 段名单外的人不去打 RPC（付费不需要核对免费额度）', asked === 0);
+
+      for (const k in save) { if (save[k] === undefined) delete process.env[k]; else process.env[k] = save[k]; }
+    }
+
+    /* ---- status：只回问的那个地址自己的东西 ---- */
+    {
+      const st = await AL.status(a1);
+      ok('status 回自己的层 / 码 / 邀请数 / 排位',
+        st.tier === 'gtd' && st.code === AL.codeOf(a1) && st.validInvites === 2 && st.rank === 1);
+      ok('status 带上要签的那句话（客户端原样签，不自己拼）',
+        typeof st.message === 'string' && st.message.indexOf(a1) > 0 && st.message.indexOf('domain:') > 0);
+      const anon = await AL.status(null);
+      ok('不带地址时不泄露任何个人字段，只给阶段与人数',
+        anon.tier === null && anon.code === null && anon.rank === null
+        && typeof anon.counts.total === 'number');
+      ok('counts 只有人数，没有名单本身（谁是保底不公开）',
+        Object.keys(anon.counts).sort().join(',') === 'fcfs,gtd,total');
+    }
+
+    /* ---- 命令行工具改完文件，跑着的服务端下一次请求就看得到（按 mtime 失效） ---- */
+    {
+      const AL2 = ALX.create({ storeDir: adir });
+      AL2.addAddresses(['0x' + 'ab'.repeat(20)], 'gtd', '手工');
+      ok('另一个实例写的名单，这个实例立刻读得到（审核完不必重启 API）',
+        AL.tierOf('0x' + 'ab'.repeat(20)) === 'gtd');
+      AL2.removeAddresses(['0x' + 'ab'.repeat(20)]);
+      ok('remove 之后也立刻生效', AL.tierOf('0x' + 'ab'.repeat(20)) === null);
+    }
+
+    /* ---- 前端那一侧：arc 站的 calldata 必须带 bool free，且 sig 偏移是 256 ---- */
+    {
+      const readWeb2 = (f) => fs.readFileSync(path.join(__dirname, '..', 'web', f), 'utf8');
+      let seen = null;
+      const sb = {
+        MirrorKeccak: { keccak256: B.keccak256 },
+        console: { warn() { }, log() { }, error() { } },
+        fetch: (url, opt) => {
+          seen = JSON.parse(opt.body);
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ jsonrpc: '2.0', id: 1, result: '0x' }) });
+        },
+        /* 真的 setTimeout —— arc-chain 的 rpc() 把同一刻的调用攒成一批再发，
+           攒批是靠 setTimeout(0)。给个不执行回调的假货，那个 promise 永远不 resolve，
+           整个自检会在这里**安静地退出**（exit 0、连汇总行都不打）。踩过一次。 */
+        setTimeout: (fn, ms) => setTimeout(fn, ms),
+        clearTimeout: (t) => clearTimeout(t),
+        TextEncoder, TextDecoder,
+        /* ARCBANG_SITE='arc' 是关键：bangSignedData 靠它分叉 —— arc 走带 bool free 的
+           那一版，BNB 老站仍然走 payWithBang 那一版。 */
+        ARCBANG_SITE: 'arc',
+        ARCBANG_CONFIG: { site: 'arc', chain: { id: 5042 }, rpc: ['http://rpc-stub.invalid'], contract: '0x' + '11'.repeat(20) }
+      };
+      sb.window = sb;
+      vm.createContext(sb);
+      vm.runInContext(readWeb2('arc-chain.js'), sb, { filename: 'arc-chain.js' });
+      const MC = sb.MirrorChain;
+      const args = {
+        blockHash: '0x' + 'ab'.repeat(32), blockNumber: 123, outcome: 9, rarity: 2,
+        cardHash: '0x' + 'cd'.repeat(32), deadline: 1900000000,
+        sig: '0x' + '11'.repeat(65), free: true, valueWei: 0
+      };
+      await MC.simulateBangSigned(args, '0x' + 'be'.repeat(20));
+      const data = String(seen.params[0].data);
+      const selArc = MC.selector('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)');
+      const slot = (i) => data.slice(10 + i * 64, 10 + (i + 1) * 64);
+      ok('arc 站的铸造选择器是带 bool free 的那一个', data.slice(0, 10) === selArc, data.slice(0, 10));
+      ok('free 在第 7 个槽（下标 6），true 编成 1', BigInt('0x' + slot(6)) === 1n, slot(6));
+      ok('sig 偏移是 256（bool 排在 sig 之前，头部 8 个槽）', BigInt('0x' + slot(7)) === 256n, slot(7));
+      seen = null;
+      await MC.simulateBangSigned(Object.assign({}, args, { free: false }), '0x' + 'be'.repeat(20));
+      ok('free=false 编成 0', BigInt('0x' + String(seen.params[0].data).slice(10 + 6 * 64, 10 + 7 * 64)) === 0n);
+
+      /* 前端不许自己决定 free：它只能原样转发服务端签回来的那个值 */
+      const ui = readWeb2('arc-ui.js');
+      ok('arc-ui 的 txArgs 把服务端的 free 原样带上（不自己判）',
+        /free:\s*stamp\.free === true/.test(ui));
+      ok('付多少钱跟着 stamp.free 走，不再去链上猜',
+        ui.indexOf('function valueForStamp') >= 0 && ui.indexOf('return C.mintValueFor(from, d2r(stamp));') < 0);
+      ok('放号还没轮到时一步都不走：不弹钱包、不去要签名',
+        ui.indexOf('var blockedHere = phaseBlock();') >= 0
+        && ui.indexOf('var blockedHere = phaseBlock();') < ui.indexOf('if (!C.hasWallet())'));
+      ok('IP 闸已经从服务端删干净（免费与否只由名单决定）',
+        fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8').indexOf('FREE_PER_IP_DAY') < 0);
+    }
+  }
+
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* 临时目录，删不掉也不算失败 */ }
 
   console.log('\n通过 ' + pass + ' 条，失败 ' + fail + ' 条  (derivation v' + DERIVATION_VERSION + ')\n');

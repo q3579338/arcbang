@@ -15,6 +15,12 @@ Object.assign(process.env, {
   /* 站名 / 链名 / 仓库地址：线上那份 env 里写的就是这三个值（server/api.env.example）。
      本地不配的话分享页 /s/<高度> 会退回历史默认值（BNBBANG / BNB block），
      跟线上对不上，看着像 bug。这里给上同一组。 */
+  /* 签名协议 v2（摘要末尾绑 msg.sender）：**线上是开着的**，合约那边也只认这一种。
+     本地不开的话签出来的摘要和合约对不上，预览时看不出问题，上线才炸。 */
+  ARCBANG_SIG_V2: process.env.ARCBANG_SIG_V2 || '1',
+  /* 放号阶段（server/allowlist.js）。本地默认 warmup —— 预热页就是拿它做的，
+     要在本地试铸造页的三个阶段，起进程时带 ARCBANG_PHASE=fcfs 之类即可。 */
+  ARCBANG_PHASE: process.env.ARCBANG_PHASE || 'warmup',
   ARCBANG_BRAND: process.env.ARCBANG_BRAND || 'ARCBANG',
   ARCBANG_CHAIN_WORD: process.env.ARCBANG_CHAIN_WORD || 'Arc',
   ARCBANG_REPO_URL: process.env.ARCBANG_REPO_URL || 'https://github.com/q3579338/arcbang'

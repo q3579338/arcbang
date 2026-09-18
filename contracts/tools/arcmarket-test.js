@@ -116,16 +116,19 @@ function decodeBytesReturn(hex) {
 }
 
 /* ------------------------------------------------------------ ArcUniverse 铸造 */
-function signMint(uni, bh, bn, outcome, rarity, ch, dl, minter) {
+/* free 是摘要的最后一个字段，也是 calldata 里 sig 之前那个槽
+   （见 contracts/src/ArcUniverse.sol 的 bangSigned 与 server/sign.js 的 digestOf）。
+   市场测试里的货全是付费铸出来的，所以调用处一律 free=false。 */
+function signMint(uni, bh, bn, outcome, rarity, ch, dl, minter, free) {
   return signerWallet.signMessageSync(getBytes(keccak256(coder.encode(
-    ['uint256', 'address', 'bytes32', 'uint64', 'uint8', 'uint8', 'bytes32', 'uint64', 'address'],
-    [1n, uni, bh, bn, outcome, rarity, ch, dl, minter]))));
+    ['uint256', 'address', 'bytes32', 'uint64', 'uint8', 'uint8', 'bytes32', 'uint64', 'address', 'bool'],
+    [1n, uni, bh, bn, outcome, rarity, ch, dl, minter, !!free]))));
 }
-function mintData(bh, bn, outcome, rarity, ch, dl, sig) {
-  return sel('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes)')
+function mintData(bh, bn, outcome, rarity, ch, dl, sig, free) {
+  return sel('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)')
     + bytes32Word(bh) + word(BigInt(bn)) + word(BigInt(outcome)) + word(BigInt(rarity))
-    + bytes32Word(ch) + word(BigInt(dl))
-    + word(224n)
+    + bytes32Word(ch) + word(BigInt(dl)) + word(free ? 1n : 0n)
+    + word(256n)
     + word(65n) + sig.replace(/^0x/, '').padEnd(128, '0');
 }
 
@@ -183,7 +186,7 @@ async function main() {
     const bh = B.keccak256(tag), ch = B.keccak256('card-' + tag);
     const minter = '0x' + (0xc0de000000000000000000000000000000000000n + BigInt(n)).toString(16).padStart(40, '0');
     await h.fund(minter, 10n ** 20n);
-    await h.call(uni, minter, mintData(bh, 0, OBS, R.S, ch, DL, signMint(uni, bh, 0, OBS, R.S, ch, DL, minter)), ONE);
+    await h.call(uni, minter, mintData(bh, 0, OBS, R.S, ch, DL, signMint(uni, bh, 0, OBS, R.S, ch, DL, minter, false), false), ONE);
     const id = big(await h.view(uni, sel('tokenOfHash(bytes32)') + bytes32Word(bh)));
     await h.call(uni, minter, sel('transferFrom(address,address,uint256)') + addrWord(minter) + addrWord(to) + word(id), 0);
     return id;

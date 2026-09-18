@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 预热页（web/warmup-arc.html → dist-arc/warmup.html）
+     2026-09-18：第一次主网部署上线 20 分钟，一个 IP 用 5 个新地址一分钟一枚薅走 5 枚免费额度，
+     那次部署作废。重开的方式是**预热 + 白名单**，这一页就是预热期的门面。
+
+     它只回答四件事：什么时候开、规则是什么、怎么进名单、名单里的人现在有多少。
+     模拟器和引爆**不受任何影响**（那两件事本来就免费、不上链），所以入口一直摆着。
+
+     版式与首页（landing-arc.html）同一套令牌：冷灰白的测绘台、深海军蓝的墨、
+     一个强调色、分节靠留白不靠通栏线。这里只抄令牌，不抄首页那扇会动的黑窗 ——
+     预热页的主角是倒计时和那个登记按钮，不该有第二个大动作跟它抢。 -->
+<title>ARCBANG 预热 · 白名单登记与开放时间</title>
+<meta name="description" content="ARCBANG 全网 1,387 枚宇宙 NFT：前 387 枚免费（每地址 1 枚，白名单），之后 1 USDC、每地址最多 3 枚，一个区块哈希只铸一次。现在是预热期，连钱包签个名就能登记白名单；引爆和模拟器随时免费玩。">
+<link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/warmup.html">
+<link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/warmup.html">
+<link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/warmup.html">
+<link rel="canonical" href="https://arcbang.xyz/warmup.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://arcbang.xyz/warmup.html">
+<meta property="og:title" content="ARCBANG 预热 · 白名单登记与开放时间">
+<meta property="og:description" content="ARCBANG 全网 1,387 枚宇宙 NFT：前 387 枚免费（每地址 1 枚，白名单），之后 1 USDC、每地址最多 3 枚。现在是预热期，连钱包签个名就能登记白名单。">
+<meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ARCBANG 预热 · 白名单登记与开放时间">
+<meta name="twitter:description" content="ARCBANG 全网 1,387 枚宇宙 NFT：前 387 枚免费（每地址 1 枚，白名单），之后 1 USDC、每地址最多 3 枚。现在是预热期，连钱包签个名就能登记白名单。">
+<meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<script src="i18n-arc-site.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<style>
+/* 令牌与首页逐字相同（web/landing-arc.html 的 :root）。**不要在这里改值** ——
+   两页同时出现在一个访问路径上，色差一眼就看得出来。 */
+:root{
+  --ab-plate:#ECEEF1; --ab-plate2:#E3E6EB; --ab-ink:#13214A; --ab-graphite:#515B6E;
+  --ab-void:#000000; --ab-signal:#4A5BD4; --ab-hair:#D5D9E0;
+  --t-xs:13px; --t-s:15px; --t-m:17px; --t-l:20px; --t-xl:27px; --t-2xl:36px;
+  --sp-1:24px; --sp-2:56px; --sp-3:112px;
+  --ab-max:1280px; --ab-pad:40px; --r:6px;
+  --ab-face:-apple-system,"Segoe UI Variable Text","Segoe UI",system-ui,
+    "PingFang SC","Microsoft YaHei","Noto Sans SC","Hiragino Sans GB",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body :where(h1,h2,h3,h4,p,ul,ol,dl,dd,figure,figcaption,table){margin:0}
+body :where(ul,ol){padding:0;list-style:none}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;color:var(--ab-ink);font-family:var(--ab-face);font-size:var(--t-m);line-height:1.65;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  background-color:var(--ab-plate);
+  background-image:
+    linear-gradient(to right, rgba(19,33,74,.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(19,33,74,.045) 1px, transparent 1px);
+  background-size:72px 72px;background-position:-1px -1px;
+}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+a{color:inherit}
+button,input{font-family:inherit}
+:focus-visible{outline:2px solid var(--ab-signal);outline-offset:3px}
+.ab-wrap{max-width:var(--ab-max);margin:0 auto;
+  padding-left:max(var(--ab-pad),env(safe-area-inset-left));
+  padding-right:max(var(--ab-pad),env(safe-area-inset-right))}
+.ab-sec{padding:var(--sp-2) 0}
+.ab-h2{font-size:clamp(28px,3vw,40px);line-height:1.08;letter-spacing:-.02em;font-weight:700;
+  text-wrap:balance;max-width:22ch}
+.ab-say{margin-top:var(--sp-1);max-width:64ch;font-size:var(--t-m);line-height:1.7;color:var(--ab-graphite)}
+.ab-say a{color:var(--ab-signal);text-underline-offset:3px}
+.ab-skip{position:absolute;left:-9999px;top:0;z-index:200;background:var(--ab-ink);color:#fff;
+  padding:12px 18px;border-radius:0 0 var(--r) 0;font-size:var(--t-s);font-weight:600;text-decoration:none}
+.ab-skip:focus{left:0}
+
+.ab-btn,.ab-btn2{display:inline-flex;align-items:center;justify-content:center;min-height:52px;
+  padding:0 26px;border-radius:var(--r);font-size:var(--t-s);font-weight:600;text-decoration:none;
+  border:1px solid var(--ab-ink);cursor:pointer;touch-action:manipulation;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.ab-btn{background:var(--ab-ink);color:#fff}
+.ab-btn:hover{background:var(--ab-signal);border-color:var(--ab-signal)}
+.ab-btn2{background:transparent;color:var(--ab-ink);border-color:rgba(19,33,74,.28)}
+.ab-btn2:hover{border-color:var(--ab-ink);background:rgba(19,33,74,.05)}
+.ab-btn[disabled],.ab-btn2[disabled]{opacity:.45;cursor:not-allowed}
+.ab-cta{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-top:30px}
+
+/* ---- 首屏：一句话 + 倒计时 ---- */
+.ab-hero{padding:var(--sp-2) 0 0}
+.ab-h1{font-size:clamp(40px,5.4vw,76px);line-height:1.02;letter-spacing:-.03em;font-weight:700;
+  max-width:16ch;text-wrap:balance}
+.ab-lede{margin-top:var(--sp-1);font-size:clamp(17px,1.3vw,20px);line-height:1.6;max-width:54ch}
+/* 倒计时：四格等宽的机器数字。标签用正文字面，数值用等宽 —— 数字会跳，跳的东西必须等宽。 */
+.ab-cd{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:34px;max-width:520px}
+.ab-cd-i{background:var(--ab-void);color:#E8ECFA;padding:18px 10px 14px;text-align:center}
+.ab-cd-v{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:clamp(26px,3.6vw,42px);font-weight:600;line-height:1;letter-spacing:-.02em}
+.ab-cd-k{display:block;margin-top:8px;font-size:var(--t-xs);color:rgba(214,220,238,.62)}
+.ab-when{margin-top:16px;font-size:var(--t-s);color:var(--ab-graphite)}
+.ab-phase{display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:6px 14px;
+  border:1px solid rgba(19,33,74,.28);border-radius:999px;font-size:var(--t-xs);font-weight:600}
+.ab-phase b{color:var(--ab-signal)}
+
+/* ---- 时间表 / 规则：两栏表格，只用行线 ---- */
+.ab-tbl{width:100%;border-collapse:collapse;margin-top:var(--sp-1);font-size:var(--t-s)}
+.ab-tbl th,.ab-tbl td{text-align:left;padding:14px 0;border-bottom:1px solid var(--ab-hair);vertical-align:top}
+.ab-tbl th{font-weight:600;width:11rem;color:var(--ab-graphite)}
+.ab-tbl td .sub{display:block;margin-top:4px;color:var(--ab-graphite);font-size:var(--t-xs)}
+
+/* ---- 登记卡：整页唯一的实心块 ---- */
+.ab-card{margin-top:var(--sp-1);padding:26px;background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r);max-width:720px}
+.ab-field{display:block;margin-top:18px}
+.ab-field span{display:block;font-size:var(--t-xs);color:var(--ab-graphite);margin-bottom:6px}
+.ab-in{width:100%;min-height:48px;padding:0 14px;font-size:var(--t-m);color:var(--ab-ink);
+  background:var(--ab-plate2);border:0;border-bottom:1px solid var(--ab-ink);border-radius:var(--r) var(--r) 0 0}
+.ab-msg{margin-top:16px;font-size:var(--t-s);line-height:1.6;min-height:1.6em}
+.ab-msg.ok{color:#16653C}
+.ab-msg.err{color:#9B1C1C}
+/* 登记码：要被人抄进 X 的评论里，所以放得足够大、足够能选中 */
+.ab-code{display:inline-block;margin-top:6px;padding:10px 18px;background:var(--ab-void);color:#E8ECFA;
+  font-family:var(--mono);font-size:clamp(24px,3vw,34px);font-weight:600;letter-spacing:.18em;
+  user-select:all;-webkit-user-select:all}
+.ab-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:18px;margin-top:22px}
+.ab-kv-v{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:var(--t-xl);font-weight:600;line-height:1.1}
+.ab-kv-k{display:block;margin-top:6px;font-size:var(--t-xs);color:var(--ab-graphite)}
+.ab-row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-top:18px}
+.ab-inv{width:100%;min-height:44px;padding:0 12px;font-family:var(--mono);font-size:var(--t-s);
+  background:var(--ab-plate2);border:0;border-bottom:1px solid var(--ab-hair);border-radius:var(--r) var(--r) 0 0}
+
+/* ---- 页脚（与首页同一份结构） ---- */
+.ab-foot{padding:var(--sp-2) 0}
+.ab-foot-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:20px 40px}
+.ab-brand{font-size:var(--t-l);font-weight:700}
+.ab-foot-lnk{display:flex;flex-wrap:wrap;gap:4px 28px}
+.ab-foot-lnk a{display:inline-flex;align-items:center;min-height:44px;font-size:var(--t-s);
+  color:var(--ab-graphite);text-decoration:none}
+.ab-foot-lnk a:hover{color:var(--ab-ink)}
+.ab-foot-tag{margin-top:18px;font-size:var(--t-s);color:var(--ab-graphite);max-width:52ch}
+.ab-legal{margin-top:16px;font-size:var(--t-xs);color:var(--ab-graphite);display:flex;flex-wrap:wrap;gap:6px 18px}
+@media (prefers-reduced-motion:reduce){ *{transition-duration:.01ms !important} }
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">跳到主要内容</a>
+
+<div id="siteNavMount"></div>
+<script>if (window.MirrorNav) MirrorNav.mount({ page: 'home' });</script>
+
+<main id="main">
+
+<section class="ab-hero">
+  <div class="ab-wrap">
+    <p class="ab-phase" id="phaseChip" hidden>现在是 <b id="phaseName">预热期</b></p>
+    <h1 class="ab-h1">铸造还没开。先把名字留下。</h1>
+    <!-- 整段写成**一行**：i18n 的词条 key 是「trim 之后逐字相等」，
+         源码里换行加缩进会把文本节点里塞进 \n 和一串空格，词典就再也命中不了
+         （/en/ 预渲染与运行时切语言用的是同一套判定）。踩过一次：这一段在英文版里是中文。 -->
+    <p class="ab-lede">全网 1,387 枚宇宙，前 387 枚给白名单免费领（每地址 1 枚）。预热期不签任何铸造签名 —— 但引爆、模拟、看结局这些本来就免费，随时都能玩。</p>
+
+    <div class="ab-cd" id="cd" aria-live="polite">
+      <div class="ab-cd-i"><b class="ab-cd-v" id="cdD">—</b><span class="ab-cd-k">天</span></div>
+      <div class="ab-cd-i"><b class="ab-cd-v" id="cdH">—</b><span class="ab-cd-k">时</span></div>
+      <div class="ab-cd-i"><b class="ab-cd-v" id="cdM">—</b><span class="ab-cd-k">分</span></div>
+      <div class="ab-cd-i"><b class="ab-cd-v" id="cdS">—</b><span class="ab-cd-k">秒</span></div>
+    </div>
+    <p class="ab-when" id="cdWhen">正在问服务端开放时间…</p>
+
+    <div class="ab-cta">
+      <a class="ab-btn" href="#join">登记白名单</a>
+      <a class="ab-btn2" href="app.html">先去引爆一个宇宙（免费）</a>
+    </div>
+  </div>
+</section>
+
+<section class="ab-sec">
+  <div class="ab-wrap">
+    <h2 class="ab-h2">开放时间</h2>
+    <p class="ab-say">四段依次开。到点自动往下走，页面上的倒计时读的就是服务端那一份，不是我们在这里写死的数字。</p>
+    <table class="ab-tbl">
+      <tr><th>保底期</th><td id="tGtd">时间待定<span class="sub">名单里的一部分地址先铸，不跟人抢</span></td></tr>
+      <tr><th>先到先得期</th><td id="tFcfs">时间待定<span class="sub">名单里的人都能铸，387 枚免费额度抢完为止</span></td></tr>
+      <tr><th>公售</th><td id="tPublic">时间待定<span class="sub">人人都能铸，1 USDC 一枚，每地址最多 3 枚</span></td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="ab-sec">
+  <div class="ab-wrap">
+    <h2 class="ab-h2">规则</h2>
+    <table class="ab-tbl">
+      <tr><th>总量</th><td>1,387 枚，永远不增发<span class="sub">一枚宇宙算一千万年，铸满正好 137.87 亿年 —— 这个宇宙的岁数</span></td></tr>
+      <tr><th>免费额度</th><td>387 枚，每地址 1 枚，只给白名单<span class="sub">免费不等于白送：要先真的跑完一次引爆流程才拿得到签名</span></td></tr>
+      <tr><th>公售价</th><td>1 USDC 一枚，每地址最多 3 枚<span class="sub">Arc 上 gas 就是 USDC，一次铸造的 gas 约 0.003 USDC</span></td></tr>
+      <tr><th>一个哈希只铸一次</th><td>某个区块被谁引爆并铸走，它就没了<span class="sub">同一个哈希，谁来引爆都是同一个宇宙</span></td></tr>
+      <tr><th>没有代币</th><td>不发币、不预售、不做返利池<span class="sub">收入只有铸造款和二级市场版税两项</span></td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="ab-sec" id="join">
+  <div class="ab-wrap">
+    <h2 class="ab-h2">登记白名单</h2>
+    <p class="ab-say">连钱包 → 签一句话（不花 gas、不动任何资产）→ 填你的 X 用户名 → 提交。登记不等于进名单：我们人工审完才会把地址放进去。</p>
+
+    <div class="ab-card">
+      <div class="ab-row">
+        <button class="ab-btn" type="button" id="btnConnect">连接钱包</button>
+        <span class="mono" id="whoAddr"></span>
+      </div>
+
+      <label class="ab-field"><span>你的 X 用户名（不带 @）</span>
+        <input class="ab-in" id="inX" type="text" inputmode="text" autocomplete="off"
+               spellcheck="false" maxlength="15" placeholder="例如 arcbang_xyz"></label>
+
+      <label class="ab-field" id="refWrap"><span>邀请码（可选，别人给你的 6 位码）</span>
+        <input class="ab-in mono" id="inRef" type="text" autocomplete="off" spellcheck="false"
+               maxlength="6" placeholder="6 位大写字母数字"></label>
+
+      <div class="ab-row">
+        <button class="ab-btn" type="button" id="btnJoin" disabled>签名并登记</button>
+      </div>
+      <p class="ab-msg" id="joinMsg"></p>
+
+      <!-- 登记成功之后才出现的那一块：登记码、任务、邀请 -->
+      <div id="mine" hidden>
+        <p class="ab-when" style="margin-top:22px">你的登记码（同时也是邀请码）</p>
+        <b class="ab-code" id="myCode">——</b>
+        <div class="ab-kv">
+          <div><b class="ab-kv-v" id="kvTier">—</b><span class="ab-kv-k">当前层级</span></div>
+          <div><b class="ab-kv-v" id="kvValid">—</b><span class="ab-kv-k">有效邀请</span></div>
+          <div><b class="ab-kv-v" id="kvRank">—</b><span class="ab-kv-k">排位</span></div>
+        </div>
+        <p class="ab-when" id="inviteHint">把下面这条链接发给朋友。对方登记并通过审核之后才算一个有效邀请。</p>
+        <input class="ab-inv" id="inviteUrl" readonly value="">
+        <div class="ab-row">
+          <button class="ab-btn2" type="button" id="btnCopy">复制邀请链接</button>
+          <a class="ab-btn" id="btnPost" href="#" target="_blank" rel="noopener noreferrer" hidden>去转发置顶推并回复登记码</a>
+        </div>
+        <p class="ab-when" id="taskHint">任务：关注 @arcbang_xyz，转发置顶那条推，并在评论里回复你的登记码。我们按登记码人工比对，所以码一定要原样贴上去。</p>
+      </div>
+    </div>
+
+    <div class="ab-kv" style="max-width:720px">
+      <div><b class="ab-kv-v" id="kvApplied">—</b><span class="ab-kv-k">已登记地址</span></div>
+      <div><b class="ab-kv-v" id="kvListed">—</b><span class="ab-kv-k">已进名单</span></div>
+      <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">免费额度余量</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="ab-sec">
+  <div class="ab-wrap">
+    <h2 class="ab-h2">引爆随时可以玩</h2>
+    <p class="ab-say">预热的是铸造，不是模拟器。粘一个 Arc 区块高度或哈希进去，引擎会把它读成 23 个物理常数，从奇点算到热寂 —— 这件事不花钱、不连钱包、不上链，现在就能做。</p>
+    <div class="ab-cta">
+      <a class="ab-btn" href="app.html">打开模拟器</a>
+      <a class="ab-btn2" href="how-it-works.html">先看它是怎么算的</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="ab-foot">
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARC宇宙</div>
+      <nav class="ab-foot-lnk" aria-label="页脚">
+        <a href="app.html">模拟器</a>
+        <a href="how-it-works.html">怎么运作</a>
+        <a href="verify.html">自己验证</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">用区块哈希造宇宙。免费引爆，喜欢再铸。</p>
+    <div class="ab-legal"><span data-nolang>© 2026 ARCBANG</span></div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================================
+ * 预热页的行为。**只有三件事**：读状态、倒计时、登记。
+ * 一个链上读数都没有 —— 免费余量也是服务端从它自己的缓存里给的，
+ * 这一页不该因为公开 RPC 抖一下就变成半张白纸。
+ * ========================================================================== */
+(function () {
+  'use strict';
+  var CFG = window.ARCBANG_CONFIG || {};
+  var BASE = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
+  function $(id) { return document.getElementById(id); }
+  function T(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh) : zh; }
+  function TF(zh) {
+    var a = Array.prototype.slice.call(arguments, 1);
+    return T(zh).replace(/\{(\d+)\}/g, function (m, i) { return a[i] == null ? m : a[i]; });
+  }
+  function api(path, opt) {
+    return fetch(BASE + path, opt).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error((j && j.error) || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+        return j;
+      });
+    });
+  }
+  /* 钱包 provider 走 web/wallet.js 选中的那个。装了两个以上扩展时 window.ethereum
+     是谁抢到算谁 —— 用户想用币安钱包却连上小狐狸，界面上没有任何办法改。 */
+  function prov() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum || null; }
+
+  var ST = null;          // 最近一次 /api/allowlist/status
+  var ADDR = null;
+  var PHASE_CN = { warmup: '预热期', gtd: '保底期', fcfs: '先到先得期', public: '公售' };
+
+  /* ---------------- 时间与倒计时 ---------------- */
+  function fmtWhen(iso) {
+    if (!iso) return T('时间待定');
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return T('时间待定');
+    try { return d.toLocaleString(); } catch (e) { return iso; }
+  }
+  var target = null, targetPhase = null;
+  function tick() {
+    if (!target) return;
+    var ms = target - Date.now();
+    if (ms <= 0) {
+      /* 到点了不自己往下推阶段：**服务端说了算**。重问一次，它会给出新的阶段。 */
+      target = null;
+      $('cdD').textContent = $('cdH').textContent = $('cdM').textContent = $('cdS').textContent = '0';
+      $('cdWhen').textContent = T('时间到了，正在刷新状态…');
+      load();
+      return;
+    }
+    var s = Math.floor(ms / 1000);
+    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+    $('cdD').textContent = String(Math.floor(s / 86400));
+    $('cdH').textContent = pad(Math.floor(s % 86400 / 3600));
+    $('cdM').textContent = pad(Math.floor(s % 3600 / 60));
+    $('cdS').textContent = pad(s % 60);
+  }
+  setInterval(tick, 1000);
+
+  /* ---------------- 状态 ---------------- */
+  function renderStatus(st) {
+    ST = st;
+    var p = st.phase || 'warmup';
+    $('phaseChip').hidden = false;
+    $('phaseName').textContent = T(PHASE_CN[p] || p);
+
+    var o = st.opens || {};
+    /* 只改那个 td 的第一个文本节点，说明性的 .sub 原样留着（它进 i18n 词典，
+       整块 innerHTML 重写会把已经翻好的英文冲掉）。 */
+    function put(id, iso) {
+      var el = $(id);
+      if (el && el.firstChild && el.firstChild.nodeType === 3) el.firstChild.nodeValue = fmtWhen(iso);
+    }
+    put('tGtd', o.gtd);
+    put('tFcfs', o.fcfs);
+    put('tPublic', o.public);
+
+    var nx = st.next;
+    if (nx && nx.at) {
+      target = new Date(nx.at).getTime();
+      targetPhase = nx.phase;
+      $('cd').hidden = false;
+      $('cdWhen').textContent = TF('距离{0}开放', T(PHASE_CN[nx.phase] || nx.phase));
+      tick();
+    } else if (nx) {
+      target = null;
+      $('cd').hidden = true;
+      $('cdWhen').textContent = TF('{0}的时间还没定，定了会写在这里；登记随时可以。', T(PHASE_CN[nx.phase] || nx.phase));
+    } else {
+      target = null;
+      $('cd').hidden = true;
+      $('cdWhen').textContent = T('已经开到最后一段了，直接去模拟器铸造吧。');
+    }
+
+    var c = st.counts || {};
+    $('kvApplied').textContent = st.applied == null ? '—' : String(st.applied);
+    $('kvListed').textContent = c.total == null ? '—' : String(c.total);
+    $('kvFree').textContent = st.freeLeft == null ? '—' : String(st.freeLeft);
+
+    /* 置顶推的按钮：env 没配 ARCBANG_PINNED_POST_URL 就整颗不出现 ——
+       给一个点了没反应的按钮比没有按钮糟。 */
+    var pin = st.pinnedPost;
+    var bp = $('btnPost');
+    if (pin && st.code) {
+      bp.hidden = false;
+      bp.href = 'https://x.com/intent/post?text=' + encodeURIComponent('ARCBANG 登记码 ' + st.code)
+        + '&url=' + encodeURIComponent(pin);
+    } else {
+      bp.hidden = true;
+    }
+
+    renderMine(st);
+  }
+
+  function renderMine(st) {
+    if (!ADDR || !st.registered) { $('mine').hidden = true; return; }
+    $('mine').hidden = false;
+    $('myCode').textContent = st.code || '——';
+    /* 层级只说人话，不暴露别人的。「保底 / 先到先得 / 待审」三种。 */
+    $('kvTier').textContent = st.tier === 'gtd' ? T('保底') : st.tier === 'fcfs' ? T('先到先得') : T('待审');
+    $('kvValid').textContent = String(st.validInvites || 0) + ' / ' + String(st.invites || 0);
+    $('kvRank').textContent = st.rank ? '#' + st.rank : '—';
+    $('inviteHint').textContent = TF(
+      '把下面这条链接发给朋友。对方登记并通过审核之后才算一个有效邀请；攒够 {0} 个有效邀请会自动升到保底层。',
+      String(st.gtdInvites || 5));
+    /* 邀请链接按**当前这一页的地址**拼：首页被切成预热页时它就是 /，
+       独立发布时它是 /warmup.html。写死任何一个都会在另一种情况下指错。 */
+    $('inviteUrl').value = location.origin + location.pathname + '?ref=' + (st.code || '');
+  }
+
+  function load() {
+    return api('/allowlist/status' + (ADDR ? '?addr=' + ADDR : '')).then(renderStatus, function (e) {
+      $('cdWhen').textContent = TF('服务端这一刻问不到（{0}）。刷新试试；模拟器不受影响。', (e && e.message) || e);
+    });
+  }
+
+  /* ---------------- 连钱包 ---------------- */
+  function shortAddr(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
+  function connect() {
+    var MW = window.MirrorWallet;
+    var pre = (MW && MW.pick) ? MW.pick({ force: true }) : Promise.resolve(null);
+    return pre.then(function (sel) {
+      if (sel === false) return null;
+      var p = (sel && sel.provider) || prov();
+      if (!p || !p.request) throw new Error(T('没检测到钱包扩展（MetaMask / 币安钱包 等）'));
+      return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
+        return (a && a[0]) || null;
+      }, function (er) {
+        throw new Error(er && er.code === 4001 ? T('你在钱包里取消了') : ((er && er.message) || String(er)));
+      });
+    });
+  }
+  function setAddr(a) {
+    ADDR = a ? String(a).toLowerCase() : null;
+    $('whoAddr').textContent = ADDR ? shortAddr(ADDR) : '';
+    $('btnJoin').disabled = !ADDR;
+    $('btnConnect').textContent = ADDR ? T('换一个钱包') : T('连接钱包');
+    return load();
+  }
+
+  $('btnConnect').addEventListener('click', function () {
+    msg('');
+    connect().then(function (a) { if (a) return setAddr(a); }, function (e) { msg((e && e.message) || String(e), 'err'); });
+  });
+
+  function msg(text, cls) {
+    var el = $('joinMsg');
+    el.className = 'ab-msg ' + (cls || '');
+    el.textContent = text;
+  }
+
+  /* ---------------- 登记 ---------------- */
+  $('btnJoin').addEventListener('click', function () {
+    if (!ADDR) { msg(T('先连钱包'), 'err'); return; }
+    var x = String($('inX').value || '').trim().replace(/^@+/, '');
+    if (!/^[A-Za-z0-9_]{1,15}$/.test(x)) { msg(T('X 用户名填 1–15 位字母、数字或下划线，不带 @'), 'err'); return; }
+    var ref = String($('inRef').value || '').trim().toUpperCase();
+    if (ref && !/^[A-Z0-9]{6}$/.test(ref)) { msg(T('邀请码是 6 位大写字母数字；没有就留空'), 'err'); return; }
+
+    var btn = this;
+    btn.disabled = true;
+    msg(T('正在问服务端要那句话…'));
+    /* **要签的那句话从服务端拿，绝不在这里拼**：两边各拼一次早晚差一个换行，
+       然后 verifyMessage 恢复出另一个地址，用户看到的是「签名是另一个地址签的」，
+       从签名本身完全看不出错在哪。 */
+    api('/allowlist/status?addr=' + ADDR).then(function (st) {
+      if (!st.message) throw new Error(T('服务端没给出要签的文案'));
+      msg(T('请在钱包里签名（不花 gas，不动任何资产）'));
+      var p = prov();
+      if (!p || !p.request) throw new Error(T('没检测到钱包扩展'));
+      return p.request({ method: 'personal_sign', params: [st.message, ADDR] });
+    }).then(function (sig) {
+      msg(T('正在提交…'));
+      return api('/allowlist/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ address: ADDR, xHandle: x, sig: sig, ref: ref || undefined })
+      });
+    }).then(function (r) {
+      msg(r.already ? T('你已经登记过了，下面就是你的登记码。')
+                    : T('登记成功。审核通过后你的地址会出现在名单里 —— 下面是你的登记码。'), 'ok');
+      return load();
+    }).catch(function (e) {
+      msg((e && e.code === 4001) ? T('你在钱包里取消了') : ((e && e.message) || String(e)), 'err');
+    }).then(function () { btn.disabled = !ADDR; });
+  });
+
+  $('btnCopy').addEventListener('click', function () {
+    var el = $('inviteUrl');
+    el.select();
+    var done = function () { var b = $('btnCopy'); b.textContent = T('已复制'); setTimeout(function () { b.textContent = T('复制邀请链接'); }, 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(el.value).then(done, function () { });
+    else { try { document.execCommand('copy'); done(); } catch (e) { /* 老浏览器：已经选中了，让用户自己按 Ctrl+C */ } }
+  });
+
+  /* ---------------- 启动 ---------------- */
+  /* ?ref=XXXXXX 预填邀请码。大小写都收，非法的静默忽略（别用一个报错挡住登记）。 */
+  (function () {
+    var m = /[?&]ref=([A-Za-z0-9]{6})(?:&|$)/.exec(location.search);
+    if (m) $('inRef').value = m[1].toUpperCase();
+  })();
+  /* 已经授权过的话静默恢复地址（eth_accounts 不弹窗） */
+  (function () {
+    var p = prov();
+    if (!p || !p.request) { load(); return; }
+    p.request({ method: 'eth_accounts' }).then(function (a) {
+      if (a && a[0]) return setAddr(a[0]);
+      return load();
+    }, function () { load(); });
+  })();
+})();
+</script>
+
+</body>
+</html>

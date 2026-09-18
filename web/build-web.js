@@ -33,6 +33,18 @@ const ST = {
   title: '镜像宇宙模拟器 · 引爆任意 Arc 区块 · ARCBANG',
   desc: '在线宇宙模拟器：把任意 Arc 区块哈希读成 23 个物理常数，从奇点算到热寂，看它能不能长出原子、恒星、行星和观察者。免费引爆，喜欢再铸成 NFT。',
   landing: 'landing-arc.html',
+  /* 预热页（web/warmup-arc.html → dist-arc/warmup.html + en/warmup.html）。
+     它**永远落盘**：铸造页在放号还没轮到时把人指过去，那个链接不能有「今天不存在」的时候。
+     warmup:true（或命令行 --landing=warmup）时首页 index.html 也换成它 ——
+     预热期首页该讲的是「什么时候开、怎么进名单」，而不是「来引爆吧」。
+     切回正常首页：把这一行改回 false 重新构建，不必动别的地方。 */
+  warmupPage: 'warmup-arc.html',
+  warmup: false,
+  warmupTitle: 'ARCBANG 预热 · 白名单登记与开放时间',
+  warmupEn: {
+    title: 'ARCBANG warm-up — allowlist sign-up and opening times',
+    desc: '1,387 universes in all: the first 387 are free (one per address, allowlist only), then 1 USDC with a cap of 3 per address, and a block hash can only be minted once. Minting has not opened yet — connect a wallet, sign one line and you are on the sign-up list. Detonating and the simulator are free and open right now.'
+  },
   /* 独立页：[源文件, 落盘名]。三份文档整篇是「Arc 链 · USDC · 没有代币」的口径；
      它们不引 doc.css，改引 web/arc-doc.css —— 那是首页「测绘板」那套版式的内页延续。
      deploy-arc.html → deploy.html：ARCBANG 的两合约部署向导（钱包签名，私钥不进 env）。
@@ -324,15 +336,66 @@ function stampGallery(h) {
   return h.replace(/assets\/gallery\/([A-Za-z0-9._-]+)(\?v=[0-9a-f]+)?/g, (m, f) => GAL_FP[f] ? 'assets/gallery/' + f + '?v=' + GAL_FP[f] : m);
 }
 
-/* 首页：web/landing-arc.html 落盘成 dist-arc/index.html。
-   两个落盘改写与其他 HTML 一致：config.js 打指纹、../ui/theme.js 收成同目录。 */
-const landing = path.join(__dirname, ST.landing);
-if (fs.existsSync(landing)) {
-  let h = fs.readFileSync(landing, 'utf8');
+/* 预热页：web/warmup-arc.html → dist-arc/warmup.html（中文）+ dist-arc/en/warmup.html（英文）。
+   落盘改写与其他独立页一致。**无条件落盘**：app.html 的铸造面板在放号还没轮到时
+   把人指向 warmup.html，那个链接不能因为「今天不是预热期」就 404。 */
+function prepHtml(srcPath) {
+  let h = fs.readFileSync(srcPath, 'utf8');
   h = h.replace(/(<script[^>]*\ssrc=")config\.js(?:\?v=[0-9a-f]+)?(")/g, '$1config.js?v=' + cfgVer + '$2');
   h = h.replace(/src="\.\.\/ui\/theme\.js"/g, 'src="theme.js"');
-  h = siteify(h);
-  h = stampAssets(h);
+  return stampAssets(siteify(h));
+}
+/* 英文页里指向三份文档的链接要改指 /en/：prerender-en 把相对链接绝对化成
+   /how-it-works.html，那是中文页。只改这三页，别的链接一个不动。 */
+function enDocLinks(file) {
+  if (!ST.enPages || !ST.enPages.length || !fs.existsSync(file)) return 0;
+  let eh = fs.readFileSync(file, 'utf8'), n = 0;
+  ST.enPages.forEach((p) => {
+    const root = '/' + p[1].replace(/^en\//, '');
+    eh = eh.replace(new RegExp('href="' + root.replace(/[.]/g, '\\.') + '(["#?])', 'g'), (m, tail) => { n++; return 'href="/' + p[1] + tail; });
+  });
+  fs.writeFileSync(file, eh);
+  return n;
+}
+let warmupHtml = null;
+{
+  const wp = path.join(__dirname, ST.warmupPage || '');
+  if (ST.warmupPage && fs.existsSync(wp)) {
+    warmupHtml = prepHtml(wp);
+    fs.writeFileSync(path.join(outDir, 'warmup.html'), warmupHtml);
+    console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/warmup.html（预热页）');
+    const enW = require('./prerender-en.js').build(warmupHtml, outDir,
+      { base: ST.base, page: 'warmup.html', title: ST.warmupEn.title, desc: ST.warmupEn.desc, dicts: ST.enDicts });
+    const nW = enDocLinks(path.join(outDir, 'en', 'warmup.html'));
+    console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/en/warmup.html（英文预渲染：命中 ' + enW.hits + ' 处，文档链接改指 /en/ ' + nW + ' 处）');
+  } else if (ST.warmupPage) {
+    console.log('  ○ ' + ST.warmupPage + '（缺席，跳过预热页）');
+  }
+}
+
+/* 首页：web/landing-arc.html 落盘成 dist-arc/index.html。
+   两个落盘改写与其他 HTML 一致：config.js 打指纹、../ui/theme.js 收成同目录。
+
+   --landing=warmup（或 ST.warmup=true）时首页换成预热页那一份内容 ——
+   落盘名仍是 index.html，canonical 仍是站点根，所以切来切去不会产生两个都想当首页的 URL。 */
+const wantWarmupLanding = ST.warmup === true
+  || argv.some((a) => a === '--landing=warmup' || a === '--warmup');
+const landing = path.join(__dirname, ST.landing);
+if (wantWarmupLanding && warmupHtml) {
+  /* 预热页当首页：canonical / og:url / hreflang 从 /warmup.html 改回站点根，
+     否则搜索引擎会看到「首页自称是 /warmup.html」，两个 URL 互相抢。 */
+  const rootify = (h) => h
+    .replace(new RegExp(ST.base.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\/warmup\\.html', 'g'), ST.base + '/')
+    .replace(new RegExp(ST.base.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\/en\\/warmup\\.html', 'g'), ST.base + '/en/');
+  const h = rootify(warmupHtml);
+  fs.writeFileSync(path.join(outDir, 'index.html'), h);
+  console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/index.html（**首页切成预热页**）');
+  const en = require('./prerender-en.js').build(h, outDir,
+    { base: ST.base, title: ST.warmupEn.title, desc: ST.warmupEn.desc, dicts: ST.enDicts });
+  const nI = enDocLinks(path.join(outDir, 'en', 'index.html'));
+  console.log('  + ' + ST.warmupPage + ' → ' + ST.dist + '/en/index.html（英文预渲染：命中 ' + en.hits + ' 处，文档链接改指 /en/ ' + nI + ' 处）');
+} else if (fs.existsSync(landing)) {
+  let h = prepHtml(landing);
   h = stampGallery(h);
   fs.writeFileSync(path.join(outDir, 'index.html'), h);
   console.log('  + ' + ST.landing + ' → ' + ST.dist + '/index.html（首页）');
@@ -340,18 +403,7 @@ if (fs.existsSync(landing)) {
   const en = require('./prerender-en.js').build(h, outDir,
     { base: ST.base, title: ST.en.title, desc: ST.en.desc, dicts: ST.enDicts });
   console.log('  + ' + ST.landing + ' → ' + ST.dist + '/en/index.html（英文预渲染：词典 ' + en.dict + ' 条，命中 ' + en.hits + ' 处）');
-  /* 英文文档落在 /en/，所以英文首页指向文档的链接也要进 /en/ ——
-     prerender-en 把相对链接绝对化成 /how-it-works.html，那是中文页。只改这三页，别的链接不动。 */
-  if (ST.enPages && ST.enPages.length) {
-    const enIdx = path.join(outDir, 'en', 'index.html');
-    let eh = fs.readFileSync(enIdx, 'utf8'), n = 0;
-    ST.enPages.forEach((p) => {
-      const root = '/' + p[1].replace(/^en\//, '');
-      eh = eh.replace(new RegExp('href="' + root.replace(/[.]/g, '\.') + '(["#?])', 'g'), (m, tail) => { n++; return 'href="/' + p[1] + tail; });
-    });
-    fs.writeFileSync(enIdx, eh);
-    console.log('  + en/index.html：文档链接改指 /en/（' + n + ' 处）');
-  }
+  console.log('  + en/index.html：文档链接改指 /en/（' + enDocLinks(path.join(outDir, 'en', 'index.html')) + ' 处）');
 } else {
   console.log('  ○ ' + ST.landing + '（缺席，跳过：没有首页也没有 /en/）');
 }

@@ -90,7 +90,8 @@ function minterFromBody(body) {
  *     rarity,          // uint8   ← 别漏：它决定定价和发币，不签就等于让调用者自己报价
  *     cardHash,        // bytes32
  *     deadline,        // uint64
- *     msg.sender))     // address  ← 仅 v2：不签就是「谁先交谁铸」的能力票
+ *     msg.sender,      // address  ← 仅 v2：不签就是「谁先交谁铸」的能力票
+ *     free))           // bool     ← 仅 ARCBANG：不签就是「换个新地址就有一枚免费额度」
  * 再套 EIP-191 的 "\x19Ethereum Signed Message:\n32" 前缀。
  *
  * v1（开关关掉）不加最后那个 address，编码与改前逐字节相同。
@@ -98,13 +99,22 @@ function minterFromBody(body) {
  */
 /* 上面这段原来漏了 rarity，和下面的代码对不上。签名摘要的文档写错代价特别大：
    照着注释去实现合约那一侧，链上只会甩一个 BadSig，从签名本身看不出少了哪个字段。 */
-function digestOf(chainId, contractAddr, blockHash, blockNumber, outcome, rarity, cardHash, deadline, minter) {
+/* free（2026-09-18 加，ARCBANG）：**只有显式传了布尔值才进摘要**。
+   传 null / undefined 就一个字节都不加，这样 BNB 那条老路（v1 与 v2）的摘要逐字节不变 ——
+   selftest 里那三条「与改前已知向量逐字节相同」就是钉这件事的。
+   忘了传的后果是安全的：签出来的是旧摘要，新合约 ecrecover 出别的地址，当场 BadSig。 */
+function digestOf(chainId, contractAddr, blockHash, blockNumber, outcome, rarity, cardHash, deadline, minter, free) {
   const types = ['uint256', 'address', 'bytes32', 'uint64', 'uint8', 'uint8', 'bytes32', 'uint64'];
   const values = [chainId, contractAddr, blockHash, blockNumber, outcome, rarity, cardHash, deadline];
   if (sigV2()) {
     assertMinter(minter);
     types.push('address');
     values.push(minter.toLowerCase());
+  }
+  if (typeof free === 'boolean') {
+    if (!sigV2()) throw new Error('free 标志要求 v2 摘要（合约那边 msg.sender 与 free 是一起加的）');
+    types.push('bool');
+    values.push(free);
   }
   return keccak256(coder.encode(types, values));
 }
@@ -127,10 +137,12 @@ function makeSigner(chainId, contractAddr) {
   return {
     address: wallet.address,
     /** @returns {Promise<{sig:string, deadline:number}>}
-        minter：v2 摘要末尾那个 address（= 之后上链交易的 from）；v1 忽略。 */
-    async sign(blockHash, blockNumber, outcome, rarity, cardHash, nowSec, minter) {
+        minter：v2 摘要末尾那个 address（= 之后上链交易的 from）；v1 忽略。
+        free：走不走免费额度（ARCBANG）。传 true/false 才进摘要，传 null/undefined 不加字段。
+        **免费与否由服务端决定**（server/allowlist.js），不是合约自己按 totalSupply 猜。 */
+    async sign(blockHash, blockNumber, outcome, rarity, cardHash, nowSec, minter, free) {
       return signWith(
-        (dl) => digestOf(chainId, contractAddr, blockHash, blockNumber, outcome, rarity, cardHash, dl, minter),
+        (dl) => digestOf(chainId, contractAddr, blockHash, blockNumber, outcome, rarity, cardHash, dl, minter, free),
         nowSec
       );
     },

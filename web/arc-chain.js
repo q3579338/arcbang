@@ -507,22 +507,29 @@
    * 要用服务端返回的那个，不能用页面自己算的）—— 差一个字段 ecrecover
    * 就恢复出别的地址，合约直接 BadSig，而链上报错看不出是哪一项错了。
    */
-  /* ArcUniverse 没有 payWithBang（没有代币），bangSigned 是 7 个参数：
-     选择器与 sig 的偏移都不一样，按旧的 8 参编码发过去会 revert（2026-09-18 上线第一枚撞上）。 */
+  /* ArcUniverse 没有 payWithBang（没有代币）。
+     **2026-09-18 起第 7 个参数是 bool free**（走不走免费额度），它签在服务端摘要里，
+     所以这里必须原样转发 /api/bang 回来的那个值 —— 自己改一位就是 BadSig。
+     加它的理由见 contracts/src/ArcUniverse.sol：上一版由合约自己判免费，
+     换个干净的新地址就有一枚免费额度，上线 20 分钟被薅走 5 枚。
+
+     bool 排在 sig 之前，所以头部是 7 个定长槽 + sig 偏移，**sig 偏移 = 8 × 32 = 256**
+     （老的 7 参版是 224，按旧偏移发过去必 revert）。 */
   function isArcSite() {
     var c = root.ARCBANG_CONFIG || {};
     return String(root.ARCBANG_SITE || c.site || '') === 'arc';
   }
   function bangSignedData(o) {
     if (isArcSite()) {
-      return selector('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes)')
+      return selector('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)')
         + encBytes32(o.blockHash)
         + encUint(o.blockNumber)
         + encUint(o.outcome)
         + encUint(o.rarity)
         + encBytes32(o.cardHash)
         + encUint(o.deadline)
-        + encUint(7 * 32)                  // sig 是第 7 个参数，头部 7 个槽 → 偏移 224
+        + encUint(o.free ? 1 : 0)          // 服务端签的那个标志，原样转发
+        + encUint(8 * 32)                  // sig 在 bool 之后，头部 8 个槽 → 偏移 256
         + encBytes(o.sig);
     }
     return selector('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes,bool)')

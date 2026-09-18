@@ -282,13 +282,15 @@ textarea{min-height:88px;resize:vertical;word-break:break-all;line-height:1.5}
      不一致时链上一律 BadSig，而报错看不出是地址对不上。</p>
   <div class="dw-out" id="out6"></div>
   <h3>验证清单</h3>
-  <p>再向链上问三个问题，答对了才算这一趟没白跑。</p>
+  <p>再向链上问四个问题，答对了才算这一趟没白跑。最后一条查的是<b>部署下去的是哪一版铸造入口</b>——
+     两版的读数一模一样，只有 ABI 不同，所以只能去字节码里找选择器。</p>
   <div class="dw-row"><button id="btnCheck6" type="button">跑验证清单</button></div>
   <table class="dw-tbl" id="tbl6" hidden>
     <tr><th>检查</th><th>链上</th><th>应为</th></tr>
     <tr><td class="lbl">totalSupply()</td><td id="v6sup">—</td><td>0（还没人铸）</td></tr>
     <tr><td class="lbl">mintLeft()</td><td id="v6left">—</td><td>1387</td></tr>
     <tr><td class="lbl">royaltyInfo(1, 1e18)</td><td id="v6roy">—</td><td>5e16 = 5%</td></tr>
+    <tr><td class="lbl">bangSigned(…,bool free,bytes)</td><td id="v6mint">—</td><td>选择器在字节码里</td></tr>
   </table>
   <div class="dw-msg" id="msg6"></div>
 </section>
@@ -337,10 +339,17 @@ var NETS = {
    = keccak256(签名) 的前 4 字节。用 web/keccak-lite.js 现算，不写死 ——
    写死抄错了不会静默出错（这两个合约都没有 fallback，调进不存在的函数直接 revert），
    但现算连抄错的机会都没有。keccak-lite 缺席时退回下面这张对照表。 */
+/* bangSigned 进这张表**不是为了调用它**（向导不铸造），而是为了在第 3 / 6 步
+   拿它的选择器去 eth_getCode 的运行时字节码里找一遍：找得到才说明部署下去的是
+   **带 bool free 的那一版**。2026-09-18 之前那一版由合约自己判免费与否，
+   换个干净的新地址就有一枚免费额度，上线 20 分钟被薅走 5 枚。
+   「部署错版本」这件事在链上没有任何别的信号，只有这一条。 */
+var MINT_SIG = 'bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)';
 var SIGS = ['MINT_CAP()', 'freeCap()', 'freePerAddr()', 'paidPerAddr()', 'price()', 'owner()', 'signer()',
             'setSigner(address)', 'setBaseURI(string)', 'baseURI()', 'totalSupply()',
-            'mintLeft()', 'royaltyInfo(uint256,uint256)', 'nft()', 'feeBps()', 'treasury()'];
+            'mintLeft()', 'royaltyInfo(uint256,uint256)', 'nft()', 'feeBps()', 'treasury()', MINT_SIG];
 var FALLBACK_SEL = {
+  'bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)': '0x1feb5d71',
   'MINT_CAP()': '0x98f1312e', 'freeCap()': '0x69b126ef', 'freePerAddr()': '0x21daa6e7', 'paidPerAddr()': '0xe7aea71c',
   'price()': '0xa035b1fe', 'owner()': '0x8da5cb5b', 'signer()': '0x238ac933',
   'setSigner(address)': '0x6c19e783', 'setBaseURI(string)': '0x55f804b3', 'baseURI()': '0x6c0360eb',
@@ -995,10 +1004,20 @@ $('btnCheck6').addEventListener('click', function () {
   Promise.all([
     readUint(S.uni, 'totalSupply()'),
     readUint(S.uni, 'mintLeft()'),
-    ethCall(S.uni, SEL['royaltyInfo(uint256,uint256)'] + encUint(1) + encUint(10n ** 18n))
+    ethCall(S.uni, SEL['royaltyInfo(uint256,uint256)'] + encUint(1) + encUint(10n ** 18n)),
+    /* 运行时字节码里找铸造入口的选择器。这是唯一能分辨「部署的是哪一版 bangSigned」的办法：
+       两版的 view 读数一模一样，只有 ABI 不同。 */
+    req('eth_getCode', [S.uni, 'latest'])
   ]).then(function (r) {
     $('tbl6').hidden = false;
     var bad = [];
+    var code = String(r[3] || '');
+    var selHex = String(SEL[MINT_SIG] || '').replace(/^0x/, '');
+    var hasSel = !!selHex && code.toLowerCase().indexOf(selHex.toLowerCase()) >= 0;
+    $('v6mint').textContent = (selHex ? '0x' + selHex : '—') + (hasSel ? '　找到了' : '　没找到');
+    $('v6mint').className = hasSel ? 'good' : 'bad';
+    if (!hasSel) bad.push('运行时字节码里没有 ' + MINT_SIG + ' 的选择器 —— 部署的多半是加 bool free 之前的旧版合约，'
+      + '那一版由合约自己判免费与否，换个新地址就有一枚免费额度。先在 contracts/ 重新编译再部署。');
     $('v6sup').textContent = r[0].toString();
     $('v6sup').className = r[0] === 0n ? 'good' : 'bad';
     if (r[0] !== 0n) bad.push('totalSupply() 是 ' + r[0] + '，不是 0（已经有人铸过了）');
@@ -1015,7 +1034,9 @@ $('btnCheck6').addEventListener('click', function () {
       if (amt !== 50000000000000000n) bad.push('版税是 ' + amt + '/1e18，不是 5%（5e16）');
     }
     if (bad.length) msg($('msg6'), '有对不上的：\n· ' + bad.join('\n· '), 'err');
-    else msg($('msg6'), '三项全对。把上面的配置抄进两个文件，重启服务端，然后到 /market.html 看一眼。', 'ok');
+    else msg($('msg6'), '四项全对。把上面的配置抄进两个文件，重启服务端，然后到 /market.html 看一眼。\n'
+      + '还有一件事在链外：服务端的 ARCBANG_PHASE 决定现在放不放号（warmup 段一张铸造签名都不签），'
+      + '白名单在 .store/allowlist.json，用 server/tools/allowlist.js 动它。', 'ok');
   }).catch(function (e) { msg($('msg6'), '问不到：' + errOf(e), 'err'); });
 });
 

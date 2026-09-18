@@ -337,9 +337,11 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
   if (!fs.existsSync(idx)) { skip('web/dist-arc/index.html 不存在（node web/build-web.js --site arc），ARCBANG 产物检查'); return; }
 
   /* a. 该有的页都在 */
+  /* warmup.html 必须永远在：app.html 的铸造面板在放号还没轮到时把人指过去，
+     那个链接不能有「今天不存在」的时候（首页切不切成预热页是另一回事）。 */
   var want = ['index.html', 'app.html', 'market.html', 'status.html', 'profile.html',
-              'faq.html', 'how-it-works.html', 'verify.html', 'deploy.html',
-              'en/index.html', 'en/faq.html', 'en/how-it-works.html', 'en/verify.html',
+              'faq.html', 'how-it-works.html', 'verify.html', 'deploy.html', 'warmup.html',
+              'en/index.html', 'en/faq.html', 'en/how-it-works.html', 'en/verify.html', 'en/warmup.html',
               'config.js', 'theme.js', 'nav.js', 'tokens.css', 'arc-doc.css'];
   var lack = want.filter(function (f) { return !fs.existsSync(path.join(dist, f)); });
   (lack.length ? bad : ok)('web/dist-arc 页面齐全（' + (want.length - lack.length) + '/' + want.length + '）'
@@ -371,6 +373,39 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
   })(dist);
   (dirty.length ? bad : ok)('web/dist-arc 里没有指向 bnbbang 仓库的链接'
     + (dirty.length ? '：' + dirty.slice(0, 5).join('、') : ''));
+
+  /* c2. 铸造入口的 ABI 三边一致：合约、站点包、部署向导。
+     2026-09-18 给 bangSigned 加了 bool free（免费与否由服务端签死，见 ArcUniverse.sol）。
+     漏改任何一边的后果都是「铸造在链上 revert，而报错看不出是哪一项错了」——
+     上线第一枚就撞过一次（那次是 sig 偏移 224/256 没对上）。 */
+  var MINT_SIG = 'bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)';
+  var solSrc = '';
+  try { solSrc = fs.readFileSync(path.join(ROOT, 'contracts/src/ArcUniverse.sol'), 'utf8'); } catch (e) { }
+  var chainSrc = '';
+  try { chainSrc = fs.readFileSync(path.join(dist, 'arc-chain.js'), 'utf8'); } catch (e) { }
+  var abiJson = '';
+  try { abiJson = fs.readFileSync(path.join(dist, 'ArcUniverse.abi.json'), 'utf8'); } catch (e) { }
+  var mintBad = [];
+  /* 合约那一侧比的是**摘要**：free 必须和 msg.sender 一起进 abi.encode，
+     只在函数签名里加一个参数而不签进摘要，等于把免费额度交给调用者自己填。 */
+  if (!solSrc) mintBad.push('读不到 contracts/src/ArcUniverse.sol');
+  else {
+    if (!/bool\s+free/.test(solSrc)) mintBad.push('合约的 bangSigned 没有 bool free 参数');
+    /* 不去匹配整个 abi.encode(…)：里面有 address(this)，括号不成对，
+       任何 [^)]* 都会在那儿断掉。只钉末尾那三个字段的顺序。 */
+    if (!/deadline,\s*msg\.sender,\s*free\s*\)/.test(solSrc)) {
+      mintBad.push('合约摘要末尾不是 (…, deadline, msg.sender, free)');
+    }
+  }
+  if (!chainSrc) mintBad.push('读不到 dist-arc/arc-chain.js');
+  else {
+    if (chainSrc.indexOf("'" + MINT_SIG + "'") < 0) mintBad.push('arc-chain.js 的选择器不是 ' + MINT_SIG);
+    /* sig 在 bool 之后 → 头部 8 个槽 → 偏移 256。写 7*32 就是老编码。 */
+    if (chainSrc.indexOf('encUint(8 * 32)') < 0) mintBad.push('arc-chain.js 的 sig 偏移不是 8×32（bool 排在 sig 之前）');
+  }
+  if (abiJson && abiJson.indexOf('"free"') < 0) mintBad.push('dist-arc/ArcUniverse.abi.json 里没有 free 参数（字节码是旧的）');
+  (mintBad.length ? bad : ok)('铸造入口 ABI 三边一致（合约摘要 / 站点包编码 / abi.json 都带 bool free）'
+    + (mintBad.length ? '：' + mintBad.join('；') : ''));
 
   /* d. IndexNow 的密钥文件是按域名验证的，别的站那一份不能出现在这里 */
   var keyf = fs.readdirSync(dist).filter(function (f) { return /^[0-9a-f]{32}\.txt$/.test(f); });

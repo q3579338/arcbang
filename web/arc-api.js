@@ -179,6 +179,29 @@
       });
     },
 
+    /* ---------------------------------------------------------------- 白名单
+       三条路都在 server/allowlist.js。要点：
+         · status 只回**问的那个地址自己**的层级 / 登记码 / 邀请数，名单不外泄；
+         · 登记要签的那句话由 status 给（message 字段），**客户端绝不自己拼** ——
+           两边各拼一次早晚差一个换行，然后 verifyMessage 恢复出另一个地址，
+           用户看到的是「签名是另一个地址签的」，从签名本身完全看不出错在哪；
+         · 登记 ≠ 进名单。登记只是排队，管理员审完才算数。 */
+    allowlistStatus: function (addr) {
+      var q = /^0x[0-9a-fA-F]{40}$/.test(String(addr || '')) ? '?addr=' + String(addr).toLowerCase() : '';
+      return req('/allowlist/status' + q);
+    },
+
+    /** @param sig 对 status().message **原文**的 personal_sign 结果 */
+    allowlistRegister: function (address, xHandle, sig, ref) {
+      var body = { address: String(address).toLowerCase(), xHandle: String(xHandle || ''), sig: sig };
+      if (ref) body.ref = String(ref).toUpperCase();
+      return req('/allowlist/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    },
+
     /** NFT 图的地址。图也在服务端出，浏览器不画 */
     artUrl: function (hash, withParams) {
       return BASE + withVer('/art/' + String(hash).toLowerCase() + '.svg' + (withParams ? '?p=1' : ''));

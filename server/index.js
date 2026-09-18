@@ -183,23 +183,26 @@ function storePut(cardHash, card) {
 const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
 /** v2 签名要绑铸造人。非法/缺省当场 400 并回人话；v1 忽略。
     返回小写地址或 null（v1）。返回 false 表示已经答过 400。 */
-/* ---------------------------------------------------------------- 免费期防撸（ARCBANG，2026-09-17）
-   用户不做白名单、不限付费、不按天放号 —— 唯一的一道：**同一 IP 每天最多领 FREE_PER_IP_DAY 个
-   免费铸造签名**。真人一个 IP 一天铸 1 枚碰不到它；脚本党想一天撸光 387 枚得攒上百个 IP。
-   防的是「免费撸光 → 挂 OpenSea 半价砸盘 → 压死 1 USDC 的一级市场」。
+/* ---------------------------------------------------------------- 免费额度（ARCBANG，2026-09-18 重做）
+   **IP 闸已经删掉了**（原来是「同一 IP 每天最多领 N 个免费签名」）。
+   2026-09-18 第一次主网部署上线 20 分钟，一个 IP 用 5 个新地址一分钟一枚薅走 5 枚：
+   IP 是最便宜的东西，那道闸拦不住任何认真的人，留着只会给人一种「有防线」的错觉。
 
-   「这一签会不会是免费的」按合约当下状态判（totalSupply < freeCap 且 freeMintCount(minter) < freePerAddr），
-   四个 view 都读不到（RPC 抖动）就当付费放行 —— 宁可漏一个，不能把真人拦在门外。
-   同一地址在窗口内反复取签（铸造前必须再签一次）只扣一次（take 的 hash 去重）。
-   只在 Arc 链生效；ARCBANG_FREE_PER_IP_DAY=0 关掉。 */
-const FREE_PER_IP_DAY = (() => { const n = Number(process.env.ARCBANG_FREE_PER_IP_DAY); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 3; })();
+   现在的防线是两件事（见 server/allowlist.js 顶部）：
+     · 合约的 bangSigned 收一个 bool free 并签进摘要 —— 免费与否**服务端说了算**，
+       换个干净的新地址再也变不出免费额度；
+     · 白名单 + 四段放号（warmup / gtd / fcfs / public）决定给谁签 free。
+
+   下面这个 wouldBeFreeMint 留着，但职责变了：它不再是「要不要扣 IP 额度」的判据，
+   而是「链上此刻还给不给这个地址免费」——服务端在签 free=true 之前先问一句，
+   免得签出一张必然 revert 的名（合约那边 freeCap / freePerAddr 是硬边界）。 */
 const FREE_SEL = { totalSupply: '0x18160ddd', freeCap: '0x69b126ef', freePerAddr: '0x21daa6e7', freeMintCount: '0x5ecf8a80' };
 /* 返回 true / false / null（null = 链上读不到，判不了）。
    freeCap / freePerAddr 是只能往下调的常量，缓存 10 分钟；totalSupply 缓存 20 秒；
    freeMintCount 只在「本进程已经给这个地址签过免费」时记住（签过就当已用）。
    这样每次签名最多 1 次 eth_call —— 上线当晚公共 RPC 限流（HTTP 429）时，原来 4 次并发调用
    一起失败、闸「判不了就放行」，被一个 IP 用 5 个地址一分钟一枚地薅走了免费额度。 */
-const FREE_CACHE = { cap: null, per: null, capAt: 0, sup: null, supAt: 0, signed: new Set() };
+const FREE_CACHE = { cap: null, per: null, capAt: 0, sup: null, supAt: 0 };
 async function wouldBeFreeMint(minter) {
   const to = CONTRACT;
   if (!to || !/^0x[0-9a-f]{40}$/.test(to)) return false;
@@ -207,7 +210,11 @@ async function wouldBeFreeMint(minter) {
   const rd = (data) => chainMod.ethCall(to, data).then(word, () => null);
   const now = Date.now();
   const m = String(minter).toLowerCase();
-  if (FREE_CACHE.signed.has(m)) return false;                   // 本进程已给它签过免费：再来就按付费走（合约那边也会拒第二次免费）
+  /* 2026-09-18 删掉了这里原来那句「本进程已给它签过免费，再来就按付费走」。
+     在 IP 闸那一版它只影响扣不扣额度，无伤大雅；现在这个返回值**直接决定签 free 还是 paid**，
+     于是「取了签名没上链、回头再点一次」的人会被改判成付费 —— 而他的免费额度明明还在。
+     每次现读 freeMintCount 是一次 eth_call，值这个钱：
+     就算同一秒签出两张 free，合约那边 freePerAddr 也只认第一笔。 */
   if (FREE_CACHE.cap === null || now - FREE_CACHE.capAt > 600e3) {
     const [cap, per] = await Promise.all([rd(FREE_SEL.freeCap), rd(FREE_SEL.freePerAddr)]);
     if (cap !== null && per !== null) { FREE_CACHE.cap = cap; FREE_CACHE.per = per; FREE_CACHE.capAt = now; }
@@ -222,6 +229,27 @@ async function wouldBeFreeMint(minter) {
   const cnt = await rd(FREE_SEL.freeMintCount + m.replace(/^0x/, '').padStart(64, '0'));
   if (cnt === null) return null;
   return cnt < FREE_CACHE.per;
+}
+
+/** 链上还剩几枚免费额度（freeCap - totalSupply，发完是 0）。读不到回 null。
+    /api/allowlist/status 拿它显示「免费还剩 X 枚」；用的是 wouldBeFreeMint 同一份缓存，
+    所以看状态这件事不会额外打 RPC。 */
+async function freeLeftOnChain() {
+  const to = CONTRACT;
+  if (!to || !/^0x[0-9a-f]{40}$/.test(to)) return null;
+  const word = (hex) => { const h = String(hex || '').replace(/^0x/, ''); return h.length >= 64 ? BigInt('0x' + h.slice(0, 64)) : null; };
+  const rd = (data) => chainMod.ethCall(to, data).then(word, () => null);
+  const now = Date.now();
+  if (FREE_CACHE.cap === null || now - FREE_CACHE.capAt > 600e3) {
+    const [cap, per] = await Promise.all([rd(FREE_SEL.freeCap), rd(FREE_SEL.freePerAddr)]);
+    if (cap !== null && per !== null) { FREE_CACHE.cap = cap; FREE_CACHE.per = per; FREE_CACHE.capAt = now; }
+  }
+  if (FREE_CACHE.sup === null || now - FREE_CACHE.supAt > 20e3) {
+    const sup = await rd(FREE_SEL.totalSupply);
+    if (sup !== null) { FREE_CACHE.sup = sup; FREE_CACHE.supAt = now; }
+  }
+  if (FREE_CACHE.cap === null || FREE_CACHE.sup === null) return null;
+  return FREE_CACHE.sup >= FREE_CACHE.cap ? 0 : Number(FREE_CACHE.cap - FREE_CACHE.sup);
 }
 
 function minterForSig(body, res) {
@@ -472,6 +500,9 @@ const SUB = require('./subscribe.js').create({ storeDir: STORE_DIR, take: RL.tak
 /* 卡死报告（server/stall.js）：前端看门狗抓到的现场，用户点一下发过来。
    配了 ARCBANG_RESEND_KEY 才发邮件；没配就只落盘，启动日志里说一声。 */
 const STALL = require('./stall.js').create({ storeDir: STORE_DIR, take: RL.take });
+/* 白名单与四段放号（server/allowlist.js）：/api/bang 到底签不签、签的是不是免费，
+   全由它决定。freeLeft 读的是 wouldBeFreeMint 那份缓存，看状态不额外打 RPC。 */
+const AL = require('./allowlist.js').create({ storeDir: STORE_DIR, take: RL.take, freeLeft: freeLeftOnChain });
 
 /* ---------------------------------------------------------------- 路由 */
 
@@ -547,7 +578,11 @@ async function handle(req, res, u) {
       logRpcOk: liveLogRpcOk(),
       /* 算卡线程池：0 = 关掉了（或崩太多次自保退回同步）。线上排查「为什么只用一个核」
          先看这个数，不用去猜环境变量。 */
-      cardWorkers: CARDPOOL.size()
+      cardWorkers: CARDPOOL.size(),
+      /* 放号阶段与名单人数（server/allowlist.js）。状态页按它显示「现在开到哪一段」；
+         **只有人数，没有名单** —— 谁是保底层不公开。 */
+      phase: AL.phase(), phaseOpens: AL.opens(), phaseNext: AL.nextOpen(),
+      allowlist: AL.counts(), allowlistApplied: AL.appliedCount()
     });
   }
 
@@ -614,6 +649,18 @@ async function handle(req, res, u) {
       return json(res, 400, { error: '零哈希不是区块' });
     }
 
+    /* 放号那一半的判断**排在取块与算卡之前**：它一次链上读都不做，
+       而预热期每个点击都白算一张卡的话，预热本身就成了一个免费的算力消耗接口。
+       「签不签免费」那一半在下面 —— 那一半要先有 card 才谈得上。 */
+    {
+      const deny = AL.denyReason(minter);
+      if (deny) {
+        return json(res, deny.status, {
+          error: deny.error, code: deny.code, phase: deny.phase, opens: deny.opens, next: deny.next
+        }, { 'cache-control': 'no-store' });
+      }
+    }
+
     let blk;
     try {
       blk = await blockByHash(hash);
@@ -635,33 +682,65 @@ async function handle(req, res, u) {
     try { built = await cardForAsync(hash, blk.number); }
     catch (e) { if (cardPoolBusy(res, e)) return; throw e; }
     const { card, cardHash } = built;
-    /* 免费期防撸：见 wouldBeFreeMint 上方的说明。付费签名不经过这里。 */
-    if (FREE_PER_IP_DAY > 0 && (CHAIN_ID === 5042 || CHAIN_ID === 5042002) && minter) {
-      const free = await wouldBeFreeMint(minter);
-      /* 判不了（RPC 限流/不通）时**关闸**而不是放行：宁可让真人等一分钟再试，也不能让脚本趁 RPC 抖动薅光免费额度。 */
-      if (free === null) {
-        return json(res, 503, { error: '链上节点这一刻打不通，免费额度核对不了，请过一分钟再试。' }, { 'cache-control': 'no-store' });
-      }
-      if (free) {
-        const fr = RL.take('free:' + RL.ipOf(req), FREE_PER_IP_DAY, 24 * 3600 * 1000, String(minter).toLowerCase());
-        if (!fr.ok) {
-          return json(res, 429, {
-            error: '这个网络今天领过的免费铸造签名已到上限（每个 IP 每天 ' + FREE_PER_IP_DAY + ' 个）。付费铸造不受影响；免费的明天再来。',
-            resetAt: fr.resetAt
-          }, { 'cache-control': 'no-store' });   // NOSTORE 在这个函数后面才声明，别踩 TDZ
-        }
-        FREE_CACHE.signed.add(String(minter).toLowerCase());
-      }
+    /* 免费与否**在这里定死**，然后签进摘要（合约 bangSigned 的 bool free）。
+       合约不再自己按 totalSupply / freeMintCount 猜 —— 猜的那一版等于
+       「换个干净的新地址就有一枚免费额度」，2026-09-18 上线 20 分钟就是这么被薅的。
+       四段放号与名单判断全在 server/allowlist.js，这里只负责把结论用上。 */
+    const g = await AL.gate(minter, () => wouldBeFreeMint(minter));
+    if (!g.ok) {
+      return json(res, g.status || 403, {
+        error: g.error, code: g.code, phase: g.phase, opens: g.opens, next: g.next
+      }, { 'cache-control': 'no-store' });   // NOSTORE 在这个函数后面才声明，别踩 TDZ
     }
     const { sig, deadline } = await signer.sign(
       card.blockHash, blk.number, card.outcome.index, card.rarity.index, cardHash,
-      undefined, minter
+      undefined, minter, g.free
     );
     json(res, 200, {
       card, cardHash, deadline, sig, signer: signer.address, rarity: card.rarity,
+      /* free 必须原样回给前端：它要拿这个值拼 calldata（改一位就 BadSig），
+         也要拿它决定 msg.value 是 0 还是 price。 */
+      free: g.free, phase: g.phase, freeGone: !!g.freeGone,
       art: PUBLIC_BASE + '/api/art/' + card.blockHash + '.svg?p=1'
     }, { 'cache-control': 'no-store' });
     return;
+  }
+
+  /* ================================================================ 白名单
+     三条路，一条比一条权限低：
+       GET  /api/allowlist/status?addr=   谁都能问。**只回查询的那个地址自己的**层级、
+                                          登记码、邀请数、排位 —— 名单本身不外泄。
+       POST /api/allowlist/register       登记（排队），不是进名单。要钱包签一句固定文案。
+       GET  /api/allowlist/applied        导出登记表 CSV，**管理员 IP 才给**。
+
+     写名单的路一条都没有：审核完用命令行 server/tools/allowlist.js approve。
+     名额是钱，发名额这件事不该有自动路径。 */
+  if (p === '/allowlist/status' && (req.method === 'GET' || req.method === 'HEAD')) {
+    const st = await AL.status(u.searchParams.get('addr'));
+    return json(res, 200, st, { 'cache-control': 'no-store' });
+  }
+
+  if (p === '/allowlist/register' && req.method === 'POST') {
+    const rb = await bodyOf(req, res);
+    if (rb === null) return;
+    const parsedAl = parseJsonObject(rb);
+    if (parsedAl.error) return json(res, 400, { error: parsedAl.error }, { 'cache-control': 'no-store' });
+    const r = AL.register(parsedAl.value, RL.ipOf(req));
+    return json(res, r.status, r.body, { 'cache-control': 'no-store' });
+  }
+
+  if (p === '/allowlist/applied' && (req.method === 'GET' || req.method === 'HEAD')) {
+    const ip = clientIpOf(req);
+    if (!adminAllowed(ip)) {
+      /* 404 而不是 403：这条路对非管理员来说就该不存在。
+         403 等于告诉人「这儿有个导出接口，只是你进不去」。 */
+      return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+    }
+    return send(res, 200, AL.appliedCsv(), {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': 'attachment; filename="arcbang-allowlist-applied.csv"',
+      'cache-control': 'no-store'
+    });
   }
 
   /* POST /api/intervene {blockHash, tokenId, oldCardHash, deltas | ops, preview?, suggest?}
@@ -1352,6 +1431,18 @@ function start() {
       + (CARDPOOL.size() ? '' : '（已关闭，退回主线程同步算）')
       + '，全站上限 ' + RL.GLOBAL_PER_MIN + '/分钟');
     console.log('  store     ' + STORE_DIR + '   ← 干预记录在这儿，别当缓存删');
+    {
+      /* 放号阶段要在启动日志第一屏就看得见：warmup 段是**一张铸造签名都不签**的，
+         线上如果忘了往后推阶段，表现就是「所有人点铸造都说还没开」，
+         而这件事从别的地方看不出来。 */
+      const c = AL.counts();
+      const nx = AL.nextOpen();
+      console.log('  阶段      ' + AL.phase()
+        + (AL.phase() === 'warmup' ? '（预热：不签任何铸造签名）' : '')
+        + (nx ? '   下一段 ' + nx.phase + ' ' + (nx.at || '（时间待定）') : '   已是最后一段'));
+      console.log('  白名单    保底 ' + c.gtd + ' · 先到先得 ' + c.fcfs + ' · 登记 ' + AL.appliedCount() + ' 条'
+        + (AL.pinnedPost() ? '' : '   ← 没配 ARCBANG_PINNED_POST_URL，预热页不显示转发按钮'));
+    }
     console.log('  stall     ' + (STALL.mailOn ? '报告落盘 + 邮件 → ' + STALL.mailTo : '卡死报告只落盘，未配邮件（要发信就设 ARCBANG_RESEND_KEY）'));
     /* 市场索引后台扫链。**放在 listen 回调里、且不 await** ——
        索引起不起得来与站点能不能服务无关，它自己会重试，

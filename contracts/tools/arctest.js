@@ -30,18 +30,21 @@ const OBS = 9;          // OBSERVERS_POSSIBLE
 const DEAD_OUTCOME = 5; // NO_ATOMS
 const R = { S: 0, A: 1, B: 2, C: 3, D: 4 };
 
-function signMint(uni, bh, bn, outcome, rarity, ch, dl, minter) {
+/* 摘要末尾两个字段是 msg.sender 与 free —— 与 contracts/src/ArcUniverse.sol 的 bangSigned
+   和 server/sign.js 的 digestOf 逐字段同序同类型。free 不签进去就等于免费额度自助领取。 */
+function signMint(uni, bh, bn, outcome, rarity, ch, dl, minter, free) {
   return wallet.signMessageSync(getBytes(keccak256(coder.encode(
-    ['uint256', 'address', 'bytes32', 'uint64', 'uint8', 'uint8', 'bytes32', 'uint64', 'address'],
-    [1n, uni, bh, bn, outcome, rarity, ch, dl, minter]))));
+    ['uint256', 'address', 'bytes32', 'uint64', 'uint8', 'uint8', 'bytes32', 'uint64', 'address', 'bool'],
+    [1n, uni, bh, bn, outcome, rarity, ch, dl, minter, !!free]))));
 }
 
-/** bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes) —— 没有 payWithBang 了 */
-function mintData(bh, bn, outcome, rarity, ch, dl, sig) {
-  return sel('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes)')
+/** bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes) —— 没有 payWithBang 了；
+    bool free 排在 sig 之前，所以头部是 7 个定长槽 + sig 偏移，sig 偏移 = 8 × 32 = 256。 */
+function mintData(bh, bn, outcome, rarity, ch, dl, sig, free) {
+  return sel('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)')
     + bytes32Word(bh) + word(BigInt(bn)) + word(BigInt(outcome)) + word(BigInt(rarity))
-    + bytes32Word(ch) + word(BigInt(dl))
-    + word(224n)                                   // bytes 偏移 = 7 个字
+    + bytes32Word(ch) + word(BigInt(dl)) + word(free ? 1n : 0n)
+    + word(256n)                                   // bytes 偏移 = 8 个字（6 个定长 + bool + 偏移本身）
     + word(65n) + sig.replace(/^0x/, '').padEnd(128, '0');
 }
 
@@ -71,9 +74,12 @@ async function fresh() {
   await h.call(uni, OWNER, sel('setSigner(address)') + addrWord(wallet.address), 0);
 
   const ctx = { h, uni };
-  ctx.mint = async (tag, from, outcome, rarity, value) => {
+  /* free 不给就按「带了钱就是付费、没带钱就是免费」推 —— 那正是服务端的口径。
+     要单独测「签的是 A、发的是 B」这种伪造，直接用 mintData/signMint 拼。 */
+  ctx.mint = async (tag, from, outcome, rarity, value, free) => {
+    const f = free === undefined ? BigInt(value || 0) === 0n : !!free;
     const bh = B.keccak256(tag), ch = B.keccak256('card-' + tag);
-    await h.call(uni, from, mintData(bh, 0, outcome, rarity, ch, DL, signMint(uni, bh, 0, outcome, rarity, ch, DL, from)), value);
+    await h.call(uni, from, mintData(bh, 0, outcome, rarity, ch, DL, signMint(uni, bh, 0, outcome, rarity, ch, DL, from, f), f), value);
     return { id: big(await h.view(uni, sel('tokenOfHash(bytes32)') + bytes32Word(bh))), card: ch };
   };
   ctx.view = (sig, arg) => h.view(uni, sel(sig) + (arg || ''));
@@ -138,6 +144,7 @@ async function main() {
     const c = await fresh();
     const m = await c.mint('no-rescue', USER, DEAD_OUTCOME, R.D, 0);
     const sig = signIntervene(c.uni, m.id, m.card, B.keccak256('card-x'), OBS, R.S, 3n * ONE, DL, '0x0100000001', USER);
+    // 干预那条路早就删掉了，这里只确认选择器调进去必 revert
     await expectRevert(() => c.h.call(c.uni, USER, interveneData(m.id, B.keccak256('card-x'), OBS, R.S, 3n * ONE, DL, '0x0100000001', sig), 3n * ONE),
       null, '调 intervene 选择器：revert（函数不存在）');
     const u = (await c.view('universeOf(uint256)', word(m.id))).replace(/^0x/, '').match(/.{64}/g);
@@ -150,16 +157,76 @@ async function main() {
     const bh = B.keccak256('forged'), ch = B.keccak256('card-forged');
     const bad = new Wallet('0x' + '22'.repeat(32));
     const sig = bad.signMessageSync(getBytes(keccak256(coder.encode(
-      ['uint256', 'address', 'bytes32', 'uint64', 'uint8', 'uint8', 'bytes32', 'uint64', 'address'],
-      [1n, c.uni, bh, 0, OBS, R.S, ch, DL, USER]))));
+      ['uint256', 'address', 'bytes32', 'uint64', 'uint8', 'uint8', 'bytes32', 'uint64', 'address', 'bool'],
+      [1n, c.uni, bh, 0, OBS, R.S, ch, DL, USER, true]))));
     await expectRevert(
-      () => c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, sig), 0),
+      () => c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, sig, true), 0),
       null, '别人的私钥签的名：revert');
     // 同一张签名换个人来用也不行（msg.sender 签在摘要里）
-    const good = signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER);
+    const good = signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER, true);
     await expectRevert(
-      () => c.h.call(c.uni, USER2, mintData(bh, 0, OBS, R.S, ch, DL, good), 0),
+      () => c.h.call(c.uni, USER2, mintData(bh, 0, OBS, R.S, ch, DL, good, true), 0),
       null, '抢别人的签名来铸：revert');
+  }
+
+  /* ---------------------------------------------------------------- free 标志
+     这一段是 2026-09-18 那次「20 分钟被薅走 5 枚」之后加的口子：
+     免费与否由服务端签死，调用者既改不了标志，也换不出第二种付法。 */
+  console.log('\n— free 标志：免费口只认服务端签的那一份 —');
+  {
+    const c = await fresh();
+    const bh = B.keccak256('flag-1'), ch = B.keccak256('card-flag-1');
+    /* a. 服务端签的是付费（free=false），调用者把 calldata 里的标志改成 true：
+          摘要变了 → ecrecover 出别的地址 → BadSig。这正是被薅那次绕不过去的那道。 */
+    const paidSig = signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER, false);
+    await expectRevert(
+      () => c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, paidSig, true), 0),
+      null, '拿付费签名把 free 改成 true：revert（摘要对不上）');
+    // b. 反过来：签的是免费，改成付费同样不行
+    const freeSig = signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER, true);
+    await expectRevert(
+      () => c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, freeSig, false), ONE),
+      null, '拿免费签名把 free 改成 false：revert（摘要对不上）');
+    // c. 签的是免费，却带着钱来：msg.value 必须正好 0
+    await expectRevert(
+      () => c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, freeSig, true), ONE),
+      null, 'free=true 却带 1 USDC：revert');
+    // d. 原样发：过
+    await c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, freeSig, true), 0);
+    eq(big(await c.view('freeMintCount(address)', addrWord(USER))), 1n, 'free=true 原样发：免费次数记到 1');
+  }
+
+  console.log('\n— free 标志：服务端签错了，合约仍然守住边界 —');
+  {
+    const c = await fresh();
+    // a. 每地址免费次数：服务端给同一个地址签了两张 free，第二张链上照样拒
+    await c.mint('over-free-1', USER, OBS, R.B, 0, true);
+    await expectRevert(() => c.mint('over-free-2', USER, OBS, R.B, 0, true),
+      null, '同一地址第 2 张 free 签名：revert（freePerAddr 是链上守的）');
+    // b. 全局免费额度：freeCap 调到 1（只能收紧），第 2 枚 free 就撞墙
+    const c2 = await fresh();
+    await c2.h.call(c2.uni, OWNER, sel('setFreeCap(uint256)') + word(1n), 0);
+    await c2.mint('cap-1', USER, OBS, R.B, 0, true);
+    await expectRevert(() => c2.mint('cap-2', USER2, OBS, R.B, 0, true),
+      null, '免费额度用完后换个地址再来：revert（freeCap 是链上守的）');
+    // c. 免费额度用完，付费口照常
+    await c2.mint('cap-3', USER2, OBS, R.B, ONE, false);
+    eq(big(await c2.view('totalSupply()')), 2n, '免费额度满了之后付费照铸');
+  }
+
+  console.log('\n— free=false：免费额度还没用完也能主动买 —');
+  {
+    /* 白名单之外的人在公售段就是这条路：全局免费额度还剩 387 枚，
+       但他签回来的是 free=false，必须付 1 USDC —— 上一版合约在这里会
+       「看你还在免费期就免费给你」，那正是被薅的那个洞。 */
+    const c = await fresh();
+    await expectRevert(() => c.mint('nofree-0', USER, OBS, R.B, 0, false),
+      null, 'free=false 却不给钱：revert（不再自动转免费）');
+    await c.mint('nofree-1', USER, OBS, R.B, ONE, false);
+    eq(big(await c.view('totalSupply()')), 1n, 'free=false 付 1 USDC：铸成');
+    eq(big(await c.view('freeMintCount(address)', addrWord(USER))), 0n, '付费那一枚不占免费额度');
+    eq(big(await c.view('paidMintCount(address)', addrWord(USER))), 1n, '记进付费次数');
+    eq(big(await c.view('freeLeft()')), 386n, '免费余量没被动过');
   }
 
   console.log('\n— owner 的手被夹死 —');
@@ -185,9 +252,9 @@ async function main() {
   {
     const c = await fresh();
     const bh = B.keccak256('same-block'), ch = B.keccak256('card-same');
-    await c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER)), 0);
+    await c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER, true), true), 0);
     await expectRevert(
-      () => c.h.call(c.uni, USER2, mintData(bh, 0, OBS, R.S, ch, DL, signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER2)), 0),
+      () => c.h.call(c.uni, USER2, mintData(bh, 0, OBS, R.S, ch, DL, signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER2, true), true), 0),
       null, '同一个区块哈希再铸一次：revert');
   }
 
@@ -239,13 +306,13 @@ async function main() {
     const cur = Number(c.h.number);
     const bh1 = c.h.blockHashOf ? c.h.blockHashOf(cur - 10) : require(path.join(__dirname, 'evmlib.js')).blockHashOf(cur - 10);
     const ch1 = B.keccak256('card-recent');
-    await c.h.call(c.uni, USER, mintData(bh1, cur - 10, OBS, R.S, ch1, DL, signMint(c.uni, bh1, cur - 10, OBS, R.S, ch1, DL, USER)), 0);
+    await c.h.call(c.uni, USER, mintData(bh1, cur - 10, OBS, R.S, ch1, DL, signMint(c.uni, bh1, cur - 10, OBS, R.S, ch1, DL, USER, true), true), 0);
     const id1 = big(await c.view('tokenOfHash(bytes32)', bytes32Word(bh1)));
     const u1 = (await c.view('universeOf(uint256)', word(id1))).replace(/^0x/, '').match(/.{64}/g);
     ok(BigInt('0x' + u1[5]) === 1n, '10 块前的真哈希：verified = true');
     const bh2 = require(path.join(__dirname, 'evmlib.js')).blockHashOf(cur - 600);
     const ch2 = B.keccak256('card-old');
-    await c.h.call(c.uni, USER2, mintData(bh2, cur - 600, OBS, R.S, ch2, DL, signMint(c.uni, bh2, cur - 600, OBS, R.S, ch2, DL, USER2)), 0);   // 免费期每地址 1 次，换个地址
+    await c.h.call(c.uni, USER2, mintData(bh2, cur - 600, OBS, R.S, ch2, DL, signMint(c.uni, bh2, cur - 600, OBS, R.S, ch2, DL, USER2, true), true), 0);   // 免费期每地址 1 次，换个地址
     const id2 = big(await c.view('tokenOfHash(bytes32)', bytes32Word(bh2)));
     const u2 = (await c.view('universeOf(uint256)', word(id2))).replace(/^0x/, '').match(/.{64}/g);
     ok(BigInt('0x' + u2[5]) === 0n, '600 块前（测试台没有 2935 合约）：verified = false，铸造照常');

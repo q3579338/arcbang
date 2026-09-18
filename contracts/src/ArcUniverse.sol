@@ -119,7 +119,12 @@ contract ArcUniverse {
        所以免费期只给 387 枚（2026-09-17 用户拍板：387 免费、1,000 收费），每地址 1 次。
 
        两个开关都**只能收紧不能放松**：调大等于事后给自己开免费额度。
-       也就是说部署那一刻填的就是终身上限，改不回来。 */
+       也就是说部署那一刻填的就是终身上限，改不回来。
+
+       2026-09-18 补的第三道：**免费口只走服务端签了 free 的那份名单**。
+       上一版把「这一枚该不该免费」交给合约按 totalSupply / freeMintCount 现判，
+       于是一个 IP 换 5 个新地址就薅走 5 枚 —— 每个新地址在合约眼里都是干净的。
+       现在 free 是 bangSigned 的入参且签进摘要，合约只核对边界，不再替谁决定。 */
     /* specs/arcbang-v1.md §3.2：前 387 枚免费，每地址 1 次；其后 1,000 枚 1 USDC。
        早先那种每地址 10 次不能照搬 —— 那是配着 100 万枚免费额度的，
        放在 1,387 枚的总量下会被几十个地址刷穿。
@@ -159,6 +164,7 @@ contract ArcUniverse {
     error AlreadyBanged();      // 这个宇宙已经被别人引爆过了
     error MintCapReached();     // 已经铸满 1,387 枚，不能再铸
     error PaidCapReached();     // 这个地址付费铸造的枚数已到 paidPerAddr
+    error FreeCapReached();     // 全局免费额度已用完，或这个地址的免费次数已到 freePerAddr
     error WrongPrice();
     error NotOwner();
     error BadOutcome();
@@ -221,6 +227,7 @@ contract ArcUniverse {
      * 走服务端引爆过的宇宙才拿得到签名，验过签名才把参数指纹写进 cardOf。
      * @param cardHash 参数指纹，由服务端算（keccak256(blockHash, uInt[22], 三个专用槽, outcome, 版本)）
      * @param deadline 签名有效期，Unix 秒
+     * @param free     走不走免费额度。**由服务端决定并签进摘要**，调用者改不了 —— 见下
      * @param sig      65 字节 (r,s,v)
      */
     function bangSigned(
@@ -230,6 +237,7 @@ contract ArcUniverse {
         uint8 rarity,
         bytes32 cardHash,
         uint64 deadline,
+        bool free,
         bytes calldata sig
     ) external payable returns (uint256 id) {
         if (signer == address(0)) revert BadSig();       // 还没设签名地址：这条路是关着的
@@ -242,29 +250,39 @@ contract ArcUniverse {
            少了后者，A 合约的签名能喂给 B 合约。
            **rarity 必须签进去**：它直接决定价格和奖励，不签就等于让调用者自己报价。
            **msg.sender 必须签进去**：不签的话这张签名就是「这个宇宙谁先交谁铸」的能力票，
-           服务端签完、用户还没上链的窗口里，任何人（含 MEV）都能拿走。 */
+           服务端签完、用户还没上链的窗口里，任何人（含 MEV）都能拿走。
+           **free 必须签进去**（2026-09-18 加）：免费口从此只认服务端签了 free 的那一份名单。
+           上线 20 分钟被一个 IP 用 5 个新地址薅走 5 枚，就是因为免费/付费由合约自己按
+           totalSupply / freeMintCount 判 —— 只要拿得到签名，换个新地址就有一枚免费额度。
+           现在「谁能免费」是白名单的事（server/allowlist.js），链上只负责核对那道章。 */
         bytes32 digest = keccak256(
-            abi.encode(block.chainid, address(this), blockHash, blockNumber, outcome, rarity, cardHash, deadline, msg.sender)
+            abi.encode(block.chainid, address(this), blockHash, blockNumber, outcome, rarity, cardHash, deadline, msg.sender, free)
         );
         bytes32 ethDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", digest));
         if (_recover(ethDigest, sig) != signer) revert BadSig();
 
         id = _bang(blockHash, blockNumber, outcome, cardHash, rarity);
         // 先记 NFT 再动钱：中途 revert 整笔回滚，不会留下半成品
-        bool wasFree = _settle();
-        emit Minted(id, rarity, wasFree);
+        _settle(free);
+        emit Minted(id, rarity, free);
     }
 
     /**
      * 收钱。免费期与付费期的差别全在这里，**不发任何东西**。
      * 放在 _bang 之后调用：先把 NFT 记好，再动钱 —— 中途 revert 时整笔回滚，没有半成品。
      *
-     * @return wasFree 这一枚是不是走的免费额度（进 Minted 事件，前端和索引器要按它分流）
+     * @param free 服务端在摘要里签死的那个标志。合约**不再自己猜**这一枚该不该免费：
+     *             猜的那一版等于「谁拿得到签名谁就有一次免费额度」，换地址即可无限复制。
+     *             合约仍然守住三条硬边界（全局额度、每地址次数、金额），
+     *             所以就算服务端签错了，也变不出第 388 枚免费。
      */
-    function _settle() internal returns (bool wasFree) {
-        // 免费期：只付 gas。每个地址 freePerAddr 次。
-        if (totalSupply <= freeCap && freeMintCount[msg.sender] < freePerAddr) {
-            if (msg.value != 0) revert WrongPrice();
+    function _settle(bool free) internal returns (bool wasFree) {
+        if (free) {
+            /* totalSupply 在 _bang 里已经自增过，所以这里的 `<= freeCap`
+               对应「这一枚之前的 totalSupply < freeCap」：第 387 枚是最后一枚免费的。 */
+            if (totalSupply > freeCap) revert FreeCapReached();
+            if (freeMintCount[msg.sender] >= freePerAddr) revert FreeCapReached();
+            if (msg.value != 0) revert WrongPrice();      // 免费口一分钱都不能带
             freeMintCount[msg.sender]++;
             return true;
         }

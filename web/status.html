@@ -366,6 +366,24 @@ footer a:hover{text-decoration:underline}
     </div>
   </details>
 
+  <!-- ============================================ 放号阶段（默认展开）
+       2026-09-18：铸造分四段（预热 / 保底 / 先到先得 / 公售），由服务端的
+       ARCBANG_PHASE 与三个开放时间决定。**这一段读的是 /api/health**，不是链上 ——
+       阶段与名单本来就不在链上，链上只有 bangSigned 那个 bool free 的边界。
+       只报人数，不报名单：谁在保底层不公开（用户拍板）。 -->
+  <details class="fold" data-fold="phase" open>
+    <summary><h2>放号阶段</h2><span class="fsum" id="fsPhase">—</span></summary>
+    <div class="fbody">
+    <p class="why">预热期一张铸造签名都不签；保底与先到先得两段只给白名单；公售人人都能铸。
+       免费额度共 387 枚、每地址 1 枚，抢完之后名单里的人也只能付费。</p>
+    <div class="kline"><span>当前阶段</span><span class="num" id="phNow">—</span></div>
+    <div class="kline"><span>下一段开放</span><span id="phNext">—</span></div>
+    <div class="kline"><span>白名单 · 保底层</span><span class="num" id="phGtd">—</span></div>
+    <div class="kline"><span>白名单 · 先到先得层</span><span class="num" id="phFcfs">—</span></div>
+    <div class="kline"><span>已登记待审</span><span class="num" id="phApplied">—</span></div>
+    </div>
+  </details>
+
   <!-- ============================================ 代币分发全景：
        ARCBANG 没有代币，这一整块在这个站上不存在。保留 id 的 hidden 空壳，
        是因为下面的脚本会按 id 写这些节点 —— 删干净会让整段读数在第一个
@@ -827,9 +845,36 @@ footer a:hover{text-decoration:underline}
     mountMatrix();
     load();
   });
+  /* ---------------------------------------------------------------- 放号阶段
+     唯一一处走服务端 API 的读数（这一页其余全是直连 RPC）。
+     阶段和白名单不在链上 —— 链上只有 bangSigned 的那道 free 边界 ——
+     所以这里只能问 /api/health。API 不通就整段标「问不到」，
+     **绝不猜一个阶段出来**：猜错的后果是页面告诉人「公售开了」而服务端一张签名都不签。 */
+  function loadPhase() {
+    var base = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
+    var NAME = { warmup: '预热期', gtd: '保底期', fcfs: '先到先得期', public: '公售' };
+    fetch(base + '/health').then(function (r) { return r.json(); }).then(function (h) {
+      var p = h.phase || null;
+      var c = h.allowlist || {};
+      $('phNow').textContent = p ? T(NAME[p] || p) : '—';
+      var nx = h.phaseNext;
+      $('phNext').textContent = !nx ? T('已是最后一段')
+        : (T(NAME[nx.phase] || nx.phase) + ' · ' + (nx.at ? new Date(nx.at).toLocaleString() : T('时间待定')));
+      $('phGtd').textContent = c.gtd == null ? '—' : String(c.gtd);
+      $('phFcfs').textContent = c.fcfs == null ? '—' : String(c.fcfs);
+      $('phApplied').textContent = h.allowlistApplied == null ? '—' : String(h.allowlistApplied);
+      $('fsPhase').textContent = p ? T(NAME[p] || p) : '—';
+      $('fsPhase').className = 'fsum' + (p === 'warmup' ? ' warn' : '');
+    }, function () {
+      $('fsPhase').textContent = T('问不到');
+      $('fsPhase').className = 'fsum warn';
+    });
+  }
+
   foldRestore();
-  $('btnRe').addEventListener('click', load);
+  $('btnRe').addEventListener('click', function () { load(); loadPhase(); });
   load();
+  loadPhase();
 })();
 </script>
 </body>
