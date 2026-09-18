@@ -25,14 +25,16 @@ window.ARCBANG_CONFIG = {
   /* ArcUniverse（宇宙 NFT，contracts/src/ArcUniverse.sol）。
      部署后填这里，并且**服务端 /etc/bnbbang/api.env 的 ARCBANG_CONTRACT 必须同步改**——
      签名把合约地址绑死了，两边不一致时签出来的名在链上一律 BadSig。 */
-  contract: '0xd5b4f783bee412501f62224f8fa08b6e77f261ea',
+  /* 2026-09-18 的第一次主网部署（0xd5b4…61ea / 0x73cc…85a8）已作废：上线 20 分钟被脚本薅走 5 枚免费额度，
+     改做白名单预热后重新部署。重部署前留空 = 站点显示「合约未部署」，铸造不可用。 */
+  contract: '',
   /* 市场（ArcMarket，contracts/src/ArcMarket.sol）。**部署后填这里** ——
      地址从 contracts/tools/deploy-arc.mjs 的输出里抄。空着 = 市场页显示「未部署」。
 
      只有一种计价：native，在 Arc 上就是 USDC，挂单价是 wei（1 USDC = 1e18）。
      成交时先按 ERC-2981 付版税（ArcUniverse 默认 5%，市场侧截断在 10%），
      再抽 1% 手续费进国库，其余给卖家；合约不留钱。 */
-  market: '0x73cc047e06c3e4bd42665a91f83c4f68102285a8',
+  market: '',
   /* 造物与命名两套在 v1 不上（它们的定价原本全建在 BANG 上，要重设计）。 */
   crafted: '',
   craftedNames: '',

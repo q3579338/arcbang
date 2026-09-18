@@ -5,6 +5,15 @@
 
 [arcbang.xyz](https://arcbang.xyz) · Arc L1 (chainId 5042, gas is paid in USDC) · 1,387 universes · no token, ever
 
+> **Status (2026-09-18): pre-launch.** The site shows a holding page while the mint is reworked into an
+> allowlisted warm-up. A first mainnet deployment (`0xd5b4…61ea` / `0x73cc…85a8`) was retired after a script
+> drained 5 free mints in its first 20 minutes; the next deployment adds a server-signed free/paid flag so
+> free mints go only to allowlisted addresses. Everything else — detonation, the 3D simulator, the sandbox — is done.
+>
+> **状态（2026-09-18）：上线前。** 站点挂着「测试中」页，铸造改成白名单预热后再开。第一次主网部署
+> （`0xd5b4…61ea` / `0x73cc…85a8`）上线 20 分钟被脚本薅走 5 枚免费额度，已作废；下一次部署把「免费/付费」
+> 标志签进服务端签名，免费只给白名单地址。引爆、3D 模拟器、沙盒都已完成。
+
 ---
 
 ## What this is
