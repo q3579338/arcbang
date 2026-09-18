@@ -207,17 +207,34 @@ const refBindings = (() => {
    只在 Arc 链生效；BNBBANG_FREE_PER_IP_DAY=0 关掉。 */
 const FREE_PER_IP_DAY = (() => { const n = Number(process.env.BNBBANG_FREE_PER_IP_DAY); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 3; })();
 const FREE_SEL = { totalSupply: '0x18160ddd', freeCap: '0x69b126ef', freePerAddr: '0x21daa6e7', freeMintCount: '0x5ecf8a80' };
+/* 返回 true / false / null（null = 链上读不到，判不了）。
+   freeCap / freePerAddr 是只能往下调的常量，缓存 10 分钟；totalSupply 缓存 20 秒；
+   freeMintCount 只在「本进程已经给这个地址签过免费」时记住（签过就当已用）。
+   这样每次签名最多 1 次 eth_call —— 上线当晚公共 RPC 限流（HTTP 429）时，原来 4 次并发调用
+   一起失败、闸「判不了就放行」，被一个 IP 用 5 个地址一分钟一枚地薅走了免费额度。 */
+const FREE_CACHE = { cap: null, per: null, capAt: 0, sup: null, supAt: 0, signed: new Set() };
 async function wouldBeFreeMint(minter) {
   const to = CONTRACT;
   if (!to || !/^0x[0-9a-f]{40}$/.test(to)) return false;
   const word = (hex) => { const h = String(hex || '').replace(/^0x/, ''); return h.length >= 64 ? BigInt('0x' + h.slice(0, 64)) : null; };
-  const [sup, cap, per, cnt] = await Promise.all([
-    chainMod.ethCall(to, FREE_SEL.totalSupply), chainMod.ethCall(to, FREE_SEL.freeCap),
-    chainMod.ethCall(to, FREE_SEL.freePerAddr),
-    chainMod.ethCall(to, FREE_SEL.freeMintCount + String(minter).toLowerCase().replace(/^0x/, '').padStart(64, '0'))
-  ].map((p) => p.then(word, () => null)));
-  if (sup === null || cap === null || per === null || cnt === null) return false;
-  return sup < cap && cnt < per;
+  const rd = (data) => chainMod.ethCall(to, data).then(word, () => null);
+  const now = Date.now();
+  const m = String(minter).toLowerCase();
+  if (FREE_CACHE.signed.has(m)) return false;                   // 本进程已给它签过免费：再来就按付费走（合约那边也会拒第二次免费）
+  if (FREE_CACHE.cap === null || now - FREE_CACHE.capAt > 600e3) {
+    const [cap, per] = await Promise.all([rd(FREE_SEL.freeCap), rd(FREE_SEL.freePerAddr)]);
+    if (cap !== null && per !== null) { FREE_CACHE.cap = cap; FREE_CACHE.per = per; FREE_CACHE.capAt = now; }
+  }
+  if (FREE_CACHE.sup === null || now - FREE_CACHE.supAt > 20e3) {
+    const sup = await rd(FREE_SEL.totalSupply);
+    if (sup !== null) { FREE_CACHE.sup = sup; FREE_CACHE.supAt = now; }
+  }
+  if (FREE_CACHE.cap === null || FREE_CACHE.sup === null) return null;
+  if (!(FREE_CACHE.sup < FREE_CACHE.cap)) return false;         // 免费期已过：付费，不限
+  if (FREE_CACHE.per === 0n) return false;
+  const cnt = await rd(FREE_SEL.freeMintCount + m.replace(/^0x/, '').padStart(64, '0'));
+  if (cnt === null) return null;
+  return cnt < FREE_CACHE.per;
 }
 
 function minterForSig(body, res) {
@@ -716,13 +733,21 @@ async function handle(req, res, u) {
     catch (e) { if (cardPoolBusy(res, e)) return; throw e; }
     const { card, cardHash } = built;
     /* 免费期防撸：见 wouldBeFreeMint 上方的说明。付费签名不经过这里。 */
-    if (FREE_PER_IP_DAY > 0 && (CHAIN_ID === 5042 || CHAIN_ID === 5042002) && minter && await wouldBeFreeMint(minter)) {
-      const fr = RL.take('free:' + RL.ipOf(req), FREE_PER_IP_DAY, 24 * 3600 * 1000, String(minter).toLowerCase());
-      if (!fr.ok) {
-        return json(res, 429, {
-          error: '这个网络今天领过的免费铸造签名已到上限（每个 IP 每天 ' + FREE_PER_IP_DAY + ' 个）。付费铸造不受影响；免费的明天再来。',
-          resetAt: fr.resetAt
-        }, { 'cache-control': 'no-store' });   // NOSTORE 在这个函数后面才声明，别踩 TDZ
+    if (FREE_PER_IP_DAY > 0 && (CHAIN_ID === 5042 || CHAIN_ID === 5042002) && minter) {
+      const free = await wouldBeFreeMint(minter);
+      /* 判不了（RPC 限流/不通）时**关闸**而不是放行：宁可让真人等一分钟再试，也不能让脚本趁 RPC 抖动薅光免费额度。 */
+      if (free === null) {
+        return json(res, 503, { error: '链上节点这一刻打不通，免费额度核对不了，请过一分钟再试。' }, { 'cache-control': 'no-store' });
+      }
+      if (free) {
+        const fr = RL.take('free:' + RL.ipOf(req), FREE_PER_IP_DAY, 24 * 3600 * 1000, String(minter).toLowerCase());
+        if (!fr.ok) {
+          return json(res, 429, {
+            error: '这个网络今天领过的免费铸造签名已到上限（每个 IP 每天 ' + FREE_PER_IP_DAY + ' 个）。付费铸造不受影响；免费的明天再来。',
+            resetAt: fr.resetAt
+          }, { 'cache-control': 'no-store' });   // NOSTORE 在这个函数后面才声明，别踩 TDZ
+        }
+        FREE_CACHE.signed.add(String(minter).toLowerCase());
       }
     }
     const { sig, deadline } = await signer.sign(
