@@ -510,8 +510,8 @@
   /* ArcUniverse 没有 payWithBang（没有代币），bangSigned 是 7 个参数：
      选择器与 sig 的偏移都不一样，按旧的 8 参编码发过去会 revert（2026-09-18 上线第一枚撞上）。 */
   function isArcSite() {
-    var c = root.BNBBANG_CONFIG || {};
-    return String(root.BNBBANG_SITE || c.site || '') === 'arc';
+    var c = root.ARCBANG_CONFIG || {};
+    return String(root.ARCBANG_SITE || c.site || '') === 'arc';
   }
   function bangSignedData(o) {
     if (isArcSite()) {
