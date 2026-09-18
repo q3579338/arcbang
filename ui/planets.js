@@ -2441,6 +2441,9 @@
     'uniform float uGasGlow; uniform vec3 uGasGlowCol;',
     'uniform vec3 uSunTint;',
     'uniform int uSurfKind; uniform vec4 uSty0, uSty1; uniform float uDetail;',
+    /* uNear：球面视图按观察距离给的两档近景权重（.x 约 1.25→1.06，.y 约 1.10→1.03）。
+       地表飞越与恒星系里的小球恒为 0 —— 近景那几层不参与那两条路径，远景/整球档逐像素不变。 */
+    'uniform vec2 uNear;',
     /* 地表类型的判定宏。SURFKIND 没定义（= -1）时按老样子在运行期比较，
        球面视图那几个程序各自 #define SURFKIND <类型>，于是另外几支在预处理阶段就没了。
        缘由：六种地表塞进同一个片元着色器，D3D 那边要编 47 秒 —— 第一次用到它就得干等。 */
@@ -2480,20 +2483,46 @@
          熔岩 冷却壳板块的边缘隆起
        每一支只花一两次噪声 —— 这个片元着色器离 D3D 的编译上限本来就不远。 */
     'float hash21(vec2 p){ vec3 q=fract(vec3(p.x,p.y,p.x)*vec3(0.1031,0.1030,0.0973)); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }',
-    'float craterField(vec3 n, float S){',
-    '  vec2 uv=sph2uv(n); vec2 c=vec2(uv.x*2.0*S, uv.y*S); vec2 ic=floor(c); float o=0.0;',
+    /* 撞击坑场。返回 (高度, dO/dc.x, dO/dc.y, 溅射毯覆盖)。
+       为什么要**解析**梯度：坑的法线原来是靠 surfBump 的三点差分求的，而 surfBump 在
+       GLOBE_MAIN 里要算三遍 —— 这个 3×3 的循环于是被 FXC 内联四份，坑一丰富编译时间就顶穿
+       D3D 的链接预算。解析梯度让它只出现两处（球面法线一处、反照率一处），省下来的额度
+       正好换成更像样的剖面：平底 + 高斯坑缘 + 坑外溅射毯 + 一圈次级小坑。
+       差分还有一个毛病：坑缘只有 0.007 弧度宽，而差分步长 0.0025 已经是它的三分之一，
+       峰值坡度被抹掉两成 —— 这也是原来「坑看不出来」的一部分原因。 */
+    'vec4 craterG(vec3 n, float S, float sec){',
+    '  vec2 uv=sph2uv(n); vec2 c=vec2(uv.x*2.0*S, uv.y*S); vec2 ic=floor(c);',
+    '  float h=0.0, ej=0.0; vec2 gr=vec2(0.0);',
     '  for(int oy=-1;oy<=1;oy++){ for(int ox=-1;ox<=1;ox++){',
     '    vec2 g=ic+vec2(float(ox),float(oy));',
     '    float h1=hash21(g), h2=hash21(g+37.7);',
     '    if(h1>0.52) continue;',
     '    vec2 jc=g+vec2(h2, fract(h2*7.31));',
     '    float rad=0.20+0.34*fract(h1*13.7);',
-    '    float d=length(c-jc)/rad;',
-    '    if(d<1.4){ float q=(d-1.0)/0.17;',
-    '      o -= (1.0-smoothstep(0.0,0.90,d))*0.95;',
-    '      o += exp(-q*q)*0.60; }',
+    '    vec2 dv=c-jc; float L=max(length(dv),1e-4); float x=L/rad;',
+    '    if(x<2.30){',
+    '      float t=clamp((x-0.50)*2.0,0.0,1.0); float sb=t*t*(3.0-2.0*t);',
+    '      float q=(x-1.0)/0.150; float rv=exp(-q*q);',
+    '      h += -(1.0-sb)*1.00 + rv*0.85;',
+    '      float dh = 12.0*t*(1.0-t) + rv*(-2.0*q/0.150)*0.85;',
+    '      gr += dh*dv/(L*rad);',
+    '      ej = max(ej, smoothstep(2.30,1.14,x)*smoothstep(1.00,1.22,x));',
+    '    }',
+    /* 次级小坑：同一格里再落一个四分之一大的（只在近景淡入 —— 远处它连一个像素都不到，
+       提前放出来只会变成一层噪点）。 */
+    '    if(sec>0.004){',
+    '      vec2 jc2=g+vec2(fract(h1*29.7), fract(h2*17.3));',
+    '      float r2=rad*0.27; vec2 d2=c-jc2; float L2=max(length(d2),1e-4); float x2=L2/r2;',
+    '      if(x2<1.70){',
+    '        float t2=clamp((x2-0.50)*2.0,0.0,1.0); float s2=t2*t2*(3.0-2.0*t2);',
+    '        float q2=(x2-1.0)/0.190; float rv2=exp(-q2*q2);',
+    '        h += (-(1.0-s2)*0.80 + rv2*0.60)*sec;',
+    '        float dh2 = (9.6*t2*(1.0-t2) + rv2*(-2.0*q2/0.190)*0.60)*sec;',
+    '        gr += dh2*d2/(L2*r2);',
+    '      }',
+    '    }',
     '  } }',
-    '  return o; }',
+    '  return vec4(h, gr.x, gr.y, ej); }',
     'float surfBump(vec3 n){',
     '  if(uDetail<=0.02) return 0.0;',
     '  float b=0.0;',
@@ -2516,7 +2545,7 @@
     '#endif',
     '#if SURFKIND < 0 || SURFKIND == 0',
     '  if(KIND_ROCK){',
-    '    b += craterField(n, 26.0)*2.20*clamp(uSty0.z,0.25,1.0);',
+    /* 坑不在这里了：坡度改由 craterG 解析给出（见 GLOBE_MAIN），这里只留碎石/巨石那一层。 */
     '    b += td4(n*9.5+uDetOff).b*0.16;',
     '  }',
     '#endif',
@@ -2532,6 +2561,62 @@
     '  }',
     '#endif',
     '  return b*uDetail; }',
+    /* 近景补的中高频起伏。为什么要单独一层：球面视图的法线走 fieldGrad，只有两个倍频
+       （地球尺度上约 25–50 km 一个起伏），再往下的高度细节全被贴图插值抹平了 ——
+       贴到脸上看到的就是一张放大的模糊图。这一层用同一张平铺细节贴图补两档
+       （地球尺度约 5 km 与 1 km），并且**用自己的小步长求梯度** ——
+       surfBump 那一路的步长 0.0025 比这两档的纹素还大，拿它去差分只会得到零。
+       两档按 uNear.x / uNear.y 先后淡入：1 km 那一档进早了就会起摩尔纹。 */
+    'float surfBumpHi(vec3 n){',
+    '  float a=uNear.x, b=uNear.y; if(a<=0.004) return 0.0;',
+    '  float s=0.0;',
+    /* 每一档取两个不相称的倍频再混，而且**每一层都转过一个不同的方向**。
+       缘由：这张 32³ 贴图是三线性插值的，单一频率的**梯度**在一个纹素之内是常数 ——
+       用小步长去差分，法线会照着纹素的方格一格一格地翻。各层如果都用同一个轴向，
+       这些方格边缘互相平行，叠起来就是一张清清楚楚的矩形拼贴（实测就是这个样子）。
+       转过角度之后各层的格子边缘指向不同方向，叠加出来的是材质而不是网格。
+       两个矩阵是固定的正交矩阵（3-4-5 直角三角形凑的），不引入任何随机性。 */
+    '  const mat3 RA=mat3(0.8,0.6,0.0, -0.36,0.48,0.8, 0.48,-0.64,0.6);',
+    '  const mat3 RB=mat3(0.6,0.8,0.0, -0.48,0.36,0.8, 0.64,-0.48,0.6);',
+    '  vec3 nA=RA*n, nB=RB*n, nC=RB*nA;',
+    '  vec4 t1=td4(n*22.0+uDetOff*3.1), u1=td4(nA*41.0+uDetOff*5.7);',
+    '  vec4 t2=td4(nB*95.0+uDetOff*7.7), u2=td4(nC*178.0+uDetOff*11.3);',
+    '  float A1=t1.b*0.60+u1.g*0.40, A2=t1.r*0.60+u1.a*0.40, A3=t1.g*0.60+u1.r*0.40, A4=t1.a*0.60+u1.b*0.40;',
+    '  float B1=t2.a*0.58+u2.r*0.42, B2=t2.g*0.58+u2.b*0.42, B3=t2.b*0.58+u2.a*0.42;',
+    '#if SURFKIND < 0 || SURFKIND == 3',
+    '  if(KIND_ICE){',
+    '    s += (1.0-abs(A2))*1.15*a;',
+    '    s += A3*0.60*a;',
+    '    s += B1*0.16*b; }',
+    '#endif',
+    '#if SURFKIND < 0 || SURFKIND == 1',
+    '  if(KIND_DES){',
+    '    float dk=max(uSty0.x,6.0)*26.0;',
+    /* 主沙丘（surfBump 那一层）是一组严格平行的正弦波，贴近了看就是一张瓦楞纸。
+       这里补两件真实沙海都有的东西：一组斜交的次级沙脊，和丘间的不规则起伏。 */
+    '    s += sin(dot(n,vec3(-uSty0.y,0.42,uSty0.z))*dk*0.35 + A2*1.4)*0.95*a;',
+    '    s += A1*0.42*a;',
+    /* 沙纹只放在最近那一档：它的波长在 d=1.2 上只有三四个像素，早放出来就是一层摩尔纹。 */
+    '    s += sin(dot(n,vec3(uSty0.z,0.55,uSty0.y))*dk*5.0 + A3*0.7)*0.115*b;',
+    '    s += B3*0.14*b; }',
+    '#endif',
+    '#if SURFKIND < 0 || SURFKIND == 0',
+    '  if(KIND_ROCK){',
+    '    s += A1*1.05*a;',
+    '    s -= smoothstep(0.30,0.92, 1.0-abs(A4))*0.75*a;',
+    '    s += (B1*0.55+B2*0.45)*0.24*b; }',
+    '#endif',
+    '#if SURFKIND < 0 || SURFKIND == 4',
+    '  if(KIND_LAVA){',
+    '    s += (1.0-abs(A4))*0.90*a;',
+    '    s += B2*0.18*b; }',
+    '#endif',
+    '#if SURFKIND < 0 || SURFKIND == 2 || SURFKIND == 5 || SURFKIND == 6',
+    '  if(KIND_OTHER){',
+    '    s += A2*0.55*a;',
+    '    s += B3*0.12*b; }',
+    '#endif',
+    '  return s; }',
     'Surf shadeSurface(vec3 n, vec4 fld, float nz){',
     '  Surf S; S.emis=vec3(0.0); S.spec=0.0; S.water=0.0; S.ice=0.0; S.river=0.0;',
     '  float h=fld.x, mark=fld.z, lat=abs(n.y);',
@@ -2566,9 +2651,12 @@
     '      float ray = smoothstep(0.52,0.96,mark)*uSty0.y;',
     '      col = mix(col, min(col*1.85+0.09, vec3(1.0)), ray*0.8);',
     '      col *= 0.90+0.20*snoise(n*(1.5+uSty1.z*0.6)+3.0);',
-    '      if(uDetail>0.02){ float cf=craterField(n,26.0);',
-    '        col = mix(col, min(col*1.65+0.05,vec3(1.0)), clamp(cf,0.0,1.0)*0.60*uDetail);',
-    '        col = mix(col, col*0.80, clamp(-cf,0.0,1.0)*0.35*uDetail); }',
+    /* 坑的反照率：坑缘亮、坑底暗，坑外再铺一圈溅射毯（新翻出来的碎屑比周围亮，
+       月球的年轻坑就是这个样子）。三者都只在近景出现。 */
+    '      if(uDetail>0.02){ vec4 cg=craterG(n,26.0,uNear.x);',
+    '        col = mix(col, min(col*1.80+0.07,vec3(1.0)), clamp(cg.x,0.0,1.0)*0.72*uDetail);',
+    '        col = mix(col, col*0.72, clamp(-cg.x,0.0,1.0)*0.50*uDetail);',
+    '        col = mix(col, min(col*1.42+0.035,vec3(1.0)), cg.w*(0.55+0.45*td4(n*34.0+uDetOff).g)*0.46*uDetail); }',
     '      col = mix(col, col*1.22+0.02, steep*0.55);',
     '      S.spec = 0.02;',
     '    }',
@@ -2637,6 +2725,10 @@
     '    }',
     '#endif',
     '    if(uDetail>0.004){ col *= mix(1.0, 0.965+0.07*td4(n*4.5+uDetOff).b+0.025*td4(n*18.0+uDetOff).a, uDetail); }',
+    /* 近景的中高频反照率：和上面那层起伏同频，配一起才是「看得清的地表」而不是
+       「被放大的模糊贴图」。远景（uNear = 0）一笔都不加。 */
+    '    if(uNear.x>0.004){ vec4 q1=td4(n*26.0+uDetOff*4.3), q2=td4(n*110.0+uDetOff*9.1);',
+    '      col *= 1.0 + (q1.a*0.115+q1.r*0.060)*uNear.x + (q2.g*0.080+q2.b*0.045)*uNear.y; }',
     '#if SURFKIND < 0 || SURFKIND != 3',
     '    if(KIND_NOT_ICE){ float ice = smoothstep(uIceLat-0.05, uIceLat+0.03, lat + 0.05*td(n*0.040+uDetOff) + elev*0.12*uIceHeight)*(1.0-steep*0.75);',
     '      col = mix(col, uIceColor, ice); S.ice=max(S.ice,ice); S.spec += ice*0.22; }',
@@ -2751,12 +2843,40 @@
     'uniform sampler2D uPal;',
     'uniform vec3 uAtm, uSunTint, uGasGlowCol;',
     'uniform float uAtmDensity, uTime, uGasGlow, uDetail;',
+    /* uNear：球面视图按观察距离给的两档近景权重（.x 半屏→贴脸，.y 只在最后一点距离）。
+       其它路径（地表飞越、卫星、恒星系里的小球）恒为 0，所以远景与整球档一个字不变。 */
+    'uniform vec2 uNear;',
     'uniform float uBandY[20]; uniform vec3 uBandC[20]; uniform int uBandN;',
     'uniform vec4 uStormA, uStormB, uStormC, uGasP, uGasP2;',
     'uniform highp sampler3D uDetTex; uniform vec3 uDetOff;',
     'vec4 td4(vec3 p){ return texture(uDetTex, p) * 2.0 - 1.0; }',
     'float td(vec3 p){ return texture(uDetTex, p).r * 2.0 - 1.0; }',
     'float wrapPi(float a){ return mod(a+3.14159265, 6.28318531)-3.14159265; }',
+    'float hashg(vec2 p){ vec3 q=fract(vec3(p.x,p.y,p.x)*vec3(0.1031,0.1030,0.0973)); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }',
+    /* 小涡：在局地切平面（东向弧长, 纬度）上按格点撒少量涡心，每个涡把采样坐标绕涡心旋一个
+       随半径衰减的角度。返回的是切向位移（弧度），拿去卷丝缕 —— 于是丝在涡里被卷成螺线。
+       只有三分之一的格子出涡：要的是「少而大」，不是一层均匀的小旋涡。
+       与时间无关（种子 → uDetOff），同一个定位码逐像素可复现。 */
+    'vec2 eddyOff(float lon, float lat, float S, float seed, out float amt){',
+    '  float cl=max(cos(lat),0.12);',
+    '  vec2 q=vec2(lon*cl, lat)*S; vec2 ic=floor(q); vec2 acc=vec2(0.0); amt=0.0;',
+    '  for(int oy=-1;oy<=1;oy++){ for(int ox=-1;ox<=1;ox++){',
+    '    vec2 g=ic+vec2(float(ox),float(oy))+seed;',
+    '    float h1=hashg(g), h2=hashg(g+41.7);',
+    '    if(h1>0.22) continue;',
+    '    vec2 jc=ic+vec2(float(ox),float(oy))+vec2(h2, fract(h2*7.31));',
+    '    vec2 d=q-jc; vec2 de=d/vec2(2.2,1.0);',                      /* 长轴沿纬向：行星上的涡都是被纬向流拉扁的 */
+    /* 半长轴 2.2×rad 必须留在 3×3 的搜索范围（±1.5 格）以内，否则涡会被格子边界一刀切掉 ——
+       画面上就是一道笔直的接缝。rad ≤ 0.68 时 2.2·rad ≤ 1.5，正好压住。 */
+    '    float r=length(de)/(0.30+0.32*fract(h1*13.7));',
+    '    if(r>1.0) continue;',
+    '    float w=1.0-r; w=w*w;',
+    '    float a=(h2<0.5?-1.0:1.0)*w*1.45;',
+    '    float cs=cos(a), sn=sin(a);',
+    '    acc += vec2(cs*d.x-sn*d.y, sn*d.x+cs*d.y)-d;',
+    '    amt=max(amt,w);',
+    '  } }',
+    '  return acc/S; }',
     /* 风暴斑：椭圆长轴沿纬向，内部按半径旋进（螺旋），外圈一道亮环 */
     'vec3 stormPatch(vec3 col, vec4 sp, float lon, float y, float lat, float sgn){',
     '  if(sp.w<=0.001) return col;',
@@ -2810,17 +2930,69 @@
     '  vec3 st=vec3(d0.x, d0.y*3.6, d0.z);',
     '  float fine = td4(st*0.85+uDetOff).b*0.62 + td4(st*2.1+uDetOff+0.33).a*0.38;',
     '  col *= 1.0 + fine*0.075*(0.55+0.65*uDetail);',
+    /* ---- 近景：丝缕与小涡（由剪切强度驱动） --------------------------------
+       上一版在这里堆了三层等幅的细噪声，得到的是**一层绒毛**：整个球面一样毛，
+       既没有结构也没有对比。真实的木星/海王星不是这样 —— 卷须、拉丝、小涡只长在
+       **自由剪切层**里（两股反向纬向流之间、以及大涡的外缘），带心的平流区是干净的。
+       所以这一层改成：
+         ① 先量出剪切强度：把第一级流场沿经线挪一点再采一次，取切向扭曲量之差 ——
+            这就是 ∂u/∂φ，风切变本身；再与带界掩膜 edge 取大。
+         ② 只有剪切区里才撒小涡（eddyOff：少而大，三分之一的格子出一个），
+            并用涡的切向位移去卷采样坐标。
+         ③ 丝缕用**脊形**噪声（1−|x|）配高阈值 smoothstep 抽出来：得到的是少数几条
+            又粗又亮/又暗的丝，而不是满屏等幅的绒。干净区的系数是 0，一笔都不加。 */
     '  if(uDetail>0.02){',
-    /* 贴近了再加一级更细的旋涡扭曲 —— 光把噪声压扁只会得到一层「毛」，
-       细纹自己也得被卷过才有丝缕和小涡。 */
-    '    vec3 f4=td4(d0*1.35+uDetOff+0.63).xyz;',
-    '    vec3 d1=normalize(d0+cross(n,f4)*0.0042*turb*(0.30+edge)*uDetail);',
-    '    vec3 st2=vec3(d1.x, d1.y*4.4, d1.z);',
-    '    col *= 1.0 + td4(st2*7.2+uDetOff+0.61).a*0.075*uDetail;',
-    /* 贴脸时才淡入的两档：带内的细丝与小尺度对流胞。频率取到「一个纹素约三个像素」，
-       再细就开始起噪点了（那正是第一版糊+闪的原因）。 */
-    '    col *= 1.0 + (td4(st2*5.0+uDetOff+0.55).r*0.58 + td4(st2*11.5+uDetOff+0.81).g*0.42)*0.115*uDetail;',
-    '    col *= 1.0 + td4(vec3(d1.x,d1.y*5.4,d1.z)*16.0+uDetOff+0.29).b*0.060*uDetail; }',
+    '    vec3 fB=td4(d0*0.21+uDetOff+0.21).xyz;',
+    '    vec3 dY=normalize(d0+vec3(0.0,0.055,0.0));',
+    '    vec3 fY=td4(dY*0.21+uDetOff+0.21).xyz;',
+    '    float shear=length(cross(dY,fY)-cross(d0,fB))/0.055;',
+    '    float sm=clamp(max(smoothstep(5.6,9.2,shear), edge*0.90), 0.0, 1.0)*uDetail*clamp(turb*1.15,0.35,1.25);',
+    '    float cl=max(length(n.xz),0.05);',
+    '    vec3 eE=vec3(n.z,0.0,-n.x)/cl, eN=cross(n,eE);',
+    '    float eamt; vec2 eo=eddyOff(lon, lat, 3.0, uDetOff.x*7.0+uDetOff.y*3.0, eamt);',
+    '    vec3 d1=normalize(d0 + (eE*eo.x+eN*eo.y)*(0.08+1.15*sm));',
+    '    vec3 st2=vec3(d1.x, d1.y*3.0, d1.z);',
+    /* 脊形噪声的输入要混两个倍频：这张 32³ 贴图是三线性插值的，单一低频拿去做 1−|x|
+       再卡一道陡阈值，格子的棱线会原样显出来（画面上就是一条条折线）。混第二个倍频
+       把棱线错开，出来的才是自然的丝。两次采样供三层共用（td4 一次给四个通道）。 */
+    '    vec4 A=td4(st2*1.15+uDetOff+0.17), B=td4(st2*2.60+uDetOff+0.43);',
+    '    float fa=smoothstep(0.80,0.975, 1.0-abs(A.r*0.70+B.g*0.30));',
+    '    float fb=smoothstep(0.87,0.995, 1.0-abs(A.g*0.35+B.r*0.65));',
+    '    float fd=smoothstep(0.74,0.965, 1.0-abs(A.b*0.62+B.a*0.38));',
+    '    col = mix(col, min(col*1.42+0.10*dot(col,vec3(0.3333)),vec3(1.0)), (fa*0.85+fb*0.45)*sm*0.70);',
+    '    col = mix(col, col*0.72, fd*sm*0.58);',
+    /* 涡心外缘一圈亮边：小涡得能一眼认出来是涡，而不是一块亮斑 */
+    '    col = mix(col, min(col*1.30+0.07*dot(col,vec3(0.3333)),vec3(1.0)), smoothstep(0.30,0.80,eamt)*smoothstep(0.92,0.55,eamt)*sm*0.55);',
+    /* 贴脸档（d≲1.10）：屏幕上一个弧度将近两万像素、视野只剩两三度 —— 上面那一档的
+       剪切层与涡都比整个画面还大，常常整屏落在干净区里，看着又变回一张平板。
+       所以这里另起一档：按更细的流场（频率 0.60）重新量一次剪切，配一组小得多的涡。
+       量纲按频率比（0.60/0.21）归一化，阈值就能沿用同一套口径。
+       半屏（d≈1.55）时 uNear.y = 0，这一档一笔都不加，所以两档的频率不会叠成绒毛。 */
+    '    if(uNear.y>0.01){',
+    '      vec3 pB=td4(d0*0.60+uDetOff+0.47).xyz;',
+    '      vec3 pY=normalize(d0+vec3(0.0,0.020,0.0));',
+    '      vec3 pF=td4(pY*0.60+uDetOff+0.47).xyz;',
+    '      float sh2=length(cross(pY,pF)-cross(d0,pB))/0.020/2.86;',
+    '      float sm2=clamp(max(smoothstep(4.0,7.6,sh2), sm), 0.0, 1.0)*uNear.y;',
+    '      float e2; vec2 eo2=eddyOff(lon, lat, 60.0, uDetOff.z*11.0+1.7, e2);',
+    '      vec3 d2=normalize(d1 + (eE*eo2.x+eN*eo2.y)*(0.10+1.20*sm2));',
+    '      vec3 st3=vec3(d2.x, d2.y*3.4, d2.z);',
+    '      vec4 G=td4(st3*5.6+uDetOff+0.29), K=td4(st3*12.6+uDetOff+0.53);',
+    '      float g1=smoothstep(0.80,0.975, 1.0-abs(G.r*0.70+K.g*0.30));',
+    '      float g2=smoothstep(0.87,0.995, 1.0-abs(G.g*0.35+K.r*0.65));',
+    '      float gd=smoothstep(0.74,0.965, 1.0-abs(G.b*0.62+K.a*0.38));',
+    '      col = mix(col, min(col*1.40+0.09*dot(col,vec3(0.3333)),vec3(1.0)), (g1*0.85+g2*0.45)*sm2*0.70);',
+    '      col = mix(col, col*0.74, gd*sm2*0.58);',
+    /* 干净区不能是一块死平的漆：贴脸时给一层很淡的沿流线细纹
+       （复用上面已经采过的两组样本，不多花一次采样）。幅度只有百分之五，
+       看着是「平滑的霾里有一点纹路」，不会退回绒毛。 */
+    '      col *= 1.0 + (G.a*0.60+K.b*0.40)*0.090*uNear.y;',
+    '      vec4 Q=td4(st3*2.60+uDetOff+0.71);',
+    '      float cellA=smoothstep(0.42,0.88, 1.0-abs(Q.r*0.65+G.a*0.35));',
+    '      float cellB=smoothstep(0.45,0.90, 1.0-abs(Q.g*0.65+K.b*0.35));',
+    '      col = mix(col, min(col*1.18+0.06*dot(col,vec3(0.3333)),vec3(1.0)), cellA*0.42*uNear.y);',
+    '      col = mix(col, col*0.90, cellB*0.40*uNear.y);',
+    '      col = mix(col, min(col*1.28+0.06*dot(col,vec3(0.3333)),vec3(1.0)), smoothstep(0.30,0.80,e2)*smoothstep(0.92,0.55,e2)*sm2*0.50); } }',
     /* 带界的亮暗卷曲（羽流本体） */
     '  col = mix(col, min(col*1.28+0.03,vec3(1.0)), edge*smoothstep(0.0,0.75,fest)*0.55*turb);',
     '  col = mix(col, col*0.84, edge*smoothstep(0.0,0.75,-fest)*0.35*turb);',
@@ -2917,6 +3089,19 @@
     '    if(uDetail>0.02){ const float EB=0.0025; float b0=surfBump(n);',
     '      float bx=surfBump(normalize(n+T*EB)), by=surfBump(normalize(n+B*EB));',
     '      dhx += (bx-b0)*(0.0016/EB); dhy += (by-b0)*(0.0016/EB); }',
+    /* 近景那两档起伏：纹素比上面的差分步长细得多，必须用自己的小步长求梯度。 */
+    '    if(uNear.x>0.004){ const float EH=0.00010; float c0=surfBumpHi(n);',
+    '      float cx=surfBumpHi(normalize(n+T*EH)), cy=surfBumpHi(normalize(n+B*EH));',
+    '      dhx += (cx-c0)*(0.00016/EH); dhy += (cy-c0)*(0.00016/EH); }',
+    /* 撞击坑的坡度：解析梯度（见 craterG）。dO/dc 换到切平面上要乘 dc/d(弧长)：
+       经向 S/(π·cosφ)、纬向 S/π。0.0016 与上面那一路同一个口径，倍率 2.9 是
+       原来的 2.20 提上来的 —— 差分抹掉的那两成也一并补回来了。 */
+    '#if SURFKIND < 0 || SURFKIND == 0',
+    '    if(KIND_ROCK && uDetail>0.02){ vec4 cg2=craterG(n,26.0,uNear.x);',
+    '      float ka=2.9*clamp(uSty0.z,0.25,1.0)*uDetail*0.0016;',
+    '      float clat=max(length(n.xz),0.15);',
+    '      dhx += cg2.y*(8.2761*ka/clat); dhy += cg2.z*(8.2761*ka); }',
+    '#endif',
     '    vec3 Nl=normalize(gn-(T*dhx+B*dhy)*(1.0-S.water)); vec3 N2=normalize(uRot*Nl);',
     '    float soft=clamp(uAtmDensity,0.0,1.5); float diff=max(dot(N2,L),0.0)*smoothstep(-0.03-0.30*soft, 0.02+0.14*soft, ndl);',
     '    lit = S.col*uSunTint*(diff*1.05*uLumK+0.035*uAmbK);',
@@ -3748,7 +3933,9 @@
        · 先出一版 1/4 边长（像素数 1/16，实测 ~10 ms）的立刻上屏；
        · 全分辨率排进 mapQueue，由每帧的 mapQueueStep 分片跑，跑完再换上去并交叉淡入。
      缓存命中（同一颗再回来）时两条路都不走，和从前一样直接复用。 */
-  GLR.prototype.planetGPU = function (planet, vp, size) {
+  /* opts.noCity：不要城市灯光图。恒星系视图里的小球用得上 —— 那张图是 8 MB 级别的，
+     一个恒星系八颗行星全建一遍，换个系统就是一次长卡顿，而小球上根本看不见灯。 */
+  GLR.prototype.planetGPU = function (planet, vp, size, opts) {
     size = size || 512;
     var key = (planet.seed >>> 0) + ':' + (planet.visualKey || planet.type) + ':' + size;
     var g = this.gpu[key]; if (g) return g;
@@ -3767,7 +3954,8 @@
     });
     g.lowres = lowres; g.fullSize = size; g.planet = planet; g.mapOld = null; g.fade = 1;
     g.cities = null; g.city = null; g.citiesTodo = true;
-    if (!lowres) this.buildCities(g, planet);
+    if (opts && opts.noCity) g.citiesTodo = false;
+    else if (!lowres) this.buildCities(g, planet);
     this.gpu[key] = g; this.gpuKeys.push(key);
     while (this.gpuKeys.length > 24) { var k0 = this.gpuKeys.shift(), old = this.gpu[k0]; gl.deleteTexture(old.perm); gl.deleteTexture(old.map); gl.deleteTexture(old.pal); if (old.mapOld) gl.deleteTexture(old.mapOld); if (old.city) gl.deleteTexture(old.city); delete this.gpu[k0]; }
     return g;
@@ -3935,7 +4123,9 @@
       uGasGlow: vp.gasGlow || 0, uGasGlowCol: vp.gasGlowCol || [0, 0, 0], uSunTint: vp.sunTint || [1, 1, 1],
       /* 缺省：细节全开、最细八度满权重 —— 地表飞越走的就是这一档，与 CPU 的 fieldAtCPU 逐位一致。
          球面视图会按到相机的距离把这两项改小（见 drawGlobe）。 */
-      uDetail: 1, uOctF: 1, uAlpha: 1, uDetTex: 4 };
+      /* uNear：只有球面视图会按观察距离把它抬起来（见 drawGlobe）。地表飞越、卫星、
+         恒星系里的小球一律留 0 —— 近景那几层因此完全不参与这些路径，远景逐像素不变。 */
+      uDetail: 1, uOctF: 1, uAlpha: 1, uDetTex: 4, uNear: [0, 0] };
     var sty = styleUniforms(vp); for (var sk in sty) u[sk] = sty[sk];
     if (vp.gas) {
       var gb = gasBandUniforms(vp, (g && g.maps) ? (g.maps.planetSeed >>> 0) : 0); for (var bk in gb) u[bk] = gb[bk];
@@ -3966,6 +4156,8 @@
     var inFrame = false, lastFrameAt = 0, watchdog = 0;
     // 画布自己铺黑底：宿主页面没给 background 时（浅色主题）不会在还没画出第一帧前透出白底
     try { if (canvas.style && !canvas.style.background) canvas.style.background = '#000'; } catch (e) { /* ignore */ }
+    /* 恒星系视图里小球用的 visualParams 缓存：一帧要问八次，每次重算太贵（按百万年取整分桶）。 */
+    var miniVPCache = {}, miniVPKeys = [];
     var sysCam = { yaw: 0.9, tilt: 0.95, dist: 10, fit: 10 }, globeCam = { yaw: 0.6, pitch: 0.25, dist: 3.2, spin: 0 }, surf = { lat: 0, lon: 0, alt: 10000, heading: 0, pitch: -0.55, groundZ: 0, under: false };
     var animYr = 0, planetPos = [], starScreen = [], keys = {}, drag = null, lastClick = 0, moveDirty = false, hoverInfo = null, quality = 1, dtEma = 0.016, qTimer = 0, lastDt = 0.016;
     var showMoons = opts.showMoons === true;   // 恒星系视图：是否给所有行星都画放大的卫星示意（默认只画选中/悬停的那颗；M 键切换）
@@ -5070,13 +5262,57 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       }
       planetPos = [];
       var moonLabels = [], moonScaleNote = null, moonLine = null;
+      /* 行星不再一律画成圆点：够大的（直径 ≥ MINI_MIN_PX）改用球面视图那套着色器画成真的小球，
+         能看出是带纹的巨行星、有冰盖的冰球、还是海陆分明的生命世界。
+         三条闸门，缺一不可：
+           · 直径小于 MINI_MIN_PX 就退回圆点 —— 再小的球只会是一团摩尔纹，圆点反而干净；
+           · 着色器没收货就退回圆点，并且**一帧只发一个**新程序（每个都是几秒的链接，
+             一次发五个等于把驱动的编译线程占死）；
+           · 贴图没建好也退回圆点，并且**一帧只建一张**（64×32 的图约 2 ms，八颗一起建就是一次卡顿）。
+         贴图取 64 边长（不是球面视图的 512）：小球上多一个纹素也看不出来，却省掉几十毫秒，
+         而且纹素更大反而压住了缩小采样的摩尔纹。城市灯光图明确不建（noCity）。 */
+      var MINI_MIN_PX = 24, miniGlobes = [], miniBuilt = 0, miniIssued = 0;
+      function miniVP(pl) {
+        var k = (pl.seed >>> 0) + ':' + Math.round(S.timeYr / 1e6);
+        if (miniVPCache[k]) return miniVPCache[k];
+        var v = visualParams(pl, S.timeYr);
+        miniVPCache[k] = v; miniVPKeys.push(k);
+        while (miniVPKeys.length > 48) delete miniVPCache[miniVPKeys.shift()];
+        return v;
+      }
       sys.planets.forEach(function (p, i) {
         var born = smoothstep(p.timeline.formGyr, p.timeline.formGyr + 0.15, age); planetPos[i] = null; if (born <= 0) return;
         var pa = planetAbs(p, animYr), pv = mapXY(pa.xy[0], pa.xy[1]), sc = toScreen(M.vp, pv), op = { p: pv, sunDir: v3norm([-pa.rel[0], 0, pa.rel[1]]) };
         R.drawLines(sysNB ? planetPathAbs(p) : orbitPath(p), M.vp, [1, 1, 1, (i === S.selected ? 0.55 : 0.16) * born], false);
         var px = clamp((3.2 + 3.2 * Math.log2(1 + p.radiusRel)) * Math.pow(sysCam.fit / sysCam.dist, 0.5), 2.5, 70) * (0.5 + 0.5 * born);
         var col = rgb(p.color || '#aaaaaa'), lv = m4dir(M.view, op.sunDir);
-        sprites.push({ p: op.p, size: px, color: [col[0], col[1], col[2], born], light: lv, kind: 1 });
+        var mini = null;
+        if (px * 2 >= MINI_MIN_PX && born > 0.75) {
+          var mvp0 = miniVP(p);
+          if (mvp0 && mvp0.exists) {
+            var pname = globeProgName(mvp0);
+            if (!R.ready(pname)) { if (miniIssued < 1 && R.ensureProg(pname)) miniIssued++; }
+            else {
+              var mg0 = R.gpuCached(p, 64);
+              if (!mg0 && miniBuilt < 1) { miniBuilt++; mg0 = R.planetGPU(p, mvp0, 64, { noCity: true }); }
+              if (mg0) {
+                /* 世界单位 → 屏幕像素：量一根单位长度的横向线段，反推小球该多大。
+                   （精灵的 size 就是设备像素的半径，两边用同一个口径才对得上。） */
+                var eyeDir = v3norm(v3sub(M.eye, op.p));
+                var rightW = v3norm(v3cross([0, 1, 0], eyeDir)); if (!isFinite(rightW[0])) rightW = [1, 0, 0];
+                var s0 = toScreen(M.vp, op.p), s1 = toScreen(M.vp, v3add(op.p, rightW));
+                var pxPerUnit = Math.hypot(s1[0] - s0[0], s1[1] - s0[1]) * dpr;
+                if (pxPerUnit > 1e-6) {
+                  var rw = px / pxPerUnit;
+                  mini = { g: mg0, vp: mvp0, prog: pname, px: px, sun: op.sunDir,
+                    model: m4mul(m4trans(op.p), m4mul(m4scale(rw), planetModel(p, animYr * 2.0 + (p.seed % 628) / 100))) };
+                  miniGlobes.push(mini);
+                }
+              }
+            }
+          }
+        }
+        if (!mini) sprites.push({ p: op.p, size: px, color: [col[0], col[1], col[2], born], light: lv, kind: 1 });
         if (i === S.selected) sprites.push({ p: op.p, size: px + 7, color: [1, 1, 1, 0.9], kind: 2 });
         if (hoverInfo && hoverInfo.index === i && i !== S.selected) sprites.push({ p: op.p, size: px + 7, color: [1, 1, 1, 0.4], kind: 2 });
         planetPos[i] = { sx: sc[0], sy: sc[1], px: px, pos: op.p, depth: sc[2] };
@@ -5104,6 +5340,29 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       });
       sprites.sort(function (a, b) { return a.kind === 0 ? -1 : b.kind === 0 ? 1 : 0; });
       R.drawSprites(sprites, M.vp, W, H);
+      /* 小球：放在精灵之后画，这样它们压在恒星的光晕上（原来的行星圆点也是这个次序）。
+         深度缓冲此刻只有它们自己在写 —— 天空、轨道线、精灵都关了深度测试 ——
+         所以打开深度测试就足以让小球之间正确遮挡。画完必须把状态还原：
+         后面的文字是按屏幕坐标铺的 quad，背面朝外，剔除不关掉会被整片剔掉。 */
+      if (miniGlobes.length) {
+        gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
+        gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
+        gl.bindVertexArray(R.sphereVAO);
+        for (var mi2 = 0; mi2 < miniGlobes.length; mi2++) {
+          var mq = miniGlobes[mi2];
+          /* 极低细节：uDetail = 0（高频反照率斑与中尺度起伏全不要）、uOct = 2、
+             云与城市灯关掉、大气边光只留很淡的一圈。这几档正是缩小时摩尔纹的来源。 */
+          var mmu2 = materialUniforms(mq.vp, mq.g, elapsed, 0, 2);
+          mmu2.uDetail = 0; mmu2.uOctF = 0.001; mmu2.uCloud = 0; mmu2.uLights = 0; mmu2.uNear = [0, 0];
+          mmu2.uAtmDensity = Math.min(mq.vp.atmDensity || 0, 0.5);
+          mmu2.uVP = M.vp; mmu2.uModel = mq.model; mmu2.uRot = m3of(mq.model); mmu2.uCamW = M.eye; mmu2.uSunW = mq.sun;
+          mmu2.uEps = clamp(1.5 / Math.max(mq.px, 4), 3e-3, 0.2); mmu2.uSlope = 1.0; mmu2.uForming = 1; mmu2.uAlpha = 1;
+          R.use(mq.prog, mmu2, [mq.g.perm, mq.g.map, mq.g.pal, mq.g.pal, R.det3()]);
+          gl.drawElements(gl.TRIANGLES, R.sphereN, gl.UNSIGNED_SHORT, 0);
+        }
+        gl.bindVertexArray(null);
+        gl.disable(gl.CULL_FACE); gl.disable(gl.DEPTH_TEST); gl.depthMask(true);
+      }
       // 标签
       if (starLabels.length) starLabels.forEach(function (sl) { var scs = toScreen(M.vp, sl.v); starScreen.push({ sx: scs[0], sy: scs[1], star: sl.star }); R.drawText(sl.name, scs[0] + 10, scs[1] - 10, 12, '#f0e6d2', 0.9, W, H, dpr); });
       else { var sc0 = toScreen(M.vp, [0, 0, 0]); starScreen.push({ sx: sc0[0], sy: sc0[1], star: star }); R.drawText(TRN(star.name) + (S.selected === -2 ? TR(' · Enter 近观（安全距离外，不可降落）') : ''), sc0[0] + 12, sc0[1] - 12, 13, S.selected === -2 ? '#ffffff' : '#f0e6d2', 0.9, W, H, dpr); }
@@ -5287,8 +5546,13 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
       var octC = clamp(3 + Math.log2(1 / Math.max(d - 1, 0.01)), 2, 6), oct = Math.max(2, Math.ceil(octC)), octF = clamp(octC - (oct - 1), 0.001, 1);
       /* 细节权重：从 2.8 就开始起、1.25 就满 —— 半屏（d≈1.55）那一档要看得到丝缕，不能等贴脸才淡入 */
       var detail = smoothstep(2.8, 1.25, d);
+      /* 贴脸档：uDetail 在半屏就已经接近 1（0.90），区分不出「半屏」和「贴脸」，
+         而这两档的屏幕分辨率差了十几倍 —— 同一个空间频率不可能两边都好看。
+         所以再给两档更近的权重：.x 从 1.25 起、1.06 满（约 5 km 尺度那一层），
+         .y 从 1.10 起、1.03 满（约 1 km 尺度那一层，早了会起摩尔纹）。 */
+      var near = [smoothstep(1.25, 1.06, d), smoothstep(1.10, 1.03, d)];
       var mu = materialUniforms(vp, g, elapsed, globeCam.spin * 0.12 + elapsed * 0.006, oct);
-      mu.uOctF = octF; mu.uDetail = detail;
+      mu.uOctF = octF; mu.uDetail = detail; mu.uNear = near;
       if (!vp.exists) { // 尚未形成：只画一团尘埃
         gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.disable(gl.DEPTH_TEST);
         R.use('ring', { uVP: M.vp, uModel: m4id(), uInner: 0.2, uOuter: 2.2, uMode: 1, uColor: [0.5, 0.45, 0.4], uAlpha: 0.5, uTime: elapsed, uSunO: [0, 1, 0], uCassini: 0, uPerm: 0 }, [g.perm]);
