@@ -379,6 +379,76 @@
     /* '你在钱包里取消了' 在 i18n.js 的全局表里已经有了，这里不重收（值不一样会打架） */
     '没检测到钱包扩展': 'No wallet extension found',
     '没检测到钱包扩展（MetaMask / 币安钱包 等）': 'No wallet extension found (MetaMask, Binance Wallet, …)',
+
+    /* ---- 攒分区重做（2026-09-18，结构参照任务站；配色仍是本站令牌）---- */
+    '关注、转发、拉朋友、引爆——攒分。积分榜决定大部分免费名额；另有一部分名额由我们直接给到早期支持者与合作伙伴。':
+      'Follow, repost, bring friends, detonate. Points decide most of the free mints; some go straight to early supporters and partners.',
+    '总积分': 'Points', '连钱包后显示': 'Connect to see',
+    '已完成任务': 'Quests done', '共 7 项': 'of 7',
+    '有效邀请': 'Valid invites', '每人 +20': '+20 each', '每人 +{0}': '+{0} each',
+    '前 100': 'Top 100', '按积分': 'by points',
+    '剩余天数': 'Days left',
+    '分数为临时结果，预热结束复核后确认最终名单。':
+      'Points are provisional. We review them when the warm-up ends, and that decides the list.',
+    '任务': 'Quests', '我的记录': 'My record',
+    '入门': 'START', '进阶': 'GROW', '每日': 'DAILY',
+    '连钱包，填 X 名，签个名。': 'Connect a wallet, give your X handle, sign.',
+    '去登记': 'Sign up', '先登记': 'Sign up first',
+    '关注完回来点「我关注了」。': 'Follow, then come back and tap Done.',
+    '转发后在评论里贴你的码，再把回复链接交回来。':
+      'Repost it, reply with your code, then paste that reply link here.',
+    '登记码 ——': 'Code ——', '登记码': 'Code',
+    '创作推文': 'Write a post',
+    '发一条提到 @arcbang_xyz 并带 #ARCBANG 的推。内容随意。':
+      'Post anything that mentions @arcbang_xyz and tags #ARCBANG.',
+    '去写一条': 'Write one',
+    '连钱包后这里会显示你的记录。': 'Your record shows up here once you connect.',
+    '每日打卡': 'Daily check-ins',
+    '+{0} / 人': '+{0} each', '+{0} / 条': '+{0} each', '+{0} / 天': '+{0} a day',
+    '登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4}':
+      'sign-up {0} · X {1} · invites {2} · posts {3} · daily {4}',
+    '已进': 'In', '在前 100 内': 'inside the top 100',
+    '再拿这么多分进前 100': 'points to reach the top 100',
+    '再 {0} 分进前 100': '{0} points to the top 100',
+    '已通过 {0} · 未通过 {1}': '{0} passed · {1} rejected',
+    '已通过 {0} · 未通过 {1} · 每周最多 {2} 条': '{0} passed · {1} rejected · max {2} a week',
+    '每周最多 {0} 条，共 {1} 条': 'Max {0} a week, {1} in total',
+    '已打卡 {0} 天': '{0} days checked in',
+    '创作 #{0}': 'Post #{0}',
+    '{0} 人': '{0} people', '{0} 人 +{1}': '{0} → +{1}',
+    '还没有人上榜，第一个是你。': 'Nobody here yet. Be the first.',
+    '开始攒分': 'Start scoring', '继续': 'Continue',
+    '这一条没过，看看说明再发一条。': 'That one did not pass. Check the rules and post another.',
+    '转发不算创作': 'a repost is not a post of your own',
+    '没提到 @arcbang_xyz': 'it does not mention @arcbang_xyz',
+    '没带 #ARCBANG': 'it is missing #ARCBANG',
+
+    /* ---- FAQ ---- */
+    '常见问题': 'Asked a lot',
+    'ARCBANG 是什么？': 'What is ARCBANG?',
+    '把一个 Arc 区块哈希读成一套物理常数，跑出一个宇宙。合得来就铸成 NFT 留着。全网 1,387 枚，不发币。':
+      'An Arc block hash is read as a set of physical constants and run as a universe. Mint the one you like and keep it. 1,387 in all. No token.',
+    '积分怎么算？': 'How do points work?',
+    '登记 10 分。关注 10，点赞 10，转发并回复你的码 30。每个有效邀请 20，攒到 3 / 5 / 10 人还有额外奖励。创作推文一条 20。每天引爆并广播一次 5 分。':
+      'Signing up is 10. Follow 10, like 10, repost with your code 30. Every valid invite is 20, with bonuses at 3, 5 and 10. A post of your own is 20. Detonating and broadcasting is 5 a day.',
+    '什么时候开铸？': 'When does minting open?',
+    '预热 14 天，结束就进保底期，之后是先到先得，最后公售。页面顶上的倒计时是准的。':
+      'The warm-up runs 14 days, then the guaranteed round, then first-come, then the public sale. The countdown at the top is the real one.',
+    '免费名额怎么来？': 'Where do the free mints come from?',
+    '积分榜决定大部分免费名额。另有一部分由我们直接给到早期支持者与合作伙伴。具体数量在榜单定格时公布，不超过合约里的 387 枚。':
+      'Points decide most of them. Some go straight to early supporters and partners. How many there are is announced when the board freezes, and never more than the 387 the contract allows.',
+    '为什么在 Arc 上？': 'Why Arc?',
+    'Arc 的 gas 就是 USDC，一次铸造大约 0.003 USDC。不用先去买一种别的币才能玩。':
+      'Gas on Arc is USDC, about 0.003 of it per mint. You do not have to buy some other coin first.',
+    '引爆要钱吗？': 'Does detonating cost anything?',
+    '不要。引爆、看结局、广播都不花钱，也不用连钱包。只有铸成 NFT 才上链。':
+      'No. Detonating, reading the outcome and broadcasting are all free and need no wallet. Only minting touches the chain.',
+    '登记信息能改吗？': 'Can I edit my sign-up?',
+    '不能。X 用户名和邀请码提交后就定死了。填错了来信说一声，我们人工改。':
+      'No. The X handle and invite code are fixed once submitted. If you got it wrong, write to us and we will fix it.',
+    '分数为什么是临时的？': 'Why are points provisional?',
+    '预热结束我们会复核一遍，刷出来的会被扣掉。复核之后的那一份才是最终名单。':
+      'We review everything when the warm-up ends and take back anything farmed. What survives that review is the final list.',
   });
 
 })(typeof window !== 'undefined' ? window : this);

@@ -791,6 +791,18 @@ async function handle(req, res, u) {
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
   }
 
+  /* POST /api/allowlist/post {address, url, sig}
+     自己发的那条「提到本站 + #ARCBANG」的推。服务端自动核（作者 / 提及 / 标签 / 不是转发），
+     过了就按条计分。限每周 2 条、预热期共 5 条。 */
+  if (p === '/allowlist/post' && req.method === 'POST') {
+    const rb = await bodyOf(req, res);
+    if (rb === null) return;
+    const parsedPo = parseJsonObject(rb);
+    if (parsedPo.error) return json(res, 400, { error: parsedPo.error }, { 'cache-control': 'no-store' });
+    const r = await AL.submitPost(parsedPo.value, RL.ipOf(req));
+    return json(res, r.status, r.body, { 'cache-control': 'no-store' });
+  }
+
   /* POST /api/allowlist/claim {address, sig, task:'follow'|'like'}
      关注与点赞在 X 上没有免 key 的办法能查，所以**默认信任**：点一下就计分。
      管理员抽查撤销之后这个地址整个失去信任（见 allowlist.js 的 distrust）。 */

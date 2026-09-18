@@ -162,8 +162,27 @@ function pointsTable() {
     invite: envInt('ARCBANG_PTS_INVITE', 20),
     inviteMax: envInt('ARCBANG_PTS_INVITE_MAX', 20),
     share: envInt('ARCBANG_PTS_SHARE', 5),
-    shareMaxDays: envInt('ARCBANG_PTS_SHARE_MAX_DAYS', 5)
+    shareMaxDays: envInt('ARCBANG_PTS_SHARE_MAX_DAYS', 5),
+    /* 创作推文：自己发一条提到本站并带 #ARCBANG 的推，过了就计分。
+       限每周 2 条、预热期共 5 条 —— 不限的话这一项会变成刷帖机。 */
+    post: envInt('ARCBANG_PTS_POST', 20),
+    postPerWeek: envInt('ARCBANG_PTS_POST_PER_WEEK', 2),
+    postMax: envInt('ARCBANG_PTS_POST_MAX', 5),
+    milestones: inviteMilestones()
   };
+}
+/**
+ * 邀请里程碑："3:30,5:50,10:100" = 攒到 3 个有效邀请再奖 30，5 个再奖 50，10 个再奖 100。
+ * 这是**在每人 20 分之外**另加的，按人数一档档累加（到 5 人时 3 人那档也还在）。
+ * 配歪了退默认，不是变成空 —— 空表等于悄悄把一整项奖励关掉。
+ */
+function inviteMilestones() {
+  const raw = String(process.env.ARCBANG_PTS_INVITE_MILESTONES || '').trim() || '3:30,5:50,10:100';
+  const out = raw.split(',').map((s) => {
+    const m = /^\s*(\d{1,4}):(\d{1,6})\s*$/.exec(s);
+    return m ? { at: Number(m[1]), pts: Number(m[2]) } : null;
+  }).filter(Boolean).sort((a, b) => a.at - b.at);
+  return out.length ? out : [{ at: 3, pts: 30 }, { at: 5, pts: 50 }, { at: 10, pts: 100 }];
 }
 /** 两档名额。gtdTop 必须 ≤ freeTop，配反了就把 gtd 夹到 freeTop（不是报错崩掉）。 */
 function tops() {
@@ -239,9 +258,21 @@ function tsOf(v) {
   const t = Date.parse(s);
   return Number.isFinite(t) ? t : null;
 }
+/**
+ * 预热期窗口。ARCBANG_WARMUP_START（ISO）+ ARCBANG_WARMUP_DAYS（默认 14）。
+ * 配了开始时间就能算出结束时间，**保底期没单独配时间时就用它** ——
+ * 这样上线只要填一个开始时间，倒计时和放号时间一起就位。
+ */
+function warmupWindow() {
+  const start = tsOf(process.env.ARCBANG_WARMUP_START);
+  const days = envInt('ARCBANG_WARMUP_DAYS', 14);
+  return { start, days, end: start == null ? null : start + days * DAY };
+}
 function openTimes() {
+  const w = warmupWindow();
   return {
-    gtd: tsOf(process.env.ARCBANG_GTD_OPEN_AT),
+    /* 显式配的那个永远优先；没配才拿预热期的结束时间顶上。 */
+    gtd: tsOf(process.env.ARCBANG_GTD_OPEN_AT) != null ? tsOf(process.env.ARCBANG_GTD_OPEN_AT) : w.end,
     fcfs: tsOf(process.env.ARCBANG_FCFS_OPEN_AT),
     public: tsOf(process.env.ARCBANG_PUBLIC_OPEN_AT)
   };
@@ -438,7 +469,8 @@ function create(opts) {
   const EMPTY_STATE = () => ({
     mtimeMs: -1, size: -1,
     follow: new Map(), repost: new Map(), like: new Map(),
-    shares: new Map(), xfix: new Map(), proof: new Map(), distrust: new Map(), phase: null
+    shares: new Map(), xfix: new Map(), proof: new Map(), posts: new Map(),
+    distrust: new Map(), phase: null
   });
   function state() {
     let st = null;
@@ -487,6 +519,14 @@ function create(opts) {
           });
         }
       }
+      for (const k in (j && j.posts) || {}) {
+        const a = normAddr(k);
+        if (!a || !Array.isArray(j.posts[k])) continue;
+        next.posts.set(a, j.posts[k].filter((x) => x && typeof x.url === 'string').map((x) => ({
+          url: x.url, at: x.at || null, status: x.status || 'new', reason: x.reason || null,
+          tries: Number(x.tries) || 0, nextAt: x.nextAt || null, via: x.via || null
+        })));
+      }
       for (const k in (j && j.distrust) || {}) {
         const a = normAddr(k);
         if (a) next.distrust.set(a, j.distrust[k] || true);
@@ -512,6 +552,8 @@ function create(opts) {
     for (const [k, v] of (s.xfix || new Map())) out.xfix[k] = v;
     out.proof = {};
     for (const [k, v] of (s.proof || new Map())) out.proof[k] = v;
+    out.posts = {};
+    for (const [k, v] of (s.posts || new Map())) out.posts[k] = v;
     out.distrust = {};
     for (const [k, v] of (s.distrust || new Map())) out.distrust[k] = v;
     out.phase = s.phase || null;
@@ -524,7 +566,7 @@ function create(opts) {
   function mutState(fn) {
     const s = state();
     const next = { shares: new Map(s.shares), xfix: new Map(s.xfix), proof: new Map(s.proof),
-      distrust: new Map(s.distrust), phase: s.phase || null };
+      posts: new Map(s.posts), distrust: new Map(s.distrust), phase: s.phase || null };
     for (const key of CHECKS) next[key] = new Map(s[key]);
     fn(next);
     saveState(next);
@@ -787,6 +829,141 @@ function create(opts) {
     return { checked: done };
   }
 
+
+  /* ---------------------------------------------------------------- 创作推文
+     用户自己发一条**提到本站、带 #ARCBANG** 的推（内容随意：宇宙截图、感想都行），
+     把链接贴回来，服务端自动核：作者对得上、正文里两样都在、而且不是转发。
+     过了 +ARCBANG_PTS_POST 分一条，限每周 ARCBANG_PTS_POST_PER_WEEK 条、
+     预热期共 ARCBANG_PTS_POST_MAX 条 —— 不限的话这一项就是个刷帖机。
+
+     跟「转发置顶推」那一项分开存：那一项一个地址只有一条，这一项是一串。 */
+  const HASHTAG = '#ARCBANG';
+  function postsOf(addr) {
+    const a = normAddr(addr);
+    return (a && state().posts.get(a)) || [];
+  }
+  /** 最近 7 天发过几条（不管过没过 —— 限的是提交频率，不是通过率）。 */
+  function postsThisWeek(addr, now) {
+    const t = now == null ? Date.now() : now;
+    return postsOf(addr).filter((x) => x.at && (t - Date.parse(x.at)) < 7 * DAY).length;
+  }
+
+  /**
+   * 核一条创作推文。**只读**，不写盘。
+   * @returns {{ok:boolean, reason:string|null, via:string|null}}
+   */
+  async function checkPost(addr, url, fetchImpl) {
+    const a = normAddr(addr);
+    const m = PROOF_RE.exec(String(url || ''));
+    if (!a || !m) return { ok: false, reason: 'BAD_URL', via: null };
+    const t = await fetchTweet(m[2], 'https://x.com/' + m[1] + '/status/' + m[2], fetchImpl);
+    if (!t) return { ok: false, reason: 'FETCH_FAILED', via: null };
+    const mine = xOf(a);
+    if (!mine || String(t.author).toLowerCase() !== String(mine).toLowerCase()) {
+      return { ok: false, reason: 'AUTHOR_MISMATCH', via: t.via };
+    }
+    const text = String(t.text || '');
+    /* 转发不算「创作」：syndication 给的转发正文以 RT @ 开头。 */
+    if (/^\s*RT\s+@/i.test(text)) return { ok: false, reason: 'IS_RETWEET', via: t.via };
+    if (text.toLowerCase().indexOf('@' + xHandle().toLowerCase()) < 0) {
+      return { ok: false, reason: 'NO_MENTION', via: t.via };
+    }
+    if (text.toUpperCase().indexOf(HASHTAG) < 0) return { ok: false, reason: 'NO_HASHTAG', via: t.via };
+    return { ok: true, reason: null, via: t.via };
+  }
+
+  /**
+   * POST /api/allowlist/post {address, url, sig}
+   * 收下链接 → 立刻核一次。取不到就排重试（与 proof 同一套 RETRY_MS）。
+   */
+  async function submitPost(input, ip, now, fetchImpl) {
+    const b = input && typeof input === 'object' ? input : {};
+    const addr = normAddr(b.address);
+    if (!addr) return { status: 400, body: { error: '地址不对' } };
+    const sig = String(b.sig == null ? '' : b.sig).trim();
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
+    let who = null;
+    try { who = verifyMessage(registerMessage(addr), sig); }
+    catch (e) { return { status: 400, body: { error: '签名验不过' } }; }
+    if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
+    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，先去登记' } };
+
+    const P = pointsTable();
+    const list = postsOf(addr);
+    if (list.length >= P.postMax) {
+      return { status: 409, body: { error: '预热期最多交 ' + P.postMax + ' 条，你已经交满了。' } };
+    }
+    if (postsThisWeek(addr, now) >= P.postPerWeek) {
+      return { status: 429, body: { error: '这一周最多交 ' + P.postPerWeek + ' 条，下周再来。' } };
+    }
+    const url = String(b.url == null ? '' : b.url).trim();
+    const m = PROOF_RE.exec(url);
+    if (!m) return { status: 400, body: { error: '要给一条推文链接（https://x.com/用户名/status/数字）' } };
+    const mine = xOf(addr);
+    if (!mine || m[1].toLowerCase() !== String(mine).toLowerCase()) {
+      return { status: 400, body: { error: '这条链接不是 @' + (mine || '?') + ' 发的。' } };
+    }
+    const clean = 'https://x.com/' + m[1] + '/status/' + m[2];
+    if (list.some((x) => x.url === clean)) {
+      return { status: 409, body: { error: '这一条已经交过了。' } };
+    }
+    const at = new Date(now == null ? Date.now() : now).toISOString();
+    mutState((nn) => {
+      const arr = (nn.posts.get(addr) || []).slice();
+      arr.push({ url: clean, at, status: 'new', reason: null, tries: 0, nextAt: null, via: null });
+      nn.posts.set(addr, arr);
+    });
+    const res = await checkPost(addr, clean, fetchImpl);
+    applyPostResult(addr, clean, res, now);
+    return {
+      status: 200,
+      body: { ok: true, auto: res.ok, reason: res.reason, posts: postsOf(addr), points: scoreOf(addr).total }
+    };
+  }
+
+  function applyPostResult(addr, url, res, now) {
+    const a = normAddr(addr);
+    const t = now == null ? Date.now() : now;
+    mutState((nn) => {
+      const arr = (nn.posts.get(a) || []).slice();
+      const i = arr.findIndex((x) => x.url === url);
+      if (i < 0) return;
+      const x = Object.assign({}, arr[i]);
+      x.tries = (x.tries || 0) + 1;
+      x.via = res.via || null;
+      if (res.ok) { x.status = 'ok'; x.reason = null; x.nextAt = null; }
+      else {
+        x.reason = res.reason;
+        /* 同 proof：只有「取不到」值得重试，其余是确定结论。 */
+        const delay = res.reason === 'FETCH_FAILED' ? RETRY_MS[x.tries - 1] : null;
+        x.status = delay == null ? 'bad' : 'retry';
+        x.nextAt = delay == null ? null : new Date(t + delay).toISOString();
+      }
+      arr[i] = x;
+      nn.posts.set(a, arr);
+    });
+  }
+
+  /** 创作推文那一串的重试队列（与 runProofQueue 分开，跑法一样）。 */
+  async function runPostQueue(now, fetchImpl) {
+    const t = now == null ? Date.now() : now;
+    const due = [];
+    for (const [addr, arr] of state().posts) {
+      for (const x of arr || []) {
+        if (!x || x.status === 'ok' || x.status === 'bad') continue;
+        if (!x.nextAt || Date.parse(x.nextAt) > t) continue;
+        if ((x.tries || 0) >= RETRY_MS.length) continue;
+        due.push([addr, x.url]);
+      }
+    }
+    let done = 0;
+    for (const [addr, url] of due) {
+      const res = await checkPost(addr, url, fetchImpl);
+      applyPostResult(addr, url, res, t);
+      done++;
+    }
+    return { checked: done };
+  }
   /** 管理员驳回一条提交：允许用户再提交一次（最多 PROOF_MAX_SUBMITS 次）。 */
   function rejectProof(token, why) {
     const a = normAddr(token) || addrOfCode(token);
@@ -926,7 +1103,9 @@ function create(opts) {
     const zero = {
       registered: false, verified: false, followed: false, reposted: false, liked: false,
       invites: 0, validInvites: 0, countedInvites: 0, shareDays: 0, countedShareDays: 0,
-      pts: { register: 0, follow: 0, repost: 0, like: 0, invite: 0, share: 0 }, total: 0
+      milestones: P.milestones.map((m) => ({ at: m.at, pts: m.pts, hit: false })),
+      posts: 0, okPosts: 0, countedPosts: 0, badPosts: 0,
+      pts: { register: 0, follow: 0, repost: 0, like: 0, invite: 0, milestone: 0, post: 0, share: 0 }, total: 0
     };
     if (!a || !loadApplied().has(a)) return zero;
     /* X 三连各记各的：只做了关注就只拿关注那 10 分。 */
@@ -938,19 +1117,31 @@ function create(opts) {
     const countedInv = Math.min(valid, P.inviteMax);
     const days = shareDaysOf(a);
     const countedDays = Math.min(days, P.shareMaxDays);
+    /* 邀请里程碑：在每人 20 分之外，攒到 3/5/10 人再各奖一笔，一档档累加。 */
+    const hitMs = P.milestones.filter((m) => valid >= m.at);
+    const msPts = hitMs.reduce((s2, m) => s2 + m.pts, 0);
+    const posts = postsOf(a);
+    const okPosts = posts.filter((x) => x.status === 'ok').length;
+    const countedPosts = Math.min(okPosts, P.postMax);
     const pts = {
       register: P.register,
       follow: followed ? P.follow : 0,
       repost: reposted ? P.repost : 0,
       like: liked ? P.like : 0,
       invite: countedInv * P.invite,
+      milestone: msPts,
+      post: countedPosts * P.post,
       share: countedDays * P.share
     };
     return {
       registered: true, verified: reposted, followed, reposted, liked,
       invites, validInvites: valid, countedInvites: countedInv,
+      milestones: P.milestones.map((m) => ({ at: m.at, pts: m.pts, hit: valid >= m.at })),
+      posts: posts.length, okPosts, countedPosts,
+      badPosts: posts.filter((x) => x.status !== 'ok' && x.status !== 'retry' && x.status !== 'new').length,
       shareDays: days, countedShareDays: countedDays,
-      pts, total: pts.register + pts.follow + pts.repost + pts.like + pts.invite + pts.share
+      pts, total: pts.register + pts.follow + pts.repost + pts.like
+        + pts.invite + pts.milestone + pts.post + pts.share
     };
   }
 
@@ -981,16 +1172,19 @@ function create(opts) {
     const r = board().byAddr.get(a);
     return r ? r.rank : null;
   }
-  /** 榜的前 n 名，只给缩写 —— 名次和分数是规则的一部分，完整地址不是。
-      n 再大也不会越过 BOARD_PUBLIC_MAX：公开的榜只到前 100 名。 */
+  /**
+   * 公开榜的前 n 行。**只给地址缩写和分数**，三样东西一概不出门：
+   *   · 名次数字 —— 用户拍板不标 1/2/3，顺序本身已经是排名；
+   *   · 审核状态（关注/转发/点赞核没核）—— 那是后台的事，别人看不到；
+   *   · 定格之前的 tier —— 画出分界线就等于公布了名额。
+   * n 再大也不会越过 BOARD_PUBLIC_MAX：公开的榜只到前 100 名。
+   */
   function topRows(n) {
     const lim = Math.max(1, Math.min(Math.floor(Number(n)) || 50, BOARD_PUBLIC_MAX));
     const T = tops();
     const frozen = isFrozen();
-    /* tier **只在定格之后才出门**：定格之前，某一行是 gtd 还是 fcfs 等于
-       把名额分界线画在榜上，而那个数我们还没答应下来（用户拍板不承诺名额）。 */
     return board().rows.slice(0, lim).map((r) => ({
-      rank: r.rank, addr: r.short, points: r.points, verified: r.verified,
+      addr: r.short, points: r.points,
       tier: frozen ? (r.rank <= T.gtd ? 'gtd' : r.rank <= T.free ? 'fcfs' : null) : null
     }));
   }
@@ -1081,6 +1275,7 @@ function create(opts) {
     if (!s.reposted) return { key: 'repost', pts: P.repost };
     if (!s.liked) return { key: 'like', pts: P.like };
     if (s.validInvites < P.inviteMax) return { key: 'invite', pts: P.invite };
+    if (s.okPosts < P.postMax) return { key: 'post', pts: P.post };
     if (s.shareDays < P.shareMaxDays) return { key: 'share', pts: P.share };
     return { key: 'done', pts: 0 };
   }
@@ -1412,12 +1607,23 @@ function create(opts) {
       countedInvites: s.countedInvites,
       shareDays: s.shareDays,
       countedShareDays: s.countedShareDays,
-      rank: addr ? rankOf(addr) : null,
+      /* **不回具体名次**（用户拍板）：只说在不在公开榜里，以及还差几分进去。
+         名次数字只有管理员页看得到（adminList 那一份）。 */
+      inTop100: addr ? (rankOf(addr) != null && rankOf(addr) <= BOARD_PUBLIC_MAX) : false,
+      /* 创作推文那一串 + 邀请里程碑 + 预热窗口：任务卡要拿它们画进度。 */
+      postList: addr ? postsOf(addr) : [],
+      postsThisWeek: addr ? postsThisWeek(addr, now) : 0,
+      okPosts: s.okPosts, badPosts: s.badPosts, countedPosts: s.countedPosts,
+      milestones: s.milestones,
+      warmup: (function () { const w = warmupWindow();
+        return { start: w.start == null ? null : new Date(w.start).toISOString(),
+          days: w.days, end: w.end == null ? null : new Date(w.end).toISOString() }; })(),
+      gapToTop100: addr ? gapTo(addr, BOARD_PUBLIC_MAX) : null,
+      boardTop: BOARD_PUBLIC_MAX,
       /* 「还差几分」照给 —— 那是**他自己**的进度，不是名额承诺。
          页面上只说「再拿 N 分」，绝不说「进前 X 名」。 */
       gapToGtd: addr ? gapTo(addr, T.gtd) : null,
       gapToFree: addr ? gapTo(addr, T.free) : null,
-      gapToPrev: addr ? gapToPrev(addr) : null,
       nextStep: addr ? nextStep(addr) : null,
       pts: pointsTable(),                          // 分值表：页面上任务清单标的分值来自它
       frozen: isFrozen(),
@@ -1566,6 +1772,8 @@ function create(opts) {
     register, share, verify, unverify, setX, xOf, registerMessage, codeOf, addrOfCode, appliedOf,
     // 自动核 / 信任
     submitProof, proofOf, checkProof, fetchTweet, runProofQueue, rejectProof,
+    submitPost, postsOf, checkPost, runPostQueue, postsThisWeek,
+    warmupWindow, inviteMilestones,
     claim, distrust, retrust, isDistrusted, checkBy, pinnedTweetId,
     // 后台切段
     setPhase, phaseBase, phaseNow, nextOpenNow,

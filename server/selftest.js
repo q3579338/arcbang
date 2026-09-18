@@ -3024,9 +3024,12 @@ function call(method, url, body, headers) {
     /* ---- status / board：公开的是规则，私密的只对本人 ---- */
     {
       const st = await AL.status(a1);
-      ok('status 回自己的积分、明细、名次、登记码',
+      /* **不回具体名次**（用户拍板）：只说在不在公开榜里、还差几分进去。 */
+      ok('status 回自己的积分、明细、登记码，但不回名次数字',
         st.registered === true && st.points === AL.scoreOf(a1).total
-        && st.breakdown.register === 10 && st.rank === AL.rankOf(a1) && st.code === AL.codeOf(a1));
+        && st.breakdown.register === 10 && st.code === AL.codeOf(a1)
+        && st.rank === undefined && typeof st.inTop100 === 'boolean'
+        && typeof st.gapToTop100 === 'number');
       ok('status 带上分值表（页面上一个分值都不写死）', st.pts.register === 10);
       /* **不承诺名额**（2026-09-18 用户拍板）：定格之前人数与名额上限一律 null，
          不然 ARCBANG_GTD_TOP 会从「前 100 名是保底」这句话里被反推出来。 */
@@ -3037,13 +3040,15 @@ function call(method, url, body, headers) {
       ok('status 带上要签的那句话（客户端原样签，不自己拼）',
         typeof st.message === 'string' && st.message.indexOf(a1) > 0 && st.message.indexOf('domain:') > 0);
       const anon = await AL.status(null);
-      ok('不带地址时不泄露任何个人字段，只给阶段、名额与在榜人数',
-        anon.code === null && anon.rank === null && anon.points === 0
+      ok('不带地址时不泄露任何个人字段，只给阶段与在榜人数',
+        anon.code === null && anon.points === 0 && anon.inTop100 === false
         && anon.registered === false && typeof anon.boardSize === 'number');
       const bv = AL.boardView(3);
-      ok('board 只给缩写、分数、名次、名额与「核没核」，没有完整地址',
-        bv.rows.length === 3 && bv.rows[0].rank === 1
-        && Object.keys(bv.rows[0]).sort().join(',') === 'addr,points,rank,tier,verified');
+      /* 公开榜**只有缩写和分数**：名次数字、审核状态一概不出门（用户拍板）。 */
+      ok('board 只给缩写与分数，没有名次、没有审核状态、没有完整地址',
+        bv.rows.length === 3
+        && Object.keys(bv.rows[0]).sort().join(',') === 'addr,points,tier'
+        && bv.rows[0].addr.indexOf('…') > 0);
       /* 定格之前 tier 也不出门：某一行是 gtd 还是 fcfs 等于把名额分界线画在榜上。 */
       ok('定格之前榜上不带 tier（画出分界线就等于公布名额）',
         AL.isFrozen() === false && bv.rows.every((r) => r.tier === null)
@@ -3291,6 +3296,103 @@ function call(method, url, body, headers) {
       if (save === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = save;
     }
 
+
+    /* ---- 邀请里程碑 / 创作推文 / 预热期窗口（2026-09-18 三件新规矩） ---- */
+    {
+      const savedPin = process.env.ARCBANG_PINNED_POST_URL;
+      process.env.ARCBANG_PINNED_POST_URL = 'https://x.com/arcbang_xyz/status/1999888777666';
+      const json = (j) => async () => ({ ok: true, text: async () => JSON.stringify(j) });
+      const dead = async () => null;
+
+      /* 里程碑：每人 20 分之外，攒到 3/5/10 人再各奖一笔，一档档累加。 */
+      ok('里程碑默认是 3:30 / 5:50 / 10:100',
+        JSON.stringify(ALX.pointsTable().milestones) === '[{"at":3,"pts":30},{"at":5,"pts":50},{"at":10,"pts":100}]');
+      {
+        const savedMs = process.env.ARCBANG_PTS_INVITE_MILESTONES;
+        process.env.ARCBANG_PTS_INVITE_MILESTONES = '2:7';
+        ok('里程碑能配', JSON.stringify(ALX.pointsTable().milestones) === '[{"at":2,"pts":7}]');
+        process.env.ARCBANG_PTS_INVITE_MILESTONES = '乱写';
+        ok('配歪了退默认，不是把整项奖励悄悄关掉', ALX.pointsTable().milestones.length === 3);
+        if (savedMs === undefined) delete process.env.ARCBANG_PTS_INVITE_MILESTONES; else process.env.ARCBANG_PTS_INVITE_MILESTONES = savedMs;
+      }
+      {
+        /* 拉三个人进来并核过，看里程碑那一笔有没有加上 */
+        const host = new Wallet('0x' + '61'.repeat(32));
+        const hs = host.signMessageSync(ALX.registerMessage(host.address));
+        AL.register({ address: host.address, xHandle: 'host1', sig: hs }, '7.7.7.7');
+        const h = host.address.toLowerCase();
+        const code = AL.codeOf(h);
+        for (let i = 0; i < 3; i++) {
+          const g = new Wallet('0x' + String(62 + i).repeat(32));
+          const gs = g.signMessageSync(ALX.registerMessage(g.address));
+          AL.register({ address: g.address, xHandle: 'g' + i, sig: gs, ref: code }, '7.7.7.' + i);
+          AL.verify(g.address.toLowerCase(), { repost: true });
+        }
+        const s = AL.scoreOf(h);
+        ok('3 个有效邀请：3×20 的人头分 + 第一档里程碑 30',
+          s.validInvites === 3 && s.pts.invite === 60 && s.pts.milestone === 30, JSON.stringify(s.pts));
+        ok('里程碑进度回给页面（哪几档到了）',
+          s.milestones.length === 3 && s.milestones[0].hit === true && s.milestones[1].hit === false);
+      }
+
+      /* 创作推文 */
+      {
+        const W3 = new Wallet('0x' + '71'.repeat(32));
+        const s3 = W3.signMessageSync(ALX.registerMessage(W3.address));
+        AL.register({ address: W3.address, xHandle: 'poet', sig: s3 }, '6.6.6.6');
+        const a3 = W3.address.toLowerCase();
+        const base = AL.scoreOf(a3).total;
+        /* 每周 2 条那道限额会在**核验之前**就挡住第三次提交，
+           所以先把它放开验三种失败原因，末尾再收回去单独验 429。 */
+        const savedWk = process.env.ARCBANG_PTS_POST_PER_WEEK;
+        process.env.ARCBANG_PTS_POST_PER_WEEK = '9';
+        const good = json({ user: { screen_name: 'poet' }, text: '我在 @arcbang_xyz 炸了一个宇宙 #ARCBANG' });
+        let r = await AL.submitPost({ address: a3, url: 'https://x.com/poet/status/3001222333444', sig: s3 }, '6.6.6.6', Date.now(), good);
+        ok('提到本站 + 带 #ARCBANG + 不是转发 → 自动通过 +20',
+          r.status === 200 && r.body.auto === true && AL.scoreOf(a3).total === base + 20);
+        r = await AL.submitPost({ address: a3, url: 'https://x.com/poet/status/3001222333445', sig: s3 }, '6.6.6.6', Date.now(),
+          json({ user: { screen_name: 'poet' }, text: 'RT @someone: @arcbang_xyz #ARCBANG' }));
+        ok('转发不算创作 → IS_RETWEET', r.body.reason === 'IS_RETWEET');
+        r = await AL.submitPost({ address: a3, url: 'https://x.com/poet/status/3001222333446', sig: s3 }, '6.6.6.6', Date.now(),
+          json({ user: { screen_name: 'poet' }, text: '只带了标签 #ARCBANG' }));
+        ok('没提到本站 → NO_MENTION', r.body.reason === 'NO_MENTION');
+        process.env.ARCBANG_PTS_POST_PER_WEEK = '3';
+        ok('这一周交满就 → 429（限的是提交频率，过没过都算一条）',
+          (await AL.submitPost({ address: a3, url: 'https://x.com/poet/status/3001222333447', sig: s3 }, '6.6.6.6', Date.now(), dead)).status === 429);
+        if (savedWk === undefined) delete process.env.ARCBANG_PTS_POST_PER_WEEK; else process.env.ARCBANG_PTS_POST_PER_WEEK = savedWk;
+        /* 隔一周再来就放行（限的是频率，不是总量） */
+        const week = Date.now() + 8 * 24 * 3600 * 1000;
+        r = await AL.submitPost({ address: a3, url: 'https://x.com/poet/status/3001222333448', sig: s3 }, '6.6.6.6', week,
+          json({ user: { screen_name: 'poet' }, text: 'gm @arcbang_xyz #arcbang' }));
+        ok('隔一周放行，标签大小写不敏感', r.status === 200 && r.body.auto === true);
+        ok('同一条交两次 → 409',
+          (await AL.submitPost({ address: a3, url: 'https://x.com/poet/status/3001222333448', sig: s3 }, '6.6.6.6', week, dead)).status === 409);
+        const st3 = await AL.status(a3);
+        ok('status 带上这一串的进度（交了几条、过了几条、没过几条）',
+          st3.postList.length === 4 && st3.okPosts === 2 && st3.badPosts === 2,
+          JSON.stringify([st3.postList.length, st3.okPosts, st3.badPosts]));
+      }
+
+      /* 预热期窗口：没配保底期时间时 = 开始 + 天数 */
+      {
+        const sv = { s: process.env.ARCBANG_WARMUP_START, d: process.env.ARCBANG_WARMUP_DAYS, g: process.env.ARCBANG_GTD_OPEN_AT };
+        delete process.env.ARCBANG_GTD_OPEN_AT;
+        process.env.ARCBANG_WARMUP_START = '2026-10-01T00:00:00Z';
+        delete process.env.ARCBANG_WARMUP_DAYS;
+        ok('预热 14 天：保底期自动落在开始后的第 14 天',
+          ALX.opensIso().gtd === '2026-10-15T00:00:00.000Z', ALX.opensIso().gtd);
+        process.env.ARCBANG_WARMUP_DAYS = '7';
+        ok('天数可配', ALX.opensIso().gtd === '2026-10-08T00:00:00.000Z');
+        process.env.ARCBANG_GTD_OPEN_AT = '2026-12-01T00:00:00Z';
+        ok('显式配的保底期时间永远优先于算出来的那个',
+          ALX.opensIso().gtd === '2026-12-01T00:00:00.000Z');
+        for (const k of ['ARCBANG_WARMUP_START', 'ARCBANG_WARMUP_DAYS', 'ARCBANG_GTD_OPEN_AT']) delete process.env[k];
+        const key = { ARCBANG_WARMUP_START: sv.s, ARCBANG_WARMUP_DAYS: sv.d, ARCBANG_GTD_OPEN_AT: sv.g };
+        for (const k in key) if (key[k] !== undefined) process.env[k] = key[k];
+      }
+
+      if (savedPin === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = savedPin;
+    }
     /* ---- 管理员口令：缺 / 错 → 401；没配 → 404 ---- */
     {
       const saved = process.env.ARCBANG_ADMIN_TOKEN;

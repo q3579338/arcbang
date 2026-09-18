@@ -157,73 +157,147 @@ button,input{font-family:inherit}
 .ab-kv-k{display:block;margin-top:6px;font-size:var(--t-xs);color:var(--ab-graphite)}
 .ab-row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-top:18px}
 
-/* ---- 任务卡（Zealy / Galxe 那类任务站的做法，配色仍是本站令牌） ----
-   一张卡 = 图标 + 任务名与说明 + 分值 + 状态 + 行动按钮。
-   状态四档：未完成（灰）/ 审核中（琥珀）/ 已完成（绿，整卡压低一档）/ 未通过（红）。 */
-.ab-cards{display:grid;gap:14px;margin-top:var(--sp-1);grid-template-columns:minmax(0,1fr)}
-@media (min-width:900px){ .ab-cards{grid-template-columns:repeat(2,minmax(0,1fr))} }
-.ab-qc{display:grid;grid-template-columns:44px minmax(0,1fr);gap:0 16px;align-items:start;
-  padding:20px;background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r)}
-.ab-qc.done{background:#F4F8F5;border-color:#CADDD0}
-.ab-qc-ico{grid-row:1 / span 3;width:44px;height:44px;border-radius:var(--r);
-  display:flex;align-items:center;justify-content:center;background:var(--ab-plate2);color:var(--ab-ink)}
-.ab-qc.done .ab-qc-ico{background:#DCEBE1;color:var(--ab-ok)}
-.ab-qc-ico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;
+/* ============================================================================
+ * 攒分区（2026-09-18 重做，结构参照 Hazels Studio 的任务页；配色仍是本站令牌）
+ * ----------------------------------------------------------------------------
+ * 布局：五格统计 → 一条提示 → 三个标签页（任务 / 我的记录 / 积分榜）。
+ * 任务是**一整行**而不是卡片网格：一行只有一个主动作，扫起来快，手机上也不用换排版。
+ *
+ * 两条自己定的规矩：
+ *   1. 动效只在「状态真的变了」时发生。这一页每 60 秒自刷一次，
+ *      要是每次刷新都弹一下，整页会一直在抖。
+ *   2. 全部 ≤200ms；prefers-reduced-motion 下一概关掉。
+ * ========================================================================== */
+
+/* ---- 五格统计 ---- */
+.ab-stats{display:grid;gap:12px;margin-top:var(--sp-1);
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.ab-stat{padding:16px 18px;background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r)}
+.ab-stat-v{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:clamp(26px,3.2vw,38px);font-weight:700;line-height:1.05;letter-spacing:-.02em}
+.ab-stat-k{display:block;margin-top:6px;font-size:var(--t-xs);color:var(--ab-graphite)}
+.ab-stat-s{display:block;margin-top:2px;font-size:11px;color:var(--ab-graphite);opacity:.8}
+.ab-stat.in .ab-stat-v{color:var(--ab-ok)}
+
+.ab-notice{margin-top:14px;padding:11px 14px;border-radius:var(--r);
+  background:var(--ab-plate2);font-size:var(--t-xs);color:var(--ab-graphite)}
+
+/* ---- 标签页 ---- */
+.ab-tabs{display:flex;gap:4px;margin-top:var(--sp-1);border-bottom:1px solid var(--ab-hair)}
+.ab-tab{appearance:none;border:0;background:none;font-family:inherit;cursor:pointer;
+  padding:12px 16px;font-size:var(--t-s);font-weight:600;color:var(--ab-graphite);
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s ease,border-color .15s ease}
+.ab-tab:hover{color:var(--ab-ink)}
+.ab-tab.on{color:var(--ab-ink);border-bottom-color:var(--ab-ink)}
+.ab-panel{padding-top:var(--sp-1)}
+
+/* ---- 任务分组与任务行 ---- */
+.ab-group{margin:var(--sp-1) 0 10px;font-size:var(--t-xs);font-weight:700;
+  letter-spacing:.08em;color:var(--ab-graphite)}
+.ab-group:first-child{margin-top:0}
+.ab-rows{display:grid;gap:10px}
+.ab-qr{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:0 16px;align-items:start;
+  padding:16px 18px;background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r);
+  transition:border-color .15s ease,background-color .15s ease}
+.ab-qr.done{background:#F6F9F7;border-color:#CFE0D5}
+.ab-qr.done .ab-qr-t{color:var(--ab-graphite)}
+@keyframes ab-pop{0%{transform:scale(1)}45%{transform:scale(1.012)}100%{transform:scale(1)}}
+.ab-qr.pop{animation:ab-pop .2s ease}
+.ab-qr-ico{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;background:var(--ab-plate2);color:var(--ab-ink)}
+.ab-qr-ico.xmark{background:var(--ab-ink);color:#fff}
+.ab-qr.done .ab-qr-ico{background:#DCEBE1;color:var(--ab-ok)}
+.ab-qr.done .ab-qr-ico.xmark{background:#DCEBE1;color:var(--ab-ok)}
+.ab-qr-ico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round}
-.ab-qc-hd{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 14px}
-.ab-qc-t{font-size:var(--t-m);font-weight:600;line-height:1.35}
-.ab-qc-p{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:var(--t-s);
-  font-weight:600;white-space:nowrap;color:var(--ab-signal)}
-.ab-qc.done .ab-qc-p{color:var(--ab-ok)}
-.ab-qc-d{margin-top:6px;font-size:var(--t-xs);line-height:1.6;color:var(--ab-graphite)}
-.ab-qc-f{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin-top:14px}
-.ab-st{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
-  font-size:var(--t-xs);font-weight:600;border:1px solid currentColor}
+.ab-qr-mid{min-width:0}
+.ab-qr-hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.ab-qr-t{font-size:var(--t-m);font-weight:600;line-height:1.35;margin:0}
+/* 分值：等宽绿色，跟标题同一行 */
+.ab-qr-p{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:var(--t-s);
+  font-weight:700;color:var(--ab-ok);white-space:nowrap}
+.ab-qr-d{margin-top:5px;font-size:var(--t-xs);line-height:1.6;color:var(--ab-graphite)}
+.ab-qr-act{display:flex;flex-direction:column;align-items:flex-end;gap:8px;white-space:nowrap}
+@media (max-width:760px){
+  .ab-qr{grid-template-columns:36px minmax(0,1fr);row-gap:12px}
+  .ab-qr-ico{width:36px;height:36px;border-radius:8px}
+  .ab-qr-ico svg{width:18px;height:18px}
+  .ab-qr-act{grid-column:1 / -1;flex-direction:row;align-items:center;flex-wrap:wrap}
+}
+
+/* 可复制芯片：点一下复制，变「已复制」 */
+.ab-chip{appearance:none;font-family:var(--mono);font-size:var(--t-xs);cursor:pointer;
+  margin-top:8px;padding:5px 11px;border-radius:999px;border:1px dashed var(--ab-hair);
+  background:var(--ab-plate2);color:var(--ab-ink);transition:border-color .15s ease}
+.ab-chip:hover{border-color:var(--ab-ink)}
+.ab-inline{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ab-inline .ab-in,.ab-inline .ab-inv{flex:1 1 220px;min-width:0;min-height:40px;font-size:var(--t-xs)}
+
+/* 状态胶囊四态。审核中那颗点会呼吸 —— 整页唯一还在动的东西。 */
+.ab-st{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;
+  font-size:var(--t-xs);font-weight:600;border:1px solid currentColor;white-space:nowrap}
+.ab-st::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
 .ab-st.todo{color:var(--ab-graphite)}
-.ab-st.wait{color:var(--ab-wait)}
+.ab-st.wait{color:var(--ab-warn)}
+.ab-st.wait::before{animation:ab-pulse 1.6s ease-in-out infinite}
 .ab-st.ok{color:var(--ab-ok)}
+.ab-st.ok::before{content:"✓";width:auto;height:auto;border-radius:0;background:none;font-size:12px;line-height:1}
+.ab-st.bad{color:var(--ab-bad)}
+@keyframes ab-pulse{0%,100%{opacity:1}50%{opacity:.25}}
 
-/* ---- 我的积分 ---- */
-.ab-score{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 22px}
-.ab-score-n{font-family:var(--mono);font-variant-numeric:tabular-nums;
-  font-size:clamp(44px,6vw,72px);font-weight:700;line-height:1;letter-spacing:-.03em}
-.ab-score-u{font-size:var(--t-m);color:var(--ab-graphite)}
-.ab-score-r{font-family:var(--mono);font-size:var(--t-xl);font-weight:600;color:var(--ab-signal)}
-.ab-gap{margin-top:12px;font-size:var(--t-s);color:var(--ab-graphite);max-width:60ch}
+/* 进度点（每日打卡 / 创作推文） */
+.ab-dots{display:flex;gap:5px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.ab-dots i{width:9px;height:9px;border-radius:50%;background:var(--ab-plate2);
+  border:1px solid var(--ab-hair);transition:background-color .2s ease}
+.ab-dots i.on{background:var(--ab-signal);border-color:var(--ab-signal)}
+.ab-dots i.bad{background:var(--ab-bad);border-color:var(--ab-bad)}
+.ab-dots span{margin-left:6px;font-size:var(--t-xs);color:var(--ab-graphite)}
 
-/* ---- 邀请卡：一条能一键复制的链接 + 邀请人数 ---- */
-.ab-invcard{margin-top:var(--sp-1);padding:20px;background:var(--ab-plate2);border-radius:var(--r)}
-.ab-invrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
-.ab-inv{flex:1 1 260px;min-width:0;min-height:44px;padding:0 12px;font-family:var(--mono);font-size:var(--t-s);
-  background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r);color:var(--ab-ink)}
+/* 邀请里程碑轨道：一条线 + 三个节点，走到哪亮到哪 */
+.ab-track{position:relative;margin:14px 0 4px;padding-top:16px}
+.ab-track-line{position:absolute;left:0;right:0;top:20px;height:3px;border-radius:2px;background:var(--ab-plate2)}
+.ab-track-line i{display:block;height:100%;width:0;border-radius:2px;background:var(--ab-signal);
+  transition:width .2s ease}
+.ab-track-ms{position:relative;display:flex;justify-content:space-between}
+.ab-track-ms b{display:flex;flex-direction:column;align-items:center;gap:5px;
+  font-family:var(--ab-face);font-size:11px;font-weight:600;color:var(--ab-graphite);min-width:0}
+.ab-track-ms b::before{content:"";width:11px;height:11px;border-radius:50%;
+  background:#fff;border:2px solid var(--ab-hair);transition:background-color .2s ease,border-color .2s ease}
+.ab-track-ms b.hit{color:var(--ab-ok)}
+.ab-track-ms b.hit::before{background:var(--ab-ok);border-color:var(--ab-ok)}
 
-/* ---- 积分榜：名次 / 地址 / 积分 三列。前三名有标记；本人行钉在榜下方 ---- */
-.ab-board{width:100%;border-collapse:collapse;margin-top:var(--sp-1);font-size:var(--t-s)}
+/* ---- 榜 ---- */
+.ab-board{width:100%;border-collapse:collapse;font-size:var(--t-s)}
 .ab-board th{text-align:left;padding:10px 0;border-bottom:1px solid var(--ab-ink);
   font-size:var(--t-xs);color:var(--ab-graphite);font-weight:600}
-.ab-board td{padding:12px 0;border-bottom:1px solid var(--ab-hair)}
-.ab-board .c-rank{width:5.5rem;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.ab-board td{padding:10px 0;border-bottom:1px solid var(--ab-hair)}
 .ab-board .c-addr{font-family:var(--mono)}
 .ab-board .c-pts{width:8rem;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
-/* 前三名：名次那一格给一枚实心徽章，不用 emoji（字体不一定有，而且大小不受控） */
-.ab-board .medal{display:inline-flex;align-items:center;justify-content:center;
-  width:1.8em;height:1.8em;border-radius:50%;font-family:var(--ab-face);font-weight:700;
-  font-size:var(--t-xs);color:#fff;background:var(--ab-ink)}
-.ab-board tr.r1 .medal{background:#B8860B}
-.ab-board tr.r2 .medal{background:#8A8D93}
-.ab-board tr.r3 .medal{background:#A0642B}
-.ab-board tr.r1 td,.ab-board tr.r2 td,.ab-board tr.r3 td{font-weight:600}
+.ab-board .ava{display:inline-block;width:22px;height:22px;border-radius:50%;overflow:hidden;
+  vertical-align:-6px;margin-right:9px;background:var(--ab-plate2)}
+.ab-board .ava svg{display:block;width:100%;height:100%}
 .ab-board tr.me td{background:rgba(74,91,212,.10);font-weight:700}
 .ab-board tr.me td:first-child{box-shadow:inset 3px 0 0 var(--ab-signal)}
 .ab-board .tag{font-family:var(--ab-face);font-size:var(--t-xs);color:var(--ab-graphite);font-weight:400}
 .ab-boardfoot{margin-top:14px;font-size:var(--t-xs);color:var(--ab-graphite)}
-/* 本人那一行：**固定在榜的下方**（不是表格里），名次多靠后都一眼看得见 */
-.ab-meline{position:sticky;bottom:0;z-index:3;margin-top:0;padding:14px 12px;
+.ab-empty{padding:34px 0;text-align:center;color:var(--ab-graphite);font-size:var(--t-s)}
+.ab-empty svg{display:block;margin:0 auto 14px;width:64px;height:64px;opacity:.45}
+.ab-meline{position:sticky;bottom:0;z-index:3;padding:14px 12px;
   background:#E7EAF8;border-top:2px solid var(--ab-signal);border-radius:0 0 var(--r) var(--r);
-  display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;font-size:var(--t-s)}
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;font-size:var(--t-s)}
 .ab-meline b{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .ab-meline .lag{color:var(--ab-graphite);font-size:var(--t-xs)}
 
+/* ---- FAQ 手风琴：原生 <details>，不写一行 JS ---- */
+.ab-faq{margin-top:var(--sp-1);border-top:1px solid var(--ab-hair)}
+.ab-faq details{border-bottom:1px solid var(--ab-hair)}
+.ab-faq summary{list-style:none;cursor:pointer;padding:16px 34px 16px 0;position:relative;
+  font-size:var(--t-m);font-weight:600}
+.ab-faq summary::-webkit-details-marker{display:none}
+.ab-faq summary::after{content:"+";position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:var(--t-l);color:var(--ab-graphite);font-weight:400}
+.ab-faq details[open] summary::after{content:"–"}
+.ab-faq p{padding:0 0 18px;max-width:64ch;font-size:var(--t-s);color:var(--ab-graphite)}
 /* ---- 页脚（与首页同一份结构） ---- */
 .ab-foot{padding:var(--sp-2) 0}
 .ab-foot-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:20px 40px}
@@ -251,7 +325,7 @@ button,input{font-family:inherit}
   <div class="ab-wrap">
     <p class="ab-phase" id="phaseChip" hidden>现在是 <b id="phaseName">预热期</b></p>
     <h1 class="ab-h1">1,387 个宇宙，先到榜上的人免费领。</h1>
-    <p class="ab-lede">关注、转发、拉朋友、引爆——攒分。排名靠前就有你的。</p>
+    <p class="ab-lede">关注、转发、拉朋友、引爆——攒分。积分榜决定大部分免费名额；另有一部分名额由我们直接给到早期支持者与合作伙伴。</p>
 
     <div class="ab-cd" id="cd" aria-live="polite">
       <div class="ab-cd-i"><b class="ab-cd-v" id="cdD">—</b><span class="ab-cd-k">天</span></div>
@@ -271,74 +345,187 @@ button,input{font-family:inherit}
 
 <section class="ab-sec" id="tasks">
   <div class="ab-wrap">
-    <h2 class="ab-h2">攒分</h2>
 
-    <div class="ab-cards" id="taskCards">
-      <!-- 图标全部内联 SVG：这一页不引任何外部资源 -->
-      <article class="ab-qc" data-task="follow">
-        <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">关注 @arcbang_xyz</h3><span class="ab-qc-p" data-pts>+10</span></div>
-        <div>
-          <p class="ab-qc-d">点一下去 X，关注完回来点「我关注了」。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
+    <!-- 五格统计。未连钱包时数字都是 —，第一格换成引导。 -->
+    <div class="ab-stats" id="stats">
+      <div class="ab-stat">
+        <b class="ab-stat-v" id="stPoints">—</b>
+        <span class="ab-stat-k">总积分</span>
+        <span class="ab-stat-s" id="stPointsSub">连钱包后显示</span>
+      </div>
+      <div class="ab-stat">
+        <b class="ab-stat-v" id="stDone">—</b>
+        <span class="ab-stat-k">已完成任务</span>
+        <span class="ab-stat-s" id="stDoneSub">共 7 项</span>
+      </div>
+      <div class="ab-stat">
+        <b class="ab-stat-v" id="stInv">—</b>
+        <span class="ab-stat-k">有效邀请</span>
+        <span class="ab-stat-s" id="stInvSub">每人 +20</span>
+      </div>
+      <div class="ab-stat">
+        <b class="ab-stat-v" id="stTop">—</b>
+        <span class="ab-stat-k">前 100</span>
+        <span class="ab-stat-s" id="stTopSub">按积分</span>
+      </div>
+      <div class="ab-stat">
+        <b class="ab-stat-v" id="stLeft">—</b>
+        <span class="ab-stat-k">剩余天数</span>
+        <span class="ab-stat-s" id="stLeftSub">预热期</span>
+      </div>
+    </div>
+
+    <p class="ab-notice">分数为临时结果，预热结束复核后确认最终名单。</p>
+
+    <!-- 三个标签页 -->
+    <div class="ab-tabs" role="tablist">
+      <button class="ab-tab on" type="button" role="tab" data-tab="quests">任务</button>
+      <button class="ab-tab" type="button" role="tab" data-tab="record">我的记录</button>
+      <button class="ab-tab" type="button" role="tab" data-tab="board">积分榜</button>
+    </div>
+
+    <!-- ================= 任务 ================= -->
+    <div class="ab-panel" data-panel="quests">
+
+      <h3 class="ab-group">入门</h3>
+      <div class="ab-rows">
+        <article class="ab-qr" data-task="register">
+          <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">登记</h4><span class="ab-qr-p" data-pts>+10</span></div>
+            <p class="ab-qr-d">连钱包，填 X 名，签个名。</p>
+          </div>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
+            <a class="ab-btn3" href="#join" data-act>去登记</a></div>
+        </article>
+
+        <article class="ab-qr" data-task="follow">
+          <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3l7.6 9.8L3.4 21h1.9l6.2-7.1 5.5 7.1H21l-8-10.3L20.3 3h-1.9l-6 6.8L7.2 3z" stroke="none" fill="currentColor"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">关注 @arcbang_xyz</h4><span class="ab-qr-p" data-pts>+10</span></div>
+            <p class="ab-qr-d">关注完回来点「我关注了」。</p>
+            <button class="ab-chip" type="button" data-copy="@arcbang_xyz">@arcbang_xyz</button>
+          </div>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去关注</a>
             <button class="ab-btn3" type="button" data-claim="follow" hidden>我关注了</button></div>
-        </div>
-      </article>
+        </article>
 
-      <article class="ab-qc" data-task="repost">
-        <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">转发置顶推，回复你的码</h3><span class="ab-qc-p" data-pts>+30</span></div>
-        <div>
-          <p class="ab-qc-d">转发后在评论里贴你的码，再把回复的链接贴回来。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
-            <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去转发</a></div>
-          <!-- 贴回复链接：登记之后才出现 -->
-          <div id="proofBox" hidden>
-            <label class="ab-field"><span>你那条回复的链接</span>
-              <input class="ab-in mono" id="inProof" type="url" inputmode="url" autocomplete="off"
-                     spellcheck="false" placeholder="https://x.com/你/status/…"></label>
-            <div class="ab-qc-f"><button class="ab-btn3" type="button" id="btnProof">提交链接</button></div>
-            <p class="ab-msg" id="proofMsg"></p>
+        <article class="ab-qr" data-task="like">
+          <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">点赞置顶推</h4><span class="ab-qr-p" data-pts>+10</span></div>
+            <p class="ab-qr-d">点个赞，回来点「我点了」。</p>
           </div>
-          <p class="ab-qc-d" id="proofDone" hidden></p>
-        </div>
-      </article>
-
-      <article class="ab-qc" data-task="like">
-        <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">点赞置顶推</h3><span class="ab-qc-p" data-pts>+10</span></div>
-        <div>
-          <p class="ab-qc-d">点个赞，回来点「我点了」。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去点赞</a>
             <button class="ab-btn3" type="button" data-claim="like" hidden>我点了</button></div>
-        </div>
-      </article>
+        </article>
 
-      <article class="ab-qc" data-task="invite">
-        <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">邀请朋友</h3><span class="ab-qc-p" data-pts>+20</span></div>
-        <div>
-          <p class="ab-qc-d">他登记并做完转发，你就拿分。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
+        <article class="ab-qr" data-task="repost">
+          <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">转发置顶推，回复你的码</h4><span class="ab-qr-p" data-pts>+30</span></div>
+            <p class="ab-qr-d">转发后在评论里贴你的码，再把回复链接交回来。</p>
+            <button class="ab-chip" type="button" id="chipCode" data-copy="" hidden>登记码 ——</button>
+            <div id="proofBox" hidden>
+              <div class="ab-inline">
+                <input class="ab-in mono" id="inProof" type="url" inputmode="url" autocomplete="off"
+                       spellcheck="false" placeholder="https://x.com/你/status/…">
+                <button class="ab-btn3" type="button" id="btnProof">提交链接</button>
+              </div>
+              <p class="ab-msg" id="proofMsg"></p>
+            </div>
+            <p class="ab-qr-d" id="proofDone" hidden></p>
+          </div>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
+            <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去转发</a></div>
+        </article>
+      </div>
+
+      <h3 class="ab-group">进阶</h3>
+      <div class="ab-rows">
+        <article class="ab-qr" data-task="invite">
+          <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">邀请朋友</h4><span class="ab-qr-p" data-pts>+20</span></div>
+            <p class="ab-qr-d">他登记并做完转发，你就拿分。</p>
+            <!-- 里程碑轨道：当前人数走到哪，三个节点各奖多少 -->
+            <div class="ab-track" id="msTrack" aria-hidden="true"></div>
+            <div class="ab-inline" id="inviteRow" hidden>
+              <input class="ab-inv mono" id="inviteUrl" readonly value="">
+              <button class="ab-btn3" type="button" id="btnCopy">复制</button>
+            </div>
+          </div>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="#join" data-act>拿链接</a></div>
-        </div>
-      </article>
+        </article>
 
-      <article class="ab-qc" data-task="share">
-        <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">引爆一个宇宙并广播</h3><span class="ab-qc-p" data-pts>+5</span></div>
-        <div>
-          <p class="ab-qc-d">每天一次，连做五天。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
+        <article class="ab-qr" data-task="post">
+          <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">创作推文</h4><span class="ab-qr-p" data-pts>+20</span></div>
+            <p class="ab-qr-d">发一条提到 @arcbang_xyz 并带 #ARCBANG 的推。内容随意。</p>
+            <button class="ab-chip" type="button" data-copy="#ARCBANG">#ARCBANG</button>
+            <div class="ab-dots" id="postDots"></div>
+            <div id="postBox" hidden>
+              <div class="ab-inline">
+                <input class="ab-in mono" id="inPost" type="url" inputmode="url" autocomplete="off"
+                       spellcheck="false" placeholder="https://x.com/你/status/…">
+                <button class="ab-btn3" type="button" id="btnPost2">提交链接</button>
+              </div>
+              <p class="ab-msg" id="postMsg"></p>
+            </div>
+          </div>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
+            <a class="ab-btn3" href="app.html" data-act>去写一条</a></div>
+        </article>
+      </div>
+
+      <h3 class="ab-group">每日</h3>
+      <div class="ab-rows">
+        <article class="ab-qr" data-task="share">
+          <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆一个宇宙并广播</h4><span class="ab-qr-p" data-pts>+5</span></div>
+            <p class="ab-qr-d">每天一次，连做五天。</p>
+            <div class="ab-dots" id="shareDots"></div>
+          </div>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="app.html" data-act>去引爆</a></div>
-        </div>
-      </article>
+        </article>
+      </div>
+
+      <div class="ab-cta"><a class="ab-btn" href="#join" id="mainCta">开始攒分</a></div>
     </div>
+
+    <!-- ================= 我的记录 ================= -->
+    <div class="ab-panel" data-panel="record" hidden>
+      <div id="recEmpty" class="ab-empty">连钱包后这里会显示你的记录。</div>
+      <table class="ab-tbl" id="recTable" hidden>
+        <tbody id="recBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ================= 积分榜 ================= -->
+    <div class="ab-panel" data-panel="board" hidden>
+      <p class="ab-say" style="margin-top:0">前 100 名公开；免费名额从这里产生。</p>
+      <table class="ab-board">
+        <thead><tr><th class="c-addr">地址</th><th class="c-pts">积分</th></tr></thead>
+        <tbody id="boardBody"><tr><td colspan="2" class="tag">读取中…</td></tr></tbody>
+      </table>
+      <div class="ab-meline" id="meLine" hidden></div>
+      <div class="ab-row"><button class="ab-btn3" type="button" id="btnMore" hidden>展开全部</button></div>
+      <p class="ab-boardfoot" id="boardFoot"></p>
+      <div class="ab-kv" style="max-width:760px">
+        <div><b class="ab-kv-v" id="kvApplied">—</b><span class="ab-kv-k">在榜人数</span></div>
+        <div><b class="ab-kv-v" id="kvCap">387</b><span class="ab-kv-k">免费上限</span></div>
+        <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">已放出</span></div>
+      </div>
+    </div>
+
   </div>
 </section>
-
 <section class="ab-sec" id="join">
   <div class="ab-wrap">
     <h2 class="ab-h2">登记</h2>
@@ -414,25 +601,6 @@ button,input{font-family:inherit}
   </div>
 </section>
 
-<section class="ab-sec" id="board">
-  <div class="ab-wrap">
-    <h2 class="ab-h2">积分榜</h2>
-    <p class="ab-say">前 100 名公开；免费名额从这里产生。</p>
-    <table class="ab-board">
-      <thead><tr><th class="c-rank">名次</th><th class="c-addr">地址</th><th class="c-pts">积分</th></tr></thead>
-      <tbody id="boardBody"><tr><td colspan="3" class="tag">读取中…</td></tr></tbody>
-    </table>
-    <div class="ab-meline" id="meLine" hidden></div>
-    <div class="ab-row"><button class="ab-btn3" type="button" id="btnMore" hidden>展开全部</button></div>
-    <p class="ab-boardfoot" id="boardFoot"></p>
-    <div class="ab-kv" style="max-width:760px">
-      <div><b class="ab-kv-v" id="kvApplied">—</b><span class="ab-kv-k">在榜人数</span></div>
-      <div><b class="ab-kv-v" id="kvCap">387</b><span class="ab-kv-k">免费上限</span></div>
-      <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">已放出</span></div>
-    </div>
-  </div>
-</section>
-
 <section class="ab-sec">
   <div class="ab-wrap">
     <h2 class="ab-h2">开放时间</h2>
@@ -464,6 +632,48 @@ button,input{font-family:inherit}
     <p class="ab-say">随便挑一个 Arc 区块，看它长成什么样的宇宙。每天引爆一个、广播出去，+5 分。</p>
     <div class="ab-cta">
       <a class="ab-btn" href="app.html">去引爆</a>
+    </div>
+  </div>
+</section>
+
+<section class="ab-sec" id="faq">
+  <div class="ab-wrap">
+    <h2 class="ab-h2">常见问题</h2>
+    <!-- 原生 <details>：手风琴不需要一行 JS，键盘和读屏也自带支持。
+         正文里删掉的解释性内容收在这儿 —— 想看的人点开，不想看的人不用绕过它。 -->
+    <div class="ab-faq">
+      <details>
+        <summary>ARCBANG 是什么？</summary>
+        <p>把一个 Arc 区块哈希读成一套物理常数，跑出一个宇宙。合得来就铸成 NFT 留着。全网 1,387 枚，不发币。</p>
+      </details>
+      <details>
+        <summary>积分怎么算？</summary>
+        <p>登记 10 分。关注 10，点赞 10，转发并回复你的码 30。每个有效邀请 20，攒到 3 / 5 / 10 人还有额外奖励。创作推文一条 20。每天引爆并广播一次 5 分。</p>
+      </details>
+      <details>
+        <summary>什么时候开铸？</summary>
+        <p>预热 14 天，结束就进保底期，之后是先到先得，最后公售。页面顶上的倒计时是准的。</p>
+      </details>
+      <details>
+        <summary>免费名额怎么来？</summary>
+        <p>积分榜决定大部分免费名额。另有一部分由我们直接给到早期支持者与合作伙伴。具体数量在榜单定格时公布，不超过合约里的 387 枚。</p>
+      </details>
+      <details>
+        <summary>为什么在 Arc 上？</summary>
+        <p>Arc 的 gas 就是 USDC，一次铸造大约 0.003 USDC。不用先去买一种别的币才能玩。</p>
+      </details>
+      <details>
+        <summary>引爆要钱吗？</summary>
+        <p>不要。引爆、看结局、广播都不花钱，也不用连钱包。只有铸成 NFT 才上链。</p>
+      </details>
+      <details>
+        <summary>登记信息能改吗？</summary>
+        <p>不能。X 用户名和邀请码提交后就定死了。填错了来信说一声，我们人工改。</p>
+      </details>
+      <details>
+        <summary>分数为什么是临时的？</summary>
+        <p>预热结束我们会复核一遍，刷出来的会被扣掉。复核之后的那一份才是最终名单。</p>
+      </details>
     </div>
   </div>
 </section>
@@ -603,13 +813,18 @@ button,input{font-family:inherit}
 
     /* 分值全部来自服务端（env 可调），页面上一个分值都不写死 */
     var P = st.pts || {};
-    var card = function (k) { return document.querySelector('.ab-qc[data-task="' + k + '"]'); };
-    var setPts = function (k, txt) { var c = card(k); if (c) c.querySelector('[data-pts]').textContent = txt; };
+    /* 分值全部来自服务端（env 可调），页面上一个分值都不写死。 */
+    var setPts = function (k, txt) {
+      var c = document.querySelector('.ab-qr[data-task="' + k + '"]');
+      if (c) c.querySelector('[data-pts]').textContent = txt;
+    };
+    if (P.register != null) setPts('register', '+' + P.register);
     if (P.follow != null) setPts('follow', '+' + P.follow);
     if (P.repost != null) setPts('repost', '+' + P.repost);
     if (P.like != null) setPts('like', '+' + P.like);
-    if (P.invite != null) setPts('invite', TF('+{0} / 人，上限 {1} 人', P.invite, P.inviteMax));
-    if (P.share != null) setPts('share', TF('+{0} / 天，上限 {1} 天', P.share, P.shareMaxDays));
+    if (P.invite != null) setPts('invite', TF('+{0} / 人', P.invite));
+    if (P.post != null) setPts('post', TF('+{0} / 条', P.post));
+    if (P.share != null) setPts('share', TF('+{0} / 天', P.share));
 
     /* 置顶推：env 没配 ARCBANG_PINNED_POST_URL 就整颗按钮不出现 ——
        给一个点了没反应的按钮比没有按钮糟。 */
@@ -620,50 +835,204 @@ button,input{font-family:inherit}
     var bp = $('btnPost');
     if (intent) { bp.hidden = false; bp.href = intent; } else { bp.hidden = true; }
 
+    renderStats(st);
     renderTasks(st, intent);
     renderForm(st);
     renderMine(st);
+    renderRecord(st);
   }
 
-  /** 任务卡：状态四档（未完成 / 审核中 / 已完成 / 未通过）+ 行动按钮。 */
+  /* ---------------- 头像 ----------------
+     按地址生成的几何头像：底色 + 两个旋转过的方块。纯自绘 SVG，
+     不引任何库，也不发一个外部请求。同一个地址永远是同一张。 */
+  function avatar(seed, size) {
+    var s = String(seed || '').replace(/[^0-9a-f]/gi, '');
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    var hue = function (k) { return (h >> (k * 5)) % 360; };
+    var c = ['hsl(' + hue(0) + ',52%,62%)', 'hsl(' + hue(1) + ',58%,48%)', 'hsl(' + hue(2) + ',46%,72%)'];
+    var r1 = (h % 90) - 45, r2 = ((h >> 7) % 90) - 45;
+    return '<span class="ava"><svg viewBox="0 0 32 32" aria-hidden="true">'
+      + '<rect width="32" height="32" fill="' + c[0] + '"/>'
+      + '<rect x="4" y="4" width="24" height="24" fill="' + c[1] + '" transform="rotate(' + r1 + ' 16 16)"/>'
+      + '<rect x="9" y="9" width="14" height="14" fill="' + c[2] + '" transform="rotate(' + r2 + ' 16 16)"/>'
+      + '</svg></span>';
+  }
+
+  /* ---------------- 数字滚动 ----------------
+     只在**真的变了**的时候滚。这一页每 60 秒自刷一次，
+     每次都从 0 滚一遍的话整页会一直在抖。 */
+  var lastNum = {};
+  function setNum(id, v) {
+    var el = $(id);
+    if (!el) return;
+    if (v == null) { el.textContent = '—'; lastNum[id] = null; return; }
+    var from = lastNum[id];
+    lastNum[id] = v;
+    if (from == null || from === v || reduceMotion()) { el.textContent = String(v); return; }
+    var t0 = 0, dur = 200;
+    (function step(ts) {
+      if (!t0) t0 = ts;
+      var k = Math.min(1, (ts - t0) / dur);
+      el.textContent = String(Math.round(from + (v - from) * k));
+      if (k < 1) requestAnimationFrame(step);
+    })(0 || performance.now());
+  }
+  function reduceMotion() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  }
+
+  /* ---------------- 标签页 ---------------- */
+  function showTab(name) {
+    var tabs = document.querySelectorAll('.ab-tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-tab') === name);
+    var ps = document.querySelectorAll('.ab-panel');
+    for (var j = 0; j < ps.length; j++) ps[j].hidden = ps[j].getAttribute('data-panel') !== name;
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target && ev.target.closest ? ev.target.closest('.ab-tab') : null;
+    if (t) showTab(t.getAttribute('data-tab'));
+  });
+
+  /* ---------------- 可复制芯片 ---------------- */
+  function copyText(v) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(v);
+    } catch (e) { }
+    return Promise.reject();
+  }
+  document.addEventListener('click', function (ev) {
+    var c = ev.target && ev.target.closest ? ev.target.closest('[data-copy]') : null;
+    if (!c) return;
+    var v = c.getAttribute('data-copy');
+    if (!v) return;
+    var was = c.textContent;
+    copyText(v).then(function () {
+      c.textContent = T('已复制');
+      setTimeout(function () { c.textContent = was; }, 1400);
+    }, function () { });
+  });
+
+  /* ---------------- 五格统计 ---------------- */
+  function renderStats(st) {
+    var P = st.pts || {};
+    var connected = !!(ADDR && st.registered);
+    setNum('stPoints', connected ? (st.points || 0) : null);
+    $('stPointsSub').textContent = connected
+      ? TF('登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4}',
+        (st.breakdown && st.breakdown.register) || 0,
+        ((st.breakdown && st.breakdown.follow) || 0) + ((st.breakdown && st.breakdown.repost) || 0) + ((st.breakdown && st.breakdown.like) || 0),
+        ((st.breakdown && st.breakdown.invite) || 0) + ((st.breakdown && st.breakdown.milestone) || 0),
+        (st.breakdown && st.breakdown.post) || 0,
+        (st.breakdown && st.breakdown.share) || 0)
+      : T('连钱包后显示');
+
+    var done = 0;
+    if (st.registered) done++;
+    if (st.followed) done++;
+    if (st.reposted) done++;
+    if (st.liked) done++;
+    if ((st.validInvites || 0) > 0) done++;
+    if ((st.okPosts || 0) > 0) done++;
+    if ((st.shareDays || 0) > 0) done++;
+    $('stDone').textContent = connected ? (done + ' / 7') : '—';
+
+    $('stInv').textContent = connected ? ((st.validInvites || 0) + ' / ' + (P.inviteMax || 20)) : '—';
+    $('stInvSub').textContent = TF('每人 +{0}', P.invite || 20);
+
+    var inTop = !!st.inTop100;
+    $('stTop').textContent = connected ? (inTop ? T('已进') : ('+' + (st.gapToTop100 == null ? '—' : st.gapToTop100))) : '—';
+    $('stTop').parentNode.classList.toggle('in', connected && inTop);
+    $('stTopSub').textContent = connected ? (inTop ? T('在前 100 内') : T('再拿这么多分进前 100')) : T('按积分');
+
+    /* 剩余天数：预热结束时间来自服务端（ARCBANG_WARMUP_START + 天数）。 */
+    var end = (st.warmup && st.warmup.end) || (st.opens && st.opens.gtd) || (st.next && st.next.at);
+    if (end) {
+      var ms = new Date(end).getTime() - Date.now();
+      $('stLeft').textContent = ms > 0 ? String(Math.ceil(ms / 86400000)) : '0';
+      $('stLeftSub').textContent = T('预热期');
+    } else {
+      $('stLeft').textContent = '—';
+      $('stLeftSub').textContent = T('时间待定');
+    }
+  }
+
+  /* ---------------- 我的记录 ---------------- */
+  function renderRecord(st) {
+    var body = $('recBody');
+    if (!ADDR || !st.registered) { $('recEmpty').hidden = false; $('recTable').hidden = true; return; }
+    $('recEmpty').hidden = true;
+    $('recTable').hidden = false;
+    var when = function (v) {
+      if (!v) return '—';
+      var d = new Date(v);
+      if (isNaN(d.getTime())) return '—';
+      try { return d.toLocaleString(); } catch (e) { return v; }
+    };
+    var rows = [
+      [T('登记'), when(st.registeredAt)],
+      [T('关注'), st.followed ? T('已完成') : T('未完成')],
+      [T('转发'), st.reposted ? T('已完成') : (st.proof ? T('审核中') : T('未完成'))],
+      [T('点赞'), st.liked ? T('已完成') : T('未完成')],
+      [T('有效邀请'), (st.validInvites || 0) + ' / ' + (st.invites || 0)],
+      [T('创作推文'), TF('已通过 {0} · 未通过 {1}', st.okPosts || 0, st.badPosts || 0)],
+      [T('每日打卡'), TF('{0} 天', st.shareDays || 0)]
+    ];
+    var html = rows.map(function (r) {
+      return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>';
+    }).join('');
+    /* 提交过的链接列出来，点得开 —— 自己交了什么，自己要看得见。 */
+    (st.postList || []).forEach(function (x, i) {
+      html += '<tr><th>' + esc(TF('创作 #{0}', i + 1)) + '</th><td><a href="' + esc(x.url)
+        + '" target="_blank" rel="noopener noreferrer">' + esc(x.url.replace('https://x.com/', '')) + '</a> '
+        + '<span class="ab-qr-d">' + esc(x.status === 'ok' ? T('已完成') : (x.status === 'retry' ? T('审核中') : T('未通过'))) + '</span></td></tr>';
+    });
+    body.innerHTML = html;
+  }
+
+  /** 任务行：状态四态 + 主动作。**已完成的那一瞬间**才弹一下，刷新不弹。 */
+  var lastDone = {};
   function renderTasks(st, intent) {
     var P = st.pts || {};
     var reg = !!st.registered;
     var pf = st.proof || null;
-    /* 转发那一项的中间态：链接已经贴了、还没核过 —— 说「待核」并把原因写出来，
-       不然人会以为坏了。原因是机读的枚举，这里翻成人话。 */
     var WHY = {
       AUTHOR_MISMATCH: '作者不符', CODE_NOT_FOUND: '回复里没找到你的码',
       NOT_REPLY_TO_PINNED: '不是回复置顶推', REPLY_UNKNOWN: '在人工看了',
-      FETCH_FAILED: '推文打不开', BAD_URL: '链接不对', REJECTED: '被驳回了'
+      FETCH_FAILED: '推文打不开', BAD_URL: '链接不对', REJECTED: '被驳回了',
+      IS_RETWEET: '转发不算创作', NO_MENTION: '没提到 @arcbang_xyz', NO_HASHTAG: '没带 #ARCBANG'
     };
-    /* pending / partial / rejected 都是「核下来不对」——给用户的是同一个词：未通过。
-       retry / new 还在自动核的路上，那叫审核中。 */
     var bad = pf && (pf.status === 'pending' || pf.status === 'partial' || pf.status === 'rejected');
-    var repostState = st.reposted ? 'ok' : (bad ? 'bad' : (pf ? 'wait' : 'todo'));
     var plan = {
+      register: {
+        done: reg, state: reg ? 'ok' : 'todo',
+        act: reg ? null : { text: '去登记', href: '#join' }
+      },
       follow: {
-        done: !!st.followed,
-        state: st.followed ? 'ok' : 'todo',
+        done: !!st.followed, state: st.followed ? 'ok' : 'todo',
         act: reg ? { text: '去关注', href: st.followUrl, blank: true } : { text: '先登记', href: '#join' },
         claim: reg && !st.followed && !st.distrusted
       },
-      repost: {
-        done: !!st.reposted,
-        state: repostState,
-        why: (!st.reposted && pf && pf.reason) ? (WHY[pf.reason] || pf.reason) : '',
-        act: (reg && intent) ? { text: '去转发', href: intent, blank: true } : { text: '先登记', href: '#join' }
-      },
       like: {
-        done: !!st.liked,
-        state: st.liked ? 'ok' : 'todo',
+        done: !!st.liked, state: st.liked ? 'ok' : 'todo',
         act: (reg && st.likeUrl) ? { text: '去点赞', href: st.likeUrl, blank: true } : { text: '先登记', href: '#join' },
         claim: reg && !st.liked && !st.distrusted
+      },
+      repost: {
+        done: !!st.reposted,
+        state: st.reposted ? 'ok' : (bad ? 'bad' : (pf ? 'wait' : 'todo')),
+        why: (!st.reposted && pf && pf.reason) ? (WHY[pf.reason] || pf.reason) : '',
+        act: (reg && intent) ? { text: '去转发', href: intent, blank: true } : { text: '先登记', href: '#join' }
       },
       invite: {
         done: (st.validInvites || 0) >= (P.inviteMax || 20),
         state: (st.validInvites || 0) > 0 ? 'ok' : 'todo',
         act: { text: '拿链接', href: '#join' }
+      },
+      post: {
+        done: (st.okPosts || 0) >= (P.postMax || 5),
+        state: (st.okPosts || 0) > 0 ? 'ok' : ((st.badPosts || 0) > 0 ? 'bad' : 'todo'),
+        act: reg ? null : { text: '先登记', href: '#join' }
       },
       share: {
         done: (st.shareDays || 0) >= (P.shareMaxDays || 5),
@@ -672,25 +1041,31 @@ button,input{font-family:inherit}
       }
     };
     var progress = {
-      invite: reg ? TF('{0} 个', st.validInvites || 0) : '',
+      invite: reg ? TF('{0} 人', st.validInvites || 0) : '',
+      post: reg ? TF('已通过 {0} · 未通过 {1}', st.okPosts || 0, st.badPosts || 0) : '',
       share: reg ? TF('{0} 天', st.shareDays || 0) : ''
     };
-    /* 四个状态词，全页统一：未完成 / 审核中 / 已完成 / 未通过。
-       「审核中」旁边说一句「通常几分钟」，不然贴完链接的人会一直刷。 */
     var LABEL = { todo: '未完成', wait: '审核中', ok: '已完成', bad: '未通过' };
+
     Object.keys(plan).forEach(function (k) {
-      var c = document.querySelector('.ab-qc[data-task="' + k + '"]');
+      var c = document.querySelector('.ab-qr[data-task="' + k + '"]');
       if (!c) return;
       var p = plan[k];
+      /* 只在「从没完成变成完成」的那一次弹 */
+      if (p.done && lastDone[k] === false && !reduceMotion()) {
+        c.classList.remove('pop');
+        void c.offsetWidth;
+        c.classList.add('pop');
+      }
+      lastDone[k] = !!p.done;
       c.classList.toggle('done', !!p.done);
       var stEl = c.querySelector('[data-st]');
       var label = p.done ? 'ok' : p.state;
       stEl.className = 'ab-st ' + label;
       stEl.textContent = p.done ? T(LABEL.ok)
-        : (progress[k] ? T('进行中') + ' · ' + progress[k]
-          : (p.why ? T(LABEL[p.state]) + ' · ' + T(p.why)
-            : (p.state === 'wait' ? T(LABEL.wait) + ' · ' + T('自动核对，通常几分钟')
-              : T(LABEL[p.state]))));
+        : (p.why ? T(LABEL[p.state]) + ' · ' + T(p.why)
+          : (p.state === 'wait' ? T(LABEL.wait) + ' · ' + T('自动核对，通常几分钟')
+            : (progress[k] ? T(LABEL[p.state]) + ' · ' + progress[k] : T(LABEL[p.state]))));
       var a = c.querySelector('[data-act]');
       if (a) {
         if (!p.act || !p.act.href) { a.hidden = true; }
@@ -702,30 +1077,66 @@ button,input{font-family:inherit}
           else { a.removeAttribute('target'); a.removeAttribute('rel'); }
         }
       }
-      /* 「我关注了 / 我点了」：这两项在 X 上查不到，点一下就计分。 */
       var cb = c.querySelector('[data-claim]');
       if (cb) cb.hidden = !p.claim;
     });
 
-    /* 贴回复链接那一块：登记之后才出现；已经贴过就只显示那条链接。 */
+    /* 登记码芯片：登记之后才有 */
+    var chip = $('chipCode');
+    if (reg && st.code) { chip.hidden = false; chip.textContent = T('登记码') + ' ' + st.code; chip.setAttribute('data-copy', st.code); }
+    else chip.hidden = true;
+
+    /* 转发：贴链接那一块 */
     var box = $('proofBox'), doneP = $('proofDone');
     if (!reg) { box.hidden = true; doneP.hidden = true; }
-    else if (pf && !pf.rejected) {
-      box.hidden = true;
-      doneP.hidden = false;
+    else if (pf && !pf.rejected && !bad) {
+      box.hidden = true; doneP.hidden = false;
       doneP.innerHTML = esc(T('已提交：')) + '<a href="' + esc(pf.url) + '" target="_blank" rel="noopener noreferrer">'
         + esc(pf.url.replace('https://x.com/', '')) + '</a>';
     } else {
       box.hidden = !!st.reposted;
       doneP.hidden = true;
     }
-    /* 核下来不对、而且还有提交次数：把「重新提交」摆出来，别让人干瞪眼。 */
     if (reg && bad && pf && (pf.submits || 1) < (st.proofMaxSubmits || 2)) {
       box.hidden = false;
       $('btnProof').textContent = T('重新提交');
     } else if (!box.hidden) {
       $('btnProof').textContent = T('提交链接');
     }
+
+    /* 邀请：里程碑轨道 + 链接 */
+    var ms = st.milestones || [];
+    var maxAt = ms.length ? ms[ms.length - 1].at : 10;
+    var cur = Math.min(st.validInvites || 0, maxAt);
+    $('msTrack').innerHTML = '<span class="ab-track-line"><i style="width:'
+      + Math.round(cur / maxAt * 100) + '%"></i></span>'
+      + '<span class="ab-track-ms">'
+      + ms.map(function (m) {
+        return '<b class="' + (m.hit ? 'hit' : '') + '">' + esc(TF('{0} 人 +{1}', m.at, m.pts)) + '</b>';
+      }).join('') + '</span>';
+    $('inviteRow').hidden = !reg;
+    if (reg) $('inviteUrl').value = location.origin + location.pathname + '?ref=' + (st.code || '');
+
+    /* 创作推文：五个点 + 提交框 */
+    var pmax = P.postMax || 5;
+    var okN = st.okPosts || 0, badN = st.badPosts || 0;
+    var dots = '';
+    for (var i = 0; i < pmax; i++) {
+      dots += '<i class="' + (i < okN ? 'on' : (i < okN + badN ? 'bad' : '')) + '"></i>';
+    }
+    $('postDots').innerHTML = dots + '<span>' + esc(reg
+      ? TF('已通过 {0} · 未通过 {1} · 每周最多 {2} 条', okN, badN, P.postPerWeek || 2)
+      : TF('每周最多 {0} 条，共 {1} 条', P.postPerWeek || 2, pmax)) + '</span>';
+    $('postBox').hidden = !reg || okN >= pmax;
+
+    /* 每日打卡：五个点 */
+    var smax = P.shareMaxDays || 5, sd = st.shareDays || 0;
+    var sdots = '';
+    for (var j = 0; j < smax; j++) sdots += '<i class="' + (j < sd ? 'on' : '') + '"></i>';
+    $('shareDots').innerHTML = sdots + '<span>' + esc(TF('已打卡 {0} 天', sd)) + '</span>';
+
+    /* 主 CTA：登记过了就叫「继续」 */
+    $('mainCta').textContent = reg ? T('继续') : T('开始攒分');
   }
 
   /**
@@ -792,21 +1203,25 @@ button,input{font-family:inherit}
     var rows = (BD && BD.rows) || [];
     var body = $('boardBody');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="3" class="tag">' + esc(T('还没有人上榜 —— 第一个登记的就是第一名。')) + '</td></tr>';
+      body.innerHTML = '<tr><td colspan="2"><div class="ab-empty">'
+        + '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2"/>'
+        + '<circle cx="32" cy="32" r="15" fill="none" stroke="currentColor" stroke-width="2"/>'
+        + '<circle cx="32" cy="32" r="4" fill="currentColor"/></svg>'
+        + esc(T('还没有人上榜，第一个是你。')) + '</div></td></tr>';
       $('boardFoot').textContent = '';
       $('btnMore').hidden = true;
       $('meLine').hidden = true;
       return;
     }
     var show = expanded ? rows : rows.slice(0, FOLD_ROWS);
-    var myRank = ST && ST.rank;
+    /* 榜上不带名次了，所以按**地址缩写**认自己那一行。 */
+    var myShort = ADDR ? (ADDR.slice(0, 6) + '…' + ADDR.slice(-4)) : null;
+    /* 榜上**不标名次数字、不标审核状态**（用户拍板）：顺序本身就是排名，
+       审核状态是后台的事。自己那一行仍然高亮 —— 按地址缩写认，不按名次认。 */
     body.innerHTML = show.map(function (r) {
-      var me = myRank && r.rank === myRank;
-      var cls = [me ? 'me' : '', r.rank <= 3 ? 'r' + r.rank : ''].filter(Boolean).join(' ');
-      var rankCell = r.rank <= 3 ? '<span class="medal">' + r.rank + '</span>' : '#' + r.rank;
-      return '<tr class="' + cls + '"><td class="c-rank">' + rankCell + '</td>'
-        + '<td class="c-addr">' + esc(r.addr)
-        + (r.verified ? '' : ' <span class="tag">' + esc(T('未核')) + '</span>') + '</td>'
+      var me = myShort && r.addr === myShort;
+      return '<tr class="' + (me ? 'me' : '') + '">'
+        + '<td class="c-addr">' + avatar(r.addr) + esc(r.addr) + '</td>'
         + '<td class="c-pts">' + r.points + '</td></tr>';
     }).join('');
 
@@ -814,16 +1229,15 @@ button,input{font-family:inherit}
     $('btnMore').textContent = expanded ? T('收起') : TF('展开全部 {0} 名', rows.length);
 
     /* 本人那一行钉在榜下方：名次多靠后都一眼看得见，还给「距上一名差 N 分」。 */
+    /* 本人那一行：**不提名次**，只说在不在前 100、还差几分。 */
     var ml = $('meLine');
-    if (ST && ST.registered && ST.rank) {
-      var lag = ST.gapToPrev == null ? null : ST.gapToPrev;
+    if (ST && ST.registered) {
       ml.hidden = false;
-      ml.innerHTML = '<span>' + esc(T('你')) + '</span>'
-        + '<b>#' + ST.rank + '</b>'
-        + '<b>' + ST.points + '</b><span class="lag">' + esc(T('分')) + '</span>'
-        + (ST.rank > 1 && lag != null
-          ? '<span class="lag">' + esc(TF('距上一名差 {0} 分', lag)) + '</span>'
-          : '<span class="lag">' + esc(T('榜首')) + '</span>');
+      ml.innerHTML = (myShort ? avatar(ST.code || myShort) : '')
+        + '<span>' + esc(T('你')) + '</span>'
+        + '<b>' + (ST.points || 0) + '</b><span class="lag">' + esc(T('分')) + '</span>'
+        + '<span class="lag">' + esc(ST.inTop100 ? T('在前 100 内')
+          : TF('再 {0} 分进前 100', ST.gapToTop100 == null ? '—' : ST.gapToTop100)) + '</span>';
     } else {
       ml.hidden = true;
     }
@@ -965,6 +1379,28 @@ button,input{font-family:inherit}
     }).then(function () { btn.disabled = false; });
   });
   function pmsg(t, cls) { var el = $('proofMsg'); el.className = 'ab-msg ' + (cls || ''); el.textContent = t; }
+
+  /* ---------------- 创作推文：交一条自己发的 ----------------
+     服务端收到就去取那条推自动核：作者对得上、正文里有 @本站 和 #ARCBANG、不是转发。 */
+  $('btnPost2').addEventListener('click', function () {
+    var sig = sessionSig();
+    if (!ADDR || !sig) { pomsg(T('先连钱包并登记'), 'err'); return; }
+    var url = String($('inPost').value || '').trim();
+    if (!PROOF_RE.test(url)) { pomsg(T('贴一条推文链接'), 'err'); return; }
+    var btn = this; btn.disabled = true;
+    pomsg(T('在核了…'));
+    api('/allowlist/post', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ address: ADDR, url: url, sig: sig })
+    }).then(function (r) {
+      pomsg(r.auto ? T('核过了，分已经加上。') : T('这一条没过，看看说明再发一条。'), r.auto ? 'ok' : 'err');
+      $('inPost').value = '';
+      return load();
+    }, function (e) {
+      pomsg((e && e.message) || String(e), 'err');
+    }).then(function () { btn.disabled = false; });
+  });
+  function pomsg(t, cls) { var el = $('postMsg'); el.className = 'ab-msg ' + (cls || ''); el.textContent = t; }
   /** 登记时存下的那一次签名（模拟器页也读它）。没有就回 null。 */
   function sessionSig() {
     try {
