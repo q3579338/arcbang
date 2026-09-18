@@ -281,6 +281,24 @@ function json(res, code, obj, headers) {
    本机 nginx 已经用 real_ip_header CF-Connecting-IP 把 $remote_addr 设成真实访客，
    所以 X-Real-IP / XFF 末跳就是那一个地址，不必再去信可伪造的那两头。 */
 function clientIpOf(req) { return RL.ipOf(req); }
+
+/* ---------------------------------------------------------------- 管理员口令
+   审核页（/admin.html）用它，不走 IP 白名单 —— 审核是坐在任意网络下做的事。
+   **没配 ARCBANG_ADMIN_TOKEN 时整套后台接口回 404**，不是 401：
+   没开的功能就该不存在，401 等于告诉人「这儿有个后台，只是你进不去」。
+   比对走 timingSafeEqual：== 在第一个不同的字节上就返回，够耐心的人能一位一位试出来。
+   两边先各哈希一遍再比 —— timingSafeEqual 长度不等会直接抛，而长度本身也是一位信息。 */
+const nodeCrypto = require('crypto');
+function adminTokenConfigured() {
+  return String(process.env.ARCBANG_ADMIN_TOKEN || '').length >= 8;
+}
+function adminTokenOk(req) {
+  const want = String(process.env.ARCBANG_ADMIN_TOKEN || '');
+  if (want.length < 8) return false;
+  const got = String((req.headers && req.headers['x-admin-token']) || '');
+  const h = (s) => nodeCrypto.createHash('sha256').update(s, 'utf8').digest();
+  try { return nodeCrypto.timingSafeEqual(h(got), h(want)); } catch (e) { return false; }
+}
 function adminAllowed(ip) {
   const allow = String(process.env.ARCBANG_ADMIN_IPS || '')
     .split(',').map(s => s.trim().replace(/^::ffff:/i, '')).filter(Boolean);
@@ -503,6 +521,11 @@ const STALL = require('./stall.js').create({ storeDir: STORE_DIR, take: RL.take 
 /* 白名单与四段放号（server/allowlist.js）：/api/bang 到底签不签、签的是不是免费，
    全由它决定。freeLeft 读的是 wouldBeFreeMint 那份缓存，看状态不额外打 RPC。 */
 const AL = require('./allowlist.js').create({ storeDir: STORE_DIR, take: RL.take, freeLeft: freeLeftOnChain });
+/* 自动核推文的重试队列：每分钟推一次（取不到推文的那些 1/5/30 分钟后再试）。unref 让它不挡进程退出。 */
+if (typeof AL.runProofQueue === 'function') {
+  const t = setInterval(() => { AL.runProofQueue(Date.now()).catch((e) => console.error('[allowlist] 重试队列：' + (e && e.message))); }, 60 * 1000);
+  if (t.unref) t.unref();
+}
 
 /* ---------------------------------------------------------------- 路由 */
 
@@ -753,6 +776,87 @@ async function handle(req, res, u) {
     if (parsedSh.error) return json(res, 400, { error: parsedSh.error }, { 'cache-control': 'no-store' });
     const r = AL.share(parsedSh.value, RL.ipOf(req));
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
+  }
+
+  /* POST /api/allowlist/proof {address, url, sig}
+     贴自己那条「回复了登记码」的推文链接。服务端**立刻去取那条推文自动核**
+     （作者 / 登记码 / 回复对象三项全对才打勾），取不到就按 1/5/30 分钟排重试。
+     同 share：sig 是登记时那一次签名，不再弹钱包。 */
+  if (p === '/allowlist/proof' && req.method === 'POST') {
+    const rb = await bodyOf(req, res);
+    if (rb === null) return;
+    const parsedPf = parseJsonObject(rb);
+    if (parsedPf.error) return json(res, 400, { error: parsedPf.error }, { 'cache-control': 'no-store' });
+    const r = await AL.submitProof(parsedPf.value, RL.ipOf(req));
+    return json(res, r.status, r.body, { 'cache-control': 'no-store' });
+  }
+
+  /* POST /api/allowlist/claim {address, sig, task:'follow'|'like'}
+     关注与点赞在 X 上没有免 key 的办法能查，所以**默认信任**：点一下就计分。
+     管理员抽查撤销之后这个地址整个失去信任（见 allowlist.js 的 distrust）。 */
+  if (p === '/allowlist/claim' && req.method === 'POST') {
+    const rb = await bodyOf(req, res);
+    if (rb === null) return;
+    const parsedCl = parseJsonObject(rb);
+    if (parsedCl.error) return json(res, 400, { error: parsedCl.error }, { 'cache-control': 'no-store' });
+    const r = AL.claim(parsedCl.value);
+    return json(res, r.status, r.body, { 'cache-control': 'no-store' });
+  }
+
+  /* ================================================================ 管理员审核页的后端
+     口令在 ARCBANG_ADMIN_TOKEN，请求带 X-Admin-Token 头，**常量时间比对**。
+     **没配 token 时这些路一律 404** —— 不是 401：没开的功能就该不存在，
+     401 等于告诉人「这儿有个后台，只是你进不去」。
+     原有的 ARCBANG_ADMIN_IPS 门禁照旧管 /deploy-gate 与 /api/allowlist/applied，两者不冲突。 */
+  /* 这一段里一律写 { 'cache-control': 'no-store' } 而不是常量 NOSTORE ——
+     那个常量声明在这个函数后面，在这里引用会踩 TDZ（ReferenceError），
+     而且只在真有人访问后台时才炸。上面 /bang 那一处早就留过同样的注解。 */
+  if (p.indexOf('/allowlist/admin') === 0) {
+    if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+    if (!adminTokenOk(req)) return json(res, 401, { error: '口令不对' }, { 'cache-control': 'no-store' });
+
+    if (p === '/allowlist/admin/list' && (req.method === 'GET' || req.method === 'HEAD')) {
+      return json(res, 200, AL.adminList(u.searchParams.get('q'), u.searchParams.get('only')), { 'cache-control': 'no-store' });
+    }
+    if (p === '/allowlist/admin/verify' && req.method === 'POST') {
+      const rb = await bodyOf(req, res);
+      if (rb === null) return;
+      const q = parseJsonObject(rb);
+      if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
+      const which = {};
+      for (const k of ['follow', 'repost', 'like']) if (q.value[k]) which[k] = true;
+      const r = q.value.on === false
+        ? (q.value.distrust ? AL.distrust(q.value.token, which) : AL.unverify(q.value.token, which))
+        : AL.verify(q.value.token, which);
+      return json(res, r.ok ? 200 : 400, r, { 'cache-control': 'no-store' });
+    }
+    if (p === '/allowlist/admin/reject' && req.method === 'POST') {
+      const rb = await bodyOf(req, res);
+      if (rb === null) return;
+      const q = parseJsonObject(rb);
+      if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
+      const r = AL.rejectProof(q.value.token, q.value.reason);
+      return json(res, r.ok ? 200 : 400, r, { 'cache-control': 'no-store' });
+    }
+    if (p === '/allowlist/admin/phase' && req.method === 'POST') {
+      const rb = await bodyOf(req, res);
+      if (rb === null) return;
+      const q = parseJsonObject(rb);
+      if (q.error) return json(res, 400, { error: q.error }, NOSTORE);
+      const r = AL.setPhase(q.value.phase);
+      return json(res, r.ok ? 200 : 400, r, NOSTORE);
+    }
+    if (p === '/allowlist/admin/freeze' && req.method === 'POST') {
+      return json(res, 200, AL.freeze(), NOSTORE);
+    }
+    if (p === '/allowlist/admin/csv' && (req.method === 'GET' || req.method === 'HEAD')) {
+      return send(res, 200, AL.appliedCsv(), {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': 'attachment; filename="arcbang-allowlist.csv"',
+        'cache-control': 'no-store'
+      });
+    }
+    return json(res, 404, { error: '没有这个接口' }, NOSTORE);
   }
 
   if (p === '/allowlist/applied' && (req.method === 'GET' || req.method === 'HEAD')) {

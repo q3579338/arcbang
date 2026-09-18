@@ -2772,14 +2772,17 @@ function call(method, url, body, headers) {
         s1.total === 10 && s1.pts.register === 10 && s1.pts.repost === 0
         && s1.pts.invite === 0 && s1.pts.share === 0, JSON.stringify(s1.pts));
       ok('没登记过的地址不上榜、0 分', AL.scoreOf(a3).registered === false && AL.scoreOf(a3).total === 0);
-      AL.verify(AL.codeOf(a1));
-      ok('verify 打完转发勾 → +30 分（40 分）', AL.scoreOf(a1).total === 40 && AL.isVerified(a1) === true);
-      ok('verify 幂等：再核一次还是 40 分', AL.verify(a1).already === true && AL.scoreOf(a1).total === 40);
+      AL.verify(AL.codeOf(a1), { repost: true });
+      ok('只打转发勾 → +30 分（40 分）', AL.scoreOf(a1).total === 40 && AL.isVerified(a1) === true);
+      ok('verify 幂等：同一个勾再打一次还是 40 分',
+        AL.verify(a1, { repost: true }).already === true && AL.scoreOf(a1).total === 40);
       ok('**verify 不发名额**：它只加分（名单由榜算，不是这里发的）',
         typeof AL.verify(a1).tier === 'undefined');
+      ok('不带参数的 verify 把三连一起打上 → 10+10+30+10 = 60', AL.scoreOf(a1).total === 60);
       AL.unverify(a1);
-      ok('unverify 撤回转发勾 → 退回 10 分', AL.scoreOf(a1).total === 10 && AL.isVerified(a1) === false);
-      AL.verify(a1);
+      ok('不带参数的 unverify 把三连一起撤掉 → 退回 10 分',
+        AL.scoreOf(a1).total === 10 && AL.isVerified(a1) === false);
+      AL.verify(a1, { repost: true });
     }
 
     /* ---- 邀请：**被邀请人 verify 之前一分不算** ---- */
@@ -2790,7 +2793,8 @@ function call(method, url, body, headers) {
         AL.inviteCount(a1) === 1 && AL.validInviteCount(a1) === 0 && AL.scoreOf(a1).pts.invite === 0);
       AL.verify(AL.codeOf(a2));
       ok('被邀请人核过之后才算有效邀请 → 邀请人 +20 分',
-        AL.validInviteCount(a1) === 1 && AL.scoreOf(a1).pts.invite === 20 && AL.scoreOf(a1).total === 60);
+        AL.validInviteCount(a1) === 1 && AL.scoreOf(a1).pts.invite === 20
+        && AL.scoreOf(a1).total === AL.scoreOf(a1).pts.register + AL.scoreOf(a1).pts.repost + 20);
       /* 上限：把 inviteMax 调成 1，再拉一个人进来也不再加分 */
       const savedMax = process.env.ARCBANG_PTS_INVITE_MAX;
       process.env.ARCBANG_PTS_INVITE_MAX = '1';
@@ -2933,17 +2937,21 @@ function call(method, url, body, headers) {
       const A9 = new Wallet('0x' + '39'.repeat(32));
       ok('没登记的人：下一步是登记', AL.nextStep(A9.address).key === 'register');
       AL.register({ address: A9.address, xHandle: 'eve', sig: A9.signMessageSync(ALX.registerMessage(A9.address)) }, '5.5.5.5');
-      ok('登记完没核转发：下一步是转发', AL.nextStep(A9.address).key === 'repost');
+      ok('登记完三连一个没核：下一步是关注（三连按 关注 → 转发 → 点赞 排）',
+        AL.nextStep(A9.address).key === 'follow');
+      AL.verify(A9.address.toLowerCase(), { follow: true });
+      ok('关注核过了：下一步是转发', AL.nextStep(A9.address).key === 'repost');
       AL.verify(A9.address.toLowerCase());
-      ok('核过转发：下一步是邀请', AL.nextStep(A9.address).key === 'invite');
+      ok('三连都核过了：下一步是邀请', AL.nextStep(A9.address).key === 'invite');
     }
 
     /* ---- CSV 导出：人工比对 X 评论要用 ---- */
     {
       const csv = AL.appliedCsv().trim().split('\n');
-      ok('CSV 表头带 rank / points / verified / valid_invites / share_days',
+      ok('CSV 表头带 rank / points / 三连三列 / valid_invites / share_days',
         /(^|,)rank(,|$)/.test(csv[0]) && /(^|,)points(,|$)/.test(csv[0])
-        && /(^|,)verified(,|$)/.test(csv[0]) && /(^|,)valid_invites(,|$)/.test(csv[0])
+        && /(^|,)follow(,|$)/.test(csv[0]) && /(^|,)repost(,|$)/.test(csv[0])
+        && /(^|,)like(,|$)/.test(csv[0]) && /(^|,)valid_invites(,|$)/.test(csv[0])
         && /(^|,)share_days(,|$)/.test(csv[0]), csv[0]);
       ok('CSV 按积分从高到低排（审核时一眼看得出谁在前面）',
         Number(csv[1].split(',')[4]) >= Number(csv[2].split(',')[4]));
@@ -2960,7 +2968,10 @@ function call(method, url, body, headers) {
       process.env.ARCBANG_FREE_TOP = '2';
       AL._reload();
       const rows = AL.board().rows;
-      const gtdAddr = rows[0].addr, fcfsAddr = rows[1].addr;
+      /* **按 tierOf 挑人，不按下标挑**：分值一改榜就重排，
+         写死 rows[0] / rows[1] 的话这一节会因为别处加了一项积分而莫名其妙地红。 */
+      const gtdAddr = rows.find((r) => AL.tierOf(r.addr) === 'gtd').addr;
+      const fcfsAddr = rows.find((r) => AL.tierOf(r.addr) === 'fcfs').addr;
       const stranger = '0x' + 'ee'.repeat(20);
       const yes = async () => true;         // 链上：还能走免费
       const no = async () => false;         // 链上：额度用完 / 这个地址用过了
@@ -3115,6 +3126,182 @@ function call(method, url, body, headers) {
         readWeb2('warmup-arc.html').indexOf("var AL_SIG_KEY = 'arcbang.al.sig'") >= 0);
       ok('IP 闸已经从服务端删干净（免费与否只由名单决定）',
         fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8').indexOf('FREE_PER_IP_DAY') < 0);
+    }
+
+    /* ---- X 三连：三项分开计分、分开打勾 ---- */
+    {
+      const save = process.env.ARCBANG_PINNED_POST_URL;
+      process.env.ARCBANG_PINNED_POST_URL = 'https://x.com/arcbang_xyz/status/1999888777666';
+      const W = new Wallet('0x' + '41'.repeat(32));
+      const w = W.address.toLowerCase();
+      const wsig = W.signMessageSync(ALX.registerMessage(W.address));
+      AL.register({ address: W.address, xHandle: 'zoe', sig: wsig }, '8.8.8.8');
+      ok('刚登记：三连都没打，只有登记那 10 分',
+        AL.scoreOf(w).total === 10 && !AL.scoreOf(w).followed && !AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
+      AL.verify(w, { follow: true });
+      ok('只打关注 → +10（转发和点赞一分没给）',
+        AL.scoreOf(w).total === 20 && AL.scoreOf(w).followed === true
+        && AL.scoreOf(w).reposted === false && AL.scoreOf(w).liked === false);
+      AL.verify(w);
+      ok('不带参数的 verify 把三个勾一起打上 → 10+10+30+10 = 60',
+        AL.scoreOf(w).total === 60 && AL.scoreOf(w).liked === true, String(AL.scoreOf(w).total));
+      AL.unverify(w, { like: true });
+      ok('只撤点赞 → 回到 50，关注和转发还在',
+        AL.scoreOf(w).total === 50 && AL.scoreOf(w).followed && AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
+      ok('X 的三个入口都是纯 intent URL',
+        AL.followUrl() === 'https://x.com/intent/follow?screen_name=' + AL.xHandle()
+        && AL.likeUrl() === 'https://x.com/intent/like?tweet_id=1999888777666'
+        && AL.pinnedTweetId() === '1999888777666');
+      const csv = AL.appliedCsv().trim().split('\n');
+      ok('CSV 把三连拆成三列（合成一列就没法只补其中一项）',
+        /(^|,)follow(,|$)/.test(csv[0]) && /(^|,)repost(,|$)/.test(csv[0]) && /(^|,)like(,|$)/.test(csv[0]), csv[0]);
+      const line = csv.find((l) => l.indexOf(w) >= 0);
+      ok('CSV 那一行里三连分别是 1/1/0', line && line.split(',').slice(5, 8).join('') === '110', line && line.split(',').slice(5, 8).join(''));
+      if (save === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = save;
+    }
+
+    /* ---- 自动核：拿假的 syndication JSON 喂进去 ---- */
+    {
+      const save = process.env.ARCBANG_PINNED_POST_URL;
+      process.env.ARCBANG_PINNED_POST_URL = 'https://x.com/arcbang_xyz/status/1999888777666';
+      const json = (j) => async () => ({ ok: true, text: async () => JSON.stringify(j) });
+      const dead = async () => null;
+      const mkUser = (seed, x) => {
+        const W2 = new Wallet('0x' + seed.repeat(32));
+        const s2 = W2.signMessageSync(ALX.registerMessage(W2.address));
+        AL.register({ address: W2.address, xHandle: x, sig: s2 }, '9.9.9.9');
+        return { addr: W2.address.toLowerCase(), sig: s2, code: AL.codeOf(W2.address) };
+      };
+
+      const u1 = mkUser('51', 'una');
+      let r = await AL.submitProof({ address: u1.addr, url: 'https://x.com/una/status/2001222333444', sig: u1.sig }, '9.9.9.9', Date.now(),
+        json({ user: { screen_name: 'UNA' }, text: 'gm ' + u1.code, in_reply_to_status_id_str: '1999888777666' }));
+      ok('三项全对 → 自动打转发勾（作者大小写不敏感）',
+        r.status === 200 && r.body.auto === true && AL.hasCheck(u1.addr, 'repost')
+        && AL.checkBy(u1.addr, 'repost') === 'auto');
+
+      const u2 = mkUser('52', 'vic');
+      r = await AL.submitProof({ address: u2.addr, url: 'https://x.com/vic/status/2001222333445', sig: u2.sig }, '9.9.9.9', Date.now(),
+        json({ user: { screen_name: 'someone_else' }, text: 'gm ' + u2.code, in_reply_to_status_id_str: '1999888777666' }));
+      ok('作者不符 → 不打勾，原因 AUTHOR_MISMATCH，停在待人工（不再重试）',
+        r.body.reason === 'AUTHOR_MISMATCH' && !AL.hasCheck(u2.addr, 'repost')
+        && AL.proofOf(u2.addr).status === 'pending' && AL.proofOf(u2.addr).nextAt === null);
+
+      const u3 = mkUser('53', 'wes');
+      r = await AL.submitProof({ address: u3.addr, url: 'https://x.com/wes/status/2001222333446', sig: u3.sig }, '9.9.9.9', Date.now(),
+        json({ user: { screen_name: 'wes' }, text: '正文里没有那串码', in_reply_to_status_id_str: '1999888777666' }));
+      ok('正文里没有登记码 → CODE_NOT_FOUND', r.body.reason === 'CODE_NOT_FOUND' && !AL.hasCheck(u3.addr, 'repost'));
+
+      const u4 = mkUser('54', 'xia');
+      r = await AL.submitProof({ address: u4.addr, url: 'https://x.com/xia/status/2001222333447', sig: u4.sig }, '9.9.9.9', Date.now(),
+        json({ user: { screen_name: 'xia' }, text: 'gm ' + u4.code, in_reply_to_status_id_str: '5555555555' }));
+      ok('回复的不是置顶推 → NOT_REPLY_TO_PINNED', r.body.reason === 'NOT_REPLY_TO_PINNED' && !AL.hasCheck(u4.addr, 'repost'));
+
+      /* oEmbed 退路：查不到回复对象 → **不自动过**，标 partial 进待人工。
+         「查不到」和「不是回复」是两件事，不能混成一件。 */
+      const u5 = mkUser('55', 'yun');
+      const oembed = async (url) => {
+        if (String(url).indexOf('syndication') >= 0) return null;
+        return { ok: true, text: async () => JSON.stringify({
+          html: '<blockquote><p>gm ' + u5.code + '</p>&mdash; yun (@yun)</blockquote>',
+          author_url: 'https://twitter.com/yun'
+        }) };
+      };
+      r = await AL.submitProof({ address: u5.addr, url: 'https://x.com/yun/status/2001222333448', sig: u5.sig }, '9.9.9.9', Date.now(), oembed);
+      ok('syndication 挂了退 oEmbed：查不到回复对象 → partial，不自动过',
+        r.body.auto === false && r.body.reason === 'REPLY_UNKNOWN'
+        && AL.proofOf(u5.addr).status === 'partial' && AL.proofOf(u5.addr).via === 'oembed');
+
+      /* 重试队列：取不到才排重试，到点了才跑，跑通就打勾。 */
+      const u6 = mkUser('56', 'zed');
+      const t0 = Date.parse('2026-11-01T00:00:00Z');
+      r = await AL.submitProof({ address: u6.addr, url: 'https://x.com/zed/status/2001222333449', sig: u6.sig }, '9.9.9.9', t0, dead);
+      ok('推文取不到 → status=retry，排在 1 分钟后',
+        r.body.reason === 'FETCH_FAILED' && AL.proofOf(u6.addr).status === 'retry'
+        && AL.proofOf(u6.addr).tries === 1
+        && Date.parse(AL.proofOf(u6.addr).nextAt) === t0 + 60000);
+      let q = await AL.runProofQueue(t0 + 30000, dead);
+      ok('没到点不跑', q.checked === 0 && AL.proofOf(u6.addr).tries === 1);
+      q = await AL.runProofQueue(t0 + 61000,
+        json({ user: { screen_name: 'zed' }, text: 'gm ' + u6.code, in_reply_to_status_id_str: '1999888777666' }));
+      ok('到点重试一次就通过 → 打勾、status=ok、不再排队',
+        q.checked === 1 && AL.proofOf(u6.addr).status === 'ok'
+        && AL.proofOf(u6.addr).nextAt === null && AL.hasCheck(u6.addr, 'repost'));
+
+      /* 提交的形状与归属 */
+      const u7 = mkUser('57', 'amy');
+      ok('不是 x.com / twitter.com 的链接 → 400',
+        (await AL.submitProof({ address: u7.addr, url: 'https://evil.example/amy/status/2001222333450', sig: u7.sig }, '9.9.9.9', Date.now(), dead)).status === 400);
+      ok('别人发的推文 → 400（贴谁的都行的话，一条爆款能让所有人过）',
+        (await AL.submitProof({ address: u7.addr, url: 'https://x.com/notamy/status/2001222333451', sig: u7.sig }, '9.9.9.9', Date.now(), dead)).status === 400);
+      ok('没登记过的地址 → 403',
+        (await AL.submitProof({ address: new Wallet('0x' + '58'.repeat(32)).address, url: 'https://x.com/a/status/2001222333452', sig: u7.sig }, '9.9.9.9', Date.now(), dead)).status === 400);
+
+      /* 二次提交拒；驳回之后可以再交一次，但只能再一次 */
+      await AL.submitProof({ address: u7.addr, url: 'https://x.com/amy/status/2001222333453', sig: u7.sig }, '9.9.9.9', Date.now(), dead);
+      ok('同一个地址再交一条 → 409（提交之后不能改）',
+        (await AL.submitProof({ address: u7.addr, url: 'https://x.com/amy/status/2001222333454', sig: u7.sig }, '9.9.9.9', Date.now(), dead)).status === 409);
+      AL.rejectProof(u7.code, 'REJECTED');
+      ok('驳回之后允许重提，而且转发那个勾被一起撤掉',
+        AL.proofOf(u7.addr).rejected === true && !AL.hasCheck(u7.addr, 'repost'));
+      r = await AL.submitProof({ address: u7.addr, url: 'https://x.com/amy/status/2001222333455', sig: u7.sig }, '9.9.9.9', Date.now(),
+        json({ user: { screen_name: 'amy' }, text: 'gm ' + u7.code, in_reply_to_status_id_str: '1999888777666' }));
+      ok('重提这一次核过了 → 打勾，submits 记到 2', r.body.auto === true && AL.proofOf(u7.addr).submits === 2);
+      ok('第三次就不给了（最多 2 次）',
+        (await AL.submitProof({ address: u7.addr, url: 'https://x.com/amy/status/2001222333456', sig: u7.sig }, '9.9.9.9', Date.now(), dead)).status === 409);
+
+      /* 关注 / 点赞：默认信任 + 抽查撤销 */
+      const u8 = mkUser('59', 'ben');
+      const before = AL.scoreOf(u8.addr).total;
+      ok('点「我关注了」就计分，记 by=trust',
+        AL.claim({ address: u8.addr, sig: u8.sig, task: 'follow' }).status === 200
+        && AL.scoreOf(u8.addr).total === before + 10 && AL.checkBy(u8.addr, 'follow') === 'trust');
+      ok('转发那一项不能自己声称（它要贴链接自动核）',
+        AL.claim({ address: u8.addr, sig: u8.sig, task: 'repost' }).status === 400);
+      AL.distrust(u8.code, { follow: true });
+      ok('抽查撤销 → 扣分并标记不信任',
+        AL.scoreOf(u8.addr).total === before && AL.isDistrusted(u8.addr) === true);
+      ok('被撤过的地址再点一次也不给（不然那道撤销等于没有）',
+        AL.claim({ address: u8.addr, sig: u8.sig, task: 'follow' }).status === 403);
+      AL.retrust(u8.code);
+      ok('恢复信任之后又能点了',
+        AL.isDistrusted(u8.addr) === false && AL.claim({ address: u8.addr, sig: u8.sig, task: 'like' }).status === 200);
+
+      /* 审核页要的那张表 */
+      const L2 = AL.adminList('amy');
+      ok('adminList 能按 X 名搜，带自动核的结论与原因、同段登记数',
+        L2.rows.length === 1 && L2.rows[0].x === 'amy'
+        && L2.rows[0].proof && L2.rows[0].proof.status === 'ok'
+        && typeof L2.rows[0].ipCount === 'number' && L2.rows[0].addr.length === 42);
+      /* 三连齐了的才会被滤掉。una 只有转发那一个勾，所以它**应该还在**待审里；
+         把三连补齐之后它就该消失 —— 这样两个方向都验到了。 */
+      ok('只核了一项的仍在待审里', AL.adminList('una', 'pending').rows.length === 1);
+      AL.verify(AL.adminList('una').rows[0].code);
+      ok('三连齐了就从待审里消失', AL.adminList('una', 'pending').rows.length === 0);
+
+      /* 后台切段：跟 env 那一份分开，能切也能还回去 */
+      const savedPhase = process.env.ARCBANG_PHASE;
+      delete process.env.ARCBANG_PHASE;
+      AL.setPhase('fcfs');
+      ok('后台切段立刻生效，且与 env 那一份分开记', AL.phaseNow() === 'fcfs' && AL.phaseBase() === 'fcfs');
+      AL.setPhase('auto');
+      ok('切回 auto 就重新跟 env 走', AL.phaseNow() === 'warmup' && AL.phaseBase() === null);
+      ok('认不出的阶段名拒掉，不是静默接受', AL.setPhase('nonsense').ok === false);
+      if (savedPhase === undefined) delete process.env.ARCBANG_PHASE; else process.env.ARCBANG_PHASE = savedPhase;
+      if (save === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = save;
+    }
+
+    /* ---- 管理员口令：缺 / 错 → 401；没配 → 404 ---- */
+    {
+      const saved = process.env.ARCBANG_ADMIN_TOKEN;
+      const srcIdx = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
+      ok('后台那一段用的是常量时间比较，不是 ===',
+        srcIdx.indexOf('timingSafeEqual') >= 0 && /adminTokenOk/.test(srcIdx));
+      ok('没配 token 时 adminTokenConfigured 为假（接口据此回 404 而不是 401）',
+        (delete process.env.ARCBANG_ADMIN_TOKEN, srcIdx.indexOf("adminTokenConfigured()) return json(res, 404") >= 0));
+      ok('太短的 token 当没配（防止随手写个 1 就以为开了门）',
+        srcIdx.indexOf('.length >= 8') >= 0);
+      if (saved === undefined) delete process.env.ARCBANG_ADMIN_TOKEN; else process.env.ARCBANG_ADMIN_TOKEN = saved;
     }
   }
 

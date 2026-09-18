@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<!-- 白名单审核台（web/admin-arc.html → dist-arc/admin.html）
+     口令在服务端的 ARCBANG_ADMIN_TOKEN；页面首次输入后存 localStorage，
+     之后每个请求带 X-Admin-Token 头。**没配 token 时后端整套接口回 404**，
+     这一页会照实说「后台没开」——不是「口令错」。
+
+     这一页不是给访客看的：noindex，也不进任何导航。
+     它只是那几条命令行（verify / freeze / setPhase）的一张桌面，
+     所以刻意不做花样：一张表、三个勾、三个运维按钮。 -->
+<title>ARCBANG 审核台</title>
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<meta name="theme-color" content="#ECEEF1">
+<script src="../ui/theme.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<style>
+:root{
+  --ab-plate:#ECEEF1; --ab-plate2:#E3E6EB; --ab-ink:#13214A; --ab-graphite:#515B6E;
+  --ab-signal:#4A5BD4; --ab-hair:#D5D9E0; --ab-ok:#16653C; --ab-warn:#8A5A00; --ab-bad:#9B1C1C;
+  --t-xs:13px; --t-s:15px; --t-m:17px; --t-l:20px;
+  --r:6px;
+  --ab-face:-apple-system,"Segoe UI Variable Text","Segoe UI",system-ui,
+    "PingFang SC","Microsoft YaHei","Noto Sans SC","Hiragino Sans GB",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:var(--ab-plate);color:var(--ab-ink);
+  font-family:var(--ab-face);font-size:var(--t-s);line-height:1.6;-webkit-font-smoothing:antialiased}
+h1{font-size:var(--t-l);margin:0}
+h2{font-size:var(--t-m);margin:0 0 10px}
+a{color:var(--ab-signal)}
+.wrap{max-width:1400px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-left)) 60px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;
+  padding:14px 0;border-bottom:1px solid var(--ab-hair);margin-bottom:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;
+  border:1px solid rgba(19,33,74,.28);border-radius:var(--r);background:#fff;color:var(--ab-ink);
+  font-size:var(--t-xs);font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
+.btn:hover{border-color:var(--ab-ink)}
+.btn.pri{background:var(--ab-ink);color:#fff;border-color:var(--ab-ink)}
+.btn.danger{color:var(--ab-bad);border-color:rgba(155,28,28,.4)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.in{min-height:40px;padding:0 12px;border:1px solid var(--ab-hair);border-radius:var(--r);
+  background:#fff;color:var(--ab-ink);font-family:inherit;font-size:var(--t-s)}
+.card{background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.dim{color:var(--ab-graphite);font-size:var(--t-xs)}
+.msg{min-height:1.4em;font-size:var(--t-xs);margin-top:10px}
+.msg.ok{color:var(--ab-ok)} .msg.err{color:var(--ab-bad)}
+.kv{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:var(--t-xs);color:var(--ab-graphite)}
+.kv b{color:var(--ab-ink);font-family:var(--mono)}
+
+/* 表：桌面是真表格，窄屏塌成一张张卡（每格前面补标签） */
+table{width:100%;border-collapse:collapse;font-size:var(--t-xs)}
+th{text-align:left;padding:10px 8px;border-bottom:1px solid var(--ab-ink);
+  color:var(--ab-graphite);font-weight:600;white-space:nowrap}
+td{padding:10px 8px;border-bottom:1px solid var(--ab-hair);vertical-align:top}
+tr.dis td{background:#FBF1F1}
+.chk{display:inline-flex;align-items:center;justify-content:center;width:34px;height:30px;
+  border:1px solid var(--ab-hair);border-radius:var(--r);background:#fff;cursor:pointer;
+  font-size:var(--t-xs);font-weight:700;color:var(--ab-graphite);font-family:inherit}
+.chk.on{background:#DCEBE1;border-color:#9EC7AC;color:var(--ab-ok)}
+.chk.auto{box-shadow:inset 0 -3px 0 var(--ab-signal)}
+.chk.trust{box-shadow:inset 0 -3px 0 #C9A227}
+.chks{display:flex;gap:6px}
+.why{display:block;margin-top:3px;color:var(--ab-warn)}
+.tag{display:inline-block;padding:1px 6px;border-radius:999px;border:1px solid currentColor;
+  font-size:11px;color:var(--ab-graphite)}
+.tag.bad{color:var(--ab-bad)}
+@media (max-width:860px){
+  thead{display:none}
+  tr{display:block;border:1px solid var(--ab-hair);border-radius:var(--r);background:#fff;
+    margin-bottom:10px;padding:6px 10px}
+  td{display:flex;gap:10px;border:0;padding:6px 0}
+  td::before{content:attr(data-k);flex:0 0 5.5rem;color:var(--ab-graphite)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bar">
+    <h1>ARCBANG 审核台</h1>
+    <div class="kv" id="top"></div>
+  </div>
+
+  <!-- 没登录时只有这一块 -->
+  <div class="card" id="login">
+    <h2>口令</h2>
+    <p class="dim">服务端 <span class="mono">ARCBANG_ADMIN_TOKEN</span> 里那一串。存在这台机器的浏览器里。</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <input class="in mono" id="tok" type="password" autocomplete="off" placeholder="口令" style="flex:1 1 260px">
+      <button class="btn pri" type="button" id="btnLogin">进去</button>
+    </div>
+    <p class="msg" id="loginMsg"></p>
+  </div>
+
+  <div id="panel" hidden>
+    <!-- 运维：切阶段 / 定格 / 导出 -->
+    <div class="card">
+      <h2>运维</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select class="in" id="phase">
+          <option value="">（跟 env 走）</option>
+          <option value="warmup">warmup 预热</option>
+          <option value="gtd">gtd 保底期</option>
+          <option value="fcfs">fcfs 先到先得</option>
+          <option value="public">public 公售</option>
+        </select>
+        <button class="btn" type="button" id="btnPhase">切阶段</button>
+        <button class="btn danger" type="button" id="btnFreeze">定格榜单</button>
+        <a class="btn" id="btnCsv" href="#">导出 CSV</a>
+        <button class="btn" type="button" id="btnReload">刷新</button>
+        <button class="btn" type="button" id="btnOut">退出</button>
+      </div>
+      <p class="dim" style="margin-top:10px">定格之后名单不再随积分变。进保底期之前必须定格一次。</p>
+      <p class="msg" id="opMsg"></p>
+    </div>
+
+    <!-- 列表 -->
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <input class="in" id="q" type="search" placeholder="搜 X 名 / 码 / 地址" style="flex:1 1 220px">
+        <label class="dim"><input type="checkbox" id="only" checked> 只看待审</label>
+        <span class="dim" id="count"></span>
+      </div>
+      <table>
+        <thead><tr>
+          <th>#</th><th>地址</th><th>X</th><th>码</th>
+          <th>关注 转发 点赞</th><th>自动核</th><th>同段</th><th>分</th><th></th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="9" class="dim">读取中…</td></tr></tbody>
+      </table>
+      <p class="msg" id="listMsg"></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+(function () {
+  var BASE = '/api';
+  var KEY = 'arcbang.admin.token';
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function tok() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+  function setTok(v) { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch (e) { } }
+
+  function api(path, opt) {
+    var o = opt || {};
+    o.headers = o.headers || {};
+    o.headers['x-admin-token'] = tok();
+    return fetch(BASE + path, o).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error((j && j.error) || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+        return j;
+      });
+    });
+  }
+
+  function msg(id, t, cls) { var el = $(id); el.className = 'msg ' + (cls || ''); el.textContent = t; }
+
+  /* 原因是机读的枚举，这里翻成一句话。翻不出来的原样显示 —— 宁可露出枚举名，
+     也不要吞掉一个我们还没见过的原因。 */
+  var WHY = {
+    AUTHOR_MISMATCH: '作者不符', CODE_NOT_FOUND: '回复里没找到他的码',
+    NOT_REPLY_TO_PINNED: '不是回复置顶推', REPLY_UNKNOWN: '查不到回复对象（oEmbed）',
+    FETCH_FAILED: '推文打不开', BAD_URL: '链接不对', REJECTED: '已驳回'
+  };
+  /* 状态词与预热页同一套：未完成 / 审核中 / 已完成 / 未通过。
+     后台多一个「已驳回」——那是管理员自己按下去的，跟用户看到的「未通过」是同一件事。 */
+  var ST = { ok: '已完成', pending: '未通过', retry: '审核中', partial: '未通过', rejected: '已驳回', new: '审核中' };
+
+  function render(d) {
+    $('top').innerHTML = '阶段 <b>' + esc(d.phase) + '</b>'
+      + (d.phaseBase ? '（后台设为 ' + esc(d.phaseBase) + '）' : '（跟 env）')
+      + ' · 名单 <b>' + (d.frozen ? '已定格' : '实时') + '</b>'
+      + ' · 在榜 <b>' + d.boardSize + '</b>'
+      + ' · 登记 <b>' + d.total + '</b>';
+    $('phase').value = d.phaseBase || '';
+    $('count').textContent = '共 ' + d.rows.length + ' 条';
+
+    if (!d.rows.length) { $('rows').innerHTML = '<tr><td colspan="9" class="dim">没有符合的记录</td></tr>'; return; }
+    $('rows').innerHTML = d.rows.map(function (r) {
+      var pf = r.proof;
+      var chk = function (k, on, by) {
+        return '<button class="chk ' + (on ? 'on ' : '') + (on && by === 'auto' ? 'auto ' : '')
+          + (on && by === 'trust' ? 'trust' : '') + '" type="button" data-t="' + esc(r.code)
+          + '" data-k="' + k + '" data-on="' + (on ? '1' : '0') + '" title="'
+          + (on ? (by === 'auto' ? '自动核过，点一下撤销' : by === 'trust' ? '用户自称，点一下撤销并标记不信任' : '点一下撤销') : '点一下打勾')
+          + '">' + (on ? '✓' : '·') + '</button>';
+      };
+      var pfCell = !pf ? '<span class="dim">没交</span>'
+        : '<a href="' + esc(pf.url) + '" target="_blank" rel="noopener noreferrer">看那条</a>'
+          + ' <span class="tag' + (pf.status === 'ok' ? '' : ' bad') + '">' + esc(ST[pf.status] || pf.status) + '</span>'
+          + (pf.reason ? '<span class="why">' + esc(WHY[pf.reason] || pf.reason) + '</span>' : '')
+          + (pf.via ? '<span class="dim"> ' + esc(pf.via) + '</span>' : '');
+      return '<tr class="' + (r.distrusted ? 'dis' : '') + '">'
+        + '<td data-k="名次" class="mono">' + (r.rank || '—') + '</td>'
+        + '<td data-k="地址" class="mono">' + esc(r.short) + '</td>'
+        + '<td data-k="X">' + (r.xUrl ? '<a href="' + esc(r.xUrl) + '" target="_blank" rel="noopener noreferrer">@' + esc(r.x) + '</a>' : '—')
+        + (r.distrusted ? ' <span class="tag bad">不信任</span>' : '') + '</td>'
+        + '<td data-k="码" class="mono">' + esc(r.code) + '</td>'
+        + '<td data-k="三连"><span class="chks">'
+        + chk('follow', r.follow, r.by.follow) + chk('repost', r.repost, r.by.repost) + chk('like', r.like, r.by.like)
+        + '</span></td>'
+        + '<td data-k="自动核">' + pfCell + '</td>'
+        + '<td data-k="同段" class="mono">' + r.ipCount + '<span class="dim"> ' + esc(r.ip || '') + '</span></td>'
+        + '<td data-k="分" class="mono">' + r.points + '</td>'
+        + '<td data-k="">' + (pf && pf.status !== 'ok' && !pf.rejected
+          ? '<button class="btn danger" type="button" data-rej="' + esc(r.code) + '">驳回</button>' : '') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  function load() {
+    var q = encodeURIComponent($('q').value || '');
+    var only = $('only').checked ? '&only=pending' : '';
+    return api('/allowlist/admin/list?q=' + q + only).then(function (d) {
+      $('login').hidden = true; $('panel').hidden = false;
+      render(d);
+      msg('listMsg', '');
+    }, function (e) {
+      if (e.status === 404) {
+        $('login').hidden = false; $('panel').hidden = true;
+        msg('loginMsg', '后台没开：服务端没配 ARCBANG_ADMIN_TOKEN。', 'err');
+      } else if (e.status === 401) {
+        $('login').hidden = false; $('panel').hidden = true;
+        msg('loginMsg', '口令不对。', 'err');
+      } else {
+        msg('listMsg', (e && e.message) || String(e), 'err');
+      }
+    });
+  }
+
+  $('btnLogin').addEventListener('click', function () {
+    setTok($('tok').value.trim());
+    msg('loginMsg', '');
+    load();
+  });
+  $('tok').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') $('btnLogin').click(); });
+  $('btnOut').addEventListener('click', function () { setTok(''); location.reload(); });
+  $('btnReload').addEventListener('click', function () { load(); });
+  $('q').addEventListener('input', function () { clearTimeout(window.__t); window.__t = setTimeout(load, 300); });
+  $('only').addEventListener('change', load);
+
+  /* 三个勾：点一下就即时生效。已经打上的再点一次是撤销；
+     「用户自称」那两项撤销时连带标记不信任（distrust），不然他再点一次就回来了。 */
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-k][data-t]') : null;
+    if (b) {
+      var on = b.getAttribute('data-on') === '1';
+      var k = b.getAttribute('data-k');
+      var body = { token: b.getAttribute('data-t'), on: !on };
+      body[k] = true;
+      if (on && b.classList.contains('trust')) body.distrust = true;
+      b.disabled = true;
+      api('/allowlist/admin/verify', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+      }).then(load, function (e) { msg('listMsg', e.message, 'err'); b.disabled = false; });
+      return;
+    }
+    var rj = ev.target && ev.target.closest ? ev.target.closest('[data-rej]') : null;
+    if (rj) {
+      if (!confirm('驳回这条提交？驳回后他可以再交一次。')) return;
+      api('/allowlist/admin/reject', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: rj.getAttribute('data-rej'), reason: 'REJECTED' })
+      }).then(load, function (e) { msg('listMsg', e.message, 'err'); });
+    }
+  });
+
+  /* 切阶段与定格都要二次确认：这两件事一按下去所有人都看得见。 */
+  $('btnPhase').addEventListener('click', function () {
+    var v = $('phase').value;
+    if (!confirm('把阶段切到 ' + (v || '（跟 env 走）') + '？所有人立刻看得到。')) return;
+    api('/allowlist/admin/phase', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phase: v })
+    }).then(function (r) { msg('opMsg', '现在是 ' + r.phase, 'ok'); return load(); },
+      function (e) { msg('opMsg', e.message, 'err'); });
+  });
+  $('btnFreeze').addEventListener('click', function () {
+    if (!confirm('把当前榜单定格成名单？之后名单不再随积分变。')) return;
+    api('/allowlist/admin/freeze', { method: 'POST' }).then(function (r) {
+      msg('opMsg', '已定格：保底 ' + r.gtd + ' · 先到先得 ' + r.fcfs + ' · 合计 ' + r.total, 'ok');
+      return load();
+    }, function (e) { msg('opMsg', e.message, 'err'); });
+  });
+  /* CSV 要带口令头，<a href> 带不了 —— 取回来在内存里做个 blob 再存。 */
+  $('btnCsv').addEventListener('click', function (ev) {
+    ev.preventDefault();
+    fetch(BASE + '/allowlist/admin/csv', { headers: { 'x-admin-token': tok() } })
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)); })
+      .then(function (t) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([t], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'arcbang-allowlist.csv';
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      }, function (e) { msg('opMsg', e.message, 'err'); });
+  });
+
+  if (tok()) load(); else $('login').hidden = false;
+})();
+</script>
+</body>
+</html>

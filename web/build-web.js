@@ -53,7 +53,10 @@ const ST = {
      deploy-arc.html → deploy.html：ARCBANG 的两合约部署向导（钱包签名，私钥不进 env）。
      页面自己带 noindex。 */
   pages: [['market.html'], ['status.html'], ['profile.html'], ['deploy-arc.html', 'deploy.html'],
-          ['faq-arc.html', 'faq.html'], ['how-it-works-arc.html', 'how-it-works.html'], ['verify-arc.html', 'verify.html']],
+          ['faq-arc.html', 'faq.html'], ['how-it-works-arc.html', 'how-it-works.html'], ['verify-arc.html', 'verify.html'],
+          /* 白名单审核台。口令在服务端（ARCBANG_ADMIN_TOKEN），页面自己带 noindex；
+             不进任何导航 —— 它只是那几条命令行的一张桌面。 */
+          ['admin-arc.html', 'admin.html']],
   /* 三份文档的英文版：各写一份源文件（*-arc.en.html），与中文版同一套版式，
      落进 /en/。**不走 prerender-en 的词典预渲染** —— 那是给首页用的，
      几千字的长文档靠词典逐句对译，漏一句就中英混排；各写一份反而稳。 */

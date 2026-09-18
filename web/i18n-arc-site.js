@@ -210,186 +210,175 @@
     '自己验证': 'Verify it yourself',
 
     /* ======================================================================
-       预热页（web/warmup-arc.html，2026-09-18）
+       预热页（web/warmup-arc.html）
        ----------------------------------------------------------------------
-       名单**按积分榜生成**：登记 / 转发 / 邀请 / 引爆分享四项。
-       **两条口径，翻译时也要守住**：
-         · 不承诺具体名额 —— 一句英文里都不许出现 "top 100" / "top 387"。
-           只说「从榜的前列产生，数量在定格时公布，上限不超过合约的 387」。
-         · 榜只公布前 100 名（这个数是页面行为，不是名额，可以说）。
+       文案是给**想拿白名单的玩家**看的，不是给评审或开发者看的。
+       三条规矩，改文案和翻译时都守住：
+         · 每段只说「你能得到什么、现在做什么」。不解释实现，不解释合约。
+         · 不承诺具体名额 —— 一句英文里都不许出现 "top 100 free" 这种。
+           只说「名额从榜的前列取，数量定格时公布，不超过 387」。
+           「榜只公布前 100 名」说的是页面行为，不是名额，可以讲。
+         · 句子短，动词开头。不用破折号串解释，不在括号里再补一层。
 
-       页面上一个分值都不写死（全部来自服务端的 env），所以带 {0} 的整句必须进词典 ——
-       英文语序和中文对不上，在外面拼会拼错。
-
-       通用短词（保底 / 免费 / 未核 / 已定格…）收在 **i18n-arc.js** 里：
-       状态页也要用，而那一页不加载本册。 */
+       英文按中文重写成自然英文，不逐字。 */
     'ARCBANG 预热 · 积分榜与白名单': 'ARCBANG warm-up · leaderboard and allowlist',
-    '现在是': 'Currently in',
+    '现在是': 'Now in',
     '预热期': 'warm-up',
     '保底期': 'guaranteed round',
     '先到先得期': 'first-come round',
     '公售': 'public sale',
-    '铸造还没开。先去榜上占个位。': 'Minting has not opened. Go claim a place on the board.',
-    '全网 1,387 枚宇宙。白名单不靠先到先得，也不靠我们挑人 ——':
-      '1,387 universes in all. The allowlist is not first-come, and we do not hand-pick it —',
-    '按积分排名': 'it is ranked by points',
-    '。免费名额从榜的前列产生，具体数量在预热结束、榜单定格那一刻公布，上限不超过合约里的 387 枚。':
-      '. The free mints come off the front of the board; how many there are is announced when the warm-up ends and the board is frozen, and it will never exceed the 387 the contract allows.',
+
+    /* ---- 首屏 ---- */
+    '1,387 个宇宙，先到榜上的人免费领。': '1,387 universes. The names at the top of the board mint free.',
+    '关注、转发、拉朋友、引爆——攒分。排名靠前就有你的。':
+      'Follow, repost, bring friends, detonate. Score points. Rank high and one is yours.',
     '天': 'days', '时': 'hrs', '分': 'min', '秒': 'sec',
-    '正在问服务端开放时间…': 'Asking the server for the opening times…',
-    '登记并开始攒分': 'Sign up and start scoring',
-    '看积分榜': 'See the leaderboard',
-    '先去引爆一个宇宙（免费）': 'Go detonate a universe first (free)',
+    '正在读取开放时间…': 'Loading the schedule…',
+    '开始攒分': 'Start scoring',
+    '看榜': 'See the board',
+    '先玩一个宇宙': 'Play with a universe first',
 
     /* ---- 任务卡 ---- */
-    '任务': 'Quests',
-    '四件事，分值写在卡片上。排名按积分从高到低；同分的，先登记的排前面。名次每分钟都在变，所以榜是实时的。':
-      'Four things, each worth what its card says. Ranking runs from most points to fewest; on a tie the earlier sign-up goes first. Positions move by the minute, so the board is live.',
-    '登记白名单': 'Sign up for the allowlist',
-    '连钱包签一句话，不花 gas、不动任何资产。这一签同时当会话令牌，之后不会再弹钱包。':
-      'Connect a wallet and sign one line — no gas, nothing moves. That signature doubles as your session token, so nothing prompts you again.',
-    '转发置顶推，并在评论里回你的登记码':
-      'Repost the pinned post and reply to it with your code',
-    '我们人工核对评论，核过才计分。码一定要原样贴上去。':
-      'We check those replies by hand; points land once yours is checked. Paste the code exactly.',
-    '邀请别人来登记': 'Invite others to sign up',
-    '对方也要完成转发并被核过，才算一个有效邀请。':
-      'They have to finish the repost and be checked before it counts as a valid invite.',
-    '引爆一个宇宙并广播出去': 'Detonate a universe and broadcast it',
-    '在模拟器里点「广播」就记一次，每天一次。要先登记过才记得上。':
-      'Hit Broadcast in the simulator and it counts, once a day. You have to be signed up for it to register.',
-    '未做': 'Not started', '进行中': 'In progress', '待核': 'Being checked', '已完成': 'Done',
-    '去登记': 'Sign up', '先去登记': 'Sign up first', '去转发': 'Repost it',
-    '拿邀请链接': 'Get your link', '去引爆': 'Detonate one',
+    '攒分': 'Score points',
+    '关注 @arcbang_xyz': 'Follow @arcbang_xyz',
+    '点一下去 X，关注完回来点「我关注了」。': 'Tap through to X, follow, then come back and tap Done.',
+    '去关注': 'Follow', '我关注了': 'Done',
+    '转发置顶推，回复你的码': 'Repost the pinned post, reply with your code',
+    '转发后在评论里贴你的码，再把回复的链接贴回来。':
+      'Repost it, reply with your code, then paste the link to that reply here.',
+    '你那条回复的链接': 'Link to your reply',
+    '提交链接': 'Submit',
+    '点赞置顶推': 'Like the pinned post',
+    '点个赞，回来点「我点了」。': 'Like it, then come back and tap Done.',
+    '去点赞': 'Like it', '我点了': 'Done',
+    '邀请朋友': 'Invite friends',
+    '他登记并做完转发，你就拿分。': 'They sign up and repost, you score.',
+    '拿链接': 'Get link',
+    '引爆一个宇宙并广播': 'Detonate a universe and broadcast it',
+    '每天一次，连做五天。': 'Once a day, five days.',
+    '去引爆': 'Detonate',
+    '先登记': 'Sign up first',
+    '去转发': 'Repost',
+    /* 状态词全页统一成四个。「未核」那种内部行话用户看不懂 —— 问过一次了。 */
+    '未完成': 'Not done', '进行中': 'In progress', '审核中': 'Under review',
+    '已完成': 'Done', '未通过': 'Rejected',
+    '自动核对，通常几分钟': 'checked automatically, usually a few minutes',
+    '重新提交': 'Submit again',
     '+{0} / 人，上限 {1} 人': '+{0} each, up to {1}',
-    '+{0} / 天，上限 {1} 天': '+{0} a day, up to {1} days',
-    '已有 {0} 个有效邀请（计 {1} 个）': '{0} valid invites so far ({1} counted)',
-    '已记 {0} 天': '{0} days counted',
+    '+{0} / 天，上限 {1} 天': '+{0} a day, {1} days',
+    '{0} 个': '{0} so far',
+    '{0} 天': '{0} days',
+    '已提交：': 'Submitted: ',
+    /* 待核的原因 */
+    '作者不符': 'not your account',
+    '回复里没找到你的码': 'your code is not in the reply',
+    '不是回复置顶推': 'not a reply to the pinned post',
+    '在人工看了': 'with us for review',
+    '推文打不开': 'we cannot open that post',
+    '链接不对': 'bad link',
+    '被驳回了': 'rejected',
 
     /* ---- 登记 ---- */
-    '连钱包 → 签一句话（不花 gas、不动任何资产）→ 填你的 X 用户名 → 提交。签这一次之后不会再弹钱包：引爆分享那一项直接用它记分。':
-      'Connect a wallet, sign one line (no gas, nothing moves), give your X handle, submit. That one signature is the last wallet prompt — the broadcast quest reuses it to score you.',
+    '登记': 'Sign up',
+    '连钱包 → 填 X 名 → 签个名。不花 gas。': 'Connect a wallet, give your X handle, sign. No gas.',
+    '连接钱包': 'Connect wallet',
     '换一个钱包': 'Switch wallet',
-    '你的 X 用户名（不带 @）': 'Your X handle (without the @)',
-    '邀请码（可选，别人给你的 6 位码）': 'Invite code (optional — the 6 characters someone gave you)',
-    '6 位大写字母数字': '6 characters, A–Z and 0–9',
-    '签名并登记': 'Sign and register',
-    /* 登记之后不能改（2026-09-18 用户拍板）：表单换成只读的「已登记」卡片。 */
-    '这两项提交之后就不能改了，先核对一遍。': 'Neither of these can be changed once submitted — check them over first.',
-    '已登记': 'Signed up',
-    '登记码': 'Sign-up code',
     'X 用户名': 'X handle',
-    '登记时间': 'Signed up at',
-    '登记内容不能修改。填错了 X 用户名就来信说一声，我们人工改。':
-      'What you submitted cannot be edited. If the X handle is wrong, write to us and we will fix it by hand.',
-    '这个地址已经登记过了，登记内容不能修改。': 'This address is already signed up, and what it submitted cannot be edited.',
-    '你的登记码（同时也是邀请码）': 'Your sign-up code (it doubles as your invite code)',
-    '去转发置顶推并回复登记码': 'Repost the pinned post and reply with your code',
-    '去引爆一个并广播': 'Go detonate one and broadcast it',
-    '任务：关注 @arcbang_xyz，转发置顶那条推，并在评论里回复你的登记码。我们按登记码人工比对，所以码一定要原样贴上去。':
-      'The quest: follow @arcbang_xyz, repost the pinned post, and reply to it with your sign-up code. We match those codes by hand, so paste yours exactly.',
-    '你的邀请链接': 'Your invite link',
+    '邀请码（可选）': 'Invite code (optional)',
+    '6 位': '6 characters',
+    '提交后不能改。': 'You cannot change this later.',
+    '签名并登记': 'Sign and register',
+    '已登记': 'Signed up',
+    '你的码': 'Your code',
+    '时间': 'When',
+    '转发并回复这个码': 'Repost and reply with this code',
+    '邀请链接': 'Invite link',
     '复制': 'Copy',
-    '把这条链接发给朋友。对方登记并完成转发核对之后才算一个有效邀请。':
-      'Send this link to a friend. It counts as a valid invite once they have signed up and their repost has been checked.',
-    '把这条链接发给朋友。对方登记并完成转发核对之后才算一个有效邀请，每个 +{0} 分（最多 {1} 个）。':
-      'Send this link to a friend. It counts as a valid invite once they have signed up and their repost has been checked — +{0} each, up to {1}.',
-    '按目前的榜，你在保底那一档的范围里。名单要到保底期开始那一刻才定格，在那之前多攒一点更稳。':
-      'As the board stands you are inside the guaranteed band. The list only freezes when the guaranteed round opens, so a few more points before then is the safer bet.',
-    '按目前的榜，你在免费那一档的范围里。再拿 {0} 分就能够到保底那一档。':
-      'As the board stands you are inside the free band. Another {0} points would reach the guaranteed band.',
-    '按目前的榜还够不到免费那一档。再拿 {0} 分就进去了。':
-      'As the board stands you are short of the free band. Another {0} points gets you in.',
-    '下一步：转发置顶推，并在评论里回复你的登记码。':
-      'Next: repost the pinned post and reply to it with your sign-up code.',
-    '下一步：把下面的邀请链接发给朋友。': 'Next: send the invite link below to a friend.',
-    '下一步：去模拟器引爆一个，点「广播」——每天都能再记一次。':
-      'Next: detonate one in the simulator and hit Broadcast — it counts again every day.',
-    '四项都满了，剩下的就是等开放。': 'All four are maxed out. Now you just wait for the opening.',
-    '你已经登记过了，下面是你的分数和登记码。': 'You had already signed up — here are your points and your code.',
+    '已复制': 'Copied',
+    '朋友登记并做完转发，你拿分。': 'A friend signs up and reposts, you score.',
+    '朋友登记并做完转发，你 +{0} 分。最多 {1} 个。': '+{0} per friend who signs up and reposts. Up to {1}.',
+    '你在保底那一档。榜定格前多攒一点更稳。':
+      'You are in the guaranteed band. A few more points before the board freezes is safer.',
+    '你在免费那一档。再 {0} 分够到保底。': 'You are in the free band. {0} more points reaches guaranteed.',
+    '还没进免费那一档。再 {0} 分就进去。': 'Not in the free band yet. {0} more points gets you in.',
+    '下一步：关注。': 'Next: follow.',
+    '下一步：转发并回复你的码。': 'Next: repost and reply with your code.',
+    '下一步：点赞。': 'Next: like it.',
+    '下一步：把邀请链接发出去。': 'Next: send your invite link.',
+    '下一步：引爆一个并广播。': 'Next: detonate one and broadcast it.',
+    '都做完了，等开放。': 'All done. Now wait for the opening.',
+    '你已经登记过了，下面是你的分数和登记码。': 'Already signed up. Here are your points and your code.',
     '登记完成，先拿到登记分。接着去转发置顶推 —— 那一项分最多。':
-      'You are signed up and the sign-up points are in. Next go repost the pinned post — that one is worth the most.',
+      'You are in. Next go repost the pinned post, that one is worth the most.',
+    '这个地址已经登记过了，登记内容不能修改。': 'This address is already signed up and cannot be edited.',
 
     /* ---- 榜 ---- */
     '积分榜': 'Leaderboard',
-    '榜只公布前 100 名，每 30 秒更新一次，只给地址缩写。没进前 100 也照常有名次和积分，在上面你自己的卡片里看。':
-      'The board publishes the top 100 only, refreshes every 30 seconds and shows shortened addresses. Outside the top 100 you still have a rank and a score — they are on your own card above.',
+    '前 100 名公开；免费名额从这里产生。': 'The top 100 are public. Free mints come off the front of this board.',
     '名次': 'Rank', '积分': 'Points',
-    '在榜人数': 'On the board', '合约免费上限': 'Contract free cap',
-    '链上免费余量': 'Free mints left on-chain',
-    '还没有人上榜 —— 第一个登记的就是第一名。': 'Nobody on the board yet — first to sign up is first place.',
-    '你': 'You', '榜首': 'Top of the board',
+    '在榜人数': 'On the board', '免费上限': 'Free cap', '已放出': 'Issued',
+    '还没有人上榜 —— 第一个登记的就是第一名。': 'Empty so far. First to sign up takes first place.',
+    '你': 'You', '榜首': 'Top',
     '展开全部': 'Show all',
     '展开全部 {0} 名': 'Show all {0}',
     '收起': 'Collapse',
-    '距上一名差 {0} 分': '{0} points behind the rank above',
+    '距上一名差 {0} 分': '{0} behind the next rank',
     '共 {0} 人在榜，榜只公布前 {1} 名 · 名额数量在定格时公布':
-      '{0} on the board; only the top {1} are published · how many slots there are is announced at the freeze',
+      '{0} on the board, top {1} shown · slot counts announced at the freeze',
     '共 {0} 人在榜，榜只公布前 {1} 名 · 名单已定格':
-      '{0} on the board; only the top {1} are published · the list is frozen',
-    /* 积分明细卡那四个小标签。'保底' / '免费' / '未核' 在 i18n-arc.js 里（状态页共用）。 */
-    '登记': 'Sign-up', '转发': 'Repost', '邀请': 'Invites', '分享': 'Broadcasts',
+      '{0} on the board, top {1} shown · list frozen',
+    '关注': 'Follow', '转发': 'Repost', '点赞': 'Like', '邀请': 'Invites', '广播': 'Broadcast',
 
     /* ---- 开放时间与规则 ---- */
-    '开放时间': 'Opening times',
-    '四段依次开。到点自动往下走，页面上的倒计时读的就是服务端那一份，不是我们在这里写死的数字。':
-      'The four rounds open in order and advance on their own. The countdown reads the server’s own clock, not a number hard-coded into this page.',
-    '积分榜榜首若干名先铸，不跟人抢；数量届时公布':
-      'The names at the top of the board mint first, with nothing to race for; how many is announced then',
-    '名单里的人都能铸，免费额度抢完为止':
-      'Everyone on the list can mint, until the free mints run out',
-    '人人都能铸，1 USDC 一枚，每地址最多 3 枚': 'Open to all, 1 USDC each, up to 3 per address',
-    '名单在保底期开始的那一刻按当时的榜定格，之后不再变动 —— 不然有人会在铸到一半时被后来者挤出名单。名额数量也在那一刻一起公布。':
-      'The list freezes against the board the moment the guaranteed round opens and does not move after that — otherwise somebody could be pushed off it halfway through minting. The slot counts are announced at that same moment.',
-    '时间待定': 'to be announced',
-    '规则': 'The rules',
+    '开放时间': 'Schedule',
+    '待定': 'TBA',
+    '榜首若干名先铸': 'Top of the board mints first',
+    '先到先得': 'First come',
+    '名单里的人抢免费额度': 'The list races for the free mints',
+    '人人都能买': 'Open to everyone',
+    '保底期一开，榜就定格。': 'The board freezes when the guaranteed round opens.',
+    '规则': 'Rules',
     '总量': 'Supply',
-    '1,387 枚，永远不增发': '1,387, and never any more',
-    '一枚宇宙算一千万年，铸满正好 137.87 亿年 —— 这个宇宙的岁数':
-      'One universe stands for ten million years, so the full set comes to 13.787 billion — the age of this universe',
-    '免费额度': 'Free mints',
-    '从积分榜前列产生，每地址 1 枚': 'Off the front of the board, one per address',
-    '具体数量在预热结束、榜单定格时公布，上限不超过合约里的 387 枚':
-      'How many is announced when the warm-up ends and the board freezes; it will never exceed the 387 the contract allows',
-    '保底名额': 'Guaranteed slots',
-    '积分榜榜首若干名': 'The names at the top of the board',
-    '保底期只有他们能铸，不跟人抢时间；数量届时公布':
-      'Only they mint in the guaranteed round, with no clock to race; how many is announced then',
-    '公售价': 'Public price',
+    '1,387 枚，不增发': '1,387. No more, ever.',
+    '免费': 'Free',
+    '每地址 1 枚，名额从榜的前列取，数量定格时公布':
+      'One per address. Taken off the front of the board; how many is announced at the freeze.',
     '1 USDC 一枚，每地址最多 3 枚': '1 USDC each, up to 3 per address',
-    'Arc 上 gas 就是 USDC，一次铸造的 gas 约 0.003 USDC':
-      'Gas on Arc is USDC; a mint costs about 0.003 USDC of it',
-    '一个哈希只铸一次': 'One hash, one mint',
-    '某个区块被谁引爆并铸走，它就没了': 'Once a block has been detonated and minted, it is gone',
-    '同一个哈希，谁来引爆都是同一个宇宙': 'The same hash is the same universe, whoever detonates it',
+    '唯一': 'One of one',
+    '一个区块只能被铸一次': 'Each block can be minted once',
     '没有代币': 'No token',
-    '不发币、不预售、不做返利池': 'No token, no presale, no rebate pool',
-    '收入只有铸造款和二级市场版税两项': 'The only income is mint proceeds and secondary royalties',
+    '不发币，不预售': 'No token, no presale',
 
     /* ---- 引爆那一节 ---- */
-    '引爆随时可以玩': 'Detonating is open right now',
-    '预热的是铸造，不是模拟器。粘一个 Arc 区块高度或哈希进去，引擎会把它读成 23 个物理常数，从奇点算到热寂 —— 这件事不花钱、不连钱包、不上链，现在就能做，而且广播出去还算一天的分。':
-      'It is the minting that is in warm-up, not the simulator. Paste an Arc block height or hash and the engine reads it as 23 physical constants and runs it from the singularity to heat death — free, no wallet, nothing on-chain, open right now, and broadcasting one scores you a day.',
+    '先玩起来': 'Play first',
+    '随便挑一个 Arc 区块，看它长成什么样的宇宙。每天引爆一个、广播出去，+5 分。':
+      'Pick any Arc block and see what universe it grows into. Detonate one a day, broadcast it, +5.',
     '打开模拟器': 'Open the simulator',
-    '先看它是怎么算的': 'See how it computes first',
+    '怎么算的': 'How it works',
 
     /* ---- 动态那几句 ---- */
     '距离{0}开放': '{0} opens in',
     '{0}的时间还没定，定了会写在这里；现在攒的分一样算数。':
-      'The time for the {0} is not set yet; it will appear here once it is. Points you earn now count either way.',
-    '已经开到最后一段了，直接去模拟器铸造吧。': 'The last round is already open — head to the simulator and mint.',
-    '时间到了，正在刷新状态…': 'Time is up — refreshing…',
+      'No date for the {0} yet. Points you score now count either way.',
+    '已经开到最后一段了，直接去模拟器铸造吧。': 'The last round is open. Head to the simulator.',
+    '时间到了，正在刷新状态…': 'Refreshing…',
     '服务端这一刻问不到（{0}）。刷新试试；模拟器不受影响。':
-      'The server is not answering right now ({0}). Try refreshing; the simulator is unaffected.',
+      'Cannot reach the server right now ({0}). Try refreshing.',
     '先连钱包': 'Connect a wallet first',
-    'X 用户名填 1–15 位字母、数字或下划线，不带 @': 'An X handle is 1–15 letters, digits or underscores, without the @',
-    '邀请码是 6 位大写字母数字；没有就留空': 'An invite code is 6 characters, A–Z and 0–9. Leave it empty if you have none',
-    '正在问服务端要那句话…': 'Asking the server for the line to sign…',
-    '服务端没给出要签的文案': 'The server did not return a line to sign',
-    '请在钱包里签名（不花 gas，不动任何资产）': 'Sign in your wallet (no gas, nothing moves)',
+    '先连钱包并登记': 'Connect a wallet and sign up first',
+    'X 用户名填 1–15 位字母、数字或下划线，不带 @': '1–15 letters, digits or underscores. No @.',
+    '邀请码是 6 位大写字母数字；没有就留空': 'Invite codes are 6 characters. Leave it empty if you have none.',
+    '正在问服务端要那句话…': 'Getting the line to sign…',
+    '服务端没给出要签的文案': 'No line to sign came back',
+    '请在钱包里签名（不花 gas，不动任何资产）': 'Sign in your wallet. No gas, nothing moves.',
     '正在提交…': 'Submitting…',
-    '没检测到钱包扩展': 'No wallet extension detected',
-    '没检测到钱包扩展（MetaMask / 币安钱包 等）': 'No wallet extension detected (MetaMask, Binance Wallet, …)',
+    '贴一条推文链接': 'Paste a post link',
+    '在核了…': 'Checking…',
+    '核过了，分已经加上。': 'Checked out. Points added.',
+    '收到了，人工看一眼。': 'Got it. We will take a look.',
+    /* '你在钱包里取消了' 在 i18n.js 的全局表里已经有了，这里不重收（值不一样会打架） */
+    '没检测到钱包扩展': 'No wallet extension found',
+    '没检测到钱包扩展（MetaMask / 币安钱包 等）': 'No wallet extension found (MetaMask, Binance Wallet, …)',
   });
 
 })(typeof window !== 'undefined' ? window : this);

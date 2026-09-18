@@ -340,7 +340,7 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
   /* warmup.html 必须永远在：app.html 的铸造面板在放号还没轮到时把人指过去，
      那个链接不能有「今天不存在」的时候（首页切不切成预热页是另一回事）。 */
   var want = ['index.html', 'app.html', 'market.html', 'status.html', 'profile.html',
-              'faq.html', 'how-it-works.html', 'verify.html', 'deploy.html', 'warmup.html',
+              'faq.html', 'how-it-works.html', 'verify.html', 'deploy.html', 'warmup.html', 'admin.html',
               'en/index.html', 'en/faq.html', 'en/how-it-works.html', 'en/verify.html', 'en/warmup.html',
               'config.js', 'theme.js', 'nav.js', 'tokens.css', 'arc-doc.css'];
   var lack = want.filter(function (f) { return !fs.existsSync(path.join(dist, f)); });

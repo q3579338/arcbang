@@ -159,7 +159,7 @@ button,input{font-family:inherit}
 
 /* ---- 任务卡（Zealy / Galxe 那类任务站的做法，配色仍是本站令牌） ----
    一张卡 = 图标 + 任务名与说明 + 分值 + 状态 + 行动按钮。
-   状态三档：未做（灰描边）/ 待核（琥珀）/ 已完成（绿，整卡压低一档）。 */
+   状态四档：未完成（灰）/ 审核中（琥珀）/ 已完成（绿，整卡压低一档）/ 未通过（红）。 */
 .ab-cards{display:grid;gap:14px;margin-top:var(--sp-1);grid-template-columns:minmax(0,1fr)}
 @media (min-width:900px){ .ab-cards{grid-template-columns:repeat(2,minmax(0,1fr))} }
 .ab-qc{display:grid;grid-template-columns:44px minmax(0,1fr);gap:0 16px;align-items:start;
@@ -250,8 +250,8 @@ button,input{font-family:inherit}
 <section class="ab-hero">
   <div class="ab-wrap">
     <p class="ab-phase" id="phaseChip" hidden>现在是 <b id="phaseName">预热期</b></p>
-    <h1 class="ab-h1">铸造还没开。先去榜上占个位。</h1>
-    <p class="ab-lede">全网 1,387 枚宇宙。白名单不靠先到先得，也不靠我们挑人 —— <b>按积分排名</b>。免费名额从榜的前列产生，具体数量在预热结束、榜单定格那一刻公布，上限不超过合约里的 387 枚。</p>
+    <h1 class="ab-h1">1,387 个宇宙，先到榜上的人免费领。</h1>
+    <p class="ab-lede">关注、转发、拉朋友、引爆——攒分。排名靠前就有你的。</p>
 
     <div class="ab-cd" id="cd" aria-live="polite">
       <div class="ab-cd-i"><b class="ab-cd-v" id="cdD">—</b><span class="ab-cd-k">天</span></div>
@@ -259,59 +259,79 @@ button,input{font-family:inherit}
       <div class="ab-cd-i"><b class="ab-cd-v" id="cdM">—</b><span class="ab-cd-k">分</span></div>
       <div class="ab-cd-i"><b class="ab-cd-v" id="cdS">—</b><span class="ab-cd-k">秒</span></div>
     </div>
-    <p class="ab-when" id="cdWhen">正在问服务端开放时间…</p>
+    <p class="ab-when" id="cdWhen">正在读取开放时间…</p>
 
     <div class="ab-cta">
-      <a class="ab-btn" href="#join">登记并开始攒分</a>
-      <a class="ab-btn2" href="#board">看积分榜</a>
-      <a class="ab-btn2" href="app.html">先去引爆一个宇宙（免费）</a>
+      <a class="ab-btn" href="#join">开始攒分</a>
+      <a class="ab-btn2" href="#board">看榜</a>
+      <a class="ab-btn2" href="app.html">先玩一个宇宙</a>
     </div>
   </div>
 </section>
 
 <section class="ab-sec" id="tasks">
   <div class="ab-wrap">
-    <h2 class="ab-h2">任务</h2>
-    <p class="ab-say">四件事，分值写在卡片上。排名按积分从高到低；同分的，先登记的排前面。名次每分钟都在变，所以榜是实时的。</p>
+    <h2 class="ab-h2">攒分</h2>
 
     <div class="ab-cards" id="taskCards">
       <!-- 图标全部内联 SVG：这一页不引任何外部资源 -->
-      <article class="ab-qc" data-task="register">
+      <article class="ab-qc" data-task="follow">
         <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">登记白名单</h3><span class="ab-qc-p" data-pts>+10</span></div>
+        <div class="ab-qc-hd"><h3 class="ab-qc-t">关注 @arcbang_xyz</h3><span class="ab-qc-p" data-pts>+10</span></div>
         <div>
-          <p class="ab-qc-d">连钱包签一句话，不花 gas、不动任何资产。这一签同时当会话令牌，之后不会再弹钱包。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未做</span>
-            <a class="ab-btn3" href="#join" data-act>去登记</a></div>
+          <p class="ab-qc-d">点一下去 X，关注完回来点「我关注了」。</p>
+          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
+            <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去关注</a>
+            <button class="ab-btn3" type="button" data-claim="follow" hidden>我关注了</button></div>
         </div>
       </article>
 
       <article class="ab-qc" data-task="repost">
         <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">转发置顶推，并在评论里回你的登记码</h3><span class="ab-qc-p" data-pts>+30</span></div>
+        <div class="ab-qc-hd"><h3 class="ab-qc-t">转发置顶推，回复你的码</h3><span class="ab-qc-p" data-pts>+30</span></div>
         <div>
-          <p class="ab-qc-d">我们人工核对评论，核过才计分。码一定要原样贴上去。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未做</span>
+          <p class="ab-qc-d">转发后在评论里贴你的码，再把回复的链接贴回来。</p>
+          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去转发</a></div>
+          <!-- 贴回复链接：登记之后才出现 -->
+          <div id="proofBox" hidden>
+            <label class="ab-field"><span>你那条回复的链接</span>
+              <input class="ab-in mono" id="inProof" type="url" inputmode="url" autocomplete="off"
+                     spellcheck="false" placeholder="https://x.com/你/status/…"></label>
+            <div class="ab-qc-f"><button class="ab-btn3" type="button" id="btnProof">提交链接</button></div>
+            <p class="ab-msg" id="proofMsg"></p>
+          </div>
+          <p class="ab-qc-d" id="proofDone" hidden></p>
+        </div>
+      </article>
+
+      <article class="ab-qc" data-task="like">
+        <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+        <div class="ab-qc-hd"><h3 class="ab-qc-t">点赞置顶推</h3><span class="ab-qc-p" data-pts>+10</span></div>
+        <div>
+          <p class="ab-qc-d">点个赞，回来点「我点了」。</p>
+          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
+            <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">去点赞</a>
+            <button class="ab-btn3" type="button" data-claim="like" hidden>我点了</button></div>
         </div>
       </article>
 
       <article class="ab-qc" data-task="invite">
         <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">邀请别人来登记</h3><span class="ab-qc-p" data-pts>+20</span></div>
+        <div class="ab-qc-hd"><h3 class="ab-qc-t">邀请朋友</h3><span class="ab-qc-p" data-pts>+20</span></div>
         <div>
-          <p class="ab-qc-d">对方也要完成转发并被核过，才算一个有效邀请。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未做</span>
-            <a class="ab-btn3" href="#join" data-act>拿邀请链接</a></div>
+          <p class="ab-qc-d">他登记并做完转发，你就拿分。</p>
+          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
+            <a class="ab-btn3" href="#join" data-act>拿链接</a></div>
         </div>
       </article>
 
       <article class="ab-qc" data-task="share">
         <span class="ab-qc-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
-        <div class="ab-qc-hd"><h3 class="ab-qc-t">引爆一个宇宙并广播出去</h3><span class="ab-qc-p" data-pts>+5</span></div>
+        <div class="ab-qc-hd"><h3 class="ab-qc-t">引爆一个宇宙并广播</h3><span class="ab-qc-p" data-pts>+5</span></div>
         <div>
-          <p class="ab-qc-d">在模拟器里点「广播」就记一次，每天一次。要先登记过才记得上。</p>
-          <div class="ab-qc-f"><span class="ab-st todo" data-st>未做</span>
+          <p class="ab-qc-d">每天一次，连做五天。</p>
+          <div class="ab-qc-f"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="app.html" data-act>去引爆</a></div>
         </div>
       </article>
@@ -321,8 +341,8 @@ button,input{font-family:inherit}
 
 <section class="ab-sec" id="join">
   <div class="ab-wrap">
-    <h2 class="ab-h2">登记并开始攒分</h2>
-    <p class="ab-say">连钱包 → 签一句话（不花 gas、不动任何资产）→ 填你的 X 用户名 → 提交。签这一次之后不会再弹钱包：引爆分享那一项直接用它记分。</p>
+    <h2 class="ab-h2">登记</h2>
+    <p class="ab-say">连钱包 → 填 X 名 → 签个名。不花 gas。</p>
 
     <div class="ab-card">
       <div class="ab-row">
@@ -330,38 +350,33 @@ button,input{font-family:inherit}
         <span class="mono" id="whoAddr"></span>
       </div>
 
-      <!-- 表单整块：**已登记的地址看不到它**（登记之后不能改，摆一个填了也没用的
-           输入框只会让人以为能改）。连钱包后由 renderForm() 按 status.registered 切换。 -->
       <div id="joinForm">
-        <label class="ab-field"><span>你的 X 用户名（不带 @）</span>
+        <label class="ab-field"><span>X 用户名</span>
           <input class="ab-in" id="inX" type="text" inputmode="text" autocomplete="off"
-                 spellcheck="false" maxlength="15" placeholder="例如 arcbang_xyz"></label>
+                 spellcheck="false" maxlength="15" placeholder="arcbang_xyz"></label>
 
-        <label class="ab-field" id="refWrap"><span>邀请码（可选，别人给你的 6 位码）</span>
+        <label class="ab-field" id="refWrap"><span>邀请码（可选）</span>
           <input class="ab-in mono" id="inRef" type="text" autocomplete="off" spellcheck="false"
-                 maxlength="6" placeholder="6 位大写字母数字"></label>
+                 maxlength="6" placeholder="6 位"></label>
 
-        <p class="ab-qc-d" style="margin-top:14px">这两项提交之后就不能改了，先核对一遍。</p>
+        <p class="ab-qc-d" style="margin-top:14px">提交后不能改。</p>
 
         <div class="ab-row">
           <button class="ab-btn" type="button" id="btnJoin" disabled>签名并登记</button>
         </div>
       </div>
 
-      <!-- 已登记：只读地摆出当时填的那一份 -->
       <div id="joinDone" hidden>
         <div class="ab-qc-hd"><h3 class="ab-qc-t">已登记</h3><span class="ab-st ok">已完成</span></div>
         <table class="ab-tbl">
-          <tr><th>登记码</th><td class="mono" id="doneCode">—</td></tr>
+          <tr><th>你的码</th><td class="mono" id="doneCode">—</td></tr>
           <tr><th>X 用户名</th><td class="mono" id="doneX">—</td></tr>
-          <tr><th>登记时间</th><td id="doneAt">—</td></tr>
+          <tr><th>时间</th><td id="doneAt">—</td></tr>
         </table>
-        <p class="ab-qc-d" style="margin-top:14px">登记内容不能修改。填错了 X 用户名就来信说一声，我们人工改。</p>
       </div>
 
       <p class="ab-msg" id="joinMsg"></p>
 
-      <!-- 登记之后才出现：积分明细、登记码、邀请卡 -->
       <div id="mine" hidden>
         <div class="ab-score">
           <b class="ab-score-n" id="myPoints">0</b><span class="ab-score-u">分</span>
@@ -371,27 +386,28 @@ button,input{font-family:inherit}
 
         <div class="ab-kv">
           <div><b class="ab-kv-v" id="bkRegister">—</b><span class="ab-kv-k">登记</span></div>
+          <div><b class="ab-kv-v" id="bkFollow">—</b><span class="ab-kv-k">关注</span></div>
           <div><b class="ab-kv-v" id="bkRepost">—</b><span class="ab-kv-k">转发</span></div>
+          <div><b class="ab-kv-v" id="bkLike">—</b><span class="ab-kv-k">点赞</span></div>
           <div><b class="ab-kv-v" id="bkInvite">—</b><span class="ab-kv-k">邀请</span></div>
-          <div><b class="ab-kv-v" id="bkShare">—</b><span class="ab-kv-k">分享</span></div>
+          <div><b class="ab-kv-v" id="bkShare">—</b><span class="ab-kv-k">广播</span></div>
         </div>
 
-        <p class="ab-when" style="margin-top:22px">你的登记码（同时也是邀请码）</p>
+        <p class="ab-when" style="margin-top:22px">你的码</p>
         <b class="ab-code" id="myCode">——</b>
         <div class="ab-row">
-          <a class="ab-btn" id="btnPost" href="#" target="_blank" rel="noopener noreferrer" hidden>去转发置顶推并回复登记码</a>
-          <a class="ab-btn2" href="app.html">去引爆一个并广播</a>
+          <a class="ab-btn" id="btnPost" href="#" target="_blank" rel="noopener noreferrer" hidden>转发并回复这个码</a>
+          <a class="ab-btn2" href="app.html">去引爆</a>
         </div>
-        <p class="ab-when" id="taskHint">任务：关注 @arcbang_xyz，转发置顶那条推，并在评论里回复你的登记码。我们按登记码人工比对，所以码一定要原样贴上去。</p>
 
         <div class="ab-invcard">
-          <div class="ab-qc-hd"><h3 class="ab-qc-t">你的邀请链接</h3>
+          <div class="ab-qc-hd"><h3 class="ab-qc-t">邀请链接</h3>
             <span class="ab-qc-p"><span id="invValid">0</span> / <span id="invAll">0</span></span></div>
-          <p class="ab-qc-d" id="inviteHint">把这条链接发给朋友。对方登记并完成转发核对之后才算一个有效邀请。</p>
           <div class="ab-invrow">
             <input class="ab-inv" id="inviteUrl" readonly value="">
             <button class="ab-btn3" type="button" id="btnCopy">复制</button>
           </div>
+          <p class="ab-qc-d" id="inviteHint">朋友登记并做完转发，你拿分。</p>
         </div>
       </div>
     </div>
@@ -401,7 +417,7 @@ button,input{font-family:inherit}
 <section class="ab-sec" id="board">
   <div class="ab-wrap">
     <h2 class="ab-h2">积分榜</h2>
-    <p class="ab-say">榜只公布前 100 名，每 30 秒更新一次，只给地址缩写。没进前 100 也照常有名次和积分，在上面你自己的卡片里看。</p>
+    <p class="ab-say">前 100 名公开；免费名额从这里产生。</p>
     <table class="ab-board">
       <thead><tr><th class="c-rank">名次</th><th class="c-addr">地址</th><th class="c-pts">积分</th></tr></thead>
       <tbody id="boardBody"><tr><td colspan="3" class="tag">读取中…</td></tr></tbody>
@@ -411,8 +427,8 @@ button,input{font-family:inherit}
     <p class="ab-boardfoot" id="boardFoot"></p>
     <div class="ab-kv" style="max-width:760px">
       <div><b class="ab-kv-v" id="kvApplied">—</b><span class="ab-kv-k">在榜人数</span></div>
-      <div><b class="ab-kv-v" id="kvCap">387</b><span class="ab-kv-k">合约免费上限</span></div>
-      <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">链上免费余量</span></div>
+      <div><b class="ab-kv-v" id="kvCap">387</b><span class="ab-kv-k">免费上限</span></div>
+      <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">已放出</span></div>
     </div>
   </div>
 </section>
@@ -420,13 +436,12 @@ button,input{font-family:inherit}
 <section class="ab-sec">
   <div class="ab-wrap">
     <h2 class="ab-h2">开放时间</h2>
-    <p class="ab-say">四段依次开。到点自动往下走，页面上的倒计时读的就是服务端那一份，不是我们在这里写死的数字。</p>
     <table class="ab-tbl">
-      <tr><th>保底期</th><td id="tGtd">时间待定<span class="sub">积分榜榜首若干名先铸，不跟人抢；数量届时公布</span></td></tr>
-      <tr><th>先到先得期</th><td id="tFcfs">时间待定<span class="sub">名单里的人都能铸，免费额度抢完为止</span></td></tr>
-      <tr><th>公售</th><td id="tPublic">时间待定<span class="sub">人人都能铸，1 USDC 一枚，每地址最多 3 枚</span></td></tr>
+      <tr><th>保底期</th><td id="tGtd">待定<span class="sub">榜首若干名先铸</span></td></tr>
+      <tr><th>先到先得</th><td id="tFcfs">待定<span class="sub">名单里的人抢免费额度</span></td></tr>
+      <tr><th>公售</th><td id="tPublic">待定<span class="sub">人人都能买</span></td></tr>
     </table>
-    <p class="ab-say">名单在保底期开始的那一刻按当时的榜定格，之后不再变动 —— 不然有人会在铸到一半时被后来者挤出名单。名额数量也在那一刻一起公布。</p>
+    <p class="ab-say">保底期一开，榜就定格。</p>
   </div>
 </section>
 
@@ -434,23 +449,21 @@ button,input{font-family:inherit}
   <div class="ab-wrap">
     <h2 class="ab-h2">规则</h2>
     <table class="ab-tbl">
-      <tr><th>总量</th><td>1,387 枚，永远不增发<span class="sub">一枚宇宙算一千万年，铸满正好 137.87 亿年 —— 这个宇宙的岁数</span></td></tr>
-      <tr><th>免费额度</th><td>从积分榜前列产生，每地址 1 枚<span class="sub">具体数量在预热结束、榜单定格时公布，上限不超过合约里的 387 枚</span></td></tr>
-      <tr><th>保底名额</th><td>积分榜榜首若干名<span class="sub">保底期只有他们能铸，不跟人抢时间；数量届时公布</span></td></tr>
-      <tr><th>公售价</th><td>1 USDC 一枚，每地址最多 3 枚<span class="sub">Arc 上 gas 就是 USDC，一次铸造的 gas 约 0.003 USDC</span></td></tr>
-      <tr><th>一个哈希只铸一次</th><td>某个区块被谁引爆并铸走，它就没了<span class="sub">同一个哈希，谁来引爆都是同一个宇宙</span></td></tr>
-      <tr><th>没有代币</th><td>不发币、不预售、不做返利池<span class="sub">收入只有铸造款和二级市场版税两项</span></td></tr>
+      <tr><th>总量</th><td>1,387 枚，不增发</td></tr>
+      <tr><th>免费</th><td>每地址 1 枚，名额从榜的前列取，数量定格时公布</td></tr>
+      <tr><th>公售</th><td>1 USDC 一枚，每地址最多 3 枚</td></tr>
+      <tr><th>唯一</th><td>一个区块只能被铸一次</td></tr>
+      <tr><th>没有代币</th><td>不发币，不预售</td></tr>
     </table>
   </div>
 </section>
 
 <section class="ab-sec">
   <div class="ab-wrap">
-    <h2 class="ab-h2">引爆随时可以玩</h2>
-    <p class="ab-say">预热的是铸造，不是模拟器。粘一个 Arc 区块高度或哈希进去，引擎会把它读成 23 个物理常数，从奇点算到热寂 —— 这件事不花钱、不连钱包、不上链，现在就能做，而且广播出去还算一天的分。</p>
+    <h2 class="ab-h2">先玩起来</h2>
+    <p class="ab-say">随便挑一个 Arc 区块，看它长成什么样的宇宙。每天引爆一个、广播出去，+5 分。</p>
     <div class="ab-cta">
-      <a class="ab-btn" href="app.html">打开模拟器</a>
-      <a class="ab-btn2" href="how-it-works.html">先看它是怎么算的</a>
+      <a class="ab-btn" href="app.html">去引爆</a>
     </div>
   </div>
 </section>
@@ -491,6 +504,10 @@ button,input{font-family:inherit}
   var AL_SIG_KEY = 'arcbang.al.sig';
   /** 榜默认只铺前 20 行，点「展开全部」才铺到服务端给的上限（100）。 */
   var FOLD_ROWS = 20;
+  /** 贴回来的那条链接长什么样。**写成变量不写成行内字面量**：
+      行内正则里的斜杠在这份文件被多次改写的过程中被吞过一次，
+      表现是整块脚本语法错、页面一点反应都没有。 */
+  var PROOF_RE = new RegExp('^https://(x|twitter)\.com/[A-Za-z0-9_]{1,15}/status/\d{5,25}');
   function $(id) { return document.getElementById(id); }
   function T(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh) : zh; }
   function TF(zh) {
@@ -588,8 +605,9 @@ button,input{font-family:inherit}
     var P = st.pts || {};
     var card = function (k) { return document.querySelector('.ab-qc[data-task="' + k + '"]'); };
     var setPts = function (k, txt) { var c = card(k); if (c) c.querySelector('[data-pts]').textContent = txt; };
-    if (P.register != null) setPts('register', '+' + P.register);
+    if (P.follow != null) setPts('follow', '+' + P.follow);
     if (P.repost != null) setPts('repost', '+' + P.repost);
+    if (P.like != null) setPts('like', '+' + P.like);
     if (P.invite != null) setPts('invite', TF('+{0} / 人，上限 {1} 人', P.invite, P.inviteMax));
     if (P.share != null) setPts('share', TF('+{0} / 天，上限 {1} 天', P.share, P.shareMaxDays));
 
@@ -607,27 +625,45 @@ button,input{font-family:inherit}
     renderMine(st);
   }
 
-  /** 任务卡：状态三档（未做 / 待核 / 已完成）+ 行动按钮。 */
+  /** 任务卡：状态四档（未完成 / 审核中 / 已完成 / 未通过）+ 行动按钮。 */
   function renderTasks(st, intent) {
     var P = st.pts || {};
+    var reg = !!st.registered;
+    var pf = st.proof || null;
+    /* 转发那一项的中间态：链接已经贴了、还没核过 —— 说「待核」并把原因写出来，
+       不然人会以为坏了。原因是机读的枚举，这里翻成人话。 */
+    var WHY = {
+      AUTHOR_MISMATCH: '作者不符', CODE_NOT_FOUND: '回复里没找到你的码',
+      NOT_REPLY_TO_PINNED: '不是回复置顶推', REPLY_UNKNOWN: '在人工看了',
+      FETCH_FAILED: '推文打不开', BAD_URL: '链接不对', REJECTED: '被驳回了'
+    };
+    /* pending / partial / rejected 都是「核下来不对」——给用户的是同一个词：未通过。
+       retry / new 还在自动核的路上，那叫审核中。 */
+    var bad = pf && (pf.status === 'pending' || pf.status === 'partial' || pf.status === 'rejected');
+    var repostState = st.reposted ? 'ok' : (bad ? 'bad' : (pf ? 'wait' : 'todo'));
     var plan = {
-      register: {
-        done: !!st.registered,
-        state: st.registered ? 'ok' : 'todo',
-        act: st.registered ? null : { text: '去登记', href: '#join' }
+      follow: {
+        done: !!st.followed,
+        state: st.followed ? 'ok' : 'todo',
+        act: reg ? { text: '去关注', href: st.followUrl, blank: true } : { text: '先登记', href: '#join' },
+        claim: reg && !st.followed && !st.distrusted
       },
       repost: {
-        /* 「待核」是这一项独有的中间态：用户发了，我们还没人工核 ——
-           说清楚它，否则发完没加分的人会以为坏了。 */
-        done: !!st.verified,
-        state: st.verified ? 'ok' : (st.registered ? 'wait' : 'todo'),
-        act: intent ? { text: '去转发', href: intent, blank: true }
-          : (st.registered ? null : { text: '先去登记', href: '#join' })
+        done: !!st.reposted,
+        state: repostState,
+        why: (!st.reposted && pf && pf.reason) ? (WHY[pf.reason] || pf.reason) : '',
+        act: (reg && intent) ? { text: '去转发', href: intent, blank: true } : { text: '先登记', href: '#join' }
+      },
+      like: {
+        done: !!st.liked,
+        state: st.liked ? 'ok' : 'todo',
+        act: (reg && st.likeUrl) ? { text: '去点赞', href: st.likeUrl, blank: true } : { text: '先登记', href: '#join' },
+        claim: reg && !st.liked && !st.distrusted
       },
       invite: {
         done: (st.validInvites || 0) >= (P.inviteMax || 20),
         state: (st.validInvites || 0) > 0 ? 'ok' : 'todo',
-        act: { text: '拿邀请链接', href: '#join' }
+        act: { text: '拿链接', href: '#join' }
       },
       share: {
         done: (st.shareDays || 0) >= (P.shareMaxDays || 5),
@@ -636,30 +672,60 @@ button,input{font-family:inherit}
       }
     };
     var progress = {
-      invite: st.registered ? TF('已有 {0} 个有效邀请（计 {1} 个）', st.validInvites || 0, st.countedInvites || 0) : '',
-      share: st.registered ? TF('已记 {0} 天', st.shareDays || 0) : ''
+      invite: reg ? TF('{0} 个', st.validInvites || 0) : '',
+      share: reg ? TF('{0} 天', st.shareDays || 0) : ''
     };
-    var LABEL = { todo: '未做', wait: '待核', ok: '已完成' };
+    /* 四个状态词，全页统一：未完成 / 审核中 / 已完成 / 未通过。
+       「审核中」旁边说一句「通常几分钟」，不然贴完链接的人会一直刷。 */
+    var LABEL = { todo: '未完成', wait: '审核中', ok: '已完成', bad: '未通过' };
     Object.keys(plan).forEach(function (k) {
       var c = document.querySelector('.ab-qc[data-task="' + k + '"]');
       if (!c) return;
       var p = plan[k];
       c.classList.toggle('done', !!p.done);
       var stEl = c.querySelector('[data-st]');
-      /* 「已完成」只在真的做满（到上限）时说；做了一部分的说「进行中 · 已有 N 个」 */
       var label = p.done ? 'ok' : p.state;
-      stEl.className = 'ab-st ' + (label === 'ok' && !p.done ? 'ok' : label);
+      stEl.className = 'ab-st ' + label;
       stEl.textContent = p.done ? T(LABEL.ok)
-        : (progress[k] ? T('进行中') + ' · ' + progress[k] : T(LABEL[p.state]));
+        : (progress[k] ? T('进行中') + ' · ' + progress[k]
+          : (p.why ? T(LABEL[p.state]) + ' · ' + T(p.why)
+            : (p.state === 'wait' ? T(LABEL.wait) + ' · ' + T('自动核对，通常几分钟')
+              : T(LABEL[p.state]))));
       var a = c.querySelector('[data-act]');
-      if (!a) return;
-      if (!p.act) { a.hidden = true; return; }
-      a.hidden = false;
-      a.textContent = T(p.act.text);
-      a.href = p.act.href;
-      if (p.act.blank) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-      else { a.removeAttribute('target'); a.removeAttribute('rel'); }
+      if (a) {
+        if (!p.act || !p.act.href) { a.hidden = true; }
+        else {
+          a.hidden = false;
+          a.textContent = T(p.act.text);
+          a.href = p.act.href;
+          if (p.act.blank) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+          else { a.removeAttribute('target'); a.removeAttribute('rel'); }
+        }
+      }
+      /* 「我关注了 / 我点了」：这两项在 X 上查不到，点一下就计分。 */
+      var cb = c.querySelector('[data-claim]');
+      if (cb) cb.hidden = !p.claim;
     });
+
+    /* 贴回复链接那一块：登记之后才出现；已经贴过就只显示那条链接。 */
+    var box = $('proofBox'), doneP = $('proofDone');
+    if (!reg) { box.hidden = true; doneP.hidden = true; }
+    else if (pf && !pf.rejected) {
+      box.hidden = true;
+      doneP.hidden = false;
+      doneP.innerHTML = esc(T('已提交：')) + '<a href="' + esc(pf.url) + '" target="_blank" rel="noopener noreferrer">'
+        + esc(pf.url.replace('https://x.com/', '')) + '</a>';
+    } else {
+      box.hidden = !!st.reposted;
+      doneP.hidden = true;
+    }
+    /* 核下来不对、而且还有提交次数：把「重新提交」摆出来，别让人干瞪眼。 */
+    if (reg && bad && pf && (pf.submits || 1) < (st.proofMaxSubmits || 2)) {
+      box.hidden = false;
+      $('btnProof').textContent = T('重新提交');
+    } else if (!box.hidden) {
+      $('btnProof').textContent = T('提交链接');
+    }
   }
 
   /**
@@ -689,7 +755,9 @@ button,input{font-family:inherit}
     $('myPoints').textContent = String(st.points || 0);
     $('myRank').textContent = st.rank ? '#' + st.rank : '#—';
     $('bkRegister').textContent = String(b.register || 0);
+    $('bkFollow').textContent = String(b.follow || 0);
     $('bkRepost').textContent = String(b.repost || 0);
+    $('bkLike').textContent = String(b.like || 0);
     $('bkInvite').textContent = String(b.invite || 0);
     $('bkShare').textContent = String(b.share || 0);
     $('myCode').textContent = st.code || '——';
@@ -698,18 +766,20 @@ button,input{font-family:inherit}
 
     /* **一处都不提「前 X 名」** —— 名额没定下来之前那是承诺，不是事实。 */
     var gap;
-    if (st.tier === 'gtd') gap = T('按目前的榜，你在保底那一档的范围里。名单要到保底期开始那一刻才定格，在那之前多攒一点更稳。');
-    else if (st.tier === 'fcfs') gap = TF('按目前的榜，你在免费那一档的范围里。再拿 {0} 分就能够到保底那一档。', st.gapToGtd);
-    else gap = TF('按目前的榜还够不到免费那一档。再拿 {0} 分就进去了。', st.gapToFree);
+    if (st.tier === 'gtd') gap = T('你在保底那一档。榜定格前多攒一点更稳。');
+    else if (st.tier === 'fcfs') gap = TF('你在免费那一档。再 {0} 分够到保底。', st.gapToGtd);
+    else gap = TF('还没进免费那一档。再 {0} 分就进去。', st.gapToFree);
     var ns = st.nextStep && st.nextStep.key;
-    var hint = ns === 'repost' ? T('下一步：转发置顶推，并在评论里回复你的登记码。')
-      : ns === 'invite' ? T('下一步：把下面的邀请链接发给朋友。')
-      : ns === 'share' ? T('下一步：去模拟器引爆一个，点「广播」——每天都能再记一次。')
-      : ns === 'done' ? T('四项都满了，剩下的就是等开放。')
+    var hint = ns === 'follow' ? T('下一步：关注。')
+      : ns === 'repost' ? T('下一步：转发并回复你的码。')
+      : ns === 'like' ? T('下一步：点赞。')
+      : ns === 'invite' ? T('下一步：把邀请链接发出去。')
+      : ns === 'share' ? T('下一步：引爆一个并广播。')
+      : ns === 'done' ? T('都做完了，等开放。')
       : '';
     $('myGap').textContent = gap + (hint ? ' ' + hint : '');
 
-    $('inviteHint').textContent = TF('把这条链接发给朋友。对方登记并完成转发核对之后才算一个有效邀请，每个 +{0} 分（最多 {1} 个）。',
+    $('inviteHint').textContent = TF('朋友登记并做完转发，你 +{0} 分。最多 {1} 个。',
       (st.pts && st.pts.invite) || 20, (st.pts && st.pts.inviteMax) || 20);
     /* 邀请链接按**当前这一页的地址**拼：首页被切成预热页时它就是 /，
        独立发布时它是 /warmup.html。写死任何一个都会在另一种情况下指错。 */
@@ -854,6 +924,55 @@ button,input{font-family:inherit}
       msg((e && e.code === 4001) ? T('你在钱包里取消了') : ((e && e.message) || String(e)), 'err');
     }).then(function () { btn.disabled = !ADDR; });
   });
+
+  /* ---------------- 我关注了 / 我点了 ----------------
+     这两项在 X 上查不到，点一下就计分（服务端记 by:'trust'，管理员可抽查撤销）。
+     用的还是登记时那一次签名，不弹钱包。 */
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-claim]') : null;
+    if (!b || b.hidden) return;
+    var task = b.getAttribute('data-claim');
+    var sig = sessionSig();
+    if (!ADDR || !sig) { msg(T('先连钱包并登记'), 'err'); return; }
+    b.disabled = true;
+    api('/allowlist/claim', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ address: ADDR, sig: sig, task: task })
+    }).then(function () { return load(); }, function (e) {
+      msg((e && e.message) || String(e), 'err');
+    }).then(function () { b.disabled = false; });
+  });
+
+  /* ---------------- 提交回复链接 ----------------
+     服务端收到就去取那条推文自动核；核过直接加分，核不过标「待核」并写出原因。 */
+  $('btnProof').addEventListener('click', function () {
+    var sig = sessionSig();
+    if (!ADDR || !sig) { pmsg(T('先连钱包并登记'), 'err'); return; }
+    var url = String($('inProof').value || '').trim();
+    if (!PROOF_RE.test(url)) {
+      pmsg(T('贴一条推文链接'), 'err'); return;
+    }
+    var btn = this; btn.disabled = true;
+    pmsg(T('在核了…'));
+    api('/allowlist/proof', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ address: ADDR, url: url, sig: sig })
+    }).then(function (r) {
+      pmsg(r.auto ? T('核过了，分已经加上。') : T('收到了，人工看一眼。'), 'ok');
+      return load();
+    }, function (e) {
+      pmsg((e && e.message) || String(e), 'err');
+    }).then(function () { btn.disabled = false; });
+  });
+  function pmsg(t, cls) { var el = $('proofMsg'); el.className = 'ab-msg ' + (cls || ''); el.textContent = t; }
+  /** 登记时存下的那一次签名（模拟器页也读它）。没有就回 null。 */
+  function sessionSig() {
+    try {
+      var j = JSON.parse(localStorage.getItem(AL_SIG_KEY) || 'null');
+      if (!j || !ADDR || String(j.addr).toLowerCase() !== ADDR) return null;
+      return /^0x[0-9a-fA-F]{130}$/.test(String(j.sig)) ? j.sig : null;
+    } catch (e) { return null; }
+  }
 
   $('btnCopy').addEventListener('click', function () {
     var el = $('inviteUrl');
