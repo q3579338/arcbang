@@ -87,11 +87,11 @@ body.panel-open .u3d-ov{display:none}
 #siteNav{position:fixed;left:0;right:0;top:0}
 
 
-/* 站点层（web/bnb-ui.js）有两块浮层挂在 body 上、fixed 在视口右上角：
+/* 站点层（web/arc-ui.js）有两块浮层挂在 body 上、fixed 在视口右上角：
    钱包条 #bnbWallet（top:12）与铸造 HUD #bnbMintHud（top:114）。它们不在 #app 里，
    不会跟着一起下移 —— 顶栏一来，钱包条整条被压在顶栏底下（实测：那句
    「没装小狐狸 · 引爆免费，铸造才需要」完全看不见了）。
-   bnb-ui.js 这一轮不归我改，所以在这里把两块一起下移 var(--navh)：
+   arc-ui.js 这一轮不归我改，所以在这里把两块一起下移 var(--navh)：
    位移量与 #app 相同，它们与 .hud-top / .hud-side 的相对位置一点没变。
    模块自己的 <style> 是运行时插进 <head> 的、排在这份表之后，同为一个 id 会赢，
    所以选择器带 body 前缀把特异性提上去。 */
@@ -980,7 +980,7 @@ body #bnbMintHud{top:calc(var(--navh) + 114px)}
       <button type="button" id="btnCatalog" class="link">管理目录</button>
       <button type="button" id="aboutLink" class="link">关于与来源</button>
       <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
-      <a class="link" href="mailto:admin@bnbbang.com" data-nolang>admin@bnbbang.com</a>
+      <a class="link" href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
       <span class="foot-item dim" id="engineInfo"></span>
     </footer>
   </section>

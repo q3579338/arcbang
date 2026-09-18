@@ -1,14 +1,14 @@
 /*
- * web/bnb-chain.js —— BNB 链访问层（只在站点版加载，离线单文件版没有这一层）
+ * web/arc-chain.js —— BNB 链访问层（只在站点版加载，离线单文件版没有这一层）
  * ------------------------------------------------------------
  * 零依赖：不引 ethers/web3，只用 fetch + window.ethereum，
  * ABI 编解码手写（我们只需要 5 个函数和 1 个事件，不值得为此拖进一个库）。
- * keccak256 复用 engine/bnbhash.js 里那份（函数选择器和事件 topic 都要它）。
+ * keccak256 复用 engine/archash.js 里那份（函数选择器和事件 topic 都要它）。
  *
  * 读链走公开 RPC（不需要钱包，未连钱包也能浏览）；写链走小狐狸。
  *
  * API：
- *   CHAIN                       链参数（全部从 web/config.js 的 chain 块派生）
+ *   CHAIN                       链参数（全部从 web/config.arc.js 的 chain 块派生）
  *   chainName()                 界面上给人看的链名（跟随当前语言）
  *   rpc(method, params)         直连公开 RPC
  *   latestBlockNumber()  blockHashOf(n)  blockAt(n)
@@ -23,10 +23,10 @@
   'use strict';
 
   var K = root.MirrorKeccak;                        // 只要 keccak256 算选择器；推导在服务端，不打进站点包
-  var CFG = root.BNBBANG_CONFIG || {};
+  var CFG = root.ARCBANG_CONFIG || {};
 
   /* ---------------------------------------------------------- 链身份
-     唯一真相来源是 web/config.js 的 chain 块（specs/mainnet-ready.md）。
+     唯一真相来源是 web/config.arc.js 的 chain 块。
      这一层只做派生：id → hex、currency 字符串 → 钱包要的 nativeCurrency 结构、
      isTestnet → 水龙头给不给。**这个文件里不再有任何写死的链名或浏览器域名。**
      老的 config.js 没有 chain 块时：rpc 像主网就按主网身份兜底，否则按测试网；
@@ -73,7 +73,7 @@
     if (missing && !root.__bnbbangChainWarned) {
       root.__bnbbangChainWarned = 1;
       if (root.console && root.console.warn) {
-        root.console.warn('[config] web/config.js 里没有 chain 块，按 RPC 推断链身份 —— 换链请改那一块（specs/mainnet-ready.md）');
+        root.console.warn('[config] web/config.arc.js 里没有 chain 块，按 RPC 推断链身份 —— 换链请改那一块');
       }
     }
     var c = raw || {};
@@ -115,7 +115,7 @@
   function chainName() {
     return (root.MirrorI18n && root.MirrorI18n.lang() === 'en') ? CC.nameEn : CC.name;
   }
-  var CONTRACT = CFG.contract || '';                // 部署后填进 web/config.js
+  var CONTRACT = CFG.contract || '';                // 部署后填进 web/config.arc.js
 
   /* ============================================================ RPC
      2026-09-02 改：① 每次 fetch 8 秒超时 —— 国内被 DNS 污染的节点一挂就是十几秒，页面整段「读不到」；
@@ -258,7 +258,7 @@
 
   /* ============================================================ 合约读 */
   function needContract() {
-    if (!CONTRACT) throw new Error('合约地址还没配置（web/config.js 里的 contract）');
+    if (!CONTRACT) throw new Error('合约地址还没配置（web/config.arc.js 里的 contract）');
     return CONTRACT;
   }
   function call(sig, argsHex) {
@@ -275,7 +275,7 @@
     return call('totalSupply()', '').then(function (r) { return decUint(r); });
   }
   /* 免费期还剩多少枚。合约里是 freeCap - totalSupply（发完返回 0）。
-     v5 起 price() 就是付费期的一口价（specs/economy-v5.md §二：固定 0.01，不分档）——
+     v5 起 price() 就是付费期的一口价——
      签名路和 bang() 那条不带签名的路收的是同一个数。 */
   function freeLeft() {
     return call('freeLeft()', '').then(function (r) { return decUint(r); });
@@ -285,10 +285,6 @@
       改成了 freeMintCount 计数器（每地址 10 次），走下面的 freeStatus()。 */
   function usedFree(addr) {
     return call('usedFree(address)', encAddress(addr)).then(function (r) { return decUint(r) === 1n; });
-  }
-  /** 每枚铸造发多少 BANG（v5 五档同额，链上现值 600e18）。 */
-  function rewardPerMint() {
-    return call('rewardPerMint()', '').then(function (r) { return decUint(r); });
   }
   /** eth_call 的失败分两种，下面的 freeStatus 必须分开对待：
       revert / 空返回数据 = 「这版字节码没有这个方法」；网络/节点失败 = 「这次没读到」。
@@ -391,7 +387,7 @@
         mintedAt: Number(decUint(raw, 2)),
         minter: decAddress(raw, 3),
         /* 注意：这是**铸造者填进 bang() 的声称值**，合约不核对。
-           要显示结局请拿 blockHash 去问服务端重算（web/bnb-ui.js 的 galFill）。 */
+           要显示结局请拿 blockHash 去问服务端重算（web/arc-ui.js 的 galFill）。 */
         outcome: Number(decUint(raw, 4)),
         verified: body.length >= 6 * 64 ? decUint(raw, 5) === 1n : null,
         /* 稀有度就在结构体第 7 个字段（Universe.rarity），直接解得出来。
@@ -514,8 +510,8 @@
   /* ArcUniverse 没有 payWithBang（没有代币），bangSigned 是 7 个参数：
      选择器与 sig 的偏移都不一样，按旧的 8 参编码发过去会 revert（2026-09-18 上线第一枚撞上）。 */
   function isArcSite() {
-    var c = root.BNBBANG_CONFIG || {};
-    return String(root.BNBBANG_SITE || c.site || '') === 'arc';
+    var c = root.ARCBANG_CONFIG || {};
+    return String(root.ARCBANG_SITE || c.site || '') === 'arc';
   }
   function bangSignedData(o) {
     if (isArcSite()) {
@@ -603,7 +599,6 @@
     totalSupply: totalSupply,
     freeLeft: freeLeft,
     usedFree: usedFree,
-    rewardPerMint: rewardPerMint,
     freeStatus: freeStatus,
     mintValueFor: mintValueFor,
     ownerOf: ownerOf,

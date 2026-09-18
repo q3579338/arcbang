@@ -2,7 +2,7 @@
  * card —— 一个区块哈希对应的那份"参数证书"
  * ------------------------------------------------------------
  * 服务端唯一的计算入口：哈希 → 派生 → 引擎 → card + cardHash。
- * 浏览器不再做这件事（specs/server-side.md 的目标 1）。
+ * 浏览器不再做这件事。
  *
  * cardHash 只用**整数**作基：blockHash + derive() 出来的 22 个整数槽 + 结局序号。
  * 为什么不把浮点参数塞进去：22 个槽是 keccak 的直接产物，任何机器上逐位相同；
@@ -18,11 +18,11 @@ const path = require('path');
 const { keccak256, AbiCoder } = require('ethers');
 
 const ROOT = path.join(__dirname, '..');
-const B = require(path.join(ROOT, 'engine/bnbhash.js'));
+const B = require(path.join(ROOT, 'engine/archash.js'));
 require(path.join(ROOT, 'engine/params.js'));
 const E = require(path.join(ROOT, 'engine/engine.js'));
 
-/** 结局顺序必须与合约 outcomeName() 一致（与 web/bnb-ui.js 的 OUTCOME_ORDER 同一份） */
+/** 结局顺序必须与合约 outcomeName() 一致（与 web/arc-ui.js 的 OUTCOME_ORDER 同一份） */
 const OUTCOME_ORDER = [
   'UNSTABLE_ORBITS', 'BIG_CRUNCH', 'BIG_RIP', 'HEAT_DEATH_NO_STRUCTURE',
   'BLACK_HOLE_DOMINATED', 'NO_ATOMS', 'NO_CHEMISTRY', 'NO_STARS',

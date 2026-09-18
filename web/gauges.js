@@ -48,7 +48,7 @@
   function TL(list) { return list.map(function (s) { return T(s); }).join(T('、')); }
 
   /* ============================================================ 26 道布尔门
-     字段名与 tools/bnb-intervene.js 顶部那张 GATES 表逐条对应 —— 那张表是实测
+     字段名与 半径表的离线标定脚本 顶部那张 GATES 表逐条对应 —— 那张表是实测
      救活率 83% 的评分函数在用的，两边一旦对不上，玩家就会看到"门数涨了但提示说没变好"。
      want 是「通过时应该等于」：三道反向门（分数维、双质子、越界）通过时为 false。 */
   var GATES = [
@@ -209,7 +209,7 @@
     for (i = 0; i < GATES.length; i++) {
       g = GATES[i];
       sec = calc ? calc[g.section] : null;
-      // 判法与 tools/bnb-intervene.js 的 gatesPassed() 逐位一致：整段缺失算不通过，
+      // 判法与 半径表的离线标定脚本 的 gatesPassed() 逐位一致：整段缺失算不通过，
       // 段在而字段缺失按 falsy 判。这是刻意对齐 —— 仪表盘的门数必须和 MirrorHint
       // 的评分用同一把尺子，否则会出现"门数变了但提示说没变好"这种自相矛盾。
       if (sec && !!sec[g.key] === g.want) passed++;

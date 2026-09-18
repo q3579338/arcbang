@@ -1,12 +1,11 @@
 {
-  "name": "mirror-universe-contracts",
+  "name": "arcbang-contracts",
   "version": "0.1.0",
   "private": true,
-  "description": "BNBBANG NFT contract + 跨语言一致性校验",
+  "description": "ARCBANG NFT 合约 + 跨语言一致性校验",
   "scripts": {
-    "build": "node tools/compile.js",
-    "crosscheck": "node tools/crosscheck.js 20",
-    "sample": "node tools/minttest.js"
+    "build": "node tools/compile.js src/ArcUniverse.sol && node tools/compile.js src/ArcMarket.sol",
+    "test": "node tools/arctest.js && node tools/arcmarket-test.js"
   },
   "devDependencies": {
     "solc": "0.8.24",

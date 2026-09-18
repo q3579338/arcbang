@@ -1,11 +1,11 @@
 /*
- * web/bnb-ui.js —— BNBBANG 面板（只在站点版加载）
+ * web/arc-ui.js —— ARCBANG 面板（只在站点版加载）
  * ------------------------------------------------------------
  * 起爆页上多一块：拿一个 BNB 区块哈希当奇点。
  *   取区块（最新 / 指定高度 / 随机 / 直接粘哈希）→ 免费引爆 → 喜欢再 mint
  * 引爆完全在本地算，不需要钱包、不需要连链；只有 mint 才走小狐狸。
  *
- * 首屏为什么长这样（specs/market-v1.md §4「首屏信息量爆炸」）：
+ * 首屏为什么长这样：
  * 原来 hero + 面板 + 20 参数表 + 我保存的宇宙 + 帮助折叠一起铺开，新手第一眼看到七八个入口，
  * 反而不知道先点哪个。现在首屏只留**一句话 + 一个大按钮**：
  *   · 取区块的四个入口（最新/随机/高度/粘哈希）收进「自己挑一个区块」折叠 —— 功能一个没删
@@ -25,7 +25,7 @@
  *     首屏这一行与 #gpuChk 双向同步，状态由 MirrorOnboard 真跑一次 requestAdapter() 给出
  *
  * 依赖：window.MirrorBnbApi（服务端算 card）、window.MirrorChain（链）、window.MirrorApp（主程序）
- * 注：爆炸的计算不在这里 —— 它在服务端（specs/server-side.md）。本文件只负责问、显示、发交易。
+ * 注：爆炸的计算不在这里 —— 它在服务端。本文件只负责问、显示、发交易。
  *       window.MirrorOnboard（引导与人话表，缺席时退回符号与原文案，不炸）
  */
 (function (root, doc) {
@@ -35,32 +35,11 @@
   var App = null;                                  // MirrorApp 在 app.js 末尾才挂上，用时再取
   var Engine = root.MirrorEngine;
 
-  /* ============================================================ BTCBANG 模式（specs/btcbang-v1.md §四）
-     config.site === 'btc'（web/config.btc.js，bang.satloot.com）时奇点换成**比特币主网**的区块哈希：
-       · 取块四条路（最新 / 创世 / 随机 / 输入）与「给我一个宇宙」走 MirrorBtcSource（web/btc-source.js，
-         打本站 /api/btc/*，不直连 mempool.space）；
-       · 铸造走 API.btcBang(height)（服务端自己去上游核哈希、校验确认数与保留名单）；
-       · txArgs 不变：blockHash = 比特币哈希、blockNumber = 高度，铸进**同一个** MirrorUniverse。
-     钱包 / 合约 / tokenOfHash / 交易浏览器仍是 BSC（C.CHAIN）—— 那是钱包链，不是奇点来源。
-     **bnb 模式一个字节不变**：下面所有 btc 分支都是 `if (BTC)` 早退或追加，原路径原样保留。 */
-  var CFG = root.BNBBANG_CONFIG || {};
-  var SITE = CFG.site || 'bnb';
-  var BTC = SITE === 'btc';
-  /* ============================================================ ARCBANG 模式（specs/arcbang-v1.md）
-     config.site === 'arc'（web/config.arc.js）时：奇点来自 **Arc 链**的区块，取块与 bnb 同一条路
-     （都是 EVM，走 MirrorChain），所以这里**没有 btc 那样的取块分支** —— 只有文案和「没有代币」两件事：
-       · 品牌名 / 副标题 / 分享文案换成 Arc 口径；
-       · 合约是 ArcUniverse：**没有 rewardPerMint / BANG**，所以不去读它（读了必 revert），
-         铸造按钮与价格行自动退回「只有价格、不提奖励」的那一支（见 paidMintLabel）。
+  /* ============================================================ ARCBANG（specs/arcbang-v1.md）
+     奇点来自 **Arc 链**的区块，取块走 MirrorChain（EVM）。
+     合约是 ArcUniverse：**没有代币、没有每枚奖励**，所以一个字也不去问链上要（问了必 revert），
+     铸造按钮与价格行只标价（见 paidMintLabel）。
      Arc 的 native 就是 USDC，chainCur() 从 config.chain.currency 现读，界面上自动是 USDC。 */
-  var ARC = SITE === 'arc';
-  /** 比特币取块层。用时现取：它在注入层里排在本文件之前，但缺席（旧包 / 并行开发）时不能让整个面板挂掉 */
-  function BS() { return root.MirrorBtcSource || null; }
-  /* 当前卡片对应的比特币块信息（MirrorBtcSource.info 的答复：height / hash / time / confirmations /
-     mintable / reason / code / zeros / badges / reserved / openAt）。经 btcLoad 进来的哈希在 setHash
-     之前就填好；画廊点击 / 深链哈希那种没走 btcLoad 的，renderCard 里补问一次（btcRenderHead）。
-     foreign:true = 服务端说这不是比特币块（BNB 宇宙，本站只看不铸）；err = 核对没成功。 */
-  var BTCS = { info: null, timer: 0 };
 
   // 结局顺序必须与合约 outcomeName() 一致
   var OUTCOME_ORDER = [
@@ -88,9 +67,9 @@
   function genesisDate() {
     return (C && C.CHAIN && C.CHAIN.id === GENESIS_REF.chainId) ? GENESIS_REF.date : '';
   }
-  /* 链名与币符号只有一个来源：web/config.js 的 chain 块（specs/mainnet-ready.md），
-     由 bnb-chain.js 派生成 C.CHAIN / C.chainName()。这个文件里不许再写死任何一个。
-     退路是防着页面装了旧版 bnb-chain.js（缓存），不是给换链用的。 */
+  /* 链名与币符号只有一个来源：web/config.arc.js 的 chain 块，
+     由 arc-chain.js 派生成 C.CHAIN / C.chainName()。这个文件里不许再写死任何一个。
+     退路是防着页面装了旧版 arc-chain.js（缓存），不是给换链用的。 */
   function chainName() {
     if (C && C.chainName) return C.chainName();
     return (C && C.CHAIN && C.CHAIN.name) || '';
@@ -140,7 +119,7 @@
     return fallback != null ? '#' + fallback : '';
   }
 
-  /* ============================================================ 广播与推广（specs/share-referral-v1.md）
+  /* ============================================================ 广播与推广
      ref 的一生：广播链接带 ?ref=<广播者地址> → 落地页把它存进 localStorage
      （**首触优先**，30 天）→ 被邀请者第一次成功铸造时随 /api/bang 一起提交 →
      服务端只留痕。发钱是 owner 拿着留痕人工核对后用 BangPromo.grant 手动发。
@@ -153,14 +132,14 @@
     var s = String(a || '').toLowerCase();
     return /^0x[0-9a-f]{40}$/.test(s) ? s : '';
   }
-  /* 推广短码：8 位定长，字符集去掉 O/0/I/1（specs/share-referral-v1.md §8）。
+  /* 推广短码：8 位定长，字符集去掉 O/0/I/1。
      **两种 ?ref= 都要认** —— 老链接里是 0x 地址，新链接里是短码。
      已经发出去的链接不能因为这一版改造而失效，所以地址那条路一个字都不动，
      短码只是**多认一种**。 */
   var CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/;
   /** 服务端前缀。MirrorBnbApi 已经算过一次，缺席时按 config.js 自己算，别写死 */
   function apiBase() {
-    var c = root.BNBBANG_CONFIG || {};
+    var c = root.ARCBANG_CONFIG || {};
     if (API && API.base) return API.base;
     return (c.apiBase != null ? String(c.apiBase) : '/api').replace(/\/$/, '');
   }
@@ -262,7 +241,7 @@
      取不到就返回空串，调用方据此退回老的 app.html?bang=… 形式 ——
      那条路在任何部署下都成立（本地 file://、localhost 联调、塞在子目录里的站点）。 */
   function siteRoot() {
-    var c = root.BNBBANG_CONFIG || {};
+    var c = root.ARCBANG_CONFIG || {};
     if (c.siteBase) return String(c.siteBase).replace(/\/+$/, '');
     var o = String(location.origin || '');
     if (!/^https?:/.test(o)) return '';
@@ -272,10 +251,10 @@
     return o;
   }
 
-  /** 分享链接（specs/broadcast-v2.md §一）。两头都砍：
+  /** 分享链接。两头都砍：
         bang 用**区块号**代替 66 字符的哈希（拿不到区块号才退回哈希）；
         ref  用**8 位短码**代替 42 字符的地址（拿不到短码才退回地址）。
-          https://bnbbang.com/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
+          https://arcbang.xyz/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
       老形式的链接**仍然有效** —— 落地页 /s/ 两种 token 都认，?ref= 两种格式也都认，
       所以这里只管把新发出去的链接缩短，已经发出去的一条都不会失效。
       不用 URL()：这段要在老一点的 WebView 里也能跑，字符串拼起来就够了。 */
@@ -291,7 +270,7 @@
   function appShareUrl(hash, myAddr) { return shareUrl({ hash: hash }, myAddr); }
 
   /** 分享图（PNG）。**多数平台不认 SVG**（X 明确不支持，微信也不认），
-      所以广播这条路一律走 /api/art/*.png（specs/broadcast-v2.md §2.1）。
+      所以广播这条路一律走 /api/art/*.png。
       造物按 cardHash 索引 —— 干预之后参数变了，blockHash 已经不是它的身份。 */
   function shareImgUrl(o) {
     var H32 = /^0x[0-9a-fA-F]{64}$/;
@@ -342,7 +321,7 @@
     var no = uniNo(o && o.no, null) || (o && o.hash ? String(o.hash).slice(0, 10) : '?');
     var oc = (o && o.outcome) || (o && o.oid && T(OUTCOME_CN[o.oid] || o.oid)) || '?';
     var label = TX('宇宙 {0} · {1}', no, oc);
-    var site = siteRoot().replace(/^https?:\/\//, '') || String(location.host || '') || 'BNBBANG';
+    var site = siteRoot().replace(/^https?:\/\//, '') || String(location.host || '') || 'ARCBANG';
     var bh = Math.max(24, Math.min(44, Math.round(h * 0.055)));
     var fs = Math.max(11, Math.round(bh * 0.46));
     var pad = Math.round(bh * 0.55), y = h - bh / 2 + 0.5;
@@ -398,7 +377,7 @@
     });
   }
 
-  /* 「复制文案和图片」（specs/broadcast-v2.md §三）。剪贴板能同时装文本和图片，
+  /* 「复制文案和图片」。剪贴板能同时装文本和图片，
      复制完在微信里 Ctrl+V 就是连图带字一条消息 —— 这条比二维码实用。
      两条纪律：
        1. **必须降级**：Safari 和一部分浏览器没有 ClipboardItem、或者装不下 image/png，
@@ -438,7 +417,7 @@
   }
 
   /* ============================================================ 二维码（纯前端，零外部请求）
-     specs/broadcast-v2.md §4：微信没有网页分享 API，能给的只有二维码。
+，能给的只有二维码。
      **不许调第三方二维码 API** —— 那等于把用户的推广链接发到别人的服务器上，
      而且破了离线包「零外部请求」那条红线。所以这里自己编码。
 
@@ -453,7 +432,7 @@
 
      ⚠ web/market.html 里有**逐字相同的一份**。那一页是自带脚本的独立单文件
      （理由见它开头的说明），而 web/build-web.js 的文件清单是写死的，
-     新开一个 web/qr.js 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
+     新开一个 另开一个 qr 模块 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
   function qrEncode(text) {
     var i, j, k;
     /* ---- GF(256)，本原多项式 0x11d（QR 规定的那一个） ---- */
@@ -711,25 +690,15 @@
   function shareText(o, link) {
     if (o.kind === 'craft') {
       var outc = o.outcome || '?';
-      /* ARCBANG：造物系列在 v1 不上（config.arc.js 的 crafted 是空的），这一支走不到；
-         拯救系统也整套下线，所以这里不再有 arc 专属的「救活 / 销毁」文案 ——
-         万一走到了，退回引爆那条通用文案，一个字的拯救话术都不发出去。 */
-      if (ARC) return shareText({ kind: 'native', outcome: outc, no: o.no, oid: o.oid, hash: o.hash || '' }, link);
-      return (o.id != null
-        ? TX('我把一个死宇宙救成了「{0}」（{1} 档造物宇宙 #{2}）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{3}',
-             outc, o.rar || '?', o.id, link)
-        : TX('我把一个死宇宙救成了「{0}」（{1} 档造物宇宙）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{2}',
-             outc, o.rar || '?', link)).replace(/\s+$/, '');
+      /* 造物系列在 v1 不上（config.arc.js 的 crafted 是空的），这一支走不到；
+         拯救系统也整套下线，所以这里没有「救活 / 销毁」文案 ——
+         万一走到了，退回引爆那条通用文案。 */
+      return shareText({ kind: 'native', outcome: outc, no: o.no, oid: o.oid, hash: o.hash || '' }, link);
     }
     // 结局既收现成的名字（o.outcome），也收引擎 id（o.oid，切语言时现翻）
     var oc = o.outcome || (o.oid && T(OUTCOME_CN[o.oid] || o.oid)) || '?';
-    // BTCBANG：同一句换成比特币口径（付费仍是 0.01 BNB —— 钱包链没变）
-    if (BTC) return TX('我在 BTCBANG 引爆了宇宙 {0}：{1}。每个比特币区块哈希都是一套物理定律——来引爆你自己的，前 100 万枚每地址 10 次免费，之后 0.01 BNB。{2}',
-              uniNo(o.no, null) || o.hash.slice(0, 10), oc, link).replace(/\s+$/, '');
-    // ARCBANG：Arc 口径，价格与免费额度按 specs/arcbang-v1.md（1,387 枚 · 前 387 枚免费 · 1 USDC）
-    if (ARC) return TX('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}',
-              uniNo(o.no, null) || o.hash.slice(0, 10), oc, link).replace(/\s+$/, '');
-    return TX('我在 BNBBANG 引爆了宇宙 {0}：{1}。每个 BNB 区块哈希都是一套物理定律——来引爆你自己的，前 100 万枚每地址 10 次免费，之后 0.01 BNB。{2}',
+    // 价格与免费额度按 specs/arcbang-v1.md（1,387 枚 · 前 387 枚免费 · 1 USDC）
+    return TX('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}',
               uniNo(o.no, null) || o.hash.slice(0, 10), oc, link).replace(/\s+$/, '');
   }
 
@@ -856,7 +825,7 @@
         + '<figcaption class="bshare-shot-tag" id="bshareShotTag"></figcaption>'
         + '</figure>'
         + '<p class="bshare-preview mono">' + esc(full) + '</p>'
-        /* 主功能位（specs/broadcast-v2.md §三）：只有「复制文案和图片」一颗通栏大格。
+        /* 主功能位：只有「复制文案和图片」一颗通栏大格。
            微信降级进下面的渠道网格（用户 2026-08-21「微信应该和别的在一起」），
            点击行为不变：点格子 → 展开二维码面板（§四）。 */
         + '<div class="bshare-feats">'
@@ -876,7 +845,7 @@
         + '<a class="bshare-tile" href="' + esc(waUrl) + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">' + SICO.wa + '<span>WhatsApp</span></a>'
         + '<button type="button" class="bshare-tile" id="bshareLnk">' + SICO.link + '<span>' + esc(T('复制链接')) + '</span></button>'
         + '</div>'
-        /* 微信二维码面板（specs/broadcast-v2.md §四）：默认收起，点上面网格里的微信格展开。
+        /* 微信二维码面板：默认收起，点上面网格里的微信格展开。
            二维码本地算（qrEncode），不调第三方接口。 */
         + '<div class="bshare-wx" id="bshareWxBox" hidden>'
         + '<div class="bshare-qr" id="bshareQr"></div>'
@@ -884,15 +853,8 @@
         + '<div class="bshare-qrlink mono">' + esc(link) + '</div>'
         + '</div>'
         + '<div class="bshare-note">'
-        /* ARCBANG 没有代币，也就没有铸造奖励与邀请返利这回事（specs/arcbang-v1.md）——
-           整段换掉，别在一个不发币的站上写「返利专款 2 亿」。默认两站照旧。 */
-        + (ARC
-          ? esc(T('链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。'))
-          : esc(my
-              ? T('链接已带上你的推广地址。邀请好友引爆宇宙：好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。')
-              : T('未连接钱包：链接不带推广地址，照常能广播。连接钱包再广播，好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。'))
-            + '<br>' + esc(T('邀请返利专款 2 亿 BANG。'))
-            + esc(T('女巫账户（自邀、批量小号、刷量）经人工核对一律不予发放。')))
+        /* ARCBANG 没有代币，也就没有铸造奖励与邀请返利这回事（specs/arcbang-v1.md）。 */
+        + esc(T('链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。'))
         + '</div></div>';
       doc.body.appendChild(pop);
       SHARE_POP = pop;
@@ -1018,7 +980,7 @@
 
   /* ============================================================ 样式 */
   var CSS = [
-    /* ============================================================ 外观 v2（specs/redesign-v2.md §3）
+    /* ============================================================ 外观 v2
        层次改成「白卡片浮在浅灰底上」：--panel 白面 + 极淡的 --line 一线 + --shadow-card 柔和阴影，
        不再靠重描边分块。颜色一处都不写死 —— 这块面板深浅两套主题都要能看，
        写死 hex 必然有一套是瞎的。裸色值只许出现在**永远深底**的两处例外里：
@@ -1180,7 +1142,7 @@
     '#bnbParams table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}',
     '#bnbParams td{padding:5px 6px;border-bottom:1px solid var(--line-soft);white-space:nowrap}',
     '#bnbParams tr:last-child td{border-bottom:0}',
-    /* 人话在前、符号退到第二列（specs/market-v1.md §4「术语裸奔」） */
+    /* 人话在前、符号退到第二列 */
     '#bnbParams td.plain{color:var(--ink);white-space:normal;font-family:var(--sans);font-size:12px}',
     '#bnbParams td.sym{color:var(--dim2);width:1%}',
     '#bnbParams td.nm{color:var(--dim);white-space:normal}',
@@ -1210,7 +1172,7 @@
     '#bnbWallet .w-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}',
     '#bnbWallet .w-dim{color:var(--dim)}',
     '#bnbWallet .w-err{color:var(--bad)}',
-    /* ============================================================ 确认屏 · 太空时刻（specs/detonate-confirm-scifi.md）
+    /* ============================================================ 确认屏 · 太空时刻
        原来这里是乳白确认页上的一条上下文信息（#bnbConfirmInfo，ci-* 一族只归它用）。
        用户拍板：确认屏只留「引爆」「取消」两个交互件，信息块整个退场——数在上一屏都看过了。
        这一屏**刻意不跟浅色主题走**：按下引爆就进黑色的 3D 视图，从确认到爆炸不该有一次
@@ -1317,7 +1279,7 @@
        占满了，通栏放哪儿都会挡。收窄之后仍由 hudPlace() 顶到按钮列左边的空当里。
        130 = 右侧按钮列（~91）+ 两边留白 */
     '@media (max-width:520px){#bnbMintHud{max-width:calc(100vw - 130px);font-size:12px}}',
-    /* ---------- 分析面板开着时，铸造卡片收成右上角小徽标（specs/detonate-confirm-scifi.md 附加任务）
+    /* ---------- 分析面板开着时，铸造卡片收成右上角小徽标
        分析面板（#analysis）是右侧 min(600px,100vw) 的抽屉（z-index 40），这张卡片 fixed 在
        top:114/right:14、z-index 55 —— 面板一开正好压在它的内容上，被盖住的那栏读不了。
        过渡只挂 opacity/transform：top/right 由 hudPlace() 随时在写，挂上过渡会变成飘来飘去。
@@ -1343,7 +1305,7 @@
     '  #bnbCore i,#pageConfirm #btnFire{animation:none}',
     '  #bnbMintHud,#bnbMintHud.hud-away,#bnbHudBadge,#pageConfirm .big-btn{transition:none}}',
 
-    /* ---------- 广播浮层（specs/share-referral-v1.md §二/§五 + broadcast-v2.md §三/§四）
+    /* ---------- 广播浮层
        外观 v3（用户 2026-08-21「做好看、科幻」）：玻璃拟态半透面板 + 顶缘扫描光 +
        hover 发光描边。颜色一处不写死，全走 tokens.css —— 深色主题里 --cyan 是亮紫，
        发光描边自然亮；浅色主题里同一套令牌退成干净的白卡淡描边。
@@ -1403,7 +1365,7 @@
     '.bshare-preview{margin:0 0 12px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--ink2);',
     '  background:var(--panel2);border:1px solid var(--line-soft);border-left:2px solid var(--cyan-line);',
     '  border-radius:var(--radius-btn,10px);word-break:break-all;user-select:text}',
-    /* 主功能位：只有「复制文案和图片」一颗通栏大格（specs/broadcast-v2.md §三 是主路；
+    /* 主功能位：只有「复制文案和图片」一颗通栏大格（
        微信在渠道网格里，点开在网格下方展开二维码面板 §四） */
     '.bshare-feats{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px}',
     '.bshare-feat{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;',
@@ -1436,7 +1398,7 @@
     '@media (prefers-reduced-motion:reduce){.bshare-pop,.bshare-box{animation:none}',
     '  .bshare-pop.closing,.bshare-pop.closing .bshare-box{transition:none}',
     '  .bshare-feat,.bshare-tile{transition:none}.bshare-tile:hover{transform:none}}',
-    /* 复制的结果那一行（图片没进剪贴板时要**明说**，见 specs/broadcast-v2.md §三） */
+    /* 复制的结果那一行（图片没进剪贴板时要**明说**） */
     '.bshare-msg{margin:0 0 10px;font-size:11.5px;line-height:1.7;color:var(--dim)}',
     '.bshare-msg.warn{color:var(--gold,var(--ink2))}',
     /* 微信二维码那一块。二维码本身**永远白底黑块**（相机要的是对比度），
@@ -1458,7 +1420,7 @@
   /* ============================================================ 面板 */
   var HTML = [
     '<div class="bnb-head">',
-    '  <span class="bnb-title">BNBBANG</span>',
+    '  <span class="bnb-title">ARCBANG</span>',
     '  <span class="bnb-sub">免费引爆，喜欢再铸造</span>',
     '  <button type="button" class="bnb-btn bnb-how" id="bnbHow" title="重看三步引导">怎么玩</button>',
     '  <a class="bnb-mk" id="bnbMarket" href="' + MARKET_URL + '" title="挂单、买卖宇宙 NFT 与资源（独立页面）">市场 ↗</a>',
@@ -1557,8 +1519,7 @@
     else how.hidden = true;
 
     wireGpu();
-    if (BTC) btcMount(panel);  // 比特币口径的标题 / 提示 / 徽章样式 / 确认数计时器（bnb 模式不进这里）
-    if (ARC) arcMount(panel);  // ARCBANG：只换品牌名与输入框提示，取块仍走 bnb 那条 EVM 路
+    arcMount(panel);           // 品牌名与输入框提示
     installBlockSource();      // 先装来源，再收入口
     lockToBlocks();
     buildMore(panel);
@@ -1675,12 +1636,11 @@
      lockToBlocks() 只收得掉起爆页上的按钮，那两条路它够不着，
      等于站点上仍有办法引爆一个不属于任何区块的宇宙。 */
   function installBlockSource() {
-    if (BTC) { installBtcBlockSource(); return; }     // 比特币版在下面，形状相同、来源不同
     function entryOf(card, n) {
       return {
         id: 'bnb-' + card.blockHash.slice(2, 10),
         label: n != null ? '区块 ' + n : card.blockHash.slice(0, 10),
-        name: (BTC ? '比特币区块' : ARC ? 'Arc 区块' : 'BNB 区块'), params: card.params, modules: card.modules,
+        name: 'Arc 区块', params: card.params, modules: card.modules,
         preset: false, ours: false, temp: true
       };
     }
@@ -1738,10 +1698,7 @@
 
     // 一句话说清「这是什么」——首屏的文字预算就这一行，剩下的交给那个大按钮
     var sub = doc.querySelector('#pageSelect .hero-sub');
-    if (sub) sub.textContent = '每个 BNB 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命';
-    // BTCBANG：同一句换成比特币口径（静态文本，由 MirrorI18n 的 DOM 遍历翻，词条在 web/i18n-btc.js）
-    if (sub && BTC) sub.textContent = '每个比特币区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命';
-    if (sub && ARC) sub.textContent = '每个 Arc 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命';
+    if (sub) sub.textContent = '每个 Arc 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命';
 
     // 编辑器里的"随机"按钮同理（编辑器抽屉本身已经进不去了，防个万一）
     var edRandom = $('edRandom');
@@ -1758,16 +1715,13 @@
       新手不知道"最新/随机/高度/哈希"有什么区别，也不该被要求知道。 */
   function giveMe() {
     var b = $('bnbGive');
-    if (b) { b.disabled = true; b.textContent = T('正在从 BNB 链上取一个区块…'); }
-    if (b && BTC) b.textContent = T('正在从比特币主网取一个区块…');
-    if (b && ARC) b.textContent = T('正在从 Arc 链上取一个区块…');
+    if (b) { b.disabled = true; b.textContent = T('正在从 Arc 链上取一个区块…'); }
     useRandom(function () {
       if (b) { b.disabled = false; b.textContent = T('再给我一个'); }
     });
   }
 
   function useLatest() {
-    if (BTC) { btcUseLatest(); return; }
     status(T('正在取最新区块…'));
     C.latestBlockNumber().then(function (n) {
       return C.blockHashOf(n).then(function (h) { setHash(h, n); status(''); });
@@ -1781,7 +1735,6 @@
       "不是真区块就不给引爆"的规矩，自己这条路就不能开后门。
       常量保留在 GENESIS_REF.hash 里只作参考，不再拿它引爆。 */
   function useGenesis() {
-    if (BTC) { btcUseGenesis(); return; }
     status(T('正在取这条链的第一个区块…'));
     C.blockHashOf(0).then(function (h) {
       setHash(h, 0, genesisNote());
@@ -1814,8 +1767,6 @@
       var day = genesisDate();
       var s = day ? TX('这是这条链的第一个区块（0 号，{0}上出生于 {1}）。', chainName(), day)
                   : TF('这是这条链的第一个区块（0 号，{0}）。', chainName());
-      // BTCBANG：比特币创世块的日期是公开事实（2009-01-03），可以说；链名不是 C.CHAIN（那是钱包链）
-      if (BTC) s = T('这是比特币主网的第一个区块（0 号，2009-01-03 由中本聪挖出）。');
       if (dimOf(d).off) {
         s += T('它派生出来的空间维数不是 3。');
       }
@@ -1824,7 +1775,6 @@
   }
 
   function useRandom(done) {
-    if (BTC) { btcUseRandom(done); return; }
     status(T('正在随机取一个区块…'));
     C.latestBlockNumber().then(function (n) {
       var pick = Math.floor(Math.random() * n);
@@ -1833,7 +1783,6 @@
   }
 
   function useInput() {
-    if (BTC) { btcUseInput(); return; }
     var v = String($('bnbInput').value || '').trim();
     if (!v) return;
     /* 粘进来的哈希必须先核对它真的是本链上的一个区块。
@@ -1871,146 +1820,9 @@
     if (pick) pick.open = true;
   }
 
-  /* ============================================================ BTCBANG：取块（比特币主网）
-     四条路（最新 / 创世 / 随机 / 输入）与「给我一个宇宙」全部收口到 btcLoad(x, note)：
-       GET /api/btc/block/<高度|哈希>（MirrorBtcSource.info，拿哈希与元数据）
-         → setHash(hash, height) → GET /api/card/<hash>（现有端点，不改）。
-     「哈希是不是比特币主网的块」「高度超没超 tip」全由服务端判（规格 C3：查不到就拒绝，不回退常量）；
-     上游挂了是 503，那是「查不了」不是「不是」，同样拒绝引爆但话要说清。
-     所有中文句子都在 web/i18n-btc.js 里有英文。 */
-  function fmtNo(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
-  function pad2(n) { return (n < 10 ? '0' : '') + n; }
-  /** unix 秒 → 本地时间 'YYYY-MM-DD HH:MM'（牌面上的出块时间与开闸时间都用它） */
-  function fmtTime(sec) {
-    var d = new Date(Number(sec) * 1000);
-    if (isNaN(d.getTime())) return '';
-    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-  }
-  function btcEn() { return !!(root.MirrorI18n && root.MirrorI18n.lang && root.MirrorI18n.lang() === 'en'); }
-  /** 名块徽章的显示名：服务端同时给 label / labelEn，按当前语言取；都没有就退回 key */
-  function badgeLabel(b) {
-    if (!b) return '';
-    return (btcEn() ? (b.labelEn || b.label) : (b.label || b.labelEn)) || b.key || '';
-  }
-
-  function btcFail(e, x) {
-    var st = e && e.status;
-    if (st === 404 && e.tip != null) {
-      status(TX('高度 {0} 还不存在：比特币主网现在到 #{1}。换一个不大于它的高度。', x, fmtNo(e.tip)), 'bnb-err');
-      return;
-    }
-    if (st === 404) {
-      status(T('这不是比特币主网上的区块 —— 不给引爆。哈希得来自真实的比特币区块（BNB 链的哈希请到 bnbbang.com 引爆）。'), 'bnb-err');
-      return;
-    }
-    if (st === 503 || st === 502) {
-      status(TF('比特币数据源暂时不可达（{0}）—— 没核实之前不给引爆，稍后再试。', (e && e.message) || ('HTTP ' + st)), 'bnb-err');
-      return;
-    }
-    if (st === 400) { status(T('看不懂：既不是区块高度，也不是 64 位哈希'), 'bnb-err'); return; }
-    rpcFail(e);
-  }
-  /** 取块 → 卡片。okMsg：核对通过那句（粘哈希那条路要说「核对通过」，其余留空） */
-  function btcLoad(x, note, okMsg) {
-    var src = BS();
-    if (!src) { status(T('比特币取块模块没加载 —— 刷新页面再试'), 'bnb-err'); return Promise.resolve(); }
-    return src.info(x).then(function (o) {
-      BTCS.info = o;
-      setHash(o.hash, o.height, note);
-      if (okMsg) status(okMsg(o), 'bnb-ok'); else status('');
-    }, function (e) { clearHash(); btcFail(e, x); });
-  }
-  function btcUseLatest() {
-    status(T('正在取比特币主网的最新区块…'));
-    var src = BS();
-    if (!src) { btcLoad(null); return; }
-    src.tip(true).then(function (t) { return btcLoad(t.height); }, function (e) { clearHash(); btcFail(e, ''); });
-  }
-  /** 创世区块：比特币 #0。走正常的 info(0)，取不到就拒绝 —— 与 useGenesis 同一条规矩，不开后门 */
-  function btcUseGenesis() {
-    status(T('正在取比特币的创世区块…'));
-    btcLoad(0, genesisNote());
-  }
-  function btcUseRandom(done) {
-    status(T('正在随机取一个比特币区块…'));
-    var src = BS();
-    var p = src ? src.latestBlockNumber().then(function (n) {
-      /* 含 tip 本身：刚出的块也能看、能引爆（规格 §1.2），只是要等 6 个确认才能铸 */
-      return btcLoad(Math.floor(Math.random() * (n + 1)));
-    }, function (e) { clearHash(); btcFail(e, ''); }) : btcLoad(null);
-    p.then(function () { if (typeof done === 'function') done(); });
-  }
-  function btcUseInput() {
-    var v = String($('bnbInput').value || '').trim();
-    if (!v) return;
-    var src = BS(), h = src ? src.normHash(v) : null;
-    if (h) {
-      /* 粘哈希：mempool.space 上抄的没有 0x，链上工具给的有，两种都认（normHash 归一）。
-         是不是比特币主网的块由服务端核，核不过（404）就拒绝，连引爆都不给。 */
-      status(T('正在核对这个哈希是不是比特币主网上的区块…'));
-      clearHash();
-      btcLoad(h, null, function (o) { return TF('核对通过：这是比特币区块 #{0}', fmtNo(o.height)); });
-      return;
-    }
-    var n = Number(v);
-    if (!isFinite(n) || n < 0 || Math.floor(n) !== n) { status(T('看不懂：既不是区块高度，也不是 64 位哈希'), 'bnb-err'); return; }
-    status(TF('正在取比特币区块 #{0}…', fmtNo(n)));
-    btcLoad(n);
-  }
-
-  /* 「宇宙来源」钩子的比特币版（形状与 installBlockSource 里那份相同）：
-     分析面板底部的「随机引爆」与右键菜单里的同名项在 BTCBANG 上也只能来自比特币区块。 */
-  function installBtcBlockSource() {
-    function entryOf(card, n) {
-      return {
-        id: 'bnb-' + card.blockHash.slice(2, 10),
-        label: n != null ? '区块 ' + n : card.blockHash.slice(0, 10),
-        name: '比特币区块', params: card.params, modules: card.modules,
-        preset: false, ours: false, temp: true
-      };
-    }
-    function pickOne() {
-      var src = BS();
-      if (!src) return Promise.reject(new Error(T('比特币取块模块没加载 —— 刷新页面再试')));
-      return src.latestBlockNumber().then(function (n) {
-        var at = Math.floor(Math.random() * (n + 1));
-        return src.blockHashOf(at).then(function (h) {
-          return API.card(h).then(function (res) { return entryOf(res.card, at); });
-        });
-      });
-    }
-    root.MirrorBlockSource = {
-      one: function (cb) {
-        pickOne().then(function (e) { cb(e, null); }, function (err) { cb(null, err); });
-      },
-      /* 封顶 8，理由同 installBlockSource：每个候选都要打一次 /api/card，那条是被限流的 */
-      many: function (n, cb) {
-        var want = Math.min(n || 8, 8), jobs = [], firstErr = null;
-        for (var i = 0; i < want; i++) {
-          jobs.push(pickOne().catch(function (e) { if (!firstErr) firstErr = e; return null; }));
-        }
-        Promise.all(jobs).then(function (list) {
-          var got = list.filter(Boolean);
-          cb(got, got.length ? null : firstErr);
-        }, function (e) { cb([], e); });
-      }
-    };
-  }
-
-  /* ---------------------------------------------------------- 卡片头 + 铸造闸
-     卡片头（规格 §四）：`₿ 区块 #966,088 · 2026-09-08 22:37 · 6/6 确认 · 前导零 19` + 名块徽章，下一行哈希。
-     确认数封顶显示（成熟的块写 6/6，不写 12345/6）。 */
-  var BTC_CSS = [
-    '#bnbPanel .bnb-hash .btc-badges{display:block;margin:2px 0 4px;font-family:var(--sans)}',
-    '#bnbPanel .btc-badge{display:inline-block;margin:0 6px 4px 0;padding:1px 8px;border:1px solid var(--cyan-line);',
-    '  border-radius:var(--radius-chip,999px);background:var(--cyan-bg);color:var(--cyan);font-size:11.5px;font-weight:600}',
-    '#bnbPanel .btc-ex{display:inline-block;margin:0 0 4px;font-family:var(--sans);font-size:11.5px;color:var(--cyan)}',
-    '#bnbPanel .btc-src{display:block;margin:0 0 4px;font-family:var(--sans);font-size:11.5px;color:var(--dim)}'
-  ].join('\n');
-
-  /* ARCBANG 只需要换品牌名与输入框提示：取块走的是 bnb 那条 EVM 路，没有 btcMount 里那些比特币专属的东西。
+  /* 只换品牌名与输入框提示。
      再加一处：拯救系统在这个站上整套下线，沙盒留着当免费玩法，但不能再叫「干预沙盒」——
-     「干预」是拯救那套话术的词。按钮与它的 title 在这里改名，标记里的默认值不动（bnb/btc 照旧）。 */
+     「干预」是拯救那套话术的词。按钮与它的 title 在这里改名，标记里的默认值不动。 */
   function arcMount(panel) {
     var tt = panel.querySelector('.bnb-title');
     if (tt) tt.textContent = 'ARCBANG';
@@ -2023,120 +1835,6 @@
     }
   }
 
-  function btcMount(panel) {
-    var tt = panel.querySelector('.bnb-title');
-    if (tt) tt.textContent = 'BTCBANG';
-    var g = $('bnbGenesis');
-    if (g) g.title = '比特币的第一个区块（0 号，2009-01-03）';
-    var inp = $('bnbInput');
-    if (inp) inp.placeholder = '比特币区块高度，或粘贴 64 位区块哈希（带不带 0x 都行）';
-    var st = doc.createElement('style');
-    st.textContent = BTC_CSS;
-    doc.head.appendChild(st);
-    /* 未成熟的块每分钟重问一次确认数：按钮上那句「差 n 个确认」要自己往下走，
-       不能让人守着一个永远不变的数。成熟了就不再问（info 的缓存 60 秒，正好一分钟一发）。 */
-    BTCS.timer = root.setInterval(btcTick, 60000);
-  }
-  function btcTick() {
-    var o = BTCS.info, src = BS();
-    if (!o || !src || o.foreign || o.err || o.mintable) return;
-    var h = o.hash;
-    src.info(o.height).then(function (n) {
-      if (BTCS.info !== o || String(S.hash || '').toLowerCase() !== h) return;   // 用户已经换了一个
-      BTCS.info = n;
-      if (S.derived) btcRenderHead(S.derived);
-      nowMsg('');                                  // 闸开了就把「差 n 个确认」那句撤掉；没开 syncMintNow 会重写
-      syncMintNow();
-      /* 结局面板上那颗按钮也跟着松 / 紧。结局算不出来（idx<0）的那种 showMint 本来就锁死了，不动它 */
-      var mb = $('bnbMint');
-      if (mb && !S.minted && OUTCOME_ORDER.indexOf(outcomeOf(S.derived)) >= 0) {
-        var gg = btcGate();
-        mb.disabled = !!gg;
-        if (gg) { mb.title = gg; mintMsg(esc(gg), 'bnb-warn'); } else { mb.title = ''; mintMsg(''); }
-      }
-    }, function () { /* 这一分钟没问到：下一分钟再来 */ });
-  }
-
-  function btcRenderHead(d) {
-    var el = $('bnbHash'), src = BS();
-    if (!el) return;
-    var h = String(d.hash).toLowerCase(), o = BTCS.info;
-    if (!o || o.hash !== h) {
-      /* 不是经 btcLoad 进来的哈希（画廊点击 / 深链）：先把哈希摆上，再去问它是不是比特币块。
-         两站共用一个合约，画廊里混着 BNB 宇宙 —— 那些在这里只看不铸（见 btcGate）。 */
-      el.innerHTML = '<b class="bh-no">' + esc(TF('宇宙 {0}', uniNo(S.blockNumber))) + '</b>'
-        + '<span class="btc-src">' + esc(T('正在核对这个哈希的来源…')) + '</span>'
-        + '<span class="bh-h">' + esc(d.hash) + '</span>';
-      if (!src) return;
-      src.info(h).then(function (info) {
-        if (String(S.hash || '').toLowerCase() !== h) return;
-        BTCS.info = info;
-        /* 服务端给的高度才是它的身份（画廊那条路 blockNumber 是 null，深链哈希也没有高度） */
-        S.blockNumber = info.height;
-        btcRenderHead(d); nowMsg(''); syncMintNow(); HUD.lastKey = '';
-      }, function (e) {
-        if (String(S.hash || '').toLowerCase() !== h) return;
-        BTCS.info = { hash: h, foreign: !!(e && e.status === 404), err: (e && e.status === 404) ? null : (e || true) };
-        btcRenderHead(d); nowMsg(''); syncMintNow(); HUD.lastKey = '';
-      });
-      return;
-    }
-    if (o.foreign) {
-      el.innerHTML = '<b class="bh-no">' + esc(TF('宇宙 {0}', uniNo(S.blockNumber))) + '</b>'
-        + '<span class="btc-src">' + esc(T('这个哈希不是比特币主网的区块 —— 它是 BNB 宇宙，本站只看不铸（到 bnbbang.com 铸造）')) + '</span>'
-        + '<span class="bh-h">' + esc(d.hash) + '</span>';
-      return;
-    }
-    if (o.err) {
-      el.innerHTML = '<b class="bh-no">' + esc(TF('宇宙 {0}', uniNo(S.blockNumber))) + '</b>'
-        + '<span class="btc-src">' + esc(T('来源核对失败（比特币数据源没答复），稍后再试')) + '</span>'
-        + '<span class="bh-h">' + esc(d.hash) + '</span>';
-      return;
-    }
-    var need = o.confirmationsRequired || 6;
-    var conf = (o.confirmations == null) ? null : Math.min(o.confirmations, need);
-    var parts = ['₿ ' + TF('区块 #{0}', fmtNo(o.height))];
-    if (o.time) parts.push(fmtTime(o.time));
-    if (conf != null) parts.push(TX('{0}/{1} 确认', conf, need));
-    if (o.zeros != null) parts.push(TF('前导零 {0}', o.zeros));
-    var badges = (o.badges || []).map(function (b) {
-      return '<span class="btc-badge">' + esc(badgeLabel(b)) + '</span>';
-    }).join('');
-    el.innerHTML = '<b class="bh-no">' + esc(parts.join(' · ')) + '</b>'
-      + (badges ? '<span class="btc-badges">' + badges + '</span>' : '')
-      + (src ? '<a class="btc-ex" href="' + esc(src.explorerUrl(o.hash)) + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">'
-             + esc(T('在 mempool.space 看这个区块 ↗')) + '</a>' : '')
-      + '<span class="bh-h">' + esc(d.hash) + '</span>';
-  }
-
-  /** 铸造闸（只在 BTC 模式有意义）：能铸返回 null，否则返回给人看的那句原因。
-      三个入口（「不看就收下」/ 结局面板 / 3D 上的 HUD）都问它，口径只有这一处。 */
-  function btcGate() {
-    if (!BTC) return null;
-    var h = String(S.hash || '').toLowerCase();
-    if (!h) return null;
-    var o = BTCS.info;
-    if (!o || o.hash !== h) return T('还没核对完这个哈希是不是比特币区块，稍等一下再铸');
-    if (o.foreign) return T('这是 BNB 宇宙（哈希不是比特币区块）—— 本站只铸比特币宇宙，请到 bnbbang.com 铸造');
-    if (o.err) return T('来源核对失败，暂时不能铸造 —— 稍后再试');
-    if (o.mintable) return null;
-    var need = o.confirmationsRequired || 6;
-    var reservedNow = o.code === 'RESERVED' || (o.reserved && (o.openAt == null || Date.now() / 1000 < o.openAt));
-    if (reservedNow) {
-      return o.openAt ? TF('保留块（创世 / 减半）：{0} 开闸，先到先得', fmtTime(o.openAt))
-                      : T('保留块（创世 / 减半）暂不开放铸造，开闸时间另行公示');
-    }
-    if (o.confirmations != null && o.confirmations < need) {
-      var lack = need - o.confirmations;
-      return TX('出生证还没盖章：差 {0} 个确认（约 {1} 分钟）', lack, lack * 10);
-    }
-    return o.reason || T('这个区块暂时不能铸造');
-  }
-  /** HUD 重画键的一部分：确认数 / 可铸性一变就得重画那块卡 */
-  function btcGateKey() {
-    var o = BTCS.info;
-    return o ? (o.hash + ':' + o.confirmations + ':' + o.mintable + ':' + (o.foreign ? 1 : 0) + ':' + (o.err ? 1 : 0)) : '-';
-  }
 
   /* ============================================================ 派生与展示 */
   /** note：可选，(derived) => 文案。做成函数是因为要不要说那句话取决于派生结果
@@ -2145,7 +1843,6 @@
      上一个宇宙的卡片还挂在页面上，「引爆」按钮照样能按 —— 等于验了个寂寞。 */
   function clearHash() {
     S.hash = null; S.blockNumber = null; S.derived = null; S.minted = null; S.revealed = false;
-    BTCS.info = null;                                // BTCBANG：块信息跟着宇宙一起撤
     var card = $('bnbCard'), acts = $('bnbActions'), mint = $('bnbMintBox');
     if (card) card.hidden = true;
     if (acts) acts.hidden = true;
@@ -2173,7 +1870,7 @@
     });
   }
 
-  /* card 由服务端算好送来（specs/server-side.md）。这里只做显示。
+  /* card 由服务端算好送来。这里只做显示。
      旧版在这一步本地跑 bnbhash.derive + engine.simulate —— 那份代码已经不打进站点包了。 */
   function renderCard(card, cardHash, blockNumber, note) {
     var d = {
@@ -2198,7 +1895,6 @@
         ? '<b class="bh-no">' + esc(TF('宇宙 {0}', uniNo(S.blockNumber))) + '</b>'
         : '')
       + '<span class="bh-h">' + esc(d.hash) + '</span>';
-    if (BTC) btcRenderHead(d);                        // BTCBANG：换成「₿ 区块 #N · 时间 · 确认 · 前导零 + 徽章」那行
     $('bnbFacts').innerHTML =
       /* 维度来自服务端算好的 card.dimension。
          这里以前读的是 d.dimOff / d.params.dimS —— 自从维度改由弦气体模型派生之后，
@@ -2246,9 +1942,6 @@
       return;
     }
     if (S.minted) { b.disabled = true; b.title = S.minted > 0 ? T('这个宇宙已经被别人铸走了') : T('你已经收下它了'); return; }
-    /* BTCBANG：确认不足 / 保留块 / 不是比特币块 —— 按钮灰掉，原因摆在旁边（bnb 模式 btcGate 恒为 null） */
-    var gate = btcGate();
-    if (gate) { b.disabled = true; b.title = gate; nowMsg(esc(gate), 'bnb-warn'); return; }
     b.disabled = false;
     b.title = T('不引爆、也不看结局，直接铸造成 NFT——留着以后自己炸开看');
   }
@@ -2261,8 +1954,6 @@
                           : esc(T('你已经收下它了')) + ' · <a href="' + MARKET_URL + '">' + esc(T('到市场看看')) + '</a>', 'bnb-warn');
       return;
     }
-    var gate0 = btcGate();                            // BTCBANG：闸没开就不进铸造流程（bnb 模式恒为 null）
-    if (gate0) { nowMsg(esc(gate0), 'bnb-warn'); return; }
     var idx = OUTCOME_ORDER.indexOf(outcomeOf(S.derived));
     // 结局算不出来就不能声明。措辞刻意不提"结局是什么"，只说这个宇宙铸不了
     if (idx < 0) { nowMsg(esc(T('这个宇宙超出了引擎能算的范围，铸不了；换一个区块试试')), 'bnb-err'); return; }
@@ -2380,7 +2071,7 @@
   /* 打开干预沙盒。刻意不在这里算结局：那会把"引爆看结果"的悬念提前剧透掉，
      按钮文案保持中性，进了沙盒自然就看到了。
 
-     **返回开没开成**（specs/rescue-entry.md §2）：深链 fix=1 要靠这个布尔决定
+     **返回开没开成**：深链 fix=1 要靠这个布尔决定
      "还要不要再试一次 / 就地停在确认屏"。MirrorIntervene.open() 自己在引擎或 DOM
      没就绪时返回 false 且不抛，所以这里只是把它如实透出来。
      作为 click 监听时返回值没有任何作用（addEventListener 不看返回值），不影响原行为。 */
@@ -2405,10 +2096,9 @@
   }
 
   /** 引擎里这个 sim 的显示名（fire / openSandbox 两处共用）。
-      bnb：'BNB 区块 119969013'（与改造前逐字相同）；btc：'比特币区块 966088'；没有区块号退回哈希前缀。 */
+      'Arc 区块 119969013'；没有区块号退回哈希前缀。 */
   function entryName(d) {
-    var w = BTC ? '比特币' : ARC ? 'Arc' : 'BNB';
-    return w + (S.blockNumber != null ? (BTC ? '区块 ' : ' 区块 ') + S.blockNumber : ' ' + d.hash.slice(0, 10));
+    return 'Arc' + (S.blockNumber != null ? ' 区块 ' + S.blockNumber : ' ' + d.hash.slice(0, 10));
   }
 
   /* 引爆之后这一块要回答新手的三个问题：它变成什么了？这算好还是不好？我还能干嘛？
@@ -2430,13 +2120,13 @@
       'style="font-size:15px;font-weight:700">' + esc(alive ? T('活了：') : T('死了：')) + esc(cn) + '</span></div>' +
       (line ? '<div class="bnb-note" style="font-size:13px;color:var(--ink2)">' + esc(line) + '</div>' : '');
 
-    // 死宇宙 83% 能救（specs/economy.md v3 §2）——这个出口必须就摆在结局旁边，
+    // 死宇宙 83% 能救——这个出口必须就摆在结局旁边，
     // 而不是让新手自己想到去点上面那个"干预沙盒"
-    /* ARCBANG：拯救整套下线，「救救它」这个说法跟着下线 —— 但沙盒还在，而且是免费玩法，
-       所以这一格照出，只换成不带拯救色彩的说法。 */
+    /* 拯救整套下线，「救救它」这个说法跟着下线 —— 但沙盒还在，而且是免费玩法，
+       所以这一格照出，只用不带拯救色彩的说法。 */
     var rescue = (!alive && root.MirrorIntervene && root.MirrorIntervene.open)
       ? '<div class="bnb-row"><button type="button" class="bnb-btn save" id="bnbRescue">' +
-        esc(T(ARC ? '进调参沙盒' : '救救它')) + '</button>' +
+        esc(T('进调参沙盒')) + '</button>' +
         '<span class="bnb-note">' + esc(T('进沙盒照提示推参数，不花钱、不上链、可撤销')) + '</span></div>'
       : '';
 
@@ -2479,9 +2169,6 @@
       if (idx < 0) btn.disabled = true;                       // 结局算不出来就没法声明，别让人白签一次
       else btn.addEventListener('click', function () { mint(idx); });
     }
-    /* BTCBANG：确认不足 / 保留块 —— 卡片能看、能引爆到 3D，只是这颗按钮灰掉并写明原因（规格 §四） */
-    var gate = btcGate();
-    if (btn && gate) { btn.disabled = true; btn.title = gate; mintMsg(esc(gate), 'bnb-warn'); }
   }
 
   function mintMsg(html, cls) {
@@ -2520,11 +2207,6 @@
        而 B 从来没被铸过。checkMinted() 里早就有同样的守卫，这里跟上。） */
     var hash0 = S.hash;
     var mintedNow = false;
-    /* BTCBANG：闸没开（确认不足 / 保留块 / 不是比特币块）就一步都不走；
-       同时记下按钮按下那一刻的**高度** —— /api/btc/bang 只收高度不收哈希（服务端自己核）。 */
-    var gateNow = btcGate();
-    if (gateNow) { S.busy = false; if (btn) btn.disabled = false; report(esc(gateNow), 'bnb-warn'); return; }
-    var btcHeight0 = (BTC && BTCS.info && BTCS.info.hash === String(hash0).toLowerCase()) ? BTCS.info.height : null;
 
     /* **签名在这一刻才去取，不在引爆的时候取。** 签名带 deadline（默认 600 秒），
        而人看完一个宇宙再决定收不收，隔十几分钟很正常 —— 引爆时取的名到这里
@@ -2552,7 +2234,7 @@
     }
     var refAddr = refStored();
     Promise.resolve(null).then(function () {
-      /* 推广留痕（specs/share-referral-v1.md §一）：ref 要随 /api/bang 一起交，
+      /* 推广留痕：ref 要随 /api/bang 一起交，
          而服务端按 minter 绑定，所以还得知道钱包地址。eth_accounts 不弹窗；
          只有「被邀请而来、这台浏览器从没连过钱包」这一种情况才把连接提前 ——
          那次连接本来就是铸造流程的一步，下面的 C.connect() 会复用结果，不弹第二次。
@@ -2570,8 +2252,6 @@
       if (!m) throw new Error(T('要铸造得先连接钱包（签名会绑定你的地址）'));
       extra.minter = m;
       if (refAddr && m && refAddr !== m) extra.ref = refAddr;
-      /* BTCBANG：POST /api/btc/bang {height, minter, ref}，响应与 /api/bang 同形，下面的检查原样适用 */
-      if (BTC) return API.btcBang(btcHeight0, extra.minter || extra.ref ? extra : null);
       return API.bang(hash0, extra.minter || extra.ref ? extra : null);
     }).then(function (d) {
       if (!d || !d.sig || !d.cardHash) throw new Error(T('服务端没给出签名'));
@@ -2632,7 +2312,7 @@
       });
     }).then(function (wei) {
       report(String(wei) === '0'
-        ? esc(T(ARC ? '确认交易：免费期，只花 gas' : '确认交易：免费期，只花 gas（会发 BANG）'))
+        ? esc(T('确认交易：免费期，只花 gas'))
         : TX('确认交易：{0} {1}', C.fmtBNB(wei), chainCur()));
       return C.bangSigned(txArgs(wei));
     }).then(function (tx) {
@@ -2643,7 +2323,7 @@
           // report 是调用方给的：面板与 3D 上的 HUD 共用这一条，改一处两边都变
           var same = S.hash === hash0;
           mintedNow = same;
-          /* 刚铸完是广播意愿最高的一刻（specs/share-referral-v1.md §五），
+          /* 刚铸完是广播意愿最高的一刻，
              所以「广播这枚」就长在成功提示里。走 data-bnbshare 委托：这行字
              随时会被 innerHTML 重写，直接绑监听器活不过下一次重写。 */
           report(esc(same ? T('铸造成功！') : T('刚才那个宇宙铸造成功了（你现在看的已经是另一个了）　')) +
@@ -2724,7 +2404,7 @@
 
   /* 确认屏（#pageConfirm）：只往里挂一次氛围层（能量核），别的什么都不加。
      原来这里的 confirmInfo() 会塞一条上下文（结局名/维数/哈希/区块 + 一句提示）——
-     specs/detonate-confirm-scifi.md 把它整个撤了：确认屏只留「引爆」「取消」两个交互件，
+ 把它整个撤了：确认屏只留「引爆」「取消」两个交互件，
      数在上一屏都看过了。ci-* 那族类名只归那块信息用（全文件唯一用途），随它一起退场。 */
   function confirmMount() {
     var page = doc.getElementById('pageConfirm');
@@ -2755,7 +2435,6 @@
 
     // 状态没变就别重画，否则每 500ms 把用户正在点的按钮换掉
     var key = st + '|' + id + '|' + intervened + '|' + S.minted + '|' + (C.contract() ? 1 : 0);
-    if (BTC) key += '|' + btcGateKey();              // BTCBANG：确认数 / 可铸性变了也要重画
     if (key !== HUD.lastKey) {
       HUD.lastKey = key;
       HUD.el.hidden = false;
@@ -2803,7 +2482,6 @@
         if (el) el.textContent = txt;
       }
       HUD.lastKey = '';                                   // 逼下一次 hudSync 把卡片正文重画一遍
-      if (BTC && S.derived) btcRenderHead(S.derived);      // BTC 站顶部那块「宇宙 {N} · 来源…」
     } catch (e) { console.warn('[bnb-ui] 切语言重刷失败', e); }
   });
 
@@ -2846,7 +2524,7 @@
     if (HUD.el && !HUD.el.hidden) { HUD.el.hidden = true; HUD.lastKey = ''; hudMinSync(); }
   }
 
-  /* ============================================================ 给分析面板让路（specs/detonate-confirm-scifi.md 附加任务）
+  /* ============================================================ 给分析面板让路
      开合信号：app.js 不派事件，但 openAnalysis/closeAnalysis 都只拨 #analysis 的 hidden，
      MutationObserver 盯这个属性就等于订阅了开关 —— app.js / intervene.js 一个字不用改。
      （intervene.js 的沙盒是全屏遮罩 dialog，开着时人机都到不了 HUD，不归这里管。） */
@@ -2942,16 +2620,9 @@
     var d = S.derived;
     if (intervened) {
       /* 整段（含 <b>/<br> 标记）作为**一条**词条走 T()（i18n-app.js / i18n-arc.js）。
-         中文态 t() 原样返回，data-nolang 因此保留 —— 它挡住 DOM 遍历把「拯救」单独换成
-         Rescue，免得整句中文里蹦出一个英文单词。英文态整段替换，data-nolang 不再出现。
-         ARCBANG：拯救整套下线，改过的参数在这个站上**没有**上链的路，所以 arc 这一支
-         不能再指「付 USDC 拯救它」那条已经走不通的路 —— 整句换 key，bnb/btc 的 key 不动。 */
-      var iv = ARC
-        ? T('沙盒里推出来的参数不上链，也铸不了 —— 它已经不是这个哈希派生出来的宇宙了。<br>想收下这个区块，回起爆页铸<b>原始宇宙</b>。')
-        : T('参数已经不是这个哈希派生出来的了，所以不能拿它去铸原哈希 —— ' +
-            '那等于往链上写一个别人复算不出来的结局。<br>正路是：先回起爆页把<b>原始宇宙</b>铸下来，' +
-            '再烧 BANG <b data-nolang>拯救</b>它 —— 服务端会验证并签名你的干预，改过的参数就能合法上链。');
-      HUD.el.innerHTML = '<div class="hud-title">' + esc(T(ARC ? '调参后的宇宙' : '干预后的宇宙')) + '</div>' +
+         拯救整套下线，改过的参数在这个站上**没有**上链的路。 */
+      var iv = T('沙盒里推出来的参数不上链，也铸不了 —— 它已经不是这个哈希派生出来的宇宙了。<br>想收下这个区块，回起爆页铸<b>原始宇宙</b>。');
+      HUD.el.innerHTML = '<div class="hud-title">' + esc(T('调参后的宇宙')) + '</div>' +
         '<div class="hud-msg">' + iv + '</div>';
       return;
     }
@@ -2968,40 +2639,23 @@
     }
     var oid = outcomeOf(d), idx = OUTCOME_ORDER.indexOf(oid);
     var cn = (OB() && OB().outcomeName && OB().outcomeName(oid)) || T(OUTCOME_CN[oid] || '') || oid;
-    /* 死宇宙 83% 能救（specs/economy.md v3 §2），但原来这个出口只在起爆页面板上 ——
-       而人这会儿正站在 3D 画面里，面板整个是看不见的，等于没有出口。
-
-       原来这里还有一道硬闸 `oid !== 'OBSERVERS_POSSIBLE'`：**天生活着的宇宙根本不出
-       这颗按钮**，持有人只剩起爆面板上那颗常驻的「干预沙盒」，而深链落地时那块面板
-       压在 3D 画面下面 —— 等于又没有出口。闸拆掉（specs/rescue-entry.md §3），
-       改成文案分两种：死的是「救救它」，活的是「调教它」。把一个已经能诞生观察者的
-       宇宙推向更极端的参数本来就是玩法的一部分，没有理由拦。 */
-    var alive = oid === 'OBSERVERS_POSSIBLE';
-    /* ARCBANG：拯救系统整套下线，「救救它 / 调教它」是它的话术，3D 画面里这颗钮不出。
+    /* 拯救系统整套下线，「救救它 / 调教它」是它的话术，3D 画面里那颗钮不出。
        沙盒本身还在（免费、不上链），入口留在起爆面板上那颗「调参沙盒」。 */
-    var canFix = !ARC && !!(root.MirrorIntervene && root.MirrorIntervene.open);
     HUD.el.innerHTML = '<div class="hud-title">' + esc(cn) + '</div>' +
       '<div class="hud-sub">' + esc(hudWhich(d)) + '</div>' +
       /* 免费期/价格那行原来在右上角钱包条上 —— 钱包收进顶栏 chip 之后挪到这里：
          这里本来就是铸造信息面板，价格该跟铸造按钮站在一起。
          内容是异步到的（freeLeft / price / freeStatus），walletSync() 会按 id 直接补写。 */
       '<div id="bnbHudPrice" class="hud-msg">' + esc(priceLine()) + '</div>' +
-      /* 免费次数用完时按钮直接标价（「0.01 BNB 铸造 · 得 600 BANG」）：
-         点之前就知道这一下要花多少、换回多少，而不是钱包弹出来才发现要收钱。 */
+      /* 免费次数用完时按钮直接标价（「1 USDC 铸造」）：
+         点之前就知道这一下要花多少，而不是钱包弹出来才发现要收钱。 */
       (idx < 0 ? '<div class="hud-msg bnb-err">' + esc(T('这个结局算不出来，铸不了')) + '</div>'
                : '<button type="button" id="bnbHudMint" class="hud-btn">' + esc(paidMintLabel() || T('把这个宇宙收下')) + '</button>') +
-      (canFix ? '<button type="button" id="bnbHudFix" class="hud-btn2">'
-                + esc(T(alive ? '调教它（进沙盒推参数）' : '救救它（进沙盒推参数）')) + '</button>' : '') +
       '<div id="bnbHudMsg" class="hud-msg"></div>';
     var b = $('bnbHudMint');
     if (b) b.addEventListener('click', function () {
       mint(idx, hudMsg, function () { return $('bnbHudMint'); });
     });
-    var f = $('bnbHudFix');
-    if (f) f.addEventListener('click', openSandbox);
-    /* BTCBANG：3D 上这颗也受同一道闸（bnb 模式 btcGate 恒为 null） */
-    var gate = btcGate();
-    if (b && gate) { b.disabled = true; b.title = gate; hudMsg(esc(gate), 'bnb-warn'); }
   }
 
   /* ============================================================ 右上角钱包 */
@@ -3011,14 +2665,13 @@
                这两个 getter，读了就 revert）—— 那就藏起计数行、回退 usedFree 的旧行为
      usedFree= usedFree(addr)：旧合约的一次性名额，只当 fc.supported=false 的退路
      price   = price()：v5 一口价（免费次数用完后每枚收这个数，不分档）
-     reward  = rewardPerMint()：每枚发多少 BANG（五档同额）
      原来这里还有个 band = priceBnb[0..4] 的区间 —— 那是 v4 的分档价，
      v5 字节码里没有 priceBnb，读了一律 revert，随 mintValueFor 一起清掉了。 */
-  var W = { el: null, chip: null, addr: null, free: null, fc: null, usedFree: null, price: null, reward: null };
+  var W = { el: null, chip: null, addr: null, free: null, fc: null, usedFree: null, price: null };
 
   function shortAddr(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
 
-  /* 钱包 provider 与 bnb-chain.js 的 eth() 同一个口径：多钱包发现（wallet.js）
+  /* 钱包 provider 与 arc-chain.js 的 eth() 同一个口径：多钱包发现（wallet.js）
      选中的那个优先，退回 window.ethereum。断开/切换要对**同一个** provider 说话，
      不然连的是币安钱包、撤的却是小狐狸。 */
   function provider() {
@@ -3081,9 +2734,6 @@
     /* v5 一口价 + 每枚奖励。原来这里问的是 priceBnb[0..4] 的区间 —— v4 的函数，
        v5 字节码里没有，五个 eth_call 全 revert，价格那行从来没显示出来过。 */
     C.price().then(function (v) { W.price = v; walletSync(); }, function () { });
-    /* ARCBANG 的合约里没有 rewardPerMint（没有代币）——问它必 revert，
-       W.reward 保持 null，paidMintLabel 自动退回「只标价、不提奖励」的那一支。 */
-    if (!ARC) C.rewardPerMint().then(function (v) { W.reward = v; walletSync(); }, function () { });
   }
 
   /** 免费次数是**按地址记的**，所以换了地址必须重问一遍。
@@ -3189,21 +2839,9 @@
     });
   }
 
-  /* BANG 数额的显示走自己的口径（照 intervene.js 的 bangText）：今天 BANG 恰好
-     也是 18 位小数，借 fmtBNB 数字碰巧对；哪天 BANG 的精度或展示规则与 BNB 分家，
-     借来的会一起错。整枚起显、带千分位；不足一枚显 "<1"，不显 0（0 会让人以为免费）。 */
-  function bangAmt(wei) {
-    var s = String(wei == null ? '0' : wei).replace(/[^0-9]/g, '').replace(/^0+(?=d)/, '');
-    if (!s || s === '0') return '0';
-    if (s.length <= 18) return '<1';
-    return s.slice(0, s.length - 18).replace(/B(?=(d{3})+(?!d))/g, ',');
-  }
-
   /* 免费次数用完（或免费期整个结束）之后铸造按钮该写什么。
-     v5 是一口价（price()，不按稀有度分档 —— 原来这里报的 priceBnb 区间是 v4 的函数，
-     v5 字节码里没有，读了一律 revert），所以能在点之前就给出确数和奖励：
-     「0.01 BNB 铸造 · 得 600 BANG」。三个数全部现读链上（owner 能调 price 和
-     rewardPerMint，写死早晚说谎），没读到就返回 null，调用方保持原文案。
+     一口价（price()，不按稀有度分档），所以能在点之前就给出确数：「1 USDC 铸造」。
+     价格现读链上（owner 能调 price，写死早晚说谎），没读到就返回 null，调用方保持原文案。
      还有免费次数（或还不知道）时也返回 null —— 免费口的按钮不标价。 */
   function paidMintLabel() {
     var exhausted =
@@ -3211,9 +2849,7 @@
       (W.fc && W.fc.supported && W.fc.cap != null && W.fc.used >= W.fc.cap) || // 新合约：10 次用光
       (W.fc && !W.fc.supported && W.usedFree === true);                      // 旧合约：那一次用过了
     if (!exhausted || W.price == null) return null;
-    return W.reward != null
-      ? TX('{0} {1} 铸造 · 得 {2} BANG', C.fmtBNB(W.price), chainCur(), bangAmt(W.reward))
-      : TX('{0} {1} 铸造', C.fmtBNB(W.price), chainCur());
+    return TX('{0} {1} 铸造', C.fmtBNB(W.price), chainCur());
   }
 
   /* 铸造按钮旁常驻的那行价格/免费次数。三件事全部现取，一个都不写死
@@ -3297,7 +2933,7 @@
   /* ============================================================ 画廊 */
   /* 结局一律以**服务端算的**为准，不用链上那个数。
      链上的 outcome 是 bang() 的一个入参 —— 直接调合约的人想填几就填几，
-     合约不会去核对（能核对就不需要服务端签名这套了，见 specs/server-side.md）。
+     合约不会去核对（能核对就不需要服务端签名这套了）。
      实测就有：NFT #3 链上写着 9（可能诞生观察者），服务端按同一个哈希算出来是
      UNSTABLE_ORBITS。照抄链上那个数等于替铸造者的一面之词背书，
      而且和点进去看到的结局自相矛盾。 */
@@ -3376,7 +3012,7 @@
     }).catch(function () { /* 读链失败就不显示画廊 */ });
   }
 
-  /* ============================================================ 深链（specs/share-referral-v1.md §四）
+  /* ============================================================ 深链
      app.html?bang=<0x哈希或区块号>：加载后自动走「直接粘哈希 / 指定高度」那条现成路
      （useInput 会核对真区块 / 按高度取块），card 就绪后直接进确认屏。
      与 MIRROR_LOCK_TO_BLOCKS 不冲突 —— 深链恰恰是"认区块"的正路。
@@ -3386,7 +3022,7 @@
     try {
       var q = new URLSearchParams(location.search);
       v = q.get('bang');
-      /* fix=1（specs/rescue-entry.md §2）：从市场 / 个人中心那颗「拯救」按钮过来的。
+      /* fix=1：从市场 / 个人中心那颗「拯救」按钮过来的。
          参数名沿用现成的 bang，只多这一个开关，不另起炉灶。 */
       fix = q.get('fix') === '1';
     } catch (e) { return; }
@@ -3409,7 +3045,7 @@
     }());
   }
 
-  /* fix=1 的落地动作（specs/rescue-entry.md §2）：**直接把干预沙盒开出来**，
+  /* fix=1 的落地动作：**直接把干预沙盒开出来**，
      跳过「用户自己进 3D、再在 HUD 上找那颗按钮」那两步。走的就是 #bnbFix 那颗
      按钮的行为（openSandbox），不另写一套开法。
 
@@ -3432,9 +3068,7 @@
     if (!mount()) return;
     // app.js 的 applyVersion() 会把标题写成"镜像宇宙模拟器 vX"，站点版在它之后再改一次
     var setTitle = function () {
-      doc.title = T('镜像宇宙 · BNBBANG');
-      if (BTC) doc.title = T('镜像宇宙 · BTCBANG');
-      if (ARC) doc.title = T('ARC宇宙 · ARCBANG');
+      doc.title = T('ARC宇宙 · ARCBANG');
     };
     setTitle();
     doc.addEventListener('mirror:lang', setTitle);   // 切语言标题跟着换（09-17 用户：英文态标签页还是中文）

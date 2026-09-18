@@ -72,8 +72,8 @@
     '确认': 'Confirm',
     '加载中…': 'Loading…',
     '出错了': 'Something went wrong',
-    /* 链名不再进词典：它是**数据**，来源是 web/config.js 的 chain 块
-       （specs/mainnet-ready.md）——中文态取 chain.name、英文态取 chain.nameEn，
+    /* 链名不再进词典：它是**数据**，来源是 web/config.arc.js 的 chain 块
+       ——中文态取 chain.name、英文态取 chain.nameEn，
        页面按语言现挑一个。原来这里的 'BSC 测试网' / 'BNB Smart Chain 测试网' /
        '这是测试网' 三条已随之删掉：留着就是在词典里再写死一次链名，
        换主网那天必然有人只改 config.js、改不到这里。 */
@@ -121,7 +121,7 @@
 
   /* ---- 结局名（与合约 outcomeName() 同序，语义不能改） ----
      **同一个结局在仓库里有四套中文写法**：引擎的长名（'热寂——无结构的宇宙'）、
-     market.html 的（'热寂·无结构'）、bnb-ui.js 的（'热寂 · 无结构'），
+     market.html 的（'热寂·无结构'）、arc-ui.js 的（'热寂 · 无结构'），
      以及我最初照英文回译写出来的第四种（'热寂，无结构'）—— 最后那种界面上根本
      不存在，是死词条。key 要逐字相等才命中，所以这里把**实际会出现的写法全列上**，
      都指向同一句英文。

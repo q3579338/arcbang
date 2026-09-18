@@ -1,8 +1,8 @@
 {
-  "name": "bnbbang-server",
+  "name": "arcbang-server",
   "version": "1.0.0",
   "private": true,
-  "description": "BNBBANG 服务端：算 card、签名盖章、出图",
+  "description": "ARCBANG 服务端：算 card、签名盖章、出图",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

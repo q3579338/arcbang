@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { EVM } = require('@ethereumjs/evm');
 const { Address, hexToBytes, bytesToHex, Account } = require('@ethereumjs/util');
-const B = require(path.join(__dirname, '../../engine/bnbhash.js'));
+const B = require(path.join(__dirname, '../../engine/archash.js'));
 
 const OUT = path.join(__dirname, '../out');
 

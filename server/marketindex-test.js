@@ -1,5 +1,5 @@
 /*
- * 市场索引自检 —— 对着 specs/market-index-v1.md 第四节逐条跑
+ * 市场索引自检 —— 对着
  * ============================================================================
  * 用法：node server/marketindex-test.js   （**不需要联网、不需要服务在跑**）
  *
@@ -26,14 +26,14 @@ const ALICE = '0x378efade29d33eddefcf0ef700917e343dfa2cdc';
 const BOB = '0x1111111111111111111111111111111111111111';
 const ZERO = '0x0000000000000000000000000000000000000000';
 
-process.env.BNBBANG_STORE = TMP;
-process.env.BNBBANG_MARKET = MARKET;
-process.env.BNBBANG_CONTRACT = UNIVERSE;
-process.env.BNBBANG_CRAFTED = CRAFTED;
-process.env.BNBBANG_INDEX_CHUNK = '999999';        // 故意配一个越界的值，验证会被夹到 5000
-process.env.BNBBANG_CHAIN_ID = '97';
-process.env.BNBBANG_RPC = 'http://127.0.0.1:1';    // 必然连不上 → 秒级失败
-delete process.env.BNBBANG_INDEX_OFF;
+process.env.ARCBANG_STORE = TMP;
+process.env.ARCBANG_MARKET = MARKET;
+process.env.ARCBANG_CONTRACT = UNIVERSE;
+process.env.ARCBANG_CRAFTED = CRAFTED;
+process.env.ARCBANG_INDEX_CHUNK = '999999';        // 故意配一个越界的值，验证会被夹到 5000
+process.env.ARCBANG_CHAIN_ID = '97';
+process.env.ARCBANG_RPC = 'http://127.0.0.1:1';    // 必然连不上 → 秒级失败
+delete process.env.ARCBANG_INDEX_OFF;
 
 const MI = require('./marketindex.js');
 const K = require(path.join(__dirname, '..', 'web/keccak-lite.js'));
@@ -94,8 +94,8 @@ function transferLog(blockNo, token, from, to, tokenId, logIndex) {
 
 const CFG = MI._internals.CFG;
 /* 这份测试从头到尾喂的是 MirrorMarket 的事件。**显式钉死 arc:false**：
-   不钉的话解码器按 process.env.BNBBANG_CHAIN_ID 现挑，
-   在一台 env 里留着 BNBBANG_CHAIN_ID=5042 的机器上跑，整份测试会莫名其妙全红。
+   不钉的话解码器按 process.env.ARCBANG_CHAIN_ID 现挑，
+   在一台 env 里留着 ARCBANG_CHAIN_ID=5042 的机器上跑，整份测试会莫名其妙全红。
    Arc 那一套的用例在 server/selftest.js 的 [S3]。 */
 CFG.arc = false;
 const fresh = () => MI.emptyState();

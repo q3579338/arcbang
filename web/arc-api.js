@@ -1,8 +1,8 @@
 /*
  * 服务端 API 客户端
  * ------------------------------------------------------------
- * 爆炸的计算和出图都在服务端（specs/server-side.md）。
- * 浏览器不再持有 engine/bnbhash.js —— 它只负责问、显示、发交易。
+ * 爆炸的计算和出图都在服务端。
+ * 浏览器不再持有 engine/archash.js —— 它只负责问、显示、发交易。
  *
  * 三个端点：
  *   GET  /api/card/<hash>  幂等，只算不签名，用来在页面上展示这个宇宙是什么
@@ -13,7 +13,7 @@
  */
 (function (root) {
   'use strict';
-  var CFG = root.BNBBANG_CONFIG || {};
+  var CFG = root.ARCBANG_CONFIG || {};
   var BASE = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
 
   function req(path, opts) {
@@ -78,12 +78,12 @@
 
     /** 真引爆：服务端会核对这是不是 BNB 链上的区块，通过才签名。
         extra：可选的附加字段（目前只有推广留痕的 {ref, minter}，
-        specs/share-referral-v1.md §六）。服务端对不认识/不合法的字段一律静默忽略，
+）。服务端对不认识/不合法的字段一律静默忽略，
         所以这里也不做校验——校验做两遍只会两边漂移。
 
         **两个调用点，返回的 cardHash 有两种用途**：
-          web/bnb-ui.js  起爆页的铸造按钮 —— 拿 sig 去 bangSigned()，铸完就结束
-          web/intervene.js「铸下并拯救」（specs/rescue-mint-unified.md）—— 铸完之后
+          web/arc-ui.js  起爆页的铸造按钮 —— 拿 sig 去 bangSigned()，铸完就结束
+          web/intervene.js「铸下并拯救」—— 铸完之后
             **同一个 cardHash 直接当下一步的 oldCardHash** 交给 /api/intervene。
             那一步刻意不去链上 cardOf(tokenId) 现读：铸造那笔刚上链，
             公开节点的最新块未必跟上，读回来可能还是零章。 */
@@ -108,12 +108,12 @@
      * @param wantSuggest 顺带要一条「下一格该推谁」
      *
      * 为什么非得走服务端：一格的长度 = 步长 × 该参数的生存半径，
-     * 而半径表是整套推导里唯一藏得住的东西（specs/economy-v4.md §七）。
+     * 而半径表是整套推导里唯一藏得住的东西。
      * 客户端自己算就得在站点包里带一份表，等于原样发给每个访客。
      *
      * preview:true —— 服务端只算不签名、不落盘。沙盒本来就是"不花钱、不上链"，
      * 真要烧币时走的是另一条路（带 tokenId + oldCardHash，回来的 sig 才能上链）。
-     * 费用**永远**用服务端返回的 costBang，客户端不许自报（specs/server-side.md C3）。
+     * 费用**永远**用服务端返回的 costBang，客户端不许自报。
      */
     intervenePreview: function (hash, ops, wantSuggest) {
       return req('/intervene', {
@@ -162,7 +162,7 @@
      * 其中 ops 是**上链用的**位移记录（0x hex，5 字节一条），必须一字不差地转给合约 ——
      * 合约不解析它，只把 keccak256(ops) 签进摘要，改一个字节就 BadSig。
      * 费用**绝不带上**：服务端对带 cost / costBang 的请求明着 400
-     * （specs/server-side.md C3，费用只能服务端算并签名）。
+     * 。
      */
     intervene: function (hash, tokenId, oldCardHash, ops, extra) {
       var body = {
@@ -173,32 +173,6 @@
       };
       if (extra && extra.minter != null) putMinter(body, extra.minter);
       return req('/intervene', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-    },
-
-    /* ---- BTCBANG（specs/btcbang-v1.md §四 / §五）：比特币主网区块当奇点 ----
-       取块与元数据在 web/btc-source.js（MirrorBtcSource）里也有一份带缓存的封装，
-       这里的三个是**裸端点**：给不想要缓存的调用方（自检、状态页）用。 */
-    /** GET /api/btc/tip → {height, hash, time, confirmationsRequired, updatedAt} */
-    btcTip: function () { return req('/btc/tip'); },
-    /** GET /api/btc/block/<高度|哈希> → {height, hash, time, confirmations, mintable, reason, zeros, badges, reserved, openAt}
-        高度 > tip → 404（e.tip = 当前高度）；哈希不是主网块 → 404；上游全挂 → 503 */
-    btcBlock: function (x) { return req('/btc/block/' + encodeURIComponent(String(x == null ? '' : x).trim())); },
-    /** 真引爆（比特币区块）：POST /api/btc/bang {height, minter, ref}。
-        **只交高度不交哈希**：服务端自己去上游核对哈希（不信客户端），校验确认数与保留名单后签名。
-        响应与 bang() 同形（card / cardHash / deadline / sig / signer / rarity / art），
-        多一个 btc:{height, hash, time, badges, zeros}。extra 的口径与 bang() 完全相同。 */
-    btcBang: function (height, extra) {
-      var body = { height: Number(height) };
-      if (extra) for (var k in extra) {
-        if (!extra.hasOwnProperty(k) || extra[k] == null) continue;
-        if (k === 'minter') putMinter(body, extra[k]);
-        else body[k] = extra[k];
-      }
-      return req('/btc/bang', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body)

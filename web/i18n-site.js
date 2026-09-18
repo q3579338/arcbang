@@ -1,5 +1,5 @@
 /*
- * web/i18n-site.js —— web/onboard.js, index.html, web/economy.html, web/profile.html 的中英词条
+ * web/i18n-site.js —— web/onboard.js, index.html, web/profile.html 的中英词条
  * ------------------------------------------------------------
  * 只放**界面上真会出现**的句子；注释、日志、开发用文字不进这里。
  * key 是中文原文，逐字相等才命中；漏翻的自动退回中文，不会出现裸 key。
@@ -75,10 +75,8 @@
     "分析界面": "Analysis"
   }, 'site');
 
-  /* ---- web/economy.html —— 经济模型页（248 条） ---- */
+  /* ---- 经济模型页（那一页不在本仓库，下面是它留下的通用词条） ---- */
   I.add({
-    "烧掉的币，是这里唯一稀缺的东西": "The only scarce thing here is the tokens you burn",
-    "区块要多少有多少 —— BSC 上现存 1.17 亿个，每天还新增 19.2 万个。\n    所以「抽到一个好宇宙」撑不起价值。能撑起来的只有一件事：\n    把一个死宇宙救回来，需要真的烧掉 BANG，而币是有限的。": "Blocks are unlimited — BSC already holds 117 million of them and adds 192,000 a day. So “rolling a good universe” cannot carry value. Only one thing can: bringing a dead universe back costs real burned BANG, and BANG is finite.",
     "合约实测": "Contract tests",
     "地基": "Foundation",
     "98% 的宇宙是废墟，这不是设定，是算出来的": "98% of universes are rubble — that is not a design choice, it is a computed result",
@@ -172,13 +170,11 @@
     "极端参数": "Extreme parameters",
     "全网维度最高的、常数偏离最远的。要扫全链才能确认": "The highest dimension on the network, the furthest-off constants. Only a full-chain sweep confirms it",
     "救活过的宇宙": "Rescued universes",
-    "稀缺来自烧掉的币，不来自区块。区块要多少有多少，币不是": "Scarcity comes from burned tokens, not from blocks. Blocks are unlimited; tokens are not",
     "第四条是产品重心。合约记三样东西，都是链上可查的：": "The fourth is where the product’s weight sits. The contract records three things, all readable on chain:",
     "（救活时间、救活前的死法、干预了几步）、": " (rescue time, how it died before, how many intervention steps),",
     "（这枚 token 烧掉多少）、": " (how much this token burned),",
     "（全局累计）。": " (the running global total).",
     "文案的重心因此是": "So the copy leans on ",
-    "「这个宇宙是我救回来的，烧了 X 枚 BANG」": "“I brought this universe back, and it cost X BANG burned”",
     "，\n    而不是「我抽到了一个好宇宙」—— 后者抽不完，前者每一枚都对应真实的销毁量。\n    救活过的 NFT 在图上有金边和印记，缩略图里就能一眼分辨。": ", not “I rolled a good universe” — the latter never runs out, while every one of the former maps to a real burn. A rescued NFT carries a gold rim and a seal in its artwork, recognisable at thumbnail size.",
     "收入": "Revenue",
     "比例": "Rate",
@@ -188,7 +184,6 @@
     "刻意不抽，理由见上": "Deliberately zero — see above for why",
     "不建池、不掏本金。": "No pool, no capital of our own. ",
     "销毁也是间接收入": "Burning is indirect revenue too",
-    "—— 国库收的是 BANG，每一次烧币都让它更稀缺，和玩家利益同向。": "— the treasury is paid in BANG, every burn makes it scarcer, and that runs the same way as player interest.",
     "救活一次": "One rescue",
     "上线一次性": "One-off launch cost",
     "两个部署 + 四笔配置": "Two deployments + four config calls",
@@ -204,22 +199,14 @@
     "185 项通过 · 0 失败": "185 passed · 0 failed",
     "—— 这里价值的锚是销毁量，不是稀有度。": "— here value is anchored to the burn total, not to rarity.",
     "六个动作，两个方向": "Six actions, two directions",
-    "前 1,000,000 枚只付 gas，每个地址限 10 次，发 50 BANG。免费期总发放焊死在 5,000 万，几个开关都只能调小、不能调大。": "The first 1,000,000 cost gas only, up to 10 per address, paying 50 BANG each. Total free-period issuance is welded at 50 million, and every knob only turns down, never up.",
-    "免费期之后固定 0.01 BNB，不按稀有度分档；发 600 BANG，五档同额。全部宇宙一共只铸 1,707,000 枚，封顶后不能再铸。": "After the free period, a fixed 0.01 BNB with no rarity grades; pays out 600 BANG, the same across all five grades. Only 1,707,000 universes will ever be minted — once capped, minting stops for good.",
     "造物铸造": "Crafted mint",
     "沙盒里调教出来的宇宙铸成第二套 NFT。费用按干预幅度由服务端算，": "A universe tuned in the sandbox mints into the second NFT series. The fee is computed server-side from how far you intervened: ",
-    "20% 销毁、80% 进国库": "20% burned, 80% to the treasury",
-    "—— 与原生拯救的全烧是两条线，不混着算。": "— a separate line from the native rescue's full burn; the two are never mixed.",
     "20% 烧 / 80% 库": "20% burn / 80% treasury",
-    "命名 / 改名": "Name / rename",
-    "给宇宙起名要烧 BANG：基价 × 长度倍数，每改一次名翻倍。原生与造物两本名册基价同为 2,000，owner 可调；费用一分不抽，全部销毁。": "Naming a universe burns BANG: base cost × length multiplier, doubling with every rename. Both registers — native and crafted — share a base cost of 2,000, owner-adjustable; the fee is burned in full, nothing skimmed.",
     "100% 烧": "100% burned",
-    "BANG 只有两个来源": "BANG has only two sources",
     "铸造发的、二级市场买的。": "What minting pays out, and what you buy on the secondary market. ",
     "合约里没有售币入口": "The contract has no token-sale entry point",
     "——\n      固定价卖币等于给铸造额度开第二条路，任何人花一笔 BNB 就能把额度买空，\n      「只在真实铸造时发出」当场作废，所以这条路被整个删掉了。": "— a fixed-price sale would be a second road into the mint allowance: anyone with enough BNB could buy the whole allowance out, and “only issued when a real mint happens” would be void on the spot. So that road was deleted outright.",
     "总量 10 亿，切成四份，各有各的闸": "1 billion total, cut into four slices, each behind its own gate",
-    "部署那一刻一枚都不存在，totalSupply 从零开始。\n    四份额度互不侵占：各自一个计数器、各自一道检查，\n    谁也借不到谁的 —— 上交易所费用发不完不会变成铸造奖励，铸造封顶了也变不出上交易所费用额度。": "At the moment of deployment not a single token exists; totalSupply starts at zero. The four allowances never encroach on each other — each has its own counter and its own check, and none can borrow from another: unspent listing fees never become mint rewards, and a capped mint allowance conjures no listing-fee allowance.",
     "份额": "Slice",
     "数量": "Amount",
     "规则": "Rules",
@@ -228,24 +215,19 @@
     "只能由 NFT 合约在真实铸造发生时发出，owner 没有任何函数能碰它": "Issuable only by the NFT contract when a real mint happens; the owner has no function that can touch it",
     "邀请返利": "Referral rewards",
     "2 亿": "200 million",
-    "一级 10%、二级 5%，人工核对后发放，女巫（刷号）不予发放": "10% first level, 5% second level, paid out after manual review; sybils (farmed accounts) get nothing",
     "团队": "Team",
     "1 亿": "100 million",
     "一次性发进锁仓合约，24 个月线性解锁，owner 拿不到现货": "Sent once into a vesting contract, unlocking linearly over 24 months; the owner gets no spot tokens",
     "上交易所费用": "Exchange listing fees",
     "一次性发进金库合约，之后每一笔发放都带理由上链，人人可查": "Sent once into the treasury contract; every grant after that carries its reason on chain, checkable by anyone",
-    "那 6 亿（60%）不是预铸后「锁在某个钱包里」，是尚未铸出的额度": "that 600 million (60%) is not premined and “locked in some wallet” — it is an allowance not yet minted",
     "——\n    只能由 NFT 合约在用户真的铸造时一点点铸出来，读合约代码就能验证。\n    按当前发放规则，铸满 1,707,000 枚一共发出约 4.74 亿；\n    剩下约 1.26 亿从封顶那一刻起，任何人都能触发把它永久作废，不用等 owner 点头。": "— it can only be minted, bit by bit, by the NFT contract when a user actually mints, verifiable by reading the contract. Under the current payout rules, minting out all 1,707,000 issues about 474 million; from the moment the cap is hit, anyone can trigger the permanent voiding of the remaining ~126 million, with no owner sign-off needed.",
     "预期实发": "Expected issuance",
     "约 4.74 亿": "~474 million",
-    "铸造奖励，按当前发放规则": "Mint rewards, under current payout rules",
     "封顶后作废": "Voided at the cap",
     "约 1.26 亿": "~126 million",
     "任何人可触发，永久销毁": "Anyone can trigger it; destroyed forever",
     "测试网现状": "Testnet status",
-    "测试网已按上表四份部署：铸造 6 亿、邀请返利 2 亿、团队 1 亿、上交易所费用 1 亿。\n      2 亿从原 8 亿铸造额度里划出，铸造奖励的发放规则一分不变；\n      返利池的注入与发放进度在状态页读链可查。": "The testnet is now deployed with the four slices above — 600 million mint, 200 million referral rewards, 100 million team, 100 million listing fees. The 200 million was carved out of the original 800 million mint allowance; the mint-reward payout rules do not change one bit. The referral pool's funding and payout progress is readable on chain from the status page.",
     "BNB 价固定，发币五档同额": "Fixed BNB price, one flat payout",
-    "—— 引爆免费，任何人都能扫遍全链只挑好的铸造。\n    所以这不是抽奖，是搜索竞赛。这里的答案是把套利动机拆掉：\n    价格固定、发币同额，定向扫描 S 档拿不到任何额外奖励；\n    稀有度的价值落在 NFT 本身，不再多发一笔代币重复计价。\n    cardHash 可复算。": "— detonating is free, so anyone can sweep the whole chain and mint only the good ones. This is not a lottery, it is a search race. The answer here is to dismantle the arbitrage motive: a fixed price and a flat payout mean sweeping for Grade S earns no extra reward, and rarity's value lives in the NFT itself rather than being paid out a second time in tokens. The cardHash is recomputable. ",
     "推导代码开源，可以自己算：github.com/q3579338/arcbang":
       "Derivation is open source — recompute it yourself: github.com/q3579338/arcbang",
     "付费期价格": "Paid-period price",
@@ -266,15 +248,12 @@
     "最早铸出的那几枚（tokenId #1、#100）就那么几个，先到先得": "The first few ever minted (tokenId #1, #100) — there are only so many, first come, first served",
     "零投入，收入全在链上分账": "Zero capital in, every split settled on chain",
     "免费期之后固定 0.01 BNB，全额归运营方，": "A fixed 0.01 BNB after the free period, all of it to the operator — the ",
-    "80% 进国库，其余 20% 销毁": "80% to the treasury, the other 20% burned",
-    "BNB 计价的单抽 1%，BANG 计价的单抽 5%，全额进国库；硬上限 10% 写死": "BNB-priced listings pay 1%, BANG-priced listings pay 5%, all of it to the treasury; the 10% hard cap is immutable",
     "100% 销毁，合约里没有手续费": "100% burned; the contract has no fee",
     "gas 成本（本地 EVM 跑真实字节码 · gasPrice 0.05 gwei，BSC 近月区间 0.05–0.10 的低位）": "Gas costs (real bytecode on a local EVM · gasPrice 0.05 gwei, the low end of BSC's recent 0.05–0.10 range)",
     "gas · 约 1.6×10⁻⁵ BNB": "gas · ~1.6×10⁻⁵ BNB",
     "gas · 验签 + 发币 + 收款": "gas · verify + payout + collect",
     "gas · 约 6×10⁻⁶ BNB": "gas · ~6×10⁻⁶ BNB",
     "gas ≈ 0.000291 BNB，两个部署 + 四笔配置": "gas ≈ 0.000291 BNB, two deployments + four config calls",
-    "，只能封顶：每地址 10 次、每次 50 BANG，免费期一共 1,000,000 枚，刷光也只有 5,000 万 —— 名义总量的 5%": ", it can only be capped: 10 claims per address at 50 BANG each, 1,000,000 free mints in total — farm it all and it is still just 50 million, 5% of nominal supply",
     "——\n      启动资金走上交易所费用池（每笔发放带理由上链）和二级市场。": "— starting funds come from the listing-fee pool (every grant carries its reason on chain) and the secondary market.",
     "引擎数据来自 2026-08-19 的实测：N=6000 · BSC 主网块高 116,795,103。合约与 gas 数据来自 2026-08-22 本地 EVM 跑真实字节码的实测：经济链路 185 项通过 · 0 失败": "Engine data measured on 2026-08-19: N=6000 · BSC mainnet block height 116,795,103. Contract and gas data measured on 2026-08-22 against the real bytecode on a local EVM: economy suite 185 passed · 0 failed"
   }, 'site');
@@ -445,10 +424,9 @@
   /* 带品牌名的两条。曾经这里得把 'BNB' + 'BANG' 拼起来写 ——
      build-web.js 当时拿「输入里出现品牌名」当"已经注入过"的哨兵，而本文件会被
      打进离线包，于是品牌名一出现就误报、站点构建当场停住。
-     哨兵已经改成认层标记（`<!-- bnbbang-layer -->`），品牌名可以正常写了。 */
+     哨兵已经改成认层标记（`<!-- arcbang-layer -->`），品牌名可以正常写了。 */
   I.add({
     '← 回到 BNBBANG': '← Back to BNBBANG',
-    'BNBBANG · 经济模型': 'BNBBANG · Economics'
   }, 'site');
 
   /* ---- web/nav.js 的钱包 chip（四页共用壳）----
@@ -518,13 +496,11 @@
     /* 单位名由 config.js 的 chain.currency 填（tBNB / BNB）—— 整句进词典，英文语序不同。 */
     '{0} 余额': '{0} balance',
     '我的邀请': 'My referrals',
-    '专属邀请链接': 'Your referral link',
     '复制链接': 'Copy link',
     '复制不了 —— 手动选中上面那串链接复制':
       'Cannot copy — select the link above and copy it by hand',
-    /* ---- 推广短码（specs/share-referral-v1.md §8 + broadcast-v2.md §一）。
+    /* ---- 推广短码。
        8 位定长，链接里那 42 个字符的地址换成它。认领要签一次名（不花 gas）。 */
-    '我的短码': 'My code',
     '换一个': 'Reroll',
     '自定义': 'Custom',
     '认领': 'Claim',
@@ -541,25 +517,17 @@
     '你在钱包里取消了 —— 短码没变': 'You cancelled in the wallet — the code did not change',
     '没有检测到钱包扩展 —— 认领短码要签一次名（不花 gas）':
       'No wallet extension detected — claiming a code takes one signature (no gas)',
-    '一级邀请': 'Level-1 invites',
     '二级邀请': 'Level-2 invites',
     '统计生成中': 'Stats are being generated',
-    '一级 10% · 二级 5%，基数是好友的铸造奖励': "Level 1: 10% · Level 2: 5%, of the friend's mint reward",
-    '人工核对后从邀请返利专款 2 亿 BANG 发放':
-      'Paid out after manual review, from the 200,000,000 BANG referral-rebate reserve',
-    '女巫账户（自邀、批量小号、刷量）一律不予发放':
-      'Sybil accounts (self-invites, bulk alts, wash traffic) are never paid',
     '我的资产': 'My assets',
     '原生宇宙': 'Native universes',
     '点卡片去市场页看详情、挂单': 'Click a card to see details and list it on the market page',
     '还没有带参数的原生宇宙。': 'No native universes with parameters yet.',
     '去引爆一个 →': 'Go detonate one →',
-    /* 持仓卡上的「拯救」（specs/rescue-entry.md §4）。**与市场卡逐字同一句英文**
+    /* 持仓卡上的「拯救」。**与市场卡逐字同一句英文**
        （见 i18n-market.js 同名两条）—— 两个入口通向同一条路，文案走散就等于
        让用户以为是两件事。值一样，i18n.js 的全局撞车警告不会响。 */
     '拯救': 'Rescue',
-    '烧 BANG 改写它的参数，销毁量记进这枚 NFT':
-      'Burn BANG to rewrite its parameters — the amount burned is recorded on this NFT',
     '还没有造物。': 'No crafted universes yet.',
     '去沙盒调教一个 →': 'Go shape one in the sandbox →',
     '我的销毁': 'My burns',
@@ -611,32 +579,21 @@
     '闸开着': 'gate open',
     '闸关着': 'gate closed',
     '已发行': 'issued',
-    '费 BANG ': 'fees: BANG ',
-    '命名烧 BANG': 'naming burns BANG',
     '未领': 'unclaimed',
     '未发': 'unsent',
     '烧': 'burn',
     '铸造进度': 'Mint progress',
-    '宇宙限量 1,707,000 枚；造物没有数量上限，铸一枚烧一次 BANG——成本即闸门。':
-      'Universes are capped at 1,707,000; Crafted has no cap — every mint burns BANG, so cost itself is the gate.',
     '宇宙 NFT · MirrorUniverse': 'Universe NFT · MirrorUniverse',
-    '造物 NFT · MirrorCrafted': 'Crafted NFT · MirrorCrafted',
     '/ ∞ · 成本即闸门': '/ ∞ · cost is the gate',
     '代币分发全景': 'Token distribution overview',
     /* distWhy 两种口径：REF 配了 = 四池（JS 整段重写，整段进词典）；
        没配 = 三池现状（也由 JS 用同一句中文整段重写，中文逐字不变）。 */
-    'BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + <b>邀请返利 2 亿</b> + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。<br>2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发 4.74 亿 &lt; 6 亿，<b>铸造奖励的发放规则一分不变</b>。这一套合约已按四份部署 —— 下面第二行就是返利池的注入与发放进度。':
-      'BANG has a total supply of 1,000,000,000 with zero premine, in four slices: 600M mint rewards + <b>200M referral rewards</b> + 100M team + 100M listing fees — all issued from zero, by the rules.<br>The 200M was carved out of the original 800M mint allowance (level 1: 10% / level 2: 5%, paid after manual review; sybils get nothing); expected issuance is about 474M &lt; 600M, and <b>the mint-reward payout rules do not change one bit</b>. The contracts are deployed in these four slices — the second row below tracks the referral pool\'s funding and payouts.',
     /* status.html 静态兜底（JS 挂掉时 DOM 遍历整段命中它）：与链上四池口径一致 */
-    'BANG 总量 10 亿，零预铸，四份：铸造奖励 6 亿 + 邀请返利 2 亿 + 团队 1 亿 + 上交易所费用 1 亿，全部从零按规则发出。2 亿是从原 8 亿铸造额度里划出来的（一级 10% / 二级 5%，人工核对后发放，女巫不予发放），预期实发约 4.74 亿，不到 6 亿，铸造奖励的发放规则一分不变。':
-      'BANG has a total supply of 1,000,000,000 with zero premine, in four slices: 600M mint rewards + 200M referral rewards + 100M team + 100M listing fees — all issued from zero, by the rules. The 200M was carved out of the original 800M mint allowance (level 1: 10% / level 2: 5%, paid after manual review; sybils get nothing); expected issuance is about 474M, under 600M, and the mint-reward payout rules do not change one bit.',
     '已赠': 'Given',
     '返利': 'Referral',
     '已烧': 'Burned',
     '底色 = 尚未铸出': 'track = not yet minted',
-    '铸造奖励已赠送': 'Mint rewards given',
     '/ 6 亿': '/ 600M',
-    '邀请返利 2 亿': 'Referral 200M',
     '团队 1 亿': 'Team 100M',
     '上交易所费用 1 亿': 'Exchange listing fees, 100M',
     '邀请返利 {0}': 'Referral {0}',
@@ -651,10 +608,8 @@
     '上所费用': 'Listing',
     '{0} · 测试资产无价值': '{0} · test assets have no value',
     '累计销毁': 'Total burned',
-    '—— 拯救全烧、造物烧两成、命名也烧': '— rescues burn 100%, crafted mints 20%, naming burns too',
     '{0} 个合约 · 全部在线': 'All {0} contracts online',
     '{0}/{1} 在线': '{0}/{1} online',
-    '宇宙 {0} / 1,707,000 · 造物 {1}': 'Universes {0} / 1,707,000 · Crafted {1}',
     '已发行 {0} / 10 亿 · 已销毁 {1}': 'Issued {0} / 1B · burned {1}',
     '未接入': 'Not wired in',
     '还没填地址、或链上读不到代码的合约。全部接入后这一块自动消失。':
@@ -664,9 +619,8 @@
     '{0} 项': '{0} flagged'
   }, 'status');
 
-  /* ---- web/economy.html 页面标题（2026-08-21 定稿的新标题） ---- */
+  /* ---- 经济模型页的标题（历史词条） ---- */
   I.add({
-    'BANG 代币经济 · BNBBANG': 'BANG Tokenomics · BNBBANG'
   }, 'site');
 
   /* 2026-08-22 补回：上面这段在清理「会怎么坏/还剩什么」两节时被按特征子串误删，
@@ -683,7 +637,6 @@
     "文档": "Docs",
     "每个 BNB 区块哈希，就是一套物理定律": "Every BNB block hash is a set of physical laws",
     "引爆它：哈希决定引力、光速、维度这些常数，物理引擎把这个宇宙从第一秒推演到热寂——看它能不能长出恒星、化学，乃至观察者。": "Detonate it: the hash fixes gravity, the speed of light and the number of dimensions. The physics engine runs that universe from its first second to heat death and reports whether it grows stars, chemistry, or observers.",
-    "模拟给出的是像我们的宇宙，不是我们的宇宙。喜欢，就把它铸成 NFT；它死了，烧 BANG 把它救活。": "What you get is a universe like ours, not our universe. Like it? Mint it as an NFT. Dead? Burn BANG to rescue it.",
     "进入 App": "Open the app",
     "逛市场": "Browse the market",
     "邀请计划": "Referral program",
@@ -712,27 +665,15 @@
     "可复算，不可挑选": "recomputable, not selectable",
     "打开模拟器 →": "Open the simulator →",
     "喜欢就收下：全网限量": "Like it? Keep it. Hard cap",
-    "枚——读作 17/07，致敬 BNB 的 2017 年 7 月。前 100 万免费并送 50 BANG（每地址限 10 次），之后固定 0.01 BNB。": "universes — read as 17/07, a nod to BNB's July 2017 launch. The first 1,000,000 are free and come with 50 BANG each (10 per address); after that a flat 0.01 BNB.",
     "去市场看看 →": "Visit the market →",
-    "大多数宇宙生不出任何东西。烧掉 BANG 微调它的常数，把一个死宇宙救成能诞生观察者的——烧掉的每一枚都永久销毁，一分不抽（现役抽成 0，合约上限 20%）。": "Most universes grow nothing. Burn BANG to nudge its constants and rescue a dead universe into one that can bear observers. Every token burned is destroyed for good, with no cut taken (current skim 0, contract cap 20%).",
-    "读经济模型 →": "Read the token economy →",
-    "为什么烧掉的币是价值": "Why burned tokens are the value",
     "区块要多少有多少——BSC 上已有一亿多个，每天还新增十九万。所以": "Blocks are unlimited: BSC already has over a hundred million, with about 190,000 more every day. So",
     "「抽到一个好宇宙」撑不起价值": "\"drawing a good universe\" cannot carry value",
-    "能撑起来的只有一件事：救活一个宇宙需要真的烧掉 BANG，而 BANG 是有限的。": "Only one thing can: rescuing a universe means really burning BANG, and BANG is finite.",
-    "每枚 NFT 上印着它被干预时累计烧掉的数量（命名销毁另计）": "Every NFT is stamped with the total BANG burned on it during interventions (naming burns are counted separately)",
     "，链上可查，做不了假。": ", readable on-chain, impossible to fake.",
-    "名字也一样：给宇宙起名要烧 BANG，同名折叠查重，占住了就是占住了。": "Names work the same way: naming a universe burns BANG, look-alike names are folded together for the uniqueness check, and a taken name stays taken.",
-    "零预铸，构造函数不铸任何币": "Zero premine: the constructor mints nothing",
     "只有 NFT 合约能发；封顶后剩余约 1.26 亿由任何人触发永久销毁": "Only the NFT contract can issue it; after the cap, anyone can trigger the permanent burn of the remaining ~126 million",
-    "一级 10%、二级 5%，人工核对后发放，女巫不予发放": "Tier-1 10%, tier-2 5%, paid after manual review; sybil accounts are not paid",
     "24 个月线性解锁，没有提前取出的后门": "24-month linear unlock, no early-withdrawal backdoor",
     "每一笔发放都带原因上链，全可查": "Every grant carries its reason on-chain, fully auditable",
     "链上状态": "On-chain status",
     "八个合约的地址与实时状态，全部链上现读。「已验证」的宇宙参数由服务端签名后上链，签名绑死链与合约，伪造不了。": "Addresses and live state of all eight contracts, read straight from the chain. \"Verified\" universe parameters are signed by the server before going on-chain; the signature is bound to the chain and contract and cannot be forged.",
-    "邀请好友引爆宇宙：好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。": "Invite friends to detonate universes: 10% of a friend's mint reward goes to you, and 5% from a friend's friend — paid from the 200M referral pool after manual review, with an on-chain trail.",
-    "邀请返利专款 2 亿 BANG。女巫账户（自邀、批量小号、刷量）经人工核对一律不予发放。": "The referral pool is 200M BANG. Sybil accounts (self-invites, bulk alts, wash activity) are not paid after manual review.",
-    "复制我的邀请链接": "Copy my referral link",
     "上一张": "Previous",
     "下一张": "Next",
     "点击空白处或按 Esc 关闭": "Click outside or press Esc to close",
@@ -742,7 +683,6 @@
     "资源": "Resources",
     "区块浏览器": "Block explorer",
     "合约部署向导": "Contract deployment wizard",
-    "BNBBANG — 每个 BNB 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次": "BNBBANG — Every BNB block hash is a universe. Free to detonate, mint once."
   }, 'site');
 
   /* ---- 页脚友情链接（八个公开页的页脚共用同一段标记，见 web/nav.js 的 .sitefriends）----
@@ -750,14 +690,9 @@
      中英同形，只翻它们后面的话。 */
   I.add({
     "友情链接": "Friends",
-    "BTCBANG 比特宇宙": "BTCBANG Bitcoin universe",
-    /* 经济页：2026-09-09 上交易所费用池划拨 2,100 万给 BTCBANG 点火基金的披露 */
-    "2026-09-09 划拨：上交易所费用池 → BTCBANG 点火基金": "Allocation on 2026-09-09: exchange-listing pool → BTCBANG launch fund",
+
     "上交易所费用池（1 亿）中划出": "Out of the 100M exchange-listing pool, ",
-    "2,100 万 BANG（21%）": "21,000,000 BANG (21%)",
-    "作为姊妹站 bang.satloot.com 的点火基金：给早期 BTC 宇宙与名块（创世、减半、难度周期首块、策展名块）加发奖励，人工核对后由 owner 调 grant 发放，每笔 reason 以 btcbang: 开头链上留痕。": " is set aside as the launch fund of the sister site bang.satloot.com: extra rewards for early BTC universes and named blocks (genesis, halvings, difficulty-period starts, curated famous blocks), paid by the owner via grant after manual review, each with an on-chain reason starting btcbang:. ",
     "运营承诺，不是合约保证": "An operating promise, not a contract guarantee",
-    "；铸造奖励 6 亿与邀请返利 2 亿不受影响。明细见": "; the 600M mint rewards and the 200M referral pool are untouched. Details at ",
     "satloot 项目总览": "satloot home",
     "合约模拟器": "Futures simulator",
     "riskdesk 风控面板": "riskdesk · market scanner & risk desk",
@@ -765,7 +700,6 @@
     "satloot 游戏厅": "satloot arcade",
     "satloot 工具站": "satloot tools",
     "TRX 质押收益计算器": "TRX staking yield calculator",
-    "比特币测试币水龙头": "Bitcoin testnet faucet"
   }, 'site');
 
 })(typeof window !== 'undefined' ? window : this);

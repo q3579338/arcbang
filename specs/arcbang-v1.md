@@ -3,7 +3,7 @@
 BNBBANG / BTCBANG 的第三套变体：**Arc 主网 · 只卖 NFT · 不发代币**。
 用户 2026-09-16 拍板：「代币取消，只卖 NFT」。本文件是那句话的展开。
 
-底稿：`specs/bnb-bang.md`（玩法）、`specs/economy-v5.md`（**整份作废**，代币经济不再适用）。
+代币经济那一套**整份作废**，不适用于本站。
 
 ---
 
@@ -82,7 +82,7 @@ ARCBANG 卖的是**过程的产物**：产品在 mint 之前就存在，而且�
 - 免费期是增长引擎，但在 1,387 枚的总量下每地址只能给 1 次（2026-09-17 用户拍板：387 免费、1,000 收费、收费期 1 USDC）。
 - 1 USDC：一杯水的价钱，低于市场实测价（0–1.5）的中位；靠玩法和画面而不是靠贵。
 - `MIN_PRICE = 0.1 / MAX_PRICE = 20 USDC`，owner 可调但出不了这个区间。
-- **防撸（09-17 用户拍板）**：不做白名单、不限付费、不按天放号——怕限多了没人铸。只留一道看不见的：服务端 `/api/bang` 对**会走免费口的签名**按 IP 每天最多 3 个（`BNBBANG_FREE_PER_IP_DAY`，同地址窗口内重复取签只扣一次；合约 view 读不到就当付费放行）。防的是免费撸光后到 OpenSea 半价砸盘压死一级市场。
+- **防撸（09-17 用户拍板）**：不做白名单、不限付费、不按天放号——怕限多了没人铸。只留一道看不见的：服务端 `/api/bang` 对**会走免费口的签名**按 IP 每天最多 3 个（`ARCBANG_FREE_PER_IP_DAY`，同地址窗口内重复取签只扣一次；合约 view 读不到就当付费放行）。防的是免费撸光后到 OpenSea 半价砸盘压死一级市场。
 
 ### 3.3 ~~干预（拯救宇宙）：烧真钱~~ —— **2026-09-17 用户拍板：删除整个拯救系统**
 
@@ -97,8 +97,8 @@ ARCBANG 卖的是**过程的产物**：产品在 mint 之前就存在，而且�
 链上印的不再是「烧了多少自家代币」，而是**「有人为这个宇宙烧掉了多少真美元」**。
 任何人都能在区块浏览器上核对 `0x…dEaD` 的余额。
 
-**定价（09-17 落地）**：沙盒照旧免费玩；真要上链拯救时，服务端把原 BANG 计价按 `BNBBANG_RESCUE_SCALE=4000`
-换算成 USDC（原 v5 一次典型救援 ≈ 12,000 BANG → **3 USDC**；下限 `BNBBANG_RESCUE_MIN_USDC=0.5`），
+**定价（09-17 落地）**：沙盒照旧免费玩；真要上链拯救时，服务端把原 BANG 计价按 `ARCBANG_RESCUE_SCALE=4000`
+换算成 USDC（原 v5 一次典型救援 ≈ 12,000 BANG → **3 USDC**；下限 `ARCBANG_RESCUE_MIN_USDC=0.5`），
 相对难度表（越死越贵）不变。实现在 `server/intervene.js` 的 `rescueWei()`，只对 chainId 5042/5042002 生效。
 
 > 这条是本规格唯一一处我替用户做主的设计改动，因为「去掉代币」直接掏空了原来的价值叙事。
@@ -172,7 +172,7 @@ NFT / 艺术在它 49 篇官方博客、四大 Request for Builders 方向、六
 1. ✅ `contracts/src/ArcUniverse.sol` —— 去代币化 + **ERC-2981 版税**（默认 5%，上限 10% 写死）+ **EIP-2935 第二道自证窗（68 分钟）**，编译约 19.7 KB。
    `contracts/tools/arctest.js` 50 项断言全过（免费额度 / 一分不差 / 全额销毁 / 签名 / owner 夹死 / 提款 / 链上 SVG / 版税 / 自证窗）。
 2. ✅ `web/config.arc.js` + `build-web.js` 的 `arc` 站变体 + `web/nav.js` 品牌名与经济页签 +
-   `web/bnb-ui.js` 的 ARC 分支（品牌 / 副标题 / 分享文案 / 不读 rewardPerMint）。
+   `web/arc-ui.js` 的 ARC 分支（品牌 / 副标题 / 分享文案 / 不读 rewardPerMint）。
    **bnb 与 btc 的产物做过逐字节 diff：除了新增的 ARC 死代码，一个字节没变。**
 3. ✅ `server/chain.js` 放行 chainId 5042 / 5042002，主网测试网节点混用的检查同步覆盖 Arc。
 4. ✅ 本地跑通：真实 Arc 测试网区块 → `/api/card` 引爆 → `/api/bang` 签名（chainId 与节点自检一致）→ 3D 出画面。
@@ -186,9 +186,8 @@ NFT / 艺术在它 49 篇官方博客、四大 Request for Builders 方向、六
 8. `MirrorMarket` 无币版（删 `inBang`，结构体 8 字段 → 7，前端解码与 `server/marketindex.js` 同步改）。
 9. 主网部署（自备 1 USDC 绰绰有余：部署 0.088 + 两笔接线 ≈ 0.1 USDC）→ 提交 Microgrants。
 10. OpenSea 上架二级（ERC-721 + ERC-2981 已实现；SeaDrop 已在 Arc 主网）。
-11. **Microgrants 申请包已写好**：`promo/arcbang/microgrants-application.md`（英文文案 + 提交清单 + 公开 repo 三选一）。
-    **公开 repo 已解决**（2026-09-17）—— ARCBANG 单独建了公开仓库 `github.com/q3579338/arcbang`：
-    从单体仓库导出（`node tools/export-arcbang.js`），不搬提交历史，站内链接一律指它，不再链接任何 bnbbang 仓库。
+11. **公开 repo 已解决**（2026-09-17）—— ARCBANG 有自己的公开仓库 `github.com/q3579338/arcbang`，
+    不搬提交历史，站内链接一律指它。
 
 ---
 

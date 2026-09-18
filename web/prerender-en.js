@@ -1,5 +1,5 @@
 /*
- * web/prerender-en.js —— 把首页（web/landing.html 落盘后的 HTML）预渲染成英文版 dist/en/index.html
+ * web/prerender-en.js —— 把首页（web/landing-arc.html 落盘后的 HTML）预渲染成英文版 dist/en/index.html
  * ------------------------------------------------------------
  * 为什么要这一步：i18n.js 的中英切换发生在浏览器里（localStorage['mirror.lang']），
  * 爬虫永远只看到中文源码 —— 英文搜索里这个站不存在。SEO 需要一个**真实 URL** 的英文版：
@@ -29,7 +29,7 @@ const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
 const SKIP_TAGS = { script: 1, style: 1, code: 1, pre: 1, textarea: 1 };
 const VOID_TAGS = { area: 1, base: 1, br: 1, col: 1, embed: 1, hr: 1, img: 1, input: 1, link: 1, meta: 1, param: 1, source: 1, track: 1, wbr: 1 };
 
-/** 装词典：返回 { t(zh) → en 或原文, size }。extra：站点专属分册（btc 站多一册 i18n-btc.js） */
+/** 装词典：返回 { t(zh) → en 或原文, size }。extra：站点专属分册（i18n-arc*.js） */
 function loadDict(extra) {
   const sandbox = {};
   vm.createContext(sandbox);
@@ -110,22 +110,18 @@ function translate(html, t) {
   return { html: tokens.join(''), hits };
 }
 
-const EN_TITLE = 'BNBBANG — Every BNB block hash is a universe. Free to detonate, mint once.';
-const EN_DESC = 'Read a BNB Chain block hash as 23 physical constants and run that universe to heat death. 93% grow nothing. Detonate any block free; mint it once as an NFT on BSC. Open source engine, zero premine, no upgrade path.';
-
 /**
  * @param {string} landingHtml  dist/index.html 的最终内容（已打指纹）
- * @param {object} [opts]       站点参数（specs/btcbang-v1.md §六）：{base, title, desc, dicts}。
- *                              不传 = bnbbang.com 的默认值，输出与从前逐字节相同。
+ * @param {object} opts         站点参数：{base, title, desc, dicts}，由 build-web.js 的 ST 表喂进来。
  *                              base 是站点根（不带尾斜杠），canonical / og:url 从 base/ 改成 base/en/；
- *                              dicts 是额外的词典分册（btc 站的 i18n-btc.js）。
+ *                              dicts 是额外的词典分册。
  * @returns {{html:string, hits:number, dict:number}}
  */
 function render(landingHtml, opts) {
   const o = opts || {};
-  const base = String(o.base || 'https://bnbbang.com').replace(/\/+$/, '');
-  const title = o.title || EN_TITLE;
-  const desc = o.desc || EN_DESC;
+  const base = String(o.base || 'https://arcbang.xyz').replace(/\/+$/, '');
+  const title = o.title;
+  const desc = o.desc;
   const baseRe = base.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
   /* page（2026-09-09）：除首页外经济页也出 /en/。'index.html' = 首页（base/ ↔ base/en/，与从前逐字节相同）；
      其它页 base/<page> ↔ base/en/<page>。 */

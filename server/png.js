@@ -58,8 +58,8 @@ function fitWidthOf(v) {
    文件名带 derivationVersion 与 SHAPE，理由同 .cache：结构一升级就该出新的一张，
    而不是让旧字节一直命中。 */
 function pngDir() {
-  const store = process.env.BNBBANG_STORE || path.join(__dirname, '.store');
-  return process.env.BNBBANG_PNG_DIR || path.join(store, 'png');
+  const store = process.env.ARCBANG_STORE || path.join(__dirname, '.store');
+  return process.env.ARCBANG_PNG_DIR || path.join(store, 'png');
 }
 
 /* undefined = 还没试过；null = 没有这个依赖（退通用图）；function = 能用 */
@@ -80,10 +80,10 @@ function rasterizer() {
    服务器上点名与不点名渲出来的字节几乎一样（2650946 vs 2651177），但点名一个
    本机没有的家族（比如在 Windows 开发机上点 DejaVu Sans）会平白多一层查找，
    而 SVG 里本来就写着 "Helvetica,Arial,sans-serif" 的退化链。
-   BNBBANG_PNG_FONT 留给「哪天想把出图字体钉死」用。 */
+   ARCBANG_PNG_FONT 留给「哪天想把出图字体钉死」用。 */
 function fontOpt() {
   const o = { loadSystemFonts: true };
-  if (process.env.BNBBANG_PNG_FONT) o.defaultFontFamily = process.env.BNBBANG_PNG_FONT;
+  if (process.env.ARCBANG_PNG_FONT) o.defaultFontFamily = process.env.ARCBANG_PNG_FONT;
   return o;
 }
 
@@ -157,7 +157,7 @@ const inflight = new Map();
 function renderMaxOf(v) {
   return envInt(v, 2, 1, 8);
 }
-const RENDER_MAX = renderMaxOf(process.env.BNBBANG_PNG_CONCURRENCY);
+const RENDER_MAX = renderMaxOf(process.env.ARCBANG_PNG_CONCURRENCY);
 /* 排队硬顶：不同 key 的 miss 各占一个 waiter。放开了等于把 HTTP 连接当队列，
    主网一次爬虫风暴就能把进程的内存和事件环塞满。超额退通用图，不 500。 */
 const WAIT_MAX = 32;

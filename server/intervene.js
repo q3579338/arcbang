@@ -5,7 +5,7 @@
  * 结局还能保持 OBSERVERS_POSSIBLE 的最远距离），这个表只有引擎有，链上算不了。
  * 让前端自报费用等于让他免费玩。
  *
- * 定价（specs/economy-v4.md §3）：
+ * 定价：
  *   单参数费用 = |Δ(unit)| / 该参数的生存半径 × UNIT_COST
  *   总费用 = Σ 单参数费用 × 难度系数（越死越贵）
  *
@@ -14,13 +14,13 @@
  * 所以「调维度」是主消耗口，定价时它单独算一档。
  *
  * ------------------------------------------------------------
- * 两种入参（2026-08-19 加的 ops，见 specs/economy-v4.md §七「关于算法保密」）
+ * 两种入参（2026-08-19 加的 ops）
  *
  *   deltas = { 参数名: 新的绝对值 }        —— 调用方自己算好推到哪
  *   ops    = [{ key, dir, steps }]         —— 调用方只说「往哪个方向推几格」
  *
  * 为什么要有 ops：一格的长度 = STEP × 该参数的生存半径，而生存半径表
- * （engine/bnbhash.js 的 RADIUS）是这套推导里唯一藏得住的东西 —— 参数表和物理引擎
+ * （engine/archash.js 的 RADIUS）是这套推导里唯一藏得住的东西 —— 参数表和物理引擎
  * 本来就必须发到浏览器里跑。前端要是自己算「推一格到哪」，就得在包里带一份半径表，
  * 于是这张表原样发给了每个访客；给它开个 /api/steps 端点同样没用，因为
  * 步长 = 0.05 × 半径，把步长交出去就等于把半径交出去。
@@ -34,7 +34,7 @@
 const path = require('path');
 const { keccak256, AbiCoder } = require('ethers');
 const { sigV2, assertMinter } = require('./sign.js');
-const B = require(path.join(__dirname, '..', 'engine/bnbhash.js'));
+const B = require(path.join(__dirname, '..', 'engine/archash.js'));
 const P = require(path.join(__dirname, '..', 'engine/params.js'));
 const E = require(path.join(__dirname, '..', 'engine/engine.js'));
 /* 提示（诊断 + 贪心爬山）也搬到了服务端，理由同上：爬山每试一步都要"推一格"，
@@ -48,7 +48,7 @@ const { OUTCOME_ORDER, rarityOf, RARITY_NAME, DERIVATION_VERSION, CARD_SHAPE } =
 const coder = AbiCoder.defaultAbiCoder();
 const E18 = 10n ** 18n;
 
-/* 救援费重标（specs/economy-v5.md §5）：两个常数同比例缩小 6.25 倍。
+/* 救援费重标：两个常数同比例缩小 6.25 倍。
    依据：v4 一次救援实测 75,002 BANG，而 v4 每枚铸造均发 18,437 —— 4 枚铸造换一次救援。
    v5 每枚均发 600（加权），要维持“20 枚铸造换一次救援”，救援费应为 12,000 左右，
    即 v4 的 1/6.25。200/6.25 = 32，100000/6.25 = 16000。 */
@@ -253,7 +253,7 @@ function cardHashFromCard(card) {
 
 /* ============================================================ 相对档位：一格有多长
 
-   一格 = 该参数生存半径的 5%（specs/playable-v1.md「一格 = 多少」）。
+   一格 = 该参数生存半径的 5%。
    不用统一的绝对步长：α_s 是指数敏感的、Ω_Λ 的半径只有 1e-4 量级，
    而 H₀ 能推得很远 —— 同一个绝对步长对它们一个是灭顶、一个是推一百格没反应。
 
@@ -465,8 +465,8 @@ function evaluate(baseCard, deltas, ops) {
    上面整套 UNIT_COST / STRING_GAS / DIFFICULTY 算出来的 cost 是「BANG 枚数」（v5：一次救援 ≈ 12,000）。
    Arc 上没有代币，救援付的是 native USDC 并全额打进 0x…dEaD，合约要求 msg.value == cost，
    照旧返回 12,000e18 就是向用户要 12,000 美元。所以在 Arc 链上按比例换算：
-     12,000 BANG ≈ 3 USDC（BNBBANG_RESCUE_SCALE=4000，可用环境变量改），
-     再兜一个下限 0.5 USDC（BNBBANG_RESCUE_MIN_USDC），免得极小位移算出几分钱。
+     12,000 BANG ≈ 3 USDC（ARCBANG_RESCUE_SCALE=4000，可用环境变量改），
+     再兜一个下限 0.5 USDC（ARCBANG_RESCUE_MIN_USDC），免得极小位移算出几分钱。
    相对难度表一个字不动 —— 越死越贵的比例关系在两条链上一样。字段名仍叫 costBang：
    前端与签名链路（index.js 里 BigInt(out.costBang) 进摘要）都认这个名字，值的单位随链走。 */
 const ARC_CHAIN_IDS = new Set([5042, 5042002]);
@@ -475,10 +475,10 @@ function rescueWei(costUnits) {
   /* 直接读环境变量，**不 require('./chain.js')**：selftest 会先单独调 evaluate 再加载 index.js，
      那时 env 还没设链；这里若先把 chain.js 拉起来，它会以 NaN 的 chainId 被缓存，
      后面 index.js 再拿到的就是这份 NaN → 签名摘要 underflow。 */
-  const chainId = Number(process.env.BNBBANG_CHAIN_ID);
+  const chainId = Number(process.env.ARCBANG_CHAIN_ID);
   if (!ARC_CHAIN_IDS.has(chainId)) return wei;
-  const scale = BigInt(Math.max(1, Math.floor(Number(process.env.BNBBANG_RESCUE_SCALE || 4000))));
-  const minUsdc = Number(process.env.BNBBANG_RESCUE_MIN_USDC || 0.5);
+  const scale = BigInt(Math.max(1, Math.floor(Number(process.env.ARCBANG_RESCUE_SCALE || 4000))));
+  const minUsdc = Number(process.env.ARCBANG_RESCUE_MIN_USDC || 0.5);
   const minWei = BigInt(Math.round(minUsdc * 1e6)) * 10n ** 12n;
   const scaled = wei / scale;
   return scaled < minWei ? minWei : scaled;

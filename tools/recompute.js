@@ -7,7 +7,7 @@
  * 打印：23 个参数、结局、档位、稀有度、cardHash。
  * 站点上显示的那张卡就是这么来的 —— 同一个哈希，在哪台机器上算都是同一个结果。
  *
- * **零依赖**：只用 engine/ 里的东西（keccak256 是 engine/bnbhash.js 自带的 BigInt 实现）。
+ * **零依赖**：只用 engine/ 里的东西（keccak256 是 engine/archash.js 自带的 BigInt 实现）。
  * 服务端 server/card.js 走的是 ethers 的 AbiCoder；这里把那一段静态类型的编码
  * 手写成 29 个 32 字节字（bytes32 + uint32[22] + 三个 uint32 + 两个 uint8 + uint32），
  * 静态类型的 abi.encode 就是定长字的拼接，两边逐字节相同。
@@ -17,7 +17,7 @@
 
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
-const B = require(path.join(ROOT, 'engine/bnbhash.js'));
+const B = require(path.join(ROOT, 'engine/archash.js'));
 require(path.join(ROOT, 'engine/params.js'));
 const E = require(path.join(ROOT, 'engine/engine.js'));
 

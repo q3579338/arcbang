@@ -1,7 +1,7 @@
 /*
  * 链上查询 —— 只做一件事：这个哈希到底是不是本链上的一个区块
  * ------------------------------------------------------------
- * specs/server-side.md 的 C3：查不到就拒绝，**绝不回退常量**。
+ * 的 C3：查不到就拒绝，**绝不回退常量**。
  * 回退常量意味着一个凭空编造的哈希也能算出一个宇宙来，那这个项目就没有意义了。
  */
 'use strict';
@@ -20,18 +20,18 @@ function redactUrl(u) {
   }
 }
 
-/* **没有测试网默认值。** 以前 BNBBANG_RPC / BNBBANG_CHAIN_ID 缺了就悄悄落到
+/* **没有测试网默认值。** 以前 ARCBANG_RPC / ARCBANG_CHAIN_ID 缺了就悄悄落到
    BSC 测试网节点和 chainId 97：主网机器忘了配 env，签名绑到 97、块去测试网
    上查，每一笔都 BadSig / 假哈希，而报错看起来像「用户给的哈希不对」。
    现在缺了就是空。start() 会在启动时对着空配置大声 process.exit(1)。
    模块被 require 时不退出（selftest 要先设 env 再加载）。 */
-const RPCS = splitUrls(process.env.BNBBANG_RPC);
+const RPCS = splitUrls(process.env.ARCBANG_RPC);
 /* 付费/归档节点专供 eth_getLogs。公共节点经常能 eth_call 却拒日志查询
-   （specs/market-index-v1.md「公共 RPC 日志能力实测」）。索引层优先用它。 */
-const LOG_RPCS = splitUrls(process.env.BNBBANG_LOG_RPC);
+   。索引层优先用它。 */
+const LOG_RPCS = splitUrls(process.env.ARCBANG_LOG_RPC);
 
-const CHAIN_ID = process.env.BNBBANG_CHAIN_ID != null && process.env.BNBBANG_CHAIN_ID !== ''
-  ? Number(process.env.BNBBANG_CHAIN_ID)
+const CHAIN_ID = process.env.ARCBANG_CHAIN_ID != null && process.env.ARCBANG_CHAIN_ID !== ''
+  ? Number(process.env.ARCBANG_CHAIN_ID)
   : NaN;
 
 /* 链名只为了"人一眼能看出来对不对"。数字 56 和 97 长得太像，
@@ -59,10 +59,10 @@ function chainConfigErrors(opts) {
   const logRpcs = opts && opts.logRpcs ? opts.logRpcs : LOG_RPCS;
   const errs = [];
   if (!Number.isInteger(id) || !CHAIN_NAMES[id]) {
-    errs.push('BNBBANG_CHAIN_ID 必须显式设为 56 / 97（BSC 主网 / 测试网）或 5042 / 5042002（Arc 主网 / 测试网），禁止缺省落到测试网');
+    errs.push('ARCBANG_CHAIN_ID 必须显式设为 56 / 97（BSC 主网 / 测试网）或 5042 / 5042002（Arc 主网 / 测试网），禁止缺省落到测试网');
   }
   if (!rpcs.length) {
-    errs.push('BNBBANG_RPC 必须显式配置，禁止默认测试网节点');
+    errs.push('ARCBANG_RPC 必须显式配置，禁止默认测试网节点');
   }
   /* 主网却连着测试网节点：这是部署时最贵的一类错，两条主网都要挡。
      Arc 的测试网域名是 rpc.testnet.arc.io / rpc.testnet.arc.network，
@@ -70,7 +70,7 @@ function chainConfigErrors(opts) {
   if (id === 56 || id === 5042) {
     const bad = rpcs.concat(logRpcs).filter((u) => TESTNET_RPC_RE.test(u));
     if (bad.length) {
-      errs.push('主网 BNBBANG_RPC / BNBBANG_LOG_RPC 里出现了测试网地址：' + bad.join(', '));
+      errs.push('主网 ARCBANG_RPC / ARCBANG_LOG_RPC 里出现了测试网地址：' + bad.join(', '));
     }
   }
   return errs;
@@ -81,7 +81,7 @@ function chainConfigErrors(opts) {
 function rpcsForLogs() {
   const seen = new Set();
   const out = [];
-  splitUrls(process.env.BNBBANG_LOG_RPC).concat(RPCS).forEach((u) => {
+  splitUrls(process.env.ARCBANG_LOG_RPC).concat(RPCS).forEach((u) => {
     if (!seen.has(u)) { seen.add(u); out.push(u); }
   });
   return out;
@@ -99,9 +99,9 @@ async function probeChainId() {
     const hex = await overNodes('eth_chainId', []);
     LIVE_CHAIN_ID = Number(hex);
     if (LIVE_CHAIN_ID !== CHAIN_ID) {
-      console.error('[chain] ⚠ 链对不上：BNBBANG_CHAIN_ID=' + CHAIN_ID +
+      console.error('[chain] ⚠ 链对不上：ARCBANG_CHAIN_ID=' + CHAIN_ID +
         '（' + CHAIN_NAME + '），但 RPC 实际连的是 chainId ' + LIVE_CHAIN_ID +
-        '。签名摘要绑的是前者，每一笔铸造都会 BadSig —— 改 env 或改 BNBBANG_RPC，然后重启。');
+        '。签名摘要绑的是前者，每一笔铸造都会 BadSig —— 改 env 或改 ARCBANG_RPC，然后重启。');
     }
   } catch (e) {
     console.warn('[chain] 启动自检没问到 chainId（RPC 不通）：' + (e && e.message));
@@ -148,7 +148,7 @@ async function probeLogRpc() {
   LIVE_LOG_RPC_OK = any;
   if (!any) {
     console.error('[chain] ⚠ 没有任何 RPC 肯答 eth_getLogs（跨度 3 块也失败）。'
-      + '索引会一直 stale。配 BNBBANG_LOG_RPC（付费节点）或换会服务日志的节点。');
+      + '索引会一直 stale。配 ARCBANG_LOG_RPC（付费节点）或换会服务日志的节点。');
   }
   return any;
 }
@@ -187,7 +187,7 @@ async function rpc(url, method, params) {
 async function overNodes(method, params) {
   let lastErr = null;
   if (!RPCS.length) {
-    const err = new Error('BNBBANG_RPC 没配，没有可问的节点');
+    const err = new Error('ARCBANG_RPC 没配，没有可问的节点');
     err.rpcDown = true;
     throw err;
   }

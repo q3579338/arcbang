@@ -1,7 +1,7 @@
 /* ============================================================================
  * web/tokens.css —— 全站唯一的一份设计令牌表
  * ----------------------------------------------------------------------------
- * 收敛之前：index.html / web/market.html / web/economy.html 各自带一份，
+ * 收敛之前：index.html / web/market.html 各自带一份，
  * 每份又分 :root（浅）、:root[data-theme="dark"]（显式深）、@media(深色系统)
  * 三段 —— 一共 9 份拷贝。改一个对比度要人肉抄三遍，抄了就漂。
  *
@@ -26,7 +26,7 @@
  *             <style> 里覆盖这两个 —— 那份 <style> 排在本文件之后，所以覆盖得掉
  *
  * 怎么被三个页面吃到（离线版必须零外部请求，见 README 与 tools/check-dist.js）：
- *   web/market.html / web/economy.html   用 link 标签（rel=stylesheet）引同目录的 tokens.css
+ *   web/market.html 等独立页              用 link 标签（rel=stylesheet）引同目录的 tokens.css
  *   index.html                            <link> 由 build.js 在构建时**内联**成 <style>，
  *                                         所以 dist/mirror.html 里一条外链都不剩
  * ============================================================================ */

@@ -3,23 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- SEO 头里的域名一律写成 https://bnbbang.com/ —— **这是占位，不是笔误**：
-     web/build-web.js 的 siteify() 只改写 <title>/<meta>/<link> 与 ld+json 里的
-     https://bnbbang.com/ → SITES.arc.base，以及 BNBBANG → ARCBANG。
-     把域名写死在这里，换域那天就得来这个文件里再改一遍；写成占位，域名只存在于
-     SITES 表那一处。**正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
+<!-- SEO 头里的域名与站名就写本站的。web/build-web.js 的 siteify() 仍会把
+     <title>/<meta>/<link> 与 ld+json 里的站点根改写成 ST.base —— 现在两边一样，
+     那一步等于空操作，换域时只改 ST.base 一处即可。
+     **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
 <title>ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次</title>
 <meta name="description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点算到热寂，93% 的宇宙长不出任何东西。Arc 上 gas 就是 USDC：免费引爆任意区块，喜欢再铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发代币，引擎开源，高维宇宙真的在高维里算。">
-<link rel="alternate" hreflang="zh-CN" href="https://bnbbang.com/">
-<link rel="alternate" hreflang="en" href="https://bnbbang.com/en/">
-<link rel="alternate" hreflang="x-default" href="https://bnbbang.com/en/">
-<link rel="canonical" href="https://bnbbang.com/">
+<link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/">
+<link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/">
+<link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/">
+<link rel="canonical" href="https://arcbang.xyz/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ARCBANG">
-<meta property="og:url" content="https://bnbbang.com/">
+<meta property="og:url" content="https://arcbang.xyz/">
 <meta property="og:title" content="ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次">
 <meta property="og:description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点算到热寂，93% 的宇宙长不出任何东西。Arc 上 gas 就是 USDC：免费引爆任意区块，喜欢再铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发代币，引擎开源，高维宇宙真的在高维里算。">
-<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="zh_CN">
@@ -27,7 +26,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次">
 <meta name="twitter:description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点算到热寂，93% 的宇宙长不出任何东西。Arc 上 gas 就是 USDC：免费引爆任意区块，喜欢再铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发代币，引擎开源，高维宇宙真的在高维里算。">
-<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
@@ -39,10 +38,10 @@
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://bnbbang.com/#org",
+      "@id": "https://arcbang.xyz/#org",
       "name": "ARCBANG",
-      "url": "https://bnbbang.com/",
-      "logo": "https://bnbbang.com/assets/icons/icon-512.png",
+      "url": "https://arcbang.xyz/",
+      "logo": "https://arcbang.xyz/assets/icons/icon-512.png",
       "email": "admin@arcbang.xyz",
       "sameAs": [
         "https://x.com/eth61675",
@@ -51,23 +50,23 @@
     },
     {
       "@type": "WebSite",
-      "@id": "https://bnbbang.com/#website",
-      "url": "https://bnbbang.com/",
+      "@id": "https://arcbang.xyz/#website",
+      "url": "https://arcbang.xyz/",
       "name": "ARCBANG",
       "inLanguage": "zh-CN",
-      "publisher": { "@id": "https://bnbbang.com/#org" }
+      "publisher": { "@id": "https://arcbang.xyz/#org" }
     },
     {
       "@type": "WebApplication",
       "name": "ARCBANG Mirror Universe Simulator",
-      "url": "https://bnbbang.com/app.html",
+      "url": "https://arcbang.xyz/app.html",
       "applicationCategory": "EntertainmentApplication",
       "operatingSystem": "Web",
       "browserRequirements": "Requires WebGL",
       "isAccessibleForFree": true,
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "description": "Every Arc block hash is read as 23 physical constants and run from the singularity to heat death. Detonate any block free; mint a universe once as an NFT on Arc, priced in USDC. No token.",
-      "publisher": { "@id": "https://bnbbang.com/#org" }
+      "publisher": { "@id": "https://arcbang.xyz/#org" }
     }
   ]
 }
@@ -83,7 +82,7 @@
 <!-- 顶栏钱包 chip（walletChip）的词条大半收在市场分册的全局表里（未连接 /
      复制地址 / 浮层提示行那些）——**别在别处重复收**，这里直接把那份分册带上。 -->
 <script src="i18n-market.js"></script>
-<!-- ARCBANG 首页自己的词条（本站独有的句子；与 BNBBANG 首页逐字相同的那些仍走 i18n-site.js）。
+<!-- ARCBANG 首页自己的词条（本站独有的句子；通用句子仍走 i18n-site.js）。
      排在 i18n.js 之后、任何 DOM 之前：i18n 的静态遍历在 DOMContentLoaded 才跑，这时词典已齐。 -->
 <script src="i18n-arc-site.js"></script>
 <link rel="stylesheet" href="tokens.css">
@@ -94,9 +93,8 @@
 /* ============================================================================
  * ARCBANG 首页 v2 —— 「测绘板」（Plate）
  * ----------------------------------------------------------------------------
- * 这份样式**不继承 landing.html / landing-btc.html 那一套**（深空面板 + 卡片阴影 +
- * --s* 令牌）。2026-09-17 用户看完 v1 的原话是「首页没有优化啊」——问题不在文案，
- * 在版式：它还是 bnbbang.com 那个壳。旧版整份留在 web/landing-arc-v1.html。
+ * 这份样式**不继承早先那套**（深空面板 + 卡片阴影 + --s* 令牌）。
+ * 2026-09-17 用户看完 v1 的原话是「首页没有优化啊」——问题不在文案，在版式。
  *
  * 方案接地在题材本身，不在「NFT 站长什么样」：
  *   引擎真的在一个格点上跑 512,000 粒子的 PM N 体模拟（见 assets/gallery/index.json），
@@ -479,7 +477,7 @@ a.cardc:hover code{color:var(--ab-signal)}
   if (!window.MirrorNav || !MirrorNav.walletChip) return;
   var addr = null;
   /* 区块浏览器域名来自 config.js 的 chain 块，派生在 web/nav.js（五页共用一份，
-     specs/mainnet-ready.md）。写成函数是因为浮层要到用户点开那一刻才取。 */
+）。写成函数是因为浮层要到用户点开那一刻才取。 */
   function walletExplorer() { return MirrorNav.chain().explorer + '/address/'; }
   function ST(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh, 'site') : zh; }
   function prov() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum || null; }
@@ -837,7 +835,7 @@ a.cardc:hover code{color:var(--ab-signal)}
 <!-- ============================ 找到你的宇宙 ============================
      AKA 的 FIND YOURSELF 是硬造了一张星空来展示一份名单；我们的数据本来就是星空。
      星图页（查询 / 画廊 / 名人堂 / 分享卡）还没做，这里**先把入口摆出来**：
-     高度或哈希直接深链到 app.html?bang=…（web/bnb-ui.js 的 deepLink()），
+     高度或哈希直接深链到 app.html?bang=…（web/arc-ui.js 的 deepLink()），
      钱包地址暂时给一条诚实的去路，不假装已经能查。 -->
 <section class="ab-sec" id="find">
   <div class="ab-wrap">
@@ -1116,7 +1114,7 @@ a.cardc:hover code{color:var(--ab-signal)}
 <script>
 (function () {
   'use strict';
-  var CFG = window.BNBBANG_CONFIG || {};
+  var CFG = window.ARCBANG_CONFIG || {};
 
   /* ---------------------------------------------------------- 链身份
      唯一真相来源是 config.js（arc 站落盘的是 web/config.arc.js）的 chain 块；
@@ -1302,7 +1300,7 @@ a.cardc:hover code{color:var(--ab-signal)}
   /* ---------------------------------------------------------- 分享（X intent）
      纯 intent URL、零 SDK，**用户点了才跳**的普通新标签页（不 window.open ——
      用户 2026-08-21：「X不要打开窗口 打开浏览器的X即可」）。
-     文案与 web/bnb-ui.js 的 shareText() ARC 分支同一个口径，带 @arc。
+     文案与 web/arc-ui.js 的 shareText() ARC 分支同一个口径，带 @arc。
      链接按当前域名现拼 —— 域名不写死在页面里，从 bnbbang 那边学来的规矩。 */
   function siteUrl() {
     var b = String(CFG.siteBase || '').replace(/\/+$/, '');
@@ -1335,7 +1333,7 @@ a.cardc:hover code{color:var(--ab-signal)}
        · 纯数字     → 区块高度，深链 app.html?bang=<高度>
        · 0x + 64 位 → 区块哈希，同一条深链（哈希是种子，哪条链上都成立）
        · 0x + 40 位 → 钱包地址：**不假装能查**，给一条诚实的去路（个人中心）
-     深链的解析在 web/bnb-ui.js 的 deepLink()，参数名沿用现成的 bang，不另起炉灶。
+     深链的解析在 web/arc-ui.js 的 deepLink()，参数名沿用现成的 bang，不另起炉灶。
      认不出来的时候把话说清楚，并且**焦点留在输入框里** —— 报错不该让人自己找回去。 */
   (function () {
     var form = $('findForm'), inp = $('findInp'), msg = $('findMsg');

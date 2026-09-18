@@ -14,7 +14,7 @@
  *
  * 服务端的任何东西都不参与：RPC 是公开节点，复算只吃那个哈希。
  *
- * **零依赖**（理由同 recompute.js）：Node 18 起自带 fetch；函数选择器用 engine/bnbhash.js
+ * **零依赖**（理由同 recompute.js）：Node 18 起自带 fetch；函数选择器用 engine/archash.js
  * 里那份 BigInt keccak256 现算；返回值全是静态类型，abi 解码就是按 32 字节切字。
  *
  * 合约地址与 RPC 从 web/config.arc.js 读（站点用的就是这一份），可以覆盖：
@@ -29,7 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.join(__dirname, '..');
-const B = require(path.join(ROOT, 'engine/bnbhash.js'));
+const B = require(path.join(ROOT, 'engine/archash.js'));
 const R = require('./recompute.js');
 
 const ZERO32 = '0x' + '0'.repeat(64);
@@ -102,12 +102,12 @@ function decodeBytes32(hex, what) { return '0x' + words(hex, 1, what || 'bytes32
 
 /* ------------------------------------------------------------ 配置 */
 
-/** web/config.arc.js 是给浏览器的脚本（window.BNBBANG_CONFIG = {…}），放进沙箱里跑一下取值 */
+/** web/config.arc.js 是给浏览器的脚本（window.ARCBANG_CONFIG = {…}），放进沙箱里跑一下取值 */
 function loadConfig(file) {
   const f = file || path.join(ROOT, 'web', 'config.arc.js');
   const sandbox = { window: {} };
   vm.runInNewContext(fs.readFileSync(f, 'utf8'), sandbox, { filename: f });
-  const c = sandbox.window.BNBBANG_CONFIG || {};
+  const c = sandbox.window.ARCBANG_CONFIG || {};
   return {
     contract: String(c.contract || '').trim(),
     /* 站点配置里有 '/api/rpc' 这种同域相对路径，命令行下没有「同域」，只留完整的 http(s) 地址 */

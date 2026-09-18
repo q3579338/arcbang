@@ -1,11 +1,11 @@
 /*
- * web/i18n-market.js —— web/market.html, web/bnb-ui.js 的中英词条
+ * web/i18n-market.js —— web/market.html, web/arc-ui.js 的中英词条
  * ------------------------------------------------------------
  * 只放**界面上真会出现**的句子；注释、日志、开发用文字不进这里。
  * key 是中文原文，逐字相等才命中；漏翻的自动退回中文，不会出现裸 key。
  * 机制与约定见 web/i18n.js 顶部。
  *
- * 这一轮收的是 web/market.html（市场页）。**bnb-ui.js 的词条还没收**，
+ * 这一轮收的是 web/market.html（市场页）。**arc-ui.js 的词条还没收**，
  * 那是后一轮的事 —— 没收的部分照旧显示中文，不影响这一页。
  *
  * 三条自己给自己定的规矩：
@@ -168,8 +168,6 @@
     '② 挂单': '② List',
     /* 表单下面那段说明被 <span class="mono"> 断成四个文本节点，每一段单独收。
        末尾的空格是**故意的**：它前后紧挨着代码块，没有它英文会粘成一个词。 */
-    '手续费在成交时从买家付的钱里扣：BNB 计价单抽 1%、BANG 计价单抽 5%。授权是一次性的：':
-      "The fee is taken out of the buyer's payment at settlement — 1% on BNB-priced listings, 5% on BANG-priced ones. Approval is one-time: ",
     '之后市场才有权在成交那一刻把 NFT 转给买家 —— 在那之前东西一直在你自己钱包里。':
       'only then may the market move the NFT to the buyer at the moment of sale — until then it stays in your own wallet.',
     '没盖章的宇宙（': 'Unverified universes (',
@@ -241,15 +239,11 @@
     '「已验证」= 合约里的': '"Verified" = the',
     '非零，表示这枚 NFT 的参数是服务端算过并签过名的； 「已烧」=':
       'in the contract is non-zero, meaning this NFT\'s parameters were computed and signed by the server; "Burned" =',
-    '，这枚 token 上累计销毁的 BANG，链上可查、伪造不了。':
-      ', the BANG burned on this token so far — readable on-chain and impossible to fake.',
     /* 唯一性口径 2026-08-21 改定：**不是全站唯一，是本系列内唯一** ——
-       原生 BangNames 与造物 BangNames2 是两套独立名册（specs/crafted-names-v1.md §四）。 */
-    '名字 = 持有人烧 BANG 登记的，在本系列内唯一（原生与造物是两套独立名册）；大小写和同形字（O/0、I i L l/1）都算重名，名字跟着 NFT 一起转手。':
-      'A name is registered by its holder by burning BANG. Names are unique within a collection (Native and Crafted are two separate registries); case and look-alike characters (O/0, I i L l/1) all count as the same name. A name travels with the NFT.',
+       原生 BangNames 与造物 BangNames2 是两套独立名册。 */
 
     /* ================================================================ 命名
-       烧 BANG 给宇宙命名（contracts/src/BangNames.sol）。功能的来由是《镜子》
+       烧 BANG 给宇宙命名（BangNames）。功能的来由是《镜子》
        第八章白冰那句「我要把这组创世参数记下来」——**引文本身也要翻**，
        它是这个弹窗的第一句话，不是装饰。 */
     '命名': 'Names',                       // 配置条上那一枚 chip（合约名，与「命名已销毁」区分）
@@ -319,7 +313,7 @@
     '链上读不到 totalBurnedForNames': 'totalBurnedForNames could not be read on-chain',
 
     /* ================================================================ 造物系列
-       第二套 721（contracts/src/MirrorCrafted.sol，specs/crafted-v1.md）：
+       第二套 721（MirrorCrafted）：
        沙盒里干预后的宇宙。config.js 的 crafted 没配时这些词条一条都不会上屏。
        「全部」在 i18n-app.js 里已有（'All'），按第 1 条规矩不重复收。 */
     '造物': 'Crafted',                     // 徽标 / 筛选分段 / 下拉分组 / 配置条 chip，同一个词
@@ -351,22 +345,18 @@
       'The burn share cannot be read (burnBps) — only the total paid is shown; the burned part is not guessed',
     '链上读不到 cardOf 的 paid': 'paid in cardOf cannot be read on-chain',
 
-    /* ================================================================ 广播与推广（specs/share-referral-v1.md）
+    /* ================================================================ 广播与推广
        激励口径 2026-08-21 定稿：说费率（10%/5%）、说人工核对、说专款与反女巫；
        绝不说「自动到账 / 立即到账」。文案是长句，整句进词典，别拆开拼。 */
     '广播': 'Broadcast',
     '再引爆看看': 'Detonate it again',
-    /* 拯救入口（specs/rescue-entry.md）。术语跟 i18n-tools.js 定的一致：
+    /* 拯救入口。术语跟 i18n-tools.js 定的一致：
        rescue = 救 / 拯救，burn = 烧（不是 spend）。
        「拯救」这个词个人中心那张持仓卡也用，i18n-site.js 里收的是**同一句英文** ——
        两处值一样，i18n.js 的撞车警告不会响；哪天要改，两处一起改。 */
     '拯救': 'Rescue',
-    '烧 BANG 改写它的参数，销毁量记进这枚 NFT':
-      'Burn BANG to rewrite its parameters — the amount burned is recorded on this NFT',
     /* 3D 画面上那颗 HUD 按钮的两种态：死宇宙是「救救它」，活宇宙是「调教它」。
        核心词典里的 '救救它' 是短标签，这两条是完整按钮文案，不冲突。 */
-    '救救它（进沙盒推参数）': 'Rescue it (nudge parameters in the sandbox)',
-    '调教它（进沙盒推参数）': 'Tune it (nudge parameters in the sandbox)',
     '看它的起源宇宙': 'See its origin universe',
     '查看大图': 'View full image',
     '宇宙大图': 'Full-size universe image',
@@ -379,15 +369,15 @@
        中英同形不进词典，进词典的只有这两条。与 app 分册（i18n-app.js）同句同译。 */
     '微博': 'Weibo',
     '复制链接': 'Copy link',
-    /* ---- 广播 v2（specs/broadcast-v2.md §三/§四）：复制带图、微信二维码。
-       市场页与 web/bnb-ui.js 的广播浮层共用这几条 —— 本分册的抬头就说了它管两处。 */
+    /* ---- 广播 v2：复制带图、微信二维码。
+       市场页与 web/arc-ui.js 的广播浮层共用这几条 —— 本分册的抬头就说了它管两处。 */
     '复制文案和图片': 'Copy text and image',
     '正在准备图片…': 'Preparing the image…',
     '复制中…': 'Copying…',
     /* 剪贴板装不下图片时**必须明说**，否则用户以为图丢了。整句进词典 */
     '图片没能复制（这个浏览器不支持），文案已经进剪贴板了 —— 图片可以在卡片上右键另存。':
       'The image could not be copied (this browser does not support it). The text is on the clipboard — you can right-click the card image and save it.',
-    /* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页与 web/bnb-ui.js
+    /* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页与 web/arc-ui.js
        的广播浮层共用这三条（app 页另有一条「实况截图」小签在 app 分册）。 */
     '广播附图': 'Broadcast image',
     '点开看大图': 'Click to view it full size',
@@ -399,17 +389,6 @@
       'This link is too long to fit in a QR code — copy the link below instead',
     '这张卡还没读全，稍等一下再广播': 'This card has not fully loaded yet — try broadcasting again in a moment',
     '这张卡还没读全，稍等一下再试': 'This card has not fully loaded yet — try again in a moment',
-    '我在 BNBBANG 引爆了宇宙 {0}：{1}。每个 BNB 区块哈希都是一套物理定律——来引爆你自己的，前 100 万枚每地址 10 次免费，之后 0.01 BNB。{2}':
-      'I detonated universe {0} on BNBBANG: {1}. Every BNB block hash is a complete set of physical laws — come detonate your own; the first 1M mints are free (10 per address), then 0.01 BNB. {2}',
-    '我把一个死宇宙救成了「{0}」（{1} 档造物宇宙 #{2}）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{3}':
-      'I rescued a dead universe into "{0}" (Grade {1} Crafted Universe #{2}). Burn BANG to rewrite the physical constants — on BNBBANG, universes can be handmade. {3}',
-    '链接已带上你的推广地址。邀请好友引爆宇宙：好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。':
-      "Your referral address is on the link. Invite friends to detonate universes: 10% of a friend's mint reward goes to you, plus 5% from friends of friends — paid from the 200M referral treasury after manual review, with an on-chain trail.",
-    '未连接钱包：链接不带推广地址，照常能广播。连接钱包再广播，好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。':
-      "No wallet connected: the link carries no referral address, and broadcasting still works. Connect a wallet before broadcasting and 10% of a friend's mint reward goes to you, plus 5% from friends of friends — paid from the 200M referral treasury after manual review, with an on-chain trail.",
-    '邀请返利专款 2 亿 BANG。': 'A dedicated 200M BANG fund backs referral rewards. ',
-    '女巫账户（自邀、批量小号、刷量）经人工核对一律不予发放。':
-      'Sybil accounts (self-referrals, bulk wallets, farmed volume) will be rejected in manual review.',
 
     /* ================================================================ 筛选与排序条 */
     '排序': 'Sort',
@@ -429,7 +408,7 @@
       'No universes match these filters — hit "Clear filters" to see everything.',
 
     /* ================================================================ 物理参数筛选与排序
-       specs/market-physics-filter.md 第三节。维度那一组是**人话**，不是让人填数字，
+。维度那一组是**人话**，不是让人填数字，
        所以英文也别退回 "dim=3" 这种参数写法。「全部」在 i18n-app.js 里已有（'All'），
        按第 1 条规矩不重复收。 */
     '维度': 'Dimension',

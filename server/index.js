@@ -1,26 +1,29 @@
 /*
- * BNBBANG 服务端
+ * ARCBANG 服务端
  * ------------------------------------------------------------
- * 跑在 127.0.0.1:8801，由 nginx 以 /api/ 反代出去（见 web/nginx-test.satloot.com.conf）。
- * 职责三件：算 card、盖章（签名）、出图。规格见 specs/server-side.md。
+ * 跑在 127.0.0.1:8801（ARCBANG_PORT 可改），由 nginx 以 /api/ 反代出去
+ * （见 web/nginx-arcbang.xyz.conf）。
+ * 职责三件：算 card、盖章（签名）、出图。
  */
 'use strict';
+/* 环境变量旧名兼容（BNBBANG_* → ARCBANG_*）。**必须排在所有 require 之前** ——
+   下面每个模块都在自己的顶层就把 env 读进常量了。 */
+require('./env-compat.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { buildCard, DERIVATION_VERSION, CARD_SHAPE } = require('./card.js');
-const { renderSVG, renderCraftedSVG } = require('./art.js');
+const { renderSVG } = require('./art.js');
 const { blockByHash, CHAIN_ID, CHAIN_NAME, probeChainId, liveChainId,
   probeLogRpc, liveLogRpcOk, chainConfigErrors } = require('./chain.js');
 const { makeSigner, TTL_SEC, minterFromBody } = require('./sign.js');
-const { evaluate, interveneDigest, craftDigest, opsHashOf, suggestNext, MAX_OPS } = require('./intervene.js');
-const { readToken, buildMetadata, readCrafted, buildCraftedMetadata } = require('./token.js');
+const { evaluate, interveneDigest, opsHashOf, suggestNext, MAX_OPS } = require('./intervene.js');
+const { readToken, buildMetadata } = require('./token.js');
 const RL = require('./ratelimit.js');
-/* 广播 v2（specs/broadcast-v2.md）三件套。全部是**旁路**：
+/* 广播 v2三件套。全部是**旁路**：
    出图退通用预览、落地页退跳首页、短码只是留痕的别名 ——
    任何一环挂了，铸造/干预/市场照常。 */
 const PNG = require('./png.js');
-const RC = require('./refcode.js');
 const SHARE = require('./share.js');
 const RELAY = require('./rpcrelay.js');
 /* 可索引的分享落地页（landing.js）、索引集合与 sitemap（seo.js）、1200×630 的 og 图（og.js）。
@@ -29,38 +32,30 @@ const RELAY = require('./rpcrelay.js');
 const LANDING = require('./landing.js');
 const SEO = require('./seo.js');
 const OG = require('./og.js');
-/* 邀请奖励 + 邀请列表（specs/profile-referral-v2.md）。同样是旁路：
+/* 邀请奖励 + 邀请列表。同样是旁路：
    它挂了个人中心少两块数据，铸造/干预/市场一个字节都不经过它。 */
-const REF = require('./referral.js');
 /* 按高度取块要走 chainMod.blockByNumber 而**不是**解构出来的引用：
    selftest 靠替换模块上的方法来打桩，解构走的那份换不掉（token.js 踩过这个坑）。 */
 const chainMod = require('./chain.js');
-/* 市场索引（specs/market-index-v1.md）。**require 它不会启动任何东西** ——
+/* 市场索引。**require 它不会启动任何东西** ——
    后台扫链要 MI.startIndexer() 显式开，而那一句只在 start() 里（selftest 直接
    require 本文件，不该因此在后台开始扫链）。索引整个挂掉的后果上限是市场页
    看到旧数据并自己说自己旧；铸造/干预/造物三条写链路一个字节都不经过它。 */
 const MI = require('./marketindex.js');
-/* BTCBANG（specs/btcbang-v1.md）：用比特币主网区块哈希引爆，铸进**同一个**合约。
-   btc.js 只负责「这个高度 / 哈希是不是比特币主网的块」，之后 card / 签名 / 出图
-   全走上面那套。require 它不联网、不碰盘（tip 惰性刷新）；上游全挂它抛错，
-   这里报 503 —— C3 同样适用，绝不回退常量。 */
-const btc = require('./btc.js');
 /* 算卡线程池（server/cardpool.js）。**require 它不会起任何线程** —— 线程是第一次
    真要算卡时才惰性起的，而且闲着时 unref，所以 selftest 直接 require 本文件不会
-   被它钉住不退出。BNBBANG_CARD_WORKERS=0 可以整个关掉，退回主线程同步算。 */
+   被它钉住不退出。ARCBANG_CARD_WORKERS=0 可以整个关掉，退回主线程同步算。 */
 const CARDPOOL = require('./cardpool.js');
 const { envInt } = require('./envint.js');
 
-const PORT = envInt(process.env.BNBBANG_PORT, 8801, 1, 65535);
-const CONTRACT = (process.env.BNBBANG_CONTRACT || '').toLowerCase();
-/* 造物系列（MirrorCrafted）。没配时 /api/craft 明着说没开，而不是签一份废名。 */
-const CRAFTED = (process.env.BNBBANG_CRAFTED || '').toLowerCase();
-const PUBLIC_BASE = process.env.BNBBANG_PUBLIC_BASE || '';
-const CACHE_DIR = process.env.BNBBANG_CACHE || path.join(__dirname, '.cache');
-const STORE_DIR = process.env.BNBBANG_STORE || path.join(__dirname, '.store');
+const PORT = envInt(process.env.ARCBANG_PORT, 8801, 1, 65535);
+const CONTRACT = (process.env.ARCBANG_CONTRACT || '').toLowerCase();
+const PUBLIC_BASE = process.env.ARCBANG_PUBLIC_BASE || '';
+const CACHE_DIR = process.env.ARCBANG_CACHE || path.join(__dirname, '.cache');
+const STORE_DIR = process.env.ARCBANG_STORE || path.join(__dirname, '.store');
 
 if (!/^0x[0-9a-f]{40}$/.test(CONTRACT)) {
-  console.error('必须设 BNBBANG_CONTRACT（合约地址）—— 签名要绑死它，否则能被喂给别的合约');
+  console.error('必须设 ARCBANG_CONTRACT（合约地址）—— 签名要绑死它，否则能被喂给别的合约');
   process.exit(1);
 }
 
@@ -70,26 +65,26 @@ function serverEnvErrors(opts) {
   opts = opts || {};
   const id = opts.chainId != null ? Number(opts.chainId) : CHAIN_ID;
   const publicBase = opts.publicBase != null ? opts.publicBase : PUBLIC_BASE;
-  const indexFrom = opts.indexFrom != null ? opts.indexFrom : process.env.BNBBANG_INDEX_FROM;
-  const vault = String(opts.referralVault != null ? opts.referralVault : (process.env.BNBBANG_REFERRAL_VAULT || '')).toLowerCase();
+  const indexFrom = opts.indexFrom != null ? opts.indexFrom : process.env.ARCBANG_INDEX_FROM;
+  const vault = String(opts.referralVault != null ? opts.referralVault : (process.env.ARCBANG_REFERRAL_VAULT || '')).toLowerCase();
   const errs = chainConfigErrors({
     chainId: id,
     rpcs: opts.rpcs || undefined,
     logRpcs: opts.logRpcs || undefined
   });
   if (!publicBase) {
-    errs.push('BNBBANG_PUBLIC_BASE 必须显式配置（主网 https://bnbbang.com），禁止默认测试域名');
+    errs.push('ARCBANG_PUBLIC_BASE 必须显式配置（主网 https://arcbang.xyz），禁止默认测试域名');
   } else if (id === 56 && /satloot|testnet/i.test(publicBase)) {
-    errs.push('主网 BNBBANG_PUBLIC_BASE 不能是测试域名：' + publicBase);
+    errs.push('主网 ARCBANG_PUBLIC_BASE 不能是测试域名：' + publicBase);
   }
   if (id === 56) {
     if (!(Number(indexFrom) > 0)) {
-      errs.push('主网必须设 BNBBANG_INDEX_FROM=合约部署高度，禁止默认回看 50000 块');
+      errs.push('主网必须设 ARCBANG_INDEX_FROM=合约部署高度，禁止默认回看 50000 块');
     }
     if (!/^0x[0-9a-f]{40}$/.test(vault)) {
-      errs.push('主网必须设 BNBBANG_REFERRAL_VAULT（返利金库地址），禁止测试网默认值');
+      errs.push('主网必须设 ARCBANG_REFERRAL_VAULT（返利金库地址），禁止测试网默认值');
     } else if (vault === '0x052e9c4bc320706e1bdb1bae618256f54b5ae4a5') {
-      errs.push('主网 BNBBANG_REFERRAL_VAULT 不能是测试网默认金库');
+      errs.push('主网 ARCBANG_REFERRAL_VAULT 不能是测试网默认金库');
     }
   }
   return errs;
@@ -174,7 +169,7 @@ function storePut(cardHash, card) {
   return card;
 }
 
-/* ---------------------------------------------------------------- 推广留痕（specs/share-referral-v1.md §六）
+/* ---------------------------------------------------------------- 推广留痕
    两份数据，都只是留痕，发钱是 owner 拿着它人工核对后用 BangPromo.grant 手动发：
      .store/ref-bindings.json   绑定表 minter → {ref, at}。**首触定终身**：
                                 一个 minter 只绑一次，之后再带别的 ref 一律不改。
@@ -186,14 +181,6 @@ function storePut(cardHash, card) {
      2. 全部写盘动作都在签名响应发出**之后**，写失败只进日志；
      3. ref 不进签名摘要、不上链。 */
 const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
-const REF_FILE = path.join(STORE_DIR, 'referrals.jsonl');
-const BIND_FILE = path.join(STORE_DIR, 'ref-bindings.json');
-const refBindings = (() => {
-  try {
-    const o = JSON.parse(fs.readFileSync(BIND_FILE, 'utf8'));
-    return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
-  } catch (e) { return {}; }   // 没有文件 = 还没人被邀请过，不是错误
-})();
 /** v2 签名要绑铸造人。非法/缺省当场 400 并回人话；v1 忽略。
     返回小写地址或 null（v1）。返回 false 表示已经答过 400。 */
 /* ---------------------------------------------------------------- 免费期防撸（ARCBANG，2026-09-17）
@@ -204,8 +191,8 @@ const refBindings = (() => {
    「这一签会不会是免费的」按合约当下状态判（totalSupply < freeCap 且 freeMintCount(minter) < freePerAddr），
    四个 view 都读不到（RPC 抖动）就当付费放行 —— 宁可漏一个，不能把真人拦在门外。
    同一地址在窗口内反复取签（铸造前必须再签一次）只扣一次（take 的 hash 去重）。
-   只在 Arc 链生效；BNBBANG_FREE_PER_IP_DAY=0 关掉。 */
-const FREE_PER_IP_DAY = (() => { const n = Number(process.env.BNBBANG_FREE_PER_IP_DAY); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 3; })();
+   只在 Arc 链生效；ARCBANG_FREE_PER_IP_DAY=0 关掉。 */
+const FREE_PER_IP_DAY = (() => { const n = Number(process.env.ARCBANG_FREE_PER_IP_DAY); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 3; })();
 const FREE_SEL = { totalSupply: '0x18160ddd', freeCap: '0x69b126ef', freePerAddr: '0x21daa6e7', freeMintCount: '0x5ecf8a80' };
 /* 返回 true / false / null（null = 链上读不到，判不了）。
    freeCap / freePerAddr 是只能往下调的常量，缓存 10 分钟；totalSupply 缓存 20 秒；
@@ -246,42 +233,6 @@ function minterForSig(body, res) {
   return r.minter;
 }
 
-function recordReferral(ref, minter, blockHash) {
-  try {
-    if (typeof ref !== 'string' || !ADDR_RE.test(ref)) return;        // 非法：静默忽略
-    if (typeof minter !== 'string' || !ADDR_RE.test(minter)) return;  // 没带 minter 绑不了
-    ref = ref.toLowerCase(); minter = minter.toLowerCase();
-    if (ref === minter) return;                                       // 自己邀自己不算
-    if (refBindings[minter]) return;                                  // 首触定终身，也是按 minter 去重
-    const at = new Date().toISOString();
-    refBindings[minter] = { ref, at };
-    // 二级只看一层：M 绑了 A，A 当年绑过 B，则 B 是 M 的二级。B 就是 M 本人时不算（成环）。
-    const up = refBindings[ref];
-    const ref2 = (up && up.ref && up.ref !== minter) ? up.ref : null;
-    const row = { ref, minter, hash: blockHash, at };
-    if (ref2) row.ref2 = ref2;
-    // 绑定表原子写（写临时文件再 rename），流水 append。两者都不影响已发出的响应。
-    try { writeAtomic(BIND_FILE, JSON.stringify(refBindings)); }
-    catch (e) { console.error('[referral] 绑定表写不进去：' + e.message); }
-    fs.appendFile(REF_FILE, JSON.stringify(row) + '\n', (e) => {
-      if (e) console.error('[referral] 留痕写不进去：' + e.message);
-    });
-  } catch (e) { console.error('[referral] 留痕失败（不影响铸造）：' + (e && e.message)); }
-}
-/** 汇总：地址 → {l1 一级邀请数, l2 二级邀请数}。从绑定表现算，量级是「被邀请人数」，遍历没负担。 */
-function refCounts() {
-  const out = {};
-  const bump = (a, k) => { if (!out[a]) out[a] = { l1: 0, l2: 0 }; out[a][k]++; };
-  for (const minter of Object.keys(refBindings)) {
-    const b = refBindings[minter];
-    if (!b || !b.ref) continue;
-    bump(b.ref, 'l1');
-    const up = refBindings[b.ref];
-    if (up && up.ref && up.ref !== minter) bump(up.ref, 'l2');
-  }
-  return out;
-}
-
 function send(res, code, body, headers) {
   const h = Object.assign({ 'access-control-allow-origin': '*' }, res.__rl || {}, headers || {});
   res.writeHead(code, h);
@@ -292,7 +243,7 @@ function json(res, code, obj, headers) {
 }
 
 /* ---------------------------------------------------------------- 管理员 IP 门
-   /api/admin-check、/deploy-gate、/api/referrals 共用。BNBBANG_ADMIN_IPS：逗号分隔
+   /api/admin-check、/deploy-gate、/api/referrals 共用。ARCBANG_ADMIN_IPS：逗号分隔
    的白名单；**没配就一律不是管理员**。真正的链上权限（owner / 受益人）不在这，
    但这扇门一旦被伪造头骗开，访客就能拿到 deploy.html 和全站邀请汇总。
 
@@ -303,7 +254,7 @@ function json(res, code, obj, headers) {
    所以 X-Real-IP / XFF 末跳就是那一个地址，不必再去信可伪造的那两头。 */
 function clientIpOf(req) { return RL.ipOf(req); }
 function adminAllowed(ip) {
-  const allow = String(process.env.BNBBANG_ADMIN_IPS || '')
+  const allow = String(process.env.ARCBANG_ADMIN_IPS || '')
     .split(',').map(s => s.trim().replace(/^::ffff:/i, '')).filter(Boolean);
   return !!ip && ip !== 'unknown' && allow.indexOf(ip) >= 0;
 }
@@ -449,7 +400,7 @@ const cardInflight = new Map();
  * 同步读盘、同步 parse、同步返回），只有未命中才把「派生 + 引擎 + 拼 card」
  * 这段纯计算丢进 worker 线程池，算完照旧落盘。
  *
- * 线程池关掉（BNBBANG_CARD_WORKERS=0）或自保退回时，buildCardJSON 就在主线程
+ * 线程池关掉（ARCBANG_CARD_WORKERS=0）或自保退回时，buildCardJSON 就在主线程
  * 同步算完再交出一个 resolved promise —— 行为与 cardFor 逐字节相同。
  *
  * 为什么不干脆把 cardFor 也改成异步：marketindex.js 那条注入（MI.setCardSource）
@@ -504,7 +455,7 @@ function cardPoolBusy(res, e) {
 }
 
 /* 市场索引要往 meta 里补物理字段（维度、卡面上那几个常数），得有一条拿 card 的路。
-   specs/market-physics-filter.md 第一节：**服务端内部直调 card.js，不要走 HTTP
+ard.js，不要走 HTTP
    自己打自己** —— 自己打自己会白白吃一遍限流、序列化、TCP 往返，而且
    /api/card 的限流本来就是拿来挡「挨个哈希扫全链」的，索引补元数据正好长得像它。
 
@@ -515,46 +466,12 @@ function cardPoolBusy(res, e) {
 
    反过来让 marketindex.js 去 require('./index.js') 是不行的：index.js 在模块顶上
    就 require 了它，那是个循环依赖，拿到的会是一份还没填完的 exports。 */
-MI.setCardSource({ cardFor, storeGet, cardCached, originOf: btc.originOf });
-/* IndexNow（server/indexnow.js）：每轮索引后把新铸造的 /s/ 页报给搜索引擎，按来源分站。 */
-const IN = require('./indexnow.js').create({ storeDir: STORE_DIR });
-MI.onRound(() => IN.pushRound(MI.mintedWhere(null).map((x) => ({ n: x.n, base: btc.originOf(x.hash) ? btc.publicBase() : PUBLIC_BASE }))));
+MI.setCardSource({ cardFor, storeGet, cardCached });
 /* 上线预约（server/subscribe.js）：tool 站等「即将开放」页留邮箱。 */
 const SUB = require('./subscribe.js').create({ storeDir: STORE_DIR, take: RL.take });
 /* 卡死报告（server/stall.js）：前端看门狗抓到的现场，用户点一下发过来。
-   配了 BNBBANG_RESEND_KEY 才发邮件；没配就只落盘，启动日志里说一声。 */
+   配了 ARCBANG_RESEND_KEY 才发邮件；没配就只落盘，启动日志里说一声。 */
 const STALL = require('./stall.js').create({ storeDir: STORE_DIR, take: RL.take });
-
-/* ---------------------------------------------------------------- BTCBANG 的几个小工具
-   来源判定只有一条路：btc.originOf —— 注册表认得的哈希才是比特币宇宙（规格 §1.1）。
-   出图那几条路拿它决定角标印 BTC BLOCK 还是 UNIVERSE；它是哈希的函数，与 Host 无关，
-   所以同一个哈希在两个站出的图一样。 */
-function artOriginOf(hash) {
-  const o = btc.originOf(hash);
-  return o ? { origin: 'btc', height: o.height } : null;
-}
-/** 这次请求打的是 btc 站吗（按 Host 判站，规格 §五）。nginx 把 $host 原样传过来。 */
-function btcSiteOf(req) {
-  return btc.isBtcHost(req && req.headers && req.headers.host);
-}
-/** /api/btc/block 与 /api/btc/bang 里那份「块 + 能不能铸」的公共视图 */
-function btcBlockView(blk, tipH) {
-  const m = btc.mintability(blk.height, tipH, Math.floor(Date.now() / 1000));
-  return {
-    height: blk.height, hash: blk.hash, time: blk.time,
-    confirmations: m.confirmations, confirmationsRequired: m.confirmationsRequired,
-    mintable: m.mintable, reason: m.reason, code: m.code,
-    zeros: btc.zerosOf(blk.hash), badges: btc.badgesOf(blk.height),
-    reserved: m.reserved, openAt: m.openAt, tip: tipH
-  };
-}
-/** btc 站的 /s/ 索引集合：已铸的比特币宇宙 ∪ 内置精选（创世 / 减半 / 名块）。
-    不读 BNBBANG_SHARE_CURATED / EXTRA —— 那两份名单写的是 BNB 高度。 */
-function btcIndexHeights() {
-  let minted = [];
-  try { minted = MI.mintedWhere((h) => !!btc.originOf(h)); } catch (e) { minted = []; }
-  return SEO.mergeHeights(btc.CURATED_HEIGHTS, minted);
-}
 
 /* ---------------------------------------------------------------- 路由 */
 
@@ -582,7 +499,7 @@ async function handle(req, res, u) {
 
   /* ---- 限流 ----
      只卡「算宇宙」这两条：免费引爆本身就是扫描接口，用户不需要拿到推导算法，
-     挨个哈希点引爆、只 mint 好的即可（specs/economy-v4.md §七）。
+     挨个哈希点引爆、只 mint 好的即可。
      /health 和出图不卡：前者要给监控用，后者是纯静态且有强缓存。
 
      额度按**不同的哈希**计，所以要先把哈希拿出来再判：
@@ -597,7 +514,7 @@ async function handle(req, res, u) {
      不签名、不上链、不花钱。那正是这道闸要挡的动作：挨个哈希扫、只挑 S 档下手。
      实测：额度设成 3/小时时，8 个不同哈希的预览 8 次全是 200。
      沙盒不受影响 —— 它反复推的是**同一个** blockHash，第二次起就是 repeat，不再扣。 */
-  if (p === '/bang' || p === '/intervene' || p === '/craft' || /^\/card\//.test(p)) {
+  if (p === '/bang' || p === '/intervene' || /^\/card\//.test(p)) {
     let rlHash = null;
     const cm = p.match(/^\/card\/(0x[0-9a-fA-F]{64})$/);
     if (cm) rlHash = cm[1].toLowerCase();
@@ -644,7 +561,7 @@ async function handle(req, res, u) {
 
   /* GET /deploy-gate —— 部署页本体从这里发。nginx 把 location = /deploy.html
      反代到这条路由（配置不在本仓库），于是：
-       白名单命中 → 200，正文就是 BNBBANG_WEBROOT/deploy.html 的内容；
+       白名单命中 → 200，正文就是 ARCBANG_WEBROOT/deploy.html 的内容；
        未命中     → 200，正文换成公开的系统状态页（status.html）——
                     访客照旧拿不到向导 HTML 的一个字节，但也不再被 302 弹回首页，
                     同一个 URL 两副面孔：管理员见操作台，访客见舷窗。
@@ -654,7 +571,7 @@ async function handle(req, res, u) {
      所有分支都 no-store：这条路的答案跟着请求方 IP 走，缓存哪个都是错的。 */
   if (p === '/deploy-gate') {
     if (!adminAllowed(clientIpOf(req))) {
-      const pub = path.join(process.env.BNBBANG_WEBROOT || '/var/www/bnbbang', 'status.html');
+      const pub = path.join(process.env.ARCBANG_WEBROOT || '/var/www/bnbbang', 'status.html');
       try {
         const html = await fs.promises.readFile(pub, 'utf8');
         return send(res, 200, html, {
@@ -664,7 +581,7 @@ async function handle(req, res, u) {
         return send(res, 302, '', { location: '/', 'cache-control': 'no-store' });
       }
     }
-    const file = path.join(process.env.BNBBANG_WEBROOT || '/var/www/bnbbang', 'deploy.html');
+    const file = path.join(process.env.ARCBANG_WEBROOT || '/var/www/bnbbang', 'deploy.html');
     try {
       /* 80 KB 的单文件，整读比流式省掉"发了一半才炸、500 发不出去"那档故障；
          读失败（WEBROOT 配错、文件没部署）必须是 500 不是进程崩。 */
@@ -674,15 +591,9 @@ async function handle(req, res, u) {
       });
     } catch (e) {
       console.error('[deploy-gate] 部署页读不出来：' + (e && e.message));
-      return json(res, 500, { error: '部署页读不出来，核对 BNBBANG_WEBROOT' },
+      return json(res, 500, { error: '部署页读不出来，核对 ARCBANG_WEBROOT' },
         { 'cache-control': 'no-store' });
     }
-  }
-
-  /* ARCBANG（chainId 5042 / 5042002）没有拯救系统（2026-09-17 用户拍板删除）：
-     ArcUniverse 里没有 intervene，签出来的名也没处用，直接 501，免得前端老包或脚本误打。 */
-  if (p === '/craft' && (CHAIN_ID === 5042 || CHAIN_ID === 5042002)) {
-    return json(res, 501, { error: 'ARCBANG 没有造物系统' });
   }
 
   // POST /api/bang {blockHash} —— 唯一会签名的端点
@@ -690,17 +601,9 @@ async function handle(req, res, u) {
     // 上面限流那步已经把体读掉了（流只能读一次），这里复用
     const body = await bodyOf(req, res);
     if (body === null) return;                 // 体过大，413 已经答出去了
-    let hash, refIn = null, minterIn = null;
     const parsedBang = parseJsonObject(body);
     if (parsedBang.error) return json(res, 400, { error: parsedBang.error });
-    {
-      const b = parsedBang.value;
-      hash = b.blockHash;
-      /* 可选的推广留痕字段（specs/share-referral-v1.md §六）。这里只取出来存一下，
-         合不合法由 recordReferral 自己判——v1 下不许因为它影响签名。
-         v2 的 minter 另当别论：它要进摘要，缺了或非法必须 400。 */
-      refIn = b.ref; minterIn = b.minter;
-    }
+    const hash = parsedBang.value.blockHash;
     const minter = minterForSig(parsedBang.value, res);
     if (minter === false) return;
 
@@ -758,218 +661,7 @@ async function handle(req, res, u) {
       card, cardHash, deadline, sig, signer: signer.address, rarity: card.rarity,
       art: PUBLIC_BASE + '/api/art/' + card.blockHash + '.svg?p=1'
     }, { 'cache-control': 'no-store' });
-    /* 留痕排在响应**之后**（setImmediate 彻底让出这一轮）：它无论成败都改不了
-       已经发出去的签名，也不给签名路径添一毫秒延迟。 */
-    setImmediate(() => recordReferral(refIn, minterIn, card.blockHash));
     return;
-  }
-
-  /* ================================================================ BTCBANG（specs/btcbang-v1.md §五）
-     四条路。全部 no-store：确认数、能不能铸、tip 都在变，缓存哪个都是错的
-     （服务端自己那层缓存 —— 磁盘上的哈希表 + 30 秒的 tip —— 已经把上游挡住了）。
-     上游全挂一律 503，**不回退常量**；主网确实没有 → 404；两件事分开报，理由同 /bang。 */
-  const BTC_DOWN = { error: '比特币数据源暂时打不通，请稍后再试' };
-
-  // GET /api/btc/tip —— 当前高度 + 哈希 + 时间；前端首页那张「最新区块」卡靠它自动刷新
-  if (p === '/btc/tip' && req.method === 'GET') {
-    try { return json(res, 200, await btc.tip(), { 'cache-control': 'no-store' }); }
-    catch (e) {
-      console.error('[btc/tip] 上游不通：' + (e && e.message));
-      return json(res, 503, BTC_DOWN, { 'cache-control': 'no-store' });
-    }
-  }
-
-  /* GET /api/btc/block/<高度 | 哈希> —— 取块 + 徽章 + 前导零 + 能不能铸。
-     高度超过 tip → 404 并把 tip 一起给（前端要显示「当前高度」）；哈希不是主链块 → 404。
-     成功就把 hash → {height, time} 登进注册表（btc.js 在取到块时顺手做了）。
-     限流与 /card 同一档、按哈希计：已经算过 card 的哈希不扣（同出图那条路的判据） ——
-     这条路给不出物理参数，闸真正要挡的是「挨个高度扫」，而扫到的每个新宇宙下一步都要打 /card。 */
-  const bm = p.match(/^\/btc\/block\/(\d{1,9}|(?:0x)?[0-9a-fA-F]{64})$/);   // 下面那个 let m 还没声明到，这里另起一个名
-  if (bm && req.method === 'GET') {
-    const tok = bm[1];
-    const byHeight = /^\d+$/.test(tok);
-    let blk, tipH;
-    try {
-      blk = byHeight ? await btc.blockAt(Number(tok)) : await btc.blockByHash(tok);
-      tipH = await btc.tipHeight(false);
-    } catch (e) {
-      console.error('[btc/block] 上游不通：' + (e && e.message));
-      return json(res, 503, BTC_DOWN, { 'cache-control': 'no-store' });
-    }
-    if (!blk) {
-      return json(res, 404, byHeight
-        ? { error: '比特币主网还没有这个高度（当前 tip ' + tipH + '）', tip: tipH }
-        : { error: '这个哈希不是比特币主网上的区块' }, { 'cache-control': 'no-store' });
-    }
-    if (!cardCached(blk.hash) && gate(req, res, blk.hash)) return;
-    return json(res, 200, btcBlockView(blk, tipH), { 'cache-control': 'no-store' });
-  }
-
-  /* POST /api/btc/bang {height | blockHash, minter, ref} —— 比特币宇宙的签名端点。
-     **不信客户端哈希**：给 height 就自己去上游取哈希，给 blockHash 就自己去上游核对
-     它是主链上的块（btc.blockByHash 还会按高度反核一次，孤块过不去）。
-     确认数不够 412、保留块没开闸 403 —— 两种都是「现在不行」，和 400（请求错）分开。
-     响应与 /bang 同形（前端拿去调同一个 bangSigned），多一个 btc 块给界面印徽章。 */
-  if (p === '/btc/bang' && req.method === 'POST') {
-    const body = await bodyOf(req, res);
-    if (body === null) return;
-    const parsedB = parseJsonObject(body);
-    if (parsedB.error) return json(res, 400, { error: parsedB.error });
-    const b = parsedB.value;
-    const minter = minterForSig(b, res);
-    if (minter === false) return;
-
-    const hashIn = b.blockHash, heightIn = b.height;
-    const hasHash = hashIn != null && hashIn !== '';
-    const hasHeight = heightIn != null && heightIn !== '';
-    if (!hasHash && !hasHeight) return json(res, 400, { error: '要给 height 或 blockHash' });
-    if (hasHash && (typeof hashIn !== 'string' || !/^(0x)?[0-9a-fA-F]{64}$/.test(hashIn))) {
-      return json(res, 400, { error: '不是 32 字节十六进制哈希' });
-    }
-    if (hasHash && /^(0x)?0{64}$/i.test(hashIn)) return json(res, 400, { error: '零哈希不是区块' });
-    const heightNum = hasHeight ? Number(heightIn) : null;
-    if (hasHeight && !(Number.isSafeInteger(heightNum) && heightNum >= 0)) {
-      return json(res, 400, { error: 'height 不是非负整数' });
-    }
-
-    let blk, tipH;
-    try {
-      blk = hasHash ? await btc.blockByHash(hashIn) : await btc.blockAt(heightNum);
-      tipH = await btc.tipHeight(false);
-    } catch (e) {
-      console.error('[btc/bang] 上游不通：' + (e && e.message));
-      return json(res, 503, BTC_DOWN, { 'cache-control': 'no-store' });
-    }
-    if (!blk) {
-      // C3：查不到就拒绝，不回退常量
-      return json(res, 404, hasHash
-        ? { error: '这个哈希不是比特币主网上的区块，不给引爆' }
-        : { error: '比特币主网还没有这个高度（当前 tip ' + tipH + '）', tip: tipH }, { 'cache-control': 'no-store' });
-    }
-    if (hasHash && hasHeight && heightNum !== blk.height) {
-      return json(res, 400, { error: 'height 与 blockHash 对不上：这个哈希在高度 ' + blk.height });
-    }
-    // 限流与 /bang 同档：按哈希计，窗口内重复问同一个不再扣（铸造前必然再取一次签名）
-    if (gate(req, res, blk.hash)) return;
-
-    const nowSec = Math.floor(Date.now() / 1000);
-    let mt = btc.mintability(blk.height, tipH, nowSec);
-    if (!mt.mintable && mt.code === 'IMMATURE' && mt.confirmations === mt.confirmationsRequired - 1) {
-      /* 只差一个确认：tip 最多 30 秒旧，那个块很可能已经出了。强刷一次（5 秒内最多一次）
-         再判，别让人对着「差 1 个确认」白等半分钟。上游这时候挂了就按旧 tip 答。 */
-      try { tipH = await btc.tipHeight(true); mt = btc.mintability(blk.height, tipH, nowSec); }
-      catch (e) { /* 沿用旧 tip 的结论 */ }
-    }
-    if (!mt.mintable) {
-      return json(res, mt.code === 'RESERVED' ? 403 : 412, {
-        error: mt.reason, code: mt.code,
-        height: blk.height, hash: blk.hash, tip: tipH,
-        confirmations: mt.confirmations, confirmationsRequired: mt.confirmationsRequired,
-        reserved: mt.reserved, openAt: mt.openAt
-      }, { 'cache-control': 'no-store' });
-    }
-
-    let builtB;
-    try { builtB = await cardForAsync(blk.hash, blk.height); }
-    catch (e) { if (cardPoolBusy(res, e)) return; throw e; }
-    const { card, cardHash } = builtB;
-    const { sig, deadline } = await signer.sign(
-      card.blockHash, blk.height, card.outcome.index, card.rarity.index, cardHash,
-      undefined, minter
-    );
-    json(res, 200, {
-      card, cardHash, deadline, sig, signer: signer.address, rarity: card.rarity,
-      // 图在哪个站取都一样（角标按注册表印）；给请求方自己那个站的地址，免得 <img> 跨站
-      art: (btcSiteOf(req) ? btc.publicBase() : PUBLIC_BASE) + '/api/art/' + card.blockHash + '.svg?p=1',
-      btc: {
-        height: blk.height, hash: blk.hash, time: blk.time,
-        badges: btc.badgesOf(blk.height), zeros: btc.zerosOf(blk.hash)
-      }
-    }, { 'cache-control': 'no-store' });
-    // 推广留痕与 /bang 逐字同规矩：响应之后、只留痕、失败只进日志
-    setImmediate(() => recordReferral(b.ref, b.minter, card.blockHash));
-    return;
-  }
-
-  /* GET /api/btc/stats —— 本站已铸计数（按徽章分桶）+ 点火基金账本（人工维护的 JSON）。
-     minted 从市场索引里数「注册表认得的哈希」：索引旧了就带 stale，前端自己说明。 */
-  /* GET /api/btc/due —— 点火基金应发名单（specs/btcbang-v1.md §2.3，2026-09-09 拍板：2,100 万，推广金库）。
-     只给管理员 IP（同 /admin-check 那道门）：名单里有铸造人地址与金额，不是公开数据。
-     口径：按铸造时间排序的 BTC 宇宙，前 2,100 枚每枚 +210（首铸礼）；徽章只按最高一档发一次
-     （创世 2,100,000 > 减半 1,050,000 > 名块 210,000 > 难度周期首块 21,000），首铸礼可叠加。
-     已在账本 entries 里（按 hash 或 tokenId 记过）的不再列。它只算，不发：发钱的权限在链上 owner 手里。 */
-  if (p === '/btc/due' && req.method === 'GET') {
-    if (!adminAllowed(clientIpOf(req))) return json(res, 403, { error: '只有管理员 IP 能看应发名单' }, { 'cache-control': 'no-store' });
-    const BONUS = { genesis: 2100000, halving: 1050000, famous: 210000, period: 21000 };
-    const FIRST_N = 2100, FIRST_BONUS = 210;
-    const ledger = btc.readLedger();
-    const paidHash = new Set(), paidId = new Set();
-    for (const e of ledger.entries || []) {
-      if (e && typeof e.hash === 'string') paidHash.add(e.hash.toLowerCase());
-      if (e && e.id != null) paidId.add(String(e.id));
-    }
-    let mints = [];
-    try { mints = MI.mintedWhere((hash) => btc.originOf(hash) === 'btc'); } catch (e) { mints = []; }
-    mints.sort((a, b) => (a.at || 0) - (b.at || 0) || (a.id || 0) - (b.id || 0));
-    const due = [];
-    let totalDue = 0;
-    mints.forEach((m, i) => {
-      const order = i + 1;
-      const badges = btc.badgesOf(m.n) || [];
-      let best = null;
-      for (const b of badges) if (BONUS[b.key] && (!best || BONUS[b.key] > BONUS[best])) best = b.key;
-      const parts = [];
-      let amount = 0;
-      if (order <= FIRST_N) { amount += FIRST_BONUS; parts.push('first#' + order); }
-      if (best) { amount += BONUS[best]; parts.push(best + '#' + m.n); }
-      if (!amount) return;
-      const paid = paidHash.has(String(m.hash).toLowerCase()) || (m.id != null && paidId.has(String(m.id)));
-      if (paid) return;
-      totalDue += amount;
-      due.push({ id: m.id, hash: m.hash, height: m.n, minter: m.minter, mintedAt: m.at, order, badges: badges.map((b) => b.key), amount, reason: 'btcbang:' + parts.join('+') });
-    });
-    return json(res, 200, {
-      budget: ledger.budget, granted: ledger.granted, remaining: ledger.budget - ledger.granted,
-      minted: mints.length, due, totalDue,
-      note: '按最高一档徽章发一次，首铸礼可叠加；付完把 {hash,id,to,amount,reason,tx,at} 追加进 .store 的 btc-ledger.json 并累加 granted'
-    }, { 'cache-control': 'no-store' });
-  }
-
-  if (p === '/btc/stats' && req.method === 'GET') {
-    let minted = 0, stale = null;
-    const byBadge = { genesis: 0, halving: 0, period: 0, famous: 0, none: 0 };
-    try {
-      for (const x of MI.mintedWhere((h) => !!btc.originOf(h))) {
-        minted++;
-        const bs = btc.badgesOf(x.n);
-        if (!bs.length) byBadge.none++;
-        for (const bd of bs) byBadge[bd.key] = (byBadge[bd.key] || 0) + 1;
-      }
-      stale = MI.statusOf().stale;
-    } catch (e) {
-      console.error('[btc/stats] 索引读不了：' + (e && e.message));
-      stale = true;
-    }
-    return json(res, 200, { minted, byBadge, stale, ledger: btc.readLedger() }, { 'cache-control': 'no-store' });
-  }
-
-  /* GET /api/referrals/mine?addr=0x… —— 公开：查自己的一级/二级邀请数（个人中心页用）。
-     只回数字，不回被邀请者地址列表（隐私）。 */
-  if (p === '/referrals/mine' && req.method === 'GET') {
-    const addr = String(u.searchParams.get('addr') || '');
-    if (!ADDR_RE.test(addr)) return json(res, 400, { error: 'addr 不是合法地址' }, { 'cache-control': 'no-store' });
-    const c = refCounts()[addr.toLowerCase()] || { l1: 0, l2: 0 };
-    return json(res, 200, { addr: addr.toLowerCase(), l1: c.l1, l2: c.l2 }, { 'cache-control': 'no-store' });
-  }
-
-  /* GET /api/referrals —— 管理员对账：每个地址的 {l1, l2}。IP 白名单（复用 adminAllowed），
-     这是隐私层不是安全层（同 /admin-check 的注释）：发钱的权限在链上 owner 手里。 */
-  if (p === '/referrals' && req.method === 'GET') {
-    if (!adminAllowed(clientIpOf(req))) {
-      return json(res, 403, { error: '只有管理员能看汇总' }, { 'cache-control': 'no-store' });
-    }
-    return json(res, 200, { bindings: Object.keys(refBindings).length, counts: refCounts() },
-      { 'cache-control': 'no-store' });
   }
 
   /* POST /api/intervene {blockHash, tokenId, oldCardHash, deltas | ops, preview?, suggest?}
@@ -981,7 +673,7 @@ async function handle(req, res, u) {
        ops    = [{ key, dir, steps }]   ← 相对档位，服务端自己查生存半径算距离
 
      ops 是为了让浏览器**根本不算这段距离**：一格 = 步长 × 生存半径，
-     而半径表是整套推导里唯一藏得住的东西（specs/economy-v4.md §七）。
+     而半径表是整套推导里唯一藏得住的东西。
      前端自己算就得在站点包里带一份表，等于原样发给每个访客。
 
      返回里的 ops 是**上链用的位移记录**（0x 开头的 hex，5 字节一条：参数下标 + unit×1e9）。
@@ -1002,7 +694,7 @@ async function handle(req, res, u) {
     if (parsedIv.error) return json(res, 400, { error: parsedIv.error });
     const q = parsedIv.value;
 
-    /* 费用只能服务端算（specs/economy-v4.md §3）。请求里带了费用就**明着拒绝**，
+    /* 费用只能服务端算。请求里带了费用就**明着拒绝**，
        不是默默忽略：默默忽略的话，前端作者看到自己算的费用发过去也能通，
        就会以为服务端认这个数，等哪天有人改了那段前端代码，问题才爆出来。 */
     if (q.cost != null || q.costBang != null) {
@@ -1180,98 +872,6 @@ async function handle(req, res, u) {
     }, { 'cache-control': 'no-store' });
   }
 
-    /* POST /api/craft {blockHash, ops | deltas} —— 造物系列（specs/crafted-v1.md）。
-       沙盒里调教出来的宇宙铸进 MirrorCrafted：**基准永远是原生卡**（originHash 派生），
-       ops 记录从原生态出发的全部位移 —— 这样链上只存 originHash + opsHash + cardHash，
-       任何人拿区块哈希和位移记录就能把参数复算出来，不依赖这台服务器的存档。
-       没有 oldCardHash，也就没有嫁接面：/intervene 修过的那个洞在这条路上不存在。
-       费用规则与干预同一套（evaluate 算），分账在合约里：20% 烧、80% 进国库。 */
-    if (p === '/craft' && req.method === 'POST') {
-      const body = await bodyOf(req, res);
-      if (body === null) return;
-      const parsedCraft = parseJsonObject(body);
-      if (parsedCraft.error) return json(res, 400, { error: parsedCraft.error });
-      const q = parsedCraft.value;
-      /* v2 minter 校验放在 501 之前：请求本身不合法就 400，不跟「还没部署」搅在一起。
-         v1 忽略 minter，没配合约时仍然 501，现有自检过的那条路不变。 */
-      const minter = minterForSig(q, res);
-      if (minter === false) return;
-      if (!CRAFTED) {
-        return json(res, 501, { error: '造物合约还没部署（BNBBANG_CRAFTED 没配）' });
-      }
-
-      // 费用只能服务端算 —— 与 /intervene 同一条规矩，同样明着拒
-      if (q.cost != null || q.costBang != null) {
-        return json(res, 400, { error: '费用由服务端算，请求里不许带 cost' });
-      }
-      const hash = q.blockHash;
-      if (typeof hash !== 'string' || !HASH_RE.test(hash)) {
-        return json(res, 400, { error: '不是 32 字节十六进制哈希' });
-      }
-      if (/^0x0{64}$/i.test(hash)) {
-        return json(res, 400, { error: '零哈希不是区块' });
-      }
-      const hasDeltas = q.deltas != null;
-      const hasOps = q.ops != null;
-      if (hasDeltas && hasOps) {
-        return json(res, 400, { error: '绝对值 deltas 与相对档位 ops 只能给一个' });
-      }
-      if (hasDeltas && (typeof q.deltas !== 'object' || Array.isArray(q.deltas)
-        || Object.keys(q.deltas).length > 64)) {
-        return json(res, 400, { error: 'deltas 要是 {参数名: 新值} 的对象' });
-      }
-      if (hasOps && (!Array.isArray(q.ops) || q.ops.length > MAX_OPS)) {
-        return json(res, 400, { error: 'ops 要是 [{key, dir, steps}] 的数组，最多 ' + MAX_OPS + ' 条' });
-      }
-      const empty = (!hasDeltas || !Object.keys(q.deltas).length) && (!hasOps || !q.ops.length);
-      if (empty) {
-        /* 一格没推的宇宙就是原生宇宙 —— 那该走 bangSigned 铸原生系列，
-           花造物的钱铸一张跟原生一模一样的卡，只能是前端出了 bug。 */
-        return json(res, 400, { error: '一格都没推：原生宇宙请走普通铸造，造物必须有位移' });
-      }
-
-      /* 造物摘要里有 originBlock —— 哈希必须真是链上区块。
-         网络故障与假哈希分开报，规矩同 /bang。 */
-      let blk;
-      try {
-        blk = await blockByHash(hash);
-      } catch (e) {
-        console.error('[craft] RPC 不通：' + (e && e.message));
-        return json(res, 503, { error: '链上节点暂时打不通，请稍后再试' });
-      }
-      if (!blk) {
-        return json(res, 400, { error: '这个哈希不是 BNB 链上的区块，造不了物' });
-      }
-
-      const native = cardFor(hash.toLowerCase(), blk.number);
-      let out;
-      try {
-        out = evaluate(native.card, hasDeltas ? q.deltas : null, hasOps ? q.ops : null);
-      } catch (e) {
-        return json(res, 400, { error: e.message, code: e.code || undefined });
-      }
-
-      // 先落盘再签名 —— 顺序的理由见 /intervene 同位置
-      storePut(out.cardHash, out.card);
-
-      const opsHex = out.opsHex;
-      const { sig, deadline } = await signer.signWith((dl) => craftDigest(
-        CHAIN_ID, CRAFTED, hash.toLowerCase(), BigInt(blk.number),
-        opsHashOf(opsHex), out.cardHash,
-        out.card.outcome.index, out.card.rarity.index, BigInt(out.costBang), dl,
-        minter
-      ));
-
-      return json(res, 200, {
-        card: out.card, cardHash: out.cardHash, costBang: out.costBang, deadline, sig,
-        signer: signer.address, rarity: out.card.rarity,
-        originBlock: String(blk.number), crafted: CRAFTED,
-        /* ops 原样给前端留档展示；opsHash 给 mintCrafted 当入参 ——
-           它已经被签名盖死，前端改一个字节链上就 BadSig。 */
-        ops: opsHex, opsHash: opsHashOf(opsHex),
-        art: PUBLIC_BASE + '/api/art/card/' + out.cardHash + '.svg'
-      }, { 'cache-control': 'no-store' });
-    }
 
   // GET /api/card/<hash> —— 幂等查询，不签名
   let m = p.match(/^\/card\/(0x[0-9a-fA-F]{64})$/);
@@ -1302,13 +902,10 @@ async function handle(req, res, u) {
        300 像素左右，驮着 1200 的底图是纯浪费。缓存键必须带这个标志，
        否则两档会互相串。 */
     const thumb = u.searchParams.get('t') === '1';
-    /* 比特币宇宙的角标印 BTC BLOCK #n。origin 必须进键：它是注册表的状态，不是 URL 的参数，
-       不进键的话「谁先来」就决定了这张图长什么样（cardFor 上面那段讲过同一条纪律）。 */
-    const bo = artOriginOf(card.blockHash);
-    const key = 'artc-' + ch + '-v' + DERIVATION_VERSION + '-s' + SHAPE + (thumb ? '-t' : '') + (bo ? '-btc' : '') + '.svg';
+    const key = 'artc-' + ch + '-v' + DERIVATION_VERSION + '-s' + SHAPE + (thumb ? '-t' : '') + '.svg';
     let svg = cacheGet(key);
     // 这里不设 ?p 开关：cardHash 是服务端签出来的，拿得到它的宇宙一定引爆过，必带参数
-    if (!svg) svg = cachePut(key, renderSVG(card.blockHash, card, true, thumb, bo || undefined));
+    if (!svg) svg = cachePut(key, renderSVG(card.blockHash, card, true, thumb));
     const freshCard = u.searchParams.get('v') === DERIVATION_VERSION + '-' + SHAPE;
     return send(res, 200, svg, {
       'content-type': 'image/svg+xml; charset=utf-8',
@@ -1323,9 +920,8 @@ async function handle(req, res, u) {
     const hash = m[1].toLowerCase();
     const withParams = u.searchParams.get('p') === '1';
     const thumb = u.searchParams.get('t') === '1';   // 缩略图档，理由同上
-    const bo = artOriginOf(hash);                     // 比特币宇宙：角标换成 BTC BLOCK #n，键带 -btc（理由见 /art/card/）
     const key = 'art-' + hash + '-' + (withParams ? 'p' : 'n') + '-v' + DERIVATION_VERSION
-      + '-s' + SHAPE + (thumb ? '-t' : '') + (bo ? '-btc' : '') + '.svg';
+      + '-s' + SHAPE + (thumb ? '-t' : '') + '.svg';
     let svg = cacheGet(key);
     if (!svg) {
       /* **出图这条路也能扫全链。** 图本身不是秘密，但「算一个还没算过的宇宙」是：
@@ -1345,7 +941,7 @@ async function handle(req, res, u) {
          把它也拦下来只会让那些格子变成裂图。 */
       if (withParams && !cardCached(hash) && gate(req, res, hash)) return;
       const { card } = cardFor(hash, null);
-      svg = cachePut(key, renderSVG(hash, card, withParams, thumb, bo || undefined));
+      svg = cachePut(key, renderSVG(hash, card, withParams, thumb));
     }
     const freshArt = u.searchParams.get('v') === DERIVATION_VERSION + '-' + SHAPE;
     return send(res, 200, svg, {
@@ -1356,7 +952,7 @@ async function handle(req, res, u) {
   }
 
   /* ================================================================ 分享图（PNG）
-     specs/broadcast-v2.md §2.1。**多数平台不认 SVG**（X 明确不支持，微信也不认），
+。**多数平台不认 SVG**（X 明确不支持，微信也不认），
      所以每条 .svg 都配一条 .png。选型、缓存、并发闸与"绝不 500"的实现都在 png.js。
 
      NFT 的图仍然是 SVG（tokenURI 指的还是 .svg，逐字节可重建）——
@@ -1391,9 +987,8 @@ async function handle(req, res, u) {
     /* 没有这个 cardHash 就是 404，和 .svg 一条口径 —— 这是"调用方给错了"，
        不是"出图失败"。分享链路走的是下面那条按 blockHash 的路，不受影响。 */
     if (!card) return json(res, 404, { error: '没有这个 cardHash 的宇宙' });
-    const bo = artOriginOf(card.blockHash);          // 同 .svg：origin 进键
-    const key = 'artc-' + ch + '-v' + DERIVATION_VERSION + '-s' + SHAPE + (bo ? '-btc' : '') + '.png';
-    const r = await PNG.pngFor(key, () => renderSVG(card.blockHash, card, true, false, bo || undefined));
+    const key = 'artc-' + ch + '-v' + DERIVATION_VERSION + '-s' + SHAPE + '.png';
+    const r = await PNG.pngFor(key, () => renderSVG(card.blockHash, card, true, false));
     return sendPNG(r, u.searchParams.get('v') === DERIVATION_VERSION + '-' + SHAPE);
   }
 
@@ -1418,14 +1013,12 @@ async function handle(req, res, u) {
        但已经算过的宇宙再出图是纯静态内容，拦它只会让正常看图的人莫名其妙 429
        （图是 <img> 拉的，带不上 Authorization 头，只能落到宽松的 IP 档）。 */
     if (withParams && !cardCached(hash) && gate(req, res, hash)) return;
-    /* 比特币宇宙：方卡角标 BTC BLOCK #n、og 右栏 Bitcoin block #n。origin 进键，理由见 .svg 那条 */
-    const bo = artOriginOf(hash);
     const key = 'art-' + hash + '-' + (og ? 'og' + (n ? '-n' + n : '') : (withParams ? 'p' : 'n'))
-      + (w ? '-w' + w : '') + '-v' + DERIVATION_VERSION + '-s' + SHAPE + (bo ? '-btc' : '') + '.png';
+      + (w ? '-w' + w : '') + '-v' + DERIVATION_VERSION + '-s' + SHAPE + '.png';
     const r = await PNG.pngFor(key, () => {
       const card = cardFor(hash, null).card;
-      const svg = renderSVG(hash, card, withParams, false, bo || undefined);
-      return og ? OG.composeOG(svg, { blockNumber: n, card, blockHash: hash, origin: bo ? 'btc' : undefined }) : svg;
+      const svg = renderSVG(hash, card, withParams, false);
+      return og ? OG.composeOG(svg, { blockNumber: n, card, blockHash: hash }) : svg;
     }, { width: w || PNG.SIZE });
     return sendPNG(r, u.searchParams.get('v') === DERIVATION_VERSION + '-' + SHAPE);
   }
@@ -1441,17 +1034,17 @@ async function handle(req, res, u) {
     try {
       chain = await readToken(CONTRACT, BigInt(m[1]));
     } catch (e) {
-      /* universeOf 都 revert 了，说明 BNBBANG_CONTRACT 指的根本不是这个合约 ——
+      /* universeOf 都 revert 了，说明 ARCBANG_CONTRACT 指的根本不是这个合约 ——
          那是我们的配置错，不是链的问题，报 503 会让人一直等节点恢复。 */
       if (e.reverted) {
-        return json(res, 502, { error: '配置的合约地址不认识 universeOf，请核对 BNBBANG_CONTRACT' });
+        return json(res, 502, { error: '配置的合约地址不认识 universeOf，请核对 ARCBANG_CONTRACT' });
       }
       /* 地址上压根没有合约（eth_call 回空数据，不 revert）。同样是配置错，
          但和上面那条是两种毛病，话要分开说：一个是"地址上没东西"，
          一个是"地址上有东西但不是这个合约"。报成 404 的后果见 token.js 里的注释。 */
       if (e.noContract) {
         console.error('[token] 地址上没有合约：' + (e && e.message));
-        return json(res, 502, { error: '配置的合约地址上没有合约，请核对 BNBBANG_CONTRACT 与 chainId' });
+        return json(res, 502, { error: '配置的合约地址上没有合约，请核对 ARCBANG_CONTRACT 与 chainId' });
       }
       /* 与 /bang 同一口径：节点全挂是我们的故障，必须报 503。
          报成 404 的话，一次网络抖动会让市场以为这枚 NFT 被烧了。 */
@@ -1460,75 +1053,13 @@ async function handle(req, res, u) {
     }
     if (!chain) return json(res, 404, { error: '链上没有这枚 NFT' });
     const { meta } = buildMetadata(chain, {
-      cardFor, storeGet, publicBase: PUBLIC_BASE, version: DERIVATION_VERSION + '-' + SHAPE,
-      /* 比特币宇宙：注册表认得、或 (blockHash, blockNumber) 与比特币缓存对得上（规格 §五）。
-         名字变成 Bitcoin Block #n Universe，属性多 Origin / BTC block / Badges。 */
-      btcOf: btc.originOf, btcBadgesOf: btc.badgesOf
+      cardFor, storeGet, publicBase: PUBLIC_BASE, version: DERIVATION_VERSION + '-' + SHAPE
     });
     return json(res, 200, meta, { 'cache-control': 'public, max-age=30' });
-  }
-
-  /* GET /api/crafted-image/<id> —— 造物合约 tokenURI 的 baseURI 指到这里（MirrorCrafted.sol）。
-     和 /api/token/<id> 同一档：每次读链上 cardOf（含 burned），不能当纯函数强缓存。 */
-  m = p.match(/^\/crafted-image\/(\d{1,78})$/);
-  if (m) {
-    if (!/^0x[0-9a-f]{40}$/.test(CRAFTED)) {
-      return json(res, 501, { error: '造物系列未配置（BNBBANG_CRAFTED）' });
-    }
-    let chain;
-    try {
-      chain = await readCrafted(CRAFTED, BigInt(m[1]));
-    } catch (e) {
-      if (e.reverted) {
-        return json(res, 502, { error: '配置的造物合约地址不认识 cardOf，请核对 BNBBANG_CRAFTED' });
-      }
-      if (e.noContract) {
-        console.error('[crafted] 地址上没有合约：' + (e && e.message));
-        return json(res, 502, { error: '配置的造物合约地址上没有合约，请核对 BNBBANG_CRAFTED 与 chainId' });
-      }
-      console.error('[crafted] RPC 不通：' + (e && e.message));
-      return json(res, 503, { error: '链上节点暂时打不通，请稍后再试' });
-    }
-    if (!chain) return json(res, 404, { error: '链上没有这枚造物 NFT' });
-    const { meta } = buildCraftedMetadata(chain, {
-      storeGet, publicBase: PUBLIC_BASE, version: DERIVATION_VERSION + '-' + SHAPE
-    });
-    return json(res, 200, meta, { 'cache-control': 'public, max-age=30' });
-  }
-
-  // GET /api/art/crafted/<id>.svg —— 造物图，叠「销毁 X」（链上 burned，否则按 burnBps 折算）
-  m = p.match(/^\/art\/crafted\/(\d{1,78})\.svg$/);
-  if (m) {
-    if (!/^0x[0-9a-f]{40}$/.test(CRAFTED)) {
-      return json(res, 501, { error: '造物系列未配置（BNBBANG_CRAFTED）' });
-    }
-    let chain;
-    try {
-      chain = await readCrafted(CRAFTED, BigInt(m[1]));
-    } catch (e) {
-      if (e.reverted || e.noContract) {
-        return json(res, 502, { error: '造物合约读不了 cardOf，请核对 BNBBANG_CRAFTED' });
-      }
-      console.error('[crafted-art] RPC 不通：' + (e && e.message));
-      return json(res, 503, { error: '链上节点暂时打不通，请稍后再试' });
-    }
-    if (!chain) return json(res, 404, { error: '链上没有这枚造物 NFT' });
-    const stored = chain.cardHash ? storeGet(chain.cardHash) : null;
-    if (!stored) return json(res, 404, { error: '没有这个 cardHash 的宇宙' });
-    const bo = artOriginOf(stored.blockHash);        // 起源是比特币块的造物：角标同样印 BTC BLOCK
-    const svg = renderCraftedSVG(stored.blockHash, stored, {
-      burned: chain.burned, paid: chain.paid, burnBps: chain.burnBps,
-      origin: bo ? 'btc' : undefined, height: bo ? bo.height : undefined
-    });
-    const fresh = u.searchParams.get('v') === DERIVATION_VERSION + '-' + SHAPE;
-    return send(res, 200, svg, {
-      'content-type': 'image/svg+xml; charset=utf-8',
-      'cache-control': fresh ? 'public, max-age=30' : 'no-cache'
-    });
   }
 
   /* ================================================================ 市场索引
-     specs/market-index-v1.md 第二节的三条。全部 no-store：市场数据实时性优先，
+。全部 no-store：市场数据实时性优先，
      而且 stale 标志本身就是「这份数据有多新」的答案，缓存它等于把答案也缓存了。
 
      三条都**不会抛**：marketindex.js 里的实现最坏返回空集 + stale:true，
@@ -1543,7 +1074,7 @@ async function handle(req, res, u) {
       const out = await MI.listingsPage({
         sort: q.get('sort'), series: q.get('series'), cur: q.get('cur'),
         rarity: q.get('rarity'), outcome: q.get('outcome'), named: q.get('named'),
-        /* 物理筛选（specs/market-physics-filter.md 第二节）：
+        /* 物理筛选：
              dim=3 | 3-5 | frac | int | >3     维度
              const=<键>&min=&max=              卡面上印的常数（c/h/e/G/alpha/alphaInv/alphaGRel）
              sort=const_asc&by=<键>            按某个常数排序
@@ -1584,27 +1115,6 @@ async function handle(req, res, u) {
     }
   }
 
-  /* ================================================================ 推广短码
-     specs/share-referral-v1.md §8。三条，全部 no-store（谁的码是谁的，缓存不得）。
-     整套只是**留痕的别名**：ref 不进签名摘要、不上链，短码挂了顶多是分享链接
-     退回 ?ref=<地址> 的长形式。 */
-
-  // GET /api/refcode?addr=0x… —— 没有就当场生成并落盘（幂等）
-  if (p === '/refcode' && req.method === 'GET') {
-    const r = RC.codeOf(u.searchParams.get('addr'), req);
-    if (r.error) return json(res, r.status, { error: r.error }, NOSTORE);
-    return json(res, 200, {
-      code: r.code, addr: r.addr, created: r.created,
-      /* 认领要签的那句话的模板一起发出去 —— 前端照它拼，差一个空格都验不过，
-         而"签名验不过"这种错在钱包那头看不出任何线索。 */
-      alphabet: RC.ALPHABET, length: RC.LEN,
-      claimMessage: 'BNBBANG refcode <CODE> <UNIX秒>',
-      claimWindowSec: RC.CLAIM_WINDOW_SEC
-    }, NOSTORE);
-  }
-
-  /* POST /api/refcode {addr, code, sig, ts} —— 认领自定义码。**必须验签**。
-     没有这一条的话，任何人都能把别人的短码改到自己名下（短码是拿返利的凭据）。 */
   /* POST /api/subscribe { site, email, lang? } —— 上线预约（server/subscribe.js）。
      同一 IP 每小时 5 次；重复登记回 already:true；不发邮件、不连第三方。 */
   /* POST /api/stall { dump, site, page, appVersion, sentAt } —— 前端看门狗的假死现场。
@@ -1628,44 +1138,9 @@ async function handle(req, res, u) {
     return json(res, r.status, r.body, NOSTORE);
   }
 
-  if (p === '/refcode' && req.method === 'POST') {
-    const rb = await bodyOf(req, res);
-    if (rb === null) return;
-    let b;
-    const parsedRc = parseJsonObject(rb);
-    if (parsedRc.error) return json(res, 400, { error: parsedRc.error }, NOSTORE);
-    const r = RC.claim(parsedRc.value);
-    if (r.error) return json(res, r.status, { error: r.error, reason: r.reason }, NOSTORE);
-    return json(res, 200, { code: r.code, addr: r.addr, replaced: r.replaced }, NOSTORE);
-  }
-
-  /* GET /api/refcode/resolve?code=XXXXXXXX —— 落地页拿 ?ref= 之后问这里。
-     0x 地址原样返回：**已经发出去的地址链接不能失效**（规格 §8.2）。 */
-  if (p === '/refcode/resolve' && req.method === 'GET') {
-    const r = RC.resolve(u.searchParams.get('code'));
-    if (r.error) return json(res, r.status, { error: r.error }, NOSTORE);
-    return json(res, 200, r, NOSTORE);
-  }
-
-  /* GET /api/referrals/me?addr=0x… —— specs/profile-referral-v2.md：
-     短码 + 链上已发放奖励（Granted 求和，60 秒缓存）+ 一级/二级邀请列表。
-     地址不合法 400；其余任何意外一律降级成「空但结构正确」的 200，不 500
-     （照 /market/owned 的先例 —— 个人中心读不到可以少两块数据，但不该看见 500）。
-     granted:null 与 "0" 是两句话：null = 链上读不到，"0" = 链上确实一分没发。 */
-  if (p === '/referrals/me' && req.method === 'GET') {
-    try {
-      const r = await REF.meOf(u.searchParams.get('addr'), req);
-      if (r.error) return json(res, r.status, { error: r.error }, NOSTORE);
-      return json(res, 200, r, NOSTORE);
-    } catch (e) {
-      console.error('[referrals/me]', e);
-      return json(res, 200, { code: null, invitedL1: [], invitedL2: [], granted: null }, NOSTORE);
-    }
-  }
-
   /* ================================================================ 分享落地页
      GET /s/<区块号>（也认 /s/<0x哈希>：造物的起源、老存档拿不到区块号）。
-     第一版是「爬虫拿 og，人拿跳转」（specs/broadcast-v2.md §2.2 方案 A）；现在是一张
+     第一版是「爬虫拿 og，人拿跳转」；现在是一张
      **可索引的真页面**（landing.js）：结局、物理解释、常数表、铸造状态、进模拟器的按钮，
      不再自动跳转，爬虫和人拿同一份。这里只负责"把哈希、card、铸造状态弄到手，弄不到就降级"。
      索引口径（seo.js）：已铸造 / 精选 / 附加名单 → index, follow；其余 noindex, follow，页面照样出。
@@ -1682,36 +1157,19 @@ async function handle(req, res, u) {
     let card = null;
     let mint = { minted: null };
     let height = blockNumber;
-    /* 按 Host 判站（specs/btcbang-v1.md §五）：bang.satloot.com 上的 /s/<n> 是**比特币高度**，
-       哈希走 btc.js 不走 BSC，canonical / og / 按钮的根用 btc 站的；其余 Host 一个字节不变。
-       哈希形式的链接不看 Host：注册表认得就是比特币宇宙（og 图本来就按注册表印），
-       认不得就按原来的写法出页 —— 不能把一个 BNB 哈希标成 Bitcoin block。 */
-    const btcSite = btcSiteOf(req);
-    let btcInfo = null;                                 // {height, time}：这一页是比特币宇宙时才有
-
     try {
       if (!isHash) {
         try {
-          if (btcSite) {
-            const b = await btc.blockAt(blockNumber);
-            if (!b) return send(res, 302, '', { location: '/', 'cache-control': 'no-store' });
-            hash = b.hash;
-            btcInfo = { height: b.height, time: b.time };
-          } else {
-            const b = await blockNumToHash(blockNumber);
-            /* 查不到这个高度 = 链接里的数是编的或者还没出块 → **跳首页，不给错误页**。
-               分享链接落地成一句"没有这个区块"，对收到链接的人毫无意义。 */
-            if (!b) return send(res, 302, '', { location: '/', 'cache-control': 'no-store' });
-            hash = b.hash;
-          }
+          const b = await blockNumToHash(blockNumber);
+          /* 查不到这个高度 = 链接里的数是编的或者还没出块 → **跳首页，不给错误页**。
+             分享链接落地成一句"没有这个区块"，对收到链接的人毫无意义。 */
+          if (!b) return send(res, 302, '', { location: '/', 'cache-control': 'no-store' });
+          hash = b.hash;
         } catch (e) {
           /* RPC 全挂：这是我们的故障，不是链接的错。照样给页面，结局写"还没算"（**不猜结局**），
              按钮照样指向 app.html，前端自己会再查一次。 */
           console.error('[/s] 按高度取块失败（降级成通用文案）：' + (e && e.message));
         }
-      } else {
-        const o = btc.originOf(hash);
-        if (o) btcInfo = { height: o.height, time: o.time };
       }
 
       if (hash) {
@@ -1726,8 +1184,6 @@ async function handle(req, res, u) {
         try { mint = MI.mintStatusOf(hash) || mint; } catch (e) { mint = { minted: null }; }
         // 哈希形式的链接：索引知道高度就拿来印在 og 图上（页面标题仍按哈希写，见 landing.js）
         if (height == null && Number.isSafeInteger(mint.blockNumber)) height = mint.blockNumber;
-        // 比特币宇宙的哈希链接：高度以注册表为准（索引里那份是同一个数，只是可能还没补上）
-        if (height == null && btcInfo) height = btcInfo.height;
       }
     } catch (e) {
       console.error('[/s] 落地页装配失败（降级成通用文案）：' + (e && e.message));
@@ -1736,8 +1192,7 @@ async function handle(req, res, u) {
     const ver = DERIVATION_VERSION + '-' + SHAPE;
     const bang = hash && !isHash ? String(blockNumber) : (hash || String(blockNumber));
     const appUrl = '/app.html?bang=' + encodeURIComponent(bang) + (carry ? '&' + carry : '');
-    /* 站根：btc 站用 btc 站的，其余 Host 仍是 PUBLIC_BASE（一个字节不变） */
-    const base = btcSite ? btc.publicBase() : PUBLIC_BASE;
+    const base = PUBLIC_BASE;
     const canonical = base + '/s/' + token;
     /* og:image 用 1200×630 的变体（右栏印高度，所以带 n）；正文里那张仍是方卡本体。
        拿不到哈希时两张都退站点通用预览图。 */
@@ -1747,24 +1202,10 @@ async function handle(req, res, u) {
     const cardImage = hash ? base + '/api/art/' + hash + '.png?p=1&v=' + ver : ogImage;
     let indexable = false;
     try {
-      /* btc 站的索引集合：已铸 ∪ 内置精选（创世 / 减半 / 名块）；BNB 那两份名单写的是 BNB 高度，不看 */
-      indexable = btcSite ? (mint.minted === true || btc.isCurated(blockNumber))
-        : SEO.inIndexSet(blockNumber, mint.minted === true);
+      indexable = SEO.inIndexSet(blockNumber, mint.minted === true);
     } catch (e) { indexable = false; }
 
     const opts = { blockNumber, hash, card, mint, indexable, appUrl, canonical, ogImage, cardImage, base };
-    /* 比特币宇宙的落地页变体：标题 Bitcoin block #n、徽章、前导零、verified=false 的解释。
-       两种情况走它：btc 站上的数字链接（Host 已经说明这是比特币高度 —— 上游挂了拿不到哈希
-       也照样是比特币块，徽章按高度算，前导零留空）；哈希链接则要注册表认得，不看 Host。 */
-    if ((btcSite && !isHash) || (isHash && btcInfo)) {
-      const bh = btcInfo ? btcInfo.height : blockNumber;
-      opts.origin = 'btc';
-      opts.btc = {
-        height: bh, time: btcInfo ? btcInfo.time : null,
-        badges: btc.badgesOf(bh), zeros: hash ? btc.zerosOf(hash) : null,
-        base: btc.publicBase()
-      };
-    }
     let html;
     try { html = LANDING.landingHTML(opts); }
     catch (e) {
@@ -1772,7 +1213,7 @@ async function handle(req, res, u) {
       try { html = LANDING.landingHTML(Object.assign({}, opts, { card: null, mint: { minted: null } })); }
       catch (e2) {
         /* 连通用文案都渲不出来（landing.js 本身坏了）：最后一道，一行硬编码的页，仍然指向 app.html。 */
-        html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>BNBBANG</title></head>'
+        html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ARCBANG</title></head>'
           + '<body><p><a href="' + SHARE.esc(appUrl) + '">Open in the simulator</a></p></body></html>';
       }
     }
@@ -1794,10 +1235,7 @@ async function handle(req, res, u) {
   if (m && (req.method === 'GET' || req.method === 'HEAD')) {
     let r = null;
     try {
-      /* btc 站：列比特币高度（已铸的比特币宇宙 ∪ 内置精选），根用 btc 站的；其余 Host 原样 */
-      r = btcSiteOf(req)
-        ? SEO.sitemap(btc.publicBase(), m[1] ? Number(m[1]) : null, btcIndexHeights())
-        : SEO.sitemap(PUBLIC_BASE, m[1] ? Number(m[1]) : null);
+      r = SEO.sitemap(PUBLIC_BASE, m[1] ? Number(m[1]) : null);
     }
     catch (e) { console.error('[sitemap-s] 出 sitemap 失败（退空表）：' + (e && e.message)); }
     const xml = r ? r.xml
@@ -1835,7 +1273,7 @@ const NUM2HASH_MAX = 5000;
    这条链接抓到的 og 里没有结局（分享出去最有说服力的那半句就没了）。
    上限还是要有：爬虫大多 10 秒左右就放弃，转圈到它超时等于连通用文案都没有。
    NaN 会让 setTimeout 立刻触发，分享页永远降级。 */
-const BLOCK_LOOKUP_MS = envInt(process.env.BNBBANG_SHARE_RPC_MS, 6000, 500, 30000);
+const BLOCK_LOOKUP_MS = envInt(process.env.ARCBANG_SHARE_RPC_MS, 6000, 500, 30000);
 async function blockNumToHash(n) {
   if (NUM2HASH.has(n)) return NUM2HASH.get(n);
   const pending = NUM2HASH_PENDING.get(n);
@@ -1903,7 +1341,7 @@ function start() {
       json(res, 500, { error: '服务端出错' });
     });
   }).listen(PORT, '127.0.0.1', () => {
-    console.log('BNBBANG api  http://127.0.0.1:' + PORT);
+    console.log('ARCBANG api  http://127.0.0.1:' + PORT);
     console.log('  chainId   ' + CHAIN_ID + '   （' + CHAIN_NAME + '）');
     console.log('  contract  ' + CONTRACT);
     console.log('  signer    ' + signer.address + '   ← 这个地址必须和合约里的 signer 一致');
@@ -1914,7 +1352,7 @@ function start() {
       + (CARDPOOL.size() ? '' : '（已关闭，退回主线程同步算）')
       + '，全站上限 ' + RL.GLOBAL_PER_MIN + '/分钟');
     console.log('  store     ' + STORE_DIR + '   ← 干预记录在这儿，别当缓存删');
-    console.log('  stall     ' + (STALL.mailOn ? '报告落盘 + 邮件 → ' + STALL.mailTo : '卡死报告只落盘，未配邮件（要发信就设 BNBBANG_RESEND_KEY）'));
+    console.log('  stall     ' + (STALL.mailOn ? '报告落盘 + 邮件 → ' + STALL.mailTo : '卡死报告只落盘，未配邮件（要发信就设 ARCBANG_RESEND_KEY）'));
     /* 市场索引后台扫链。**放在 listen 回调里、且不 await** ——
        索引起不起得来与站点能不能服务无关，它自己会重试，
        起不来时市场页走直读降级。绝不能让它拦在 listen 前面。 */

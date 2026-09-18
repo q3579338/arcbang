@@ -1,8 +1,9 @@
 /*
- * 服务端自检 —— 对着 specs/server-side.md 的验收表逐条跑
+ * 服务端自检 —— 对着 的验收表逐条跑
  * 用法：node selftest.js  （不需要服务在跑；需要联网的那两条会自己跳过并说明）
  */
 'use strict';
+require('./env-compat.js');            // 环境变量旧名兼容，排在所有 require 之前
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -14,7 +15,7 @@ const { evaluate, interveneDigest, craftDigest, opsHashOf, applyOps, suggestNext
   encodeOps, decodeOps, applyOpsHex, cardHashOf, cardHashFromCard, quantizeUnit, OPS_SCALE, PARAM_KEYS, CARD_SHAPE: IV_SHAPE } = require('./intervene.js');
 const { Wallet, verifyMessage, getBytes, id: keccakId } = require('ethers');
 
-const B = require(path.join(__dirname, '..', 'engine/bnbhash.js'));
+const B = require(path.join(__dirname, '..', 'engine/archash.js'));
 const P = require(path.join(__dirname, '..', 'engine/params.js'));
 const E = require(path.join(__dirname, '..', 'engine/engine.js'));
 
@@ -68,9 +69,9 @@ for (const h of H) {
 
 console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
 {
-  /* 基线默认 v1：进程外带进来的 BNBBANG_SIG_V2=1 不能把改前向量打红。
+  /* 基线默认 v1：进程外带进来的 ARCBANG_SIG_V2=1 不能把改前向量打红。
      v2 用例在下面同进程内自己设/清。 */
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
 
   const w = new Wallet('0x' + '11'.repeat(32));
   const CA = '0x1111111111111111111111111111111111111111';
@@ -129,7 +130,7 @@ console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
   ok('v1 即使传入 minter 摘要也不变', v1bangWithMinter === dA);
 
   /* ---- 同进程内打开 v2：摘要末尾多一个 address，换地址就变 ---- */
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   const M1 = '0x' + '22'.repeat(20);
   const M2 = '0x' + '33'.repeat(20);
   const v2b = digestOf(97, CA, H[0], 42, 9, 0, cardHash, dl, M1);
@@ -145,27 +146,27 @@ console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
 
   const OH = opsHashOf('0x0100000005');
   const A32 = '0x' + 'aa'.repeat(32), B32 = '0x' + 'bb'.repeat(32);
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
   const v1i = interveneDigest(97, CA, 7n, A32, B32, 9, 0, 123n, dl, OH);
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   const v2i = interveneDigest(97, CA, 7n, A32, B32, 9, 0, 123n, dl, OH, M1);
   const v2i2 = interveneDigest(97, CA, 7n, A32, B32, 9, 0, 123n, dl, OH, M2);
   ok('v2 intervene 摘要与 v1 不同', v2i !== v1i);
   ok('v2 intervene 换 minter 摘要就变', v2i !== v2i2);
 
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
   const v1c = craftDigest(1n, CA, A32, 1n, OH, B32, 9, 0, 1n, dl);
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   const v2c = craftDigest(1n, CA, A32, 1n, OH, B32, 9, 0, 1n, dl, M1);
   const v2c2 = craftDigest(1n, CA, A32, 1n, OH, B32, 9, 0, 1n, dl, M2);
   ok('v2 craft 摘要与 v1 不同', v2c !== v1c);
   ok('v2 craft 换 minter 摘要就变', v2c !== v2c2);
 
   /* 请求体校验：v2 必填合法地址，v1 忽略 */
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
   ok('v1 minterFromBody 忽略缺省', minterFromBody({}).ok === true && minterFromBody({}).minter === null);
   ok('v1 minterFromBody 忽略非法', minterFromBody({ minter: 'zz' }).ok === true);
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   ok('v2 缺 minter 拒', minterFromBody({}).ok === false && /minter/.test(minterFromBody({}).error));
   ok('v2 非法 minter 拒并给人话',
     minterFromBody({ minter: '0xzz' }).ok === false
@@ -178,14 +179,14 @@ console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
     && /零地址/.test(minterFromBody({ minter: '0x' + '00'.repeat(20) }).error));
   ok('v2 非字符串 minter 拒', minterFromBody({ minter: { toString: () => M1 } }).ok === false);
   ok('v2 请求体 sigV2/cardShape 不影响开关（只认 env）',
-    minterFromBody({ sigV2: false, cardShape: 2, BNBBANG_SIG_V2: '0' }).ok === false);
+    minterFromBody({ sigV2: false, cardShape: 2, ARCBANG_SIG_V2: '0' }).ok === false);
   let threwNoMinter = false;
   try { digestOf(97, CA, H[0], 42, 9, 0, cardHash, dl); }
   catch (e) { threwNoMinter = /minter/.test(e.message); }
   ok('v2 组摘要缺 minter 直接抛，不把 null 编成零地址', threwNoMinter);
 
   /* 后面 HTTP 基线按 v1 跑；v2 HTTP 用例自己再设。 */
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
 }
 
 console.log('\n[跨进程] 同一哈希在新进程里出的图必须还是同一张');
@@ -537,16 +538,16 @@ console.log('\n[HTTP] /api/intervene 与按 cardHash 出图');
 /* 直接调 index.js 的 handle()，不起真端口：起端口要挑没被占的口、等监听、再收尾，
    测试会变成看天吃饭。缓存和存档都指到临时目录，免得自检往真的存档里写垃圾。 */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bnbbang-selftest-'));
-process.env.BNBBANG_CONTRACT = '0x1111111111111111111111111111111111111111';
-process.env.BNBBANG_SIGNER_KEY = '0x' + '11'.repeat(32);
-process.env.BNBBANG_CACHE = path.join(TMP, 'cache');
-process.env.BNBBANG_STORE = path.join(TMP, 'store');
+process.env.ARCBANG_CONTRACT = '0x1111111111111111111111111111111111111111';
+process.env.ARCBANG_SIGNER_KEY = '0x' + '11'.repeat(32);
+process.env.ARCBANG_CACHE = path.join(TMP, 'cache');
+process.env.ARCBANG_STORE = path.join(TMP, 'store');
 /* 链身份必须显式。自检自己选测试网，不是服务端缺省偷偷落到 97。 */
-process.env.BNBBANG_CHAIN_ID = process.env.BNBBANG_CHAIN_ID || '97';
-process.env.BNBBANG_RPC = process.env.BNBBANG_RPC || 'https://bsc-testnet-rpc.publicnode.com';
-process.env.BNBBANG_PUBLIC_BASE = process.env.BNBBANG_PUBLIC_BASE || 'https://x.test';
+process.env.ARCBANG_CHAIN_ID = process.env.ARCBANG_CHAIN_ID || '97';
+process.env.ARCBANG_RPC = process.env.ARCBANG_RPC || 'https://bsc-testnet-rpc.publicnode.com';
+process.env.ARCBANG_PUBLIC_BASE = process.env.ARCBANG_PUBLIC_BASE || 'https://x.test';
 /* 金库地址也显式：生产代码不再带测试网默认。 */
-process.env.BNBBANG_REFERRAL_VAULT = process.env.BNBBANG_REFERRAL_VAULT
+process.env.ARCBANG_REFERRAL_VAULT = process.env.ARCBANG_REFERRAL_VAULT
   || '0x052e9c4bc320706e1bdb1bae618256f54b5ae4a5';
 /* /api/token/<id> 是全站唯一读链上状态的端点，自检里不能真去打 RPC：
    测试网上没有这个合约地址，而且测试也不该看网络脸色。所以给 ethCall 挂一个可控的桩。
@@ -608,7 +609,7 @@ function call(method, url, body, headers) {
     ok('缺 CHAIN_ID 启动检查报错',
       chainConfigErrors({ chainId: NaN, rpcs: ['https://bsc-dataseed.binance.org'] }).some((e) => /CHAIN_ID/.test(e)));
     ok('缺 RPC 启动检查报错',
-      chainConfigErrors({ chainId: 56, rpcs: [] }).some((e) => /BNBBANG_RPC/.test(e)));
+      chainConfigErrors({ chainId: 56, rpcs: [] }).some((e) => /ARCBANG_RPC/.test(e)));
     ok('主网配测试网 RPC 启动检查报错',
       chainConfigErrors({ chainId: 56, rpcs: ['https://bsc-testnet-rpc.publicnode.com'] }).some((e) => /测试网地址/.test(e)));
     ok('测试网显式 97 + 自备 RPC 通过',
@@ -630,11 +631,11 @@ function call(method, url, body, headers) {
         publicBase: 'https://bnbbang.com', indexFrom: '42000000',
         referralVault: '0x' + '11'.repeat(20)
       }).length === 0);
-    const savedLog = process.env.BNBBANG_LOG_RPC;
-    process.env.BNBBANG_LOG_RPC = 'http://127.0.0.1:8546';
+    const savedLog = process.env.ARCBANG_LOG_RPC;
+    process.env.ARCBANG_LOG_RPC = 'http://127.0.0.1:8546';
     ok('rpcsForLogs 把 LOG_RPC 放在最前', rpcsForLogs()[0] === 'http://127.0.0.1:8546');
-    if (savedLog === undefined) delete process.env.BNBBANG_LOG_RPC;
-    else process.env.BNBBANG_LOG_RPC = savedLog;
+    if (savedLog === undefined) delete process.env.ARCBANG_LOG_RPC;
+    else process.env.ARCBANG_LOG_RPC = savedLog;
   }
 
   const OLD = IV.baseHash;
@@ -657,18 +658,18 @@ function call(method, url, body, headers) {
   /* 签名必须是合约那套摘要签出来的。这条是整件事的地基：
      摘要错一个字段，链上就只会甩一个 BadSig，从签名本身看不出错在哪。 */
   if (j.sig) {
-    const dg = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, j.cardHash,
+    const dg = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, j.cardHash,
       j.card.outcome.index, j.card.rarity.index, BigInt(j.costBang), j.deadline, opsHashOf(j.ops));
     ok('签名能用合约摘要还原出 signer',
       verifyMessage(getBytes(dg), j.sig).toLowerCase() === String(j.signer).toLowerCase(),
       j.signer);
-    const bad = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 8n, OLD, j.cardHash,
+    const bad = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 8n, OLD, j.cardHash,
       j.card.outcome.index, j.card.rarity.index, BigInt(j.costBang), j.deadline, opsHashOf(j.ops));
     ok('换个 tokenId 就验不过', verifyMessage(getBytes(bad), j.sig).toLowerCase() !== String(j.signer).toLowerCase());
     /* 签的是**服务端发出去的那一段 ops**。改一个字节还能验过的话，调用者就能一手拿着
        合法签名、一手往链上写自己编的位移记录 —— 链上那段字节也就不值得信了。 */
     const flip = j.ops.slice(0, -1) + (j.ops.slice(-1) === '0' ? '1' : '0');
-    const tampered = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, j.cardHash,
+    const tampered = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, j.cardHash,
       j.card.outcome.index, j.card.rarity.index, BigInt(j.costBang), j.deadline, opsHashOf(flip));
     ok('ops 改一个字节就验不过（链上那段位移记录动不了）',
       verifyMessage(getBytes(tampered), j.sig).toLowerCase() !== String(j.signer).toLowerCase());
@@ -676,11 +677,11 @@ function call(method, url, body, headers) {
 
   ok('新 card 落了盘', fs.existsSync(path.join(api.STORE_DIR, 'card-' + String(j.cardHash).toLowerCase() + '.json')));
 
-  console.log('\n[摘要 v2 HTTP] /api/bang /api/craft /intervene 读 minter');
+  console.log('\n[摘要 v2 HTTP] /api/bang /intervene 读 minter');
   {
     const MINTER = '0x' + '22'.repeat(20);
-    const saved = process.env.BNBBANG_SIG_V2;
-    process.env.BNBBANG_SIG_V2 = '1';
+    const saved = process.env.ARCBANG_SIG_V2;
+    process.env.ARCBANG_SIG_V2 = '1';
 
     const bangMiss = await call('POST', '/api/bang', { blockHash: H[0] });
     const bangMissJ = bangMiss.status === 400 ? JSON.parse(bangMiss.body) : {};
@@ -693,13 +694,6 @@ function call(method, url, body, headers) {
     ok('v2 /api/bang 非法 minter → 400 人话',
       bangBad.status === 400 && /十六进制/.test(String(bangBadJ.error)),
       bangBad.status + ' ' + String(bangBad.body).slice(0, 80));
-
-    const craftMiss = await call('POST', '/api/craft',
-      { blockHash: H[0], ops: [{ key: 'alpha', dir: 1, steps: 1 }] });
-    const craftMissJ = craftMiss.status === 400 ? JSON.parse(craftMiss.body) : {};
-    ok('v2 /api/craft 缺 minter → 400 人话（先于 501）',
-      craftMiss.status === 400 && /minter/.test(String(craftMissJ.error)),
-      craftMiss.status + ' ' + String(craftMiss.body).slice(0, 80));
 
     const ivMiss = await call('POST', '/api/intervene',
       { blockHash: H[2], tokenId: 7, oldCardHash: OLD, deltas: DEFAULTS });
@@ -718,29 +712,24 @@ function call(method, url, body, headers) {
     ok('v2 /api/intervene 带合法 minter → 200', ivOk.status === 200,
       ivOk.status === 200 ? '' : String(ivOk.body).slice(0, 120));
     if (ivj.sig) {
-      const dg = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, ivj.cardHash,
+      const dg = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, ivj.cardHash,
         ivj.card.outcome.index, ivj.card.rarity.index, BigInt(ivj.costBang), ivj.deadline,
         opsHashOf(ivj.ops), MINTER);
       ok('v2 干预签名能用含 minter 的摘要还原',
         verifyMessage(getBytes(dg), ivj.sig).toLowerCase() === String(ivj.signer).toLowerCase());
-      const dgOther = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, ivj.cardHash,
+      const dgOther = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, ivj.cardHash,
         ivj.card.outcome.index, ivj.card.rarity.index, BigInt(ivj.costBang), ivj.deadline,
         opsHashOf(ivj.ops), '0x' + '33'.repeat(20));
       ok('v2 换个 minter 就验不过',
         verifyMessage(getBytes(dgOther), ivj.sig).toLowerCase() !== String(ivj.signer).toLowerCase());
     }
 
-    delete process.env.BNBBANG_SIG_V2;
+    delete process.env.ARCBANG_SIG_V2;
     const bangV1 = await call('POST', '/api/bang', { blockHash: H[0] });
     ok('v1 /api/bang 不因缺 minter 拒（错误里没有 minter）',
       bangV1.status !== 400 || !/minter/.test(String(bangV1.body)),
       bangV1.status + ' ' + String(bangV1.body).slice(0, 80));
-    const craftV1 = await call('POST', '/api/craft',
-      { blockHash: H[0], ops: [{ key: 'alpha', dir: 1, steps: 1 }] });
-    ok('v1 /api/craft 缺 minter 仍是 501（没配合约），不是 400',
-      craftV1.status === 501, craftV1.status + '');
-
-    delete process.env.BNBBANG_SIG_V2;
+    delete process.env.ARCBANG_SIG_V2;
     void saved;
   }
 
@@ -910,8 +899,8 @@ function call(method, url, body, headers) {
   ok('干预过 → 图按 cardHash 索引', mIv.meta.image.indexOf('/api/art/card/' + j.cardHash) > 0);
   /* 销毁量必须取链上的 burnedOn，不能取 card 里那个服务端算的报价：
      报价是"要烧多少"，链上那个才是"真烧了多少"，印在 NFT 上的数字得经得起核对。 */
-  ok('干预过 → 印的是链上的真实销毁量', attr(mIv.meta, 'BANG burned') === '1234',
-    String(attr(mIv.meta, 'BANG burned')));
+  ok('干预过 → 印的是链上的真实销毁量', attr(mIv.meta, 'Burned') === '1234',
+    String(attr(mIv.meta, 'Burned')));
   ok('干预过 → 印救活记录', attr(mIv.meta, 'Rescued') === 'yes'
     && attr(mIv.meta, 'Interventions') === 2);
 
@@ -934,7 +923,7 @@ function call(method, url, body, headers) {
     String(attr(noRarity.meta, 'Rarity')));
 
   /* ---------------------------------------------------------------- 名字
-     BangNames（contracts/src/BangNames.sol）—— 烧 BANG 给宇宙命名，
+     BangNames（BangNames）—— 烧 BANG 给宇宙命名，
      BANG 的第二条销毁通路。**它是纯附加的一层**：没配、配错、读不到，
      metadata 的其余部分一个字都不许变。
      这里要盯的还是那句老话：**链上说什么就是什么，读不准的宁可不印** ——
@@ -952,17 +941,50 @@ function call(method, url, body, headers) {
     ok('命名过 → 区块号和 tokenId 照样在属性里',
       attr(named.meta, 'Block') === 123 && attr(named.meta, 'Token ID') === '7',
       attr(named.meta, 'Block') + ' / ' + attr(named.meta, 'Token ID'));
-    ok('命名过 → 描述里说清是持有人烧 BANG 换来的（不是官方给的名字）',
-      /holder burned BANG to name it "first-light"/.test(named.meta.description));
+    ok('命名过 → 描述里说清是持有人取的（不是官方给的名字）',
+      /holder named it "first-light"/.test(named.meta.description));
 
     const unnamed = buildMetadata(Object.assign({}, baseChain, { cardHash: natHash }), deps);
     ok('没命名 → 标题退回 Universe #区块号', unnamed.meta.name === 'Universe #123', unnamed.meta.name);
     /* 不印 "unnamed"：**"没有名字"和"名字读不到"是两回事**，而这里分不出来，
        分不出来就都不说 —— 和 C3 是同一条规矩。 */
     ok('没命名 → 一条 Name 属性都不印', attr(unnamed.meta, 'Name') === undefined);
-    ok('没命名 → 描述里不提命名这件事', !/burned BANG to name/.test(unnamed.meta.description));
+    ok('没命名 → 描述里不提命名这件事', !/ name it /.test(unnamed.meta.description));
 
-    /* 名字来自**另一个合约**，而那个地址由 BNBBANG_NAMES 配置决定 —— 配错就可能
+    /* ---- 品牌与链名：这三样是**要上链 / 被市场存档**的内容，印错一个字就得重部署 ----
+       tokenURI 的描述必须与合约自己那份链上兜底 metadata 一字不差
+       （ArcUniverse.sol 的 tokenURI：'A universe grown from Arc block …'）。
+       卡面水印是 NFT 图本体，写死不读 env（renderSVG 必须是 blockHash 的纯函数）。 */
+    ok('tokenURI 描述写的是 Arc block，整份 metadata 不带 BNB / BNBBANG',
+      /^A universe grown from Arc block 123\./.test(unnamed.meta.description)
+      && JSON.stringify(unnamed.meta).indexOf('BNBBANG') < 0
+      && !/BNB/.test(JSON.stringify(unnamed.meta)),
+      unnamed.meta.description.slice(0, 60));
+    {
+      const svgBrand = renderSVG(H[0], buildCard(H[0], 123).card, true, false);
+      ok('卡面 SVG 的水印是 ARCBANG，且不含 BNBBANG',
+        svgBrand.indexOf('>ARCBANG</text>') > 0 && svgBrand.indexOf('BNBBANG') < 0);
+      const OGB = require('./og.js');
+      const savedB = process.env.ARCBANG_BRAND, savedW = process.env.ARCBANG_CHAIN_WORD,
+            savedP = process.env.ARCBANG_PUBLIC_BASE;
+      delete process.env.ARCBANG_BRAND; delete process.env.ARCBANG_CHAIN_WORD;
+      process.env.ARCBANG_PUBLIC_BASE = 'https://arcbang.xyz';
+      const og0 = OGB.composeOG(svgBrand, { blockNumber: '123', card: buildCard(H[0], 123).card, blockHash: H[0] });
+      ok('分享图不配 env 时也是 ARCBANG / Arc block / arcbang.xyz，不含 BNBBANG',
+        og0.indexOf('>ARCBANG</text>') > 0 && og0.indexOf('Arc block #123') > 0
+        && og0.indexOf('>arcbang.xyz</text>') > 0 && og0.indexOf('BNBBANG') < 0
+        && og0.indexOf('bnbbang.com') < 0);
+      process.env.ARCBANG_BRAND = 'OTHER'; process.env.ARCBANG_CHAIN_WORD = 'Foo';
+      const og1 = OGB.composeOG(svgBrand, { blockNumber: '123', card: buildCard(H[0], 123).card, blockHash: H[0] });
+      ok('分享图的站名 / 链名跟着 env 走（卡面水印不跟 —— 它是 NFT 本体）',
+        og1.indexOf('>OTHER</text>') > 0 && og1.indexOf('Foo block #123') > 0
+        && og1.indexOf('>ARCBANG</text>') > 0);   // 内嵌的那张卡仍写 ARCBANG
+      if (savedB === undefined) delete process.env.ARCBANG_BRAND; else process.env.ARCBANG_BRAND = savedB;
+      if (savedW === undefined) delete process.env.ARCBANG_CHAIN_WORD; else process.env.ARCBANG_CHAIN_WORD = savedW;
+      if (savedP === undefined) delete process.env.ARCBANG_PUBLIC_BASE; else process.env.ARCBANG_PUBLIC_BASE = savedP;
+    }
+
+    /* 名字来自**另一个合约**，而那个地址由 ARCBANG_NAMES 配置决定 —— 配错就可能
        返回任意字节。合约那边已经把规则钉死了，这里独立再验一遍，验不过一律当没名字。
        **绝不"清洗后照印"**：清洗出来的是一个链上不存在的名字。 */
     const junk = [
@@ -1125,10 +1147,6 @@ function call(method, url, body, headers) {
       rc7 && rc7.burned === null && rc7.burnBps === 2000n, rc7 && String(rc7.burned));
     ethCallStub = savedStub;
 
-    const noCraft = await call('GET', '/api/crafted-image/1');
-    ok('没配造物合约 → /api/crafted-image 501', noCraft.status === 501, noCraft.status + '');
-    const noArt = await call('GET', '/api/art/crafted/1.svg');
-    ok('没配造物合约 → /api/art/crafted 501', noArt.status === 501, noArt.status + '');
   }
 
   console.log('\n[K] card 缓存不能把 blockNumber 抹掉');
@@ -1169,7 +1187,7 @@ function call(method, url, body, headers) {
     /* 换一份干净的限流器实例，额度调小便于测边界。
        require 缓存会让别的用例共用同一份计数，所以先删缓存。 */
     delete require.cache[require.resolve('./ratelimit.js')];
-    process.env.BNBBANG_ANON_LIMIT = '3';
+    process.env.ARCBANG_ANON_LIMIT = '3';
     const RL = require('./ratelimit.js');
     const req = ip => ({ headers: { 'x-forwarded-for': '10.0.0.1, ' + ip }, socket: {} });
     const h1 = '0x' + '11'.repeat(32), h2 = '0x' + '22'.repeat(32),
@@ -1214,7 +1232,7 @@ function call(method, url, body, headers) {
     ok('::ffff: 前缀剥掉再比',
       RL.ipOf({ headers: { 'x-real-ip': '::ffff:203.0.113.9' }, socket: {} }) === '203.0.113.9');
 
-    delete process.env.BNBBANG_ANON_LIMIT;
+    delete process.env.ARCBANG_ANON_LIMIT;
     delete require.cache[require.resolve('./ratelimit.js')];
   }
 
@@ -1279,7 +1297,7 @@ function call(method, url, body, headers) {
        各用例用自己的 IP 分桶，免得互相吃额度。 */
     const ipOf = (n) => ({ 'x-forwarded-for': '10.9.0.' + n });
     const rem = (r) => Number(r.hdr['x-ratelimit-remaining']);
-    /* 额度上限从响应头读，不写死 30 —— 环境里设了 BNBBANG_ANON_LIMIT 的话，
+    /* 额度上限从响应头读，不写死 30 —— 环境里设了 ARCBANG_ANON_LIMIT 的话，
        写死的期望值会让这些用例莫名其妙地红，而红的原因和被测的行为无关。 */
     const lim = (r) => Number(r.hdr['x-ratelimit-limit']);
     const OUT_EN = require('./art.js').OUTCOME_EN;
@@ -1373,15 +1391,15 @@ function call(method, url, body, headers) {
     const hOrd = B.keccak256('cache-order-dep');
     api.cardFor(hOrd, 125988327);                        // 先走一遍"铸造"：知道真实高度
     const artA = await call('GET', '/api/art/' + hOrd + '.svg?p=1');
-    for (const f of fs.readdirSync(process.env.BNBBANG_CACHE)) {
-      fs.unlinkSync(path.join(process.env.BNBBANG_CACHE, f));
+    for (const f of fs.readdirSync(process.env.ARCBANG_CACHE)) {
+      fs.unlinkSync(path.join(process.env.ARCBANG_CACHE, f));
     }
     const artB = await call('GET', '/api/art/' + hOrd + '.svg?p=1');   // 换成"先出图"的顺序
     ok('出图与请求顺序无关（没进键的入参就不许进内容）',
       artA.status === 200 && sha(artA.body) === sha(artB.body),
       sha(artA.body).slice(0, 12) + ' vs ' + sha(artB.body).slice(0, 12));
     ok('缓存里存的是规范形态（blockNumber 一律 null）',
-      JSON.parse(fs.readFileSync(path.join(process.env.BNBBANG_CACHE,
+      JSON.parse(fs.readFileSync(path.join(process.env.ARCBANG_CACHE,
         'card-' + hOrd.toLowerCase() + '-v' + DERIVATION_VERSION + '-s' + api.SHAPE + '.json'),
         'utf8')).card.blockNumber === null);
     ok('但调用方给了高度就以它为准（前端 BigInt(null) 会抛，这条不能退）',
@@ -1393,7 +1411,7 @@ function call(method, url, body, headers) {
        之后**每一次**问这个哈希都是 500，直到有人手动去删。 */
     const hTorn = B.keccak256('cache-torn');
     const first = await call('GET', '/api/card/' + hTorn);
-    const cfile = path.join(process.env.BNBBANG_CACHE,
+    const cfile = path.join(process.env.ARCBANG_CACHE,
       'card-' + hTorn.toLowerCase() + '-v' + DERIVATION_VERSION + '-s' + api.SHAPE + '.json');
     const good = fs.readFileSync(cfile, 'utf8');
     fs.writeFileSync(cfile, good.slice(0, Math.floor(good.length / 2)));
@@ -1406,7 +1424,7 @@ function call(method, url, body, headers) {
     /* 写盘走临时文件 + rename：被 kill 时要么是旧的完整内容、要么是新的完整内容，
        不会在真路径上留下半截。顺带确认临时文件没有漏在缓存目录里。 */
     ok('缓存目录里没有漏下的临时文件',
-      fs.readdirSync(process.env.BNBBANG_CACHE).filter(f => /\.tmp$/.test(f)).length === 0);
+      fs.readdirSync(process.env.ARCBANG_CACHE).filter(f => /\.tmp$/.test(f)).length === 0);
 
     /* 同一个哈希同时来一堆请求：结果必须一致、不能有人拿到 500。
        （单进程里 writeFileSync 不会被别的 JS 打断，这条测的是整条路的一致性） */
@@ -1446,7 +1464,7 @@ function call(method, url, body, headers) {
     ethCallStub = () => '0x';
     const noCode = await call('GET', '/api/token/5');
     ok('合约地址上没有合约 → 502 说配置不对，不是 404「链上没有这枚 NFT」',
-      noCode.status === 502 && /BNBBANG_CONTRACT/.test(noCode.body),
+      noCode.status === 502 && /ARCBANG_CONTRACT/.test(noCode.body),
       noCode.status + ' ' + noCode.body.slice(0, 70));
 
     // 2. 地址上有合约，但不认识 universeOf（revert）
@@ -1470,11 +1488,11 @@ function call(method, url, body, headers) {
 
   console.log('\n[广播 PNG] 分享图：出图、缓存、并发闸、依赖缺失退通用图');
   {
-    /* specs/broadcast-v2.md §2.1。多数平台不认 SVG（X 明确不支持，微信也不认），
+    /*。多数平台不认 SVG（X 明确不支持，微信也不认），
        所以每条 .svg 都配一条 .png。这一节盯死四件事：
        出的是真 PNG、第二次走缓存、同一张图并发只渲一次、依赖没了也**绝不 500**。 */
     const PNG = require('./png.js');
-    const PNGDIR = path.join(process.env.BNBBANG_STORE, 'png');
+    const PNGDIR = path.join(process.env.ARCBANG_STORE, 'png');
     const isPNG = (b) => Buffer.isBuffer(b) && b.length > 8
       && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG';
     const keyOf = (h, p) => 'art-' + h.toLowerCase() + '-' + (p ? 'p' : 'n')
@@ -1563,9 +1581,9 @@ function call(method, url, body, headers) {
       g2.status === 200 && g2.hdr['x-ratelimit-remaining'] === undefined,
       'remaining 头=' + g2.hdr['x-ratelimit-remaining']);
 
-    /* 审查 #19：BNBBANG_PNG_CONCURRENCY 配错（非数字）时 Number() 是 NaN，
+    /* 审查 #19：ARCBANG_PNG_CONCURRENCY 配错（非数字）时 Number() 是 NaN，
        running < NaN 恒 false —— 一个名额都发不出去，所有请求进 waiters 永远等。 */
-    ok('BNBBANG_PNG_CONCURRENCY 非数字/0/负数不锁死信号量（NaN→2、0→1、"4"→4）；Infinity/过大夹到 8',
+    ok('ARCBANG_PNG_CONCURRENCY 非数字/0/负数不锁死信号量（NaN→2、0→1、"4"→4）；Infinity/过大夹到 8',
       PNG._renderMaxOf('abc') === 2 && PNG._renderMaxOf(undefined) === 2
       && PNG._renderMaxOf('') === 2 && PNG._renderMaxOf('0') === 1
       && PNG._renderMaxOf('-3') === 1 && PNG._renderMaxOf('4') === 4
@@ -1574,7 +1592,7 @@ function call(method, url, body, headers) {
 
   console.log('\n[广播 落地页] /s/<区块号>：真页面，爬虫与人拿同一份');
   {
-    /* specs/broadcast-v2.md §2.2 方案 A 的演进版。app.html 是 SPA，静态 HTML 里的 og 是死的，
+    /*。app.html 是 SPA，静态 HTML 里的 og 是死的，
        所以服务端单开这条路：真实 og + 真页面（不再自动跳转，见 landing.js）。 */
     const { OUTCOME_EN } = require('./art.js');
     const savedBBN = chainMod.blockByNumber;
@@ -1649,140 +1667,13 @@ function call(method, url, body, headers) {
     chainMod.blockByNumber = savedBBN;
   }
 
-  console.log('\n[广播 短码] 8 位推广短码：一地址一码，认领必须验签');
-  {
-    /* specs/share-referral-v1.md §8。要害是**认领必须验签** ——
-       短码是拿返利的凭据，没有签名的话谁都能把别人的码改到自己名下。 */
-    const RC = require('./refcode.js');
-    const CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/;
-    const w = new Wallet('0x' + '22'.repeat(32));
-    const other = new Wallet('0x' + '33'.repeat(32));
-    const addr = w.address.toLowerCase();
-
-    const g1 = await call('GET', '/api/refcode?addr=' + w.address);
-    const j1 = JSON.parse(g1.body);
-    ok('GET /api/refcode 当场生成一个码：8 位、字符集正确（去掉了 O/0/I/1）',
-      g1.status === 200 && CODE_RE.test(j1.code), j1.code);
-    /* 第一次问用的是 EIP-55 校验和形态（w.address 就是混合大小写），
-       这次用全小写 —— 同一个地址的两种写法必须拿到同一个码，不然
-       钱包给的是校验和形态、我们自己存的是小写，一个地址会占两个码。 */
-    const g2 = await call('GET', '/api/refcode?addr=' + w.address.toLowerCase());
-    ok('同一个地址再问还是同一个码（幂等，大小写不影响）',
-      JSON.parse(g2.body).code === j1.code, j1.code);
-    ok('地址不合法报 400，不生成', (await call('GET', '/api/refcode?addr=0xdead')).status === 400);
-    const codes = new Set();
-    for (let i = 0; i < 200; i++) codes.add(RC.randomCode());
-    ok('随机码 200 个各不相同且全在字符集内', codes.size === 200
-      && [...codes].every(c => CODE_RE.test(c)));
-
-    const r1 = await call('GET', '/api/refcode/resolve?code=' + j1.code);
-    ok('resolve 短码 → 地址', r1.status === 200 && JSON.parse(r1.body).addr === addr, addr);
-    const r2 = await call('GET', '/api/refcode/resolve?code=' + w.address);
-    ok('resolve 也认 0x 地址（已经发出去的地址链接不能失效）',
-      r2.status === 200 && JSON.parse(r2.body).addr === addr && JSON.parse(r2.body).direct === true);
-    ok('不存在的短码 → 404',
-      (await call('GET', '/api/refcode/resolve?code=ZZZZZZZZ')).status === 404);
-
-    // ---- 认领：签名对的那一次
-    const CODE = 'K7M2X9QP';
-    const ts = Math.floor(Date.now() / 1000);
-    const sig = await w.signMessage('BNBBANG refcode ' + CODE + ' ' + ts);
-    const c1 = await call('POST', '/api/refcode', { addr: w.address, code: CODE, sig, ts });
-    ok('验签通过 → 认领成功', c1.status === 200 && JSON.parse(c1.body).code === CODE,
-      c1.status + ' ' + String(c1.body).slice(0, 80));
-    ok('一地址一码：换码后旧码立刻 404',
-      (await call('GET', '/api/refcode/resolve?code=' + j1.code)).status === 404, j1.code + ' → 404');
-    ok('新码 resolve 得到同一个地址',
-      JSON.parse((await call('GET', '/api/refcode/resolve?code=' + CODE)).body).addr === addr);
-    ok('重复认领同一个码是幂等的，不是冲突',
-      (await call('POST', '/api/refcode', { addr: w.address, code: CODE, sig, ts })).status === 200);
-
-    // ---- 认领：签名不对的那一次（**这条是要害**）
-    const evilTs = Math.floor(Date.now() / 1000);
-    const evilSig = await other.signMessage('BNBBANG refcode QRSTUVWX ' + evilTs);
-    const c2 = await call('POST', '/api/refcode',
-      { addr: w.address, code: 'QRSTUVWX', sig: evilSig, ts: evilTs });
-    ok('别人签的名改不了我的码 → 401', c2.status === 401 && /签名不是这个地址签的/.test(String(c2.body)),
-      c2.status + ' ' + String(c2.body).slice(0, 60));
-    ok('那个码没被写进去（拒绝要是真拒绝）',
-      (await call('GET', '/api/refcode/resolve?code=QRSTUVWX')).status === 404);
-    ok('压根不带签名 → 400',
-      (await call('POST', '/api/refcode', { addr: w.address, code: 'QRSTUVWX', ts: evilTs })).status === 400);
-    const staleTs = Math.floor(Date.now() / 1000) - (RC.CLAIM_WINDOW_SEC + 60);
-    const staleSig = await w.signMessage('BNBBANG refcode QRSTUVWX ' + staleTs);
-    const c3 = await call('POST', '/api/refcode',
-      { addr: w.address, code: 'QRSTUVWX', sig: staleSig, ts: staleTs });
-    ok('过期的签名 → 400（捡到一份旧签名也用不了）',
-      c3.status === 400 && JSON.parse(c3.body).reason === 'expired', c3.status + '');
-    const tsB = Math.floor(Date.now() / 1000);
-    const sigB = await w.signMessage('BNBBANG refcode QRSTUVWX ' + tsB);
-    ok('改了 code 之后原签名就验不过（签的是这一句，不是随便哪一句）',
-      (await call('POST', '/api/refcode',
-        { addr: w.address, code: 'QRSTUVWY', sig: sigB, ts: tsB })).status === 401);
-
-    // ---- 保留词、非法字符、长度、被占用
-    const tsR = Math.floor(Date.now() / 1000);
-    const mk = async (code) => call('POST', '/api/refcode', {
-      addr: w.address, code, ts: tsR, sig: await w.signMessage('BNBBANG refcode ' + code + ' ' + tsR)
-    });
-    const res1 = await mk('APPX2345');
-    ok('保留词开头的码拒掉（撞路由的不给用）',
-      res1.status === 400 && JSON.parse(res1.body).reason === 'reserved', String(res1.body).slice(0, 70));
-    const res2 = await mk('WWWX2345');
-    ok('www 开头同样拒', res2.status === 400 && JSON.parse(res2.body).reason === 'reserved');
-    const res3 = await mk('K7M2X9Q0');
-    ok('字符集外的字符拒（0 和 O 就是为此去掉的）',
-      res3.status === 400 && JSON.parse(res3.body).reason === 'charset');
-    const res4 = await mk('K7M2X9Q');
-    ok('长度不是 8 位就拒', res4.status === 400 && JSON.parse(res4.body).reason === 'length');
-    const tsO = Math.floor(Date.now() / 1000);
-    const sigO = await other.signMessage('BNBBANG refcode ' + CODE + ' ' + tsO);
-    const res5 = await call('POST', '/api/refcode', { addr: other.address, code: CODE, sig: sigO, ts: tsO });
-    ok('别人已经占了的码 → 409（签名对也不给）',
-      res5.status === 409 && JSON.parse(res5.body).reason === 'taken', res5.status + '');
-
-    // ---- 落盘：原子写、没有半截文件、重启（重新读盘）之后还认得
-    const rf = path.join(process.env.BNBBANG_STORE, 'refcodes.json');
-    ok('映射表落在 .store/refcodes.json 且是完整 JSON', fs.existsSync(rf)
-      && JSON.parse(fs.readFileSync(rf, 'utf8')).codes[CODE].addr === addr);
-    ok('.store 里没有漏下的临时文件（原子写：先写 tmp 再 rename）',
-      fs.readdirSync(process.env.BNBBANG_STORE).filter(f => /\.tmp$/.test(f)).length === 0);
-    const reloaded = RC._reload();
-    ok('重新读盘之后短码还在（进程重启不掉码）',
-      reloaded.codes[CODE] && reloaded.byAddr[addr] === CODE);
-
-    /* ---- 审查 #20：生成闸的额度在 persist **成功后**才扣。写盘 503 的那次不吃额度 ——
-       磁盘抖一阵，用户一个码没拿到、一小时的额度先烧光，那是把服务端的问题记在用户头上。
-       手法：用一个普通文件占住 store 目录名 → persist 的 mkdirSync 必炸；
-       连打 30 次（默认闸正好 30/小时）全 503，恢复磁盘后同一个 IP 仍能生成。 */
-    {
-      const savedStore = process.env.BNBBANG_STORE;
-      const badStore = path.join(TMP, 'store-as-file');
-      fs.writeFileSync(badStore, 'x');
-      process.env.BNBBANG_STORE = badStore;
-      const REQ = { headers: { 'x-forwarded-for': '198.51.100.77' } };
-      const genAddr = (i) => '0x' + String(i).padStart(40, '0');
-      let all503 = true;
-      for (let i = 1; i <= 30; i++) {
-        const r = RC.codeOf(genAddr(i), REQ);
-        if (!r || r.status !== 503) { all503 = false; break; }
-      }
-      process.env.BNBBANG_STORE = savedStore;
-      ok('写盘失败 → 503（码不报出去）', all503);
-      const afterFail = RC.codeOf('0x' + 'a7'.repeat(20), REQ);
-      ok('30 次写盘失败没吃掉生成额度：磁盘恢复后同 IP 仍能生成（不是 429）',
-        afterFail && afterFail.code && CODE_RE.test(afterFail.code),
-        JSON.stringify(afterFail).slice(0, 80));
-    }
-  }
-
   console.log('\n[RPC 中继] POST /api/rpc（server/rpcrelay.js）');
   {
     const RELAY = require('./rpcrelay.js');
     const CH = require('./chain.js');
     const OK_TO = '0x' + '33'.repeat(20);
-    const savedTo = process.env.BNBBANG_RELAY_TO;
-    process.env.BNBBANG_RELAY_TO = OK_TO;
+    const savedTo = process.env.ARCBANG_RELAY_TO;
+    process.env.ARCBANG_RELAY_TO = OK_TO;
     RELAY._reset();
     const savedFetch = global.fetch;
     let seen = [];                      // 每次上游请求：{ url, payload }
@@ -1857,7 +1748,7 @@ function call(method, url, body, headers) {
       const many = await call('POST', '/api/rpc', Array.from({ length: RELAY.MAX_BATCH + 1 }, (_, i) => ({ jsonrpc: '2.0', id: i, method: 'eth_blockNumber', params: [] })));
       ok('批量超过 ' + RELAY.MAX_BATCH + ' 条 → 400', many.status === 400, String(many.status));
       // 限流：按 IP、按条计
-      RELAY._reset(); process.env.BNBBANG_RELAY_TO = OK_TO;
+      RELAY._reset(); process.env.ARCBANG_RELAY_TO = OK_TO;
       ok('限流：额度内放行', RELAY.take('9.9.9.9', RELAY.PER_MIN).ok === true);
       ok('限流：超一条就拒', RELAY.take('9.9.9.9', 1).ok === false);
       ok('限流：别的 IP 不受影响', RELAY.take('9.9.9.8', 1).ok === true);
@@ -1865,7 +1756,7 @@ function call(method, url, body, headers) {
       ok('限流命中 → 429 + retry-after', lim.status === 429 && lim.hdr['retry-after'], String(lim.status));
     } finally {
       global.fetch = savedFetch;
-      if (savedTo === undefined) delete process.env.BNBBANG_RELAY_TO; else process.env.BNBBANG_RELAY_TO = savedTo;
+      if (savedTo === undefined) delete process.env.ARCBANG_RELAY_TO; else process.env.ARCBANG_RELAY_TO = savedTo;
       RELAY._reset();
     }
   }
@@ -1875,12 +1766,12 @@ function call(method, url, body, headers) {
     const vm = require('vm');
     const readWeb = (f) => fs.readFileSync(path.join(__dirname, '..', 'web', f), 'utf8');
 
-    /* ---- bnb-chain.js：freeStatus 三态（新合约 / 旧合约 revert / 网络失败）+ 模拟总检。
+    /* ---- arc-chain.js：freeStatus 三态（新合约 / 旧合约 revert / 网络失败）+ 模拟总检。
        在 vm 沙盒里加载**真文件**，fetch 换成可控桩 —— 测的是发布的那份代码，不是复述。 */
     {
       const sb = {
         MirrorKeccak: { keccak256: B.keccak256 },
-        BNBBANG_CONFIG: {
+        ARCBANG_CONFIG: {
           contract: '0x' + '11'.repeat(20),
           rpc: ['http://rpc-stub.invalid'],
           chain: { id: 97, name: 'BSC 测试网', nameEn: 'BSC Testnet', explorer: 'https://x.invalid', currency: 'tBNB', isTestnet: true }
@@ -1892,7 +1783,7 @@ function call(method, url, body, headers) {
       sb.fetch = (...a) => fetchImpl(...a);
       sb.window = sb;
       vm.createContext(sb);
-      vm.runInContext(readWeb('bnb-chain.js'), sb, { filename: 'bnb-chain.js' });
+      vm.runInContext(readWeb('arc-chain.js'), sb, { filename: 'arc-chain.js' });
       const MC = sb.MirrorChain;
       const ADDR = '0x' + '22'.repeat(20);
       const w32 = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
@@ -1983,7 +1874,7 @@ function call(method, url, body, headers) {
         navigator: { userAgent: 'iPhone' },
         location: { href: 'https://bnbbang.com/app.html?bang=8642956&ref=K7M2X9QP' },
         setTimeout: () => null,                        // 掐掉 300/1200ms 的自动重扫，测试手动 rescan
-        BNBBANG_CONFIG: { chain: { id: 56 } },
+        ARCBANG_CONFIG: { chain: { id: 56 } },
         BinanceChain: {
           request: (args) => { seenSign.push(args); return Promise.resolve('0x' + '00'.repeat(65)); },
           switchNetwork: () => Promise.resolve()
@@ -2021,7 +1912,7 @@ function call(method, url, body, headers) {
     /* ---- DOM 绑死的流程（bnb-ui / intervene）桩不进来，用**源码不变量**把关：
        改回老写法（活指针、无守卫、无刷新）这些会当场红。 */
     {
-      const src = readWeb('bnb-ui.js');
+      const src = readWeb('arc-ui.js');
       ok('铸造签名按 hash0 要（活指针 S.hash 不再进 API.bang）',
         src.indexOf('API.bang(hash0') >= 0 && src.indexOf('API.bang(S.hash') < 0);
       ok('铸造有 blockHash === hash0 硬校验（intervene.js 拯救路径的同款）',
@@ -2044,7 +1935,11 @@ function call(method, url, body, headers) {
         && src.indexOf("root.ethereum.on('accountsChanged'") < 0);
       ok('免费次数行是「已用 X / Y 次免费」的语义', src.indexOf('已用 {0} / {1} 次免费') >= 0
         && src.indexOf('免费次数：{0} / {1}') < 0);
-      ok('BANG 数额不再借 fmtBNB（走 bangAmt）', src.indexOf('bangAmt(W.reward)') >= 0);
+      /* ARCBANG 没有代币：面板里一个 BANG 数额都不许出现，也不许去问合约的 rewardPerMint
+         （ArcUniverse 上没有这个方法，读了必 revert）。 */
+      ok('铸造按钮只标价、不提代币奖励', src.indexOf('rewardPerMint') < 0
+        && src.indexOf('bangAmt(') < 0
+        && src.indexOf("TX('{0} {1} 铸造', C.fmtBNB(W.price), chainCur())") >= 0);
 
       const srcI = readWeb('intervene.js');
       ok('报价失败不永久钉死（记时间戳冷却重试，不写 quote=null）',
@@ -2067,168 +1962,6 @@ function call(method, url, body, headers) {
   } catch (e) {
     console.log('  - 跳过：' + e.message);
   }
-  console.log('\n[R] 邀请奖励 + 邀请列表（specs/profile-referral-v2.md）');
-  {
-    const REF = require('./referral.js');
-
-    /* 起扫高度：审查 #1 之后没配 BNBBANG_INDEX_FROM 就不扫、granted 一律 null
-       （不完整扫描不能当链上事实）。这一节的归类/求和用例先把它配上；
-       末尾专门测「没配 → null」，测完恢复原状。 */
-    const savedIndexFrom = process.env.BNBBANG_INDEX_FROM;
-    process.env.BNBBANG_INDEX_FROM = '126355000';
-
-    // ---- 地址校验
-    ok('不带 addr → 400', (await call('GET', '/api/referrals/me')).status === 400);
-    ok('addr 不合法 → 400', (await call('GET', '/api/referrals/me?addr=0xzz')).status === 400);
-
-    /* ---- 桩链。归类/截断的用例不该看网络脸色，把链高与抓日志都换成秒回的假货。
-       **属性替换，不解构** —— referral.js 内部走 module.exports.xxx 调它们，
-       换模块对象上的属性就真换到了（index.js 顶部 chainMod 那段注释的同一个道理）。 */
-    const savedLatest = REF._latestBlock;
-    const savedFetch = REF._fetchGrantedLogs;
-    REF._resetGrantedCacheForTest();
-    REF._latestBlock = async () => 126360000;
-    REF._fetchGrantedLogs = async () => [];
-
-    // ---- 一级/二级归类 + 坏行跳过 + 时间排序
-    const RFILE = path.join(process.env.BNBBANG_STORE, 'referrals.jsonl');
-    const A = '0x' + 'aa'.repeat(20);
-    const M1 = '0x' + 'b1'.repeat(20);    // A 的一级（旧）
-    const M2 = '0x' + 'b2'.repeat(20);    // A 的一级（新）
-    const X1 = '0x' + 'c1'.repeat(20);    // 经 M1 来的 → A 的二级
-    const STR = '0x' + 'dd'.repeat(20);   // 无关第三方（作为 ref）
-    const SM = '0x' + 'de'.repeat(20);    // 无关第三方的 minter
-    const BADM = '0x' + 'ef'.repeat(20);  // 坏 JSON 行里的 minter（本该是 A 的一级，被跳过才对）
-    fs.writeFileSync(RFILE, [
-      JSON.stringify({ ref: A, minter: M1, hash: H[0], at: '2026-08-20T00:00:00.000Z' }),
-      '{"ref":"' + A + '","minter":"' + BADM + '","at":"2026-08-22T00:00:00.000Z"',   // 缺右花括号
-      JSON.stringify({ ref: A, minter: M2, hash: H[0], at: '2026-08-21T00:00:00.000Z' }),
-      JSON.stringify({ ref: M1, minter: X1, hash: H[0], at: '2026-08-21T01:00:00.000Z' }),
-      JSON.stringify({ ref: STR, minter: SM, hash: H[0], at: '2026-08-21T02:00:00.000Z' })
-    ].join('\n') + '\n');
-    const r1 = await call('GET', '/api/referrals/me?addr=' + A);
-    const j1 = r1.status === 200 ? JSON.parse(r1.body) : {};
-    ok('接口 200 且 code/invitedL1/invitedL2/granted 四样齐全',
-      r1.status === 200 && 'code' in j1 && Array.isArray(j1.invitedL1)
-      && Array.isArray(j1.invitedL2) && 'granted' in j1,
-      r1.status + ' ' + String(r1.body).slice(0, 80));
-    ok('一级 = ref 是我的行（2 条，at 新的排前）',
-      j1.invitedL1.length === 2 && j1.invitedL1[0].addr === M2 && j1.invitedL1[1].addr === M1,
-      JSON.stringify((j1.invitedL1 || []).map(x => x.addr && x.addr.slice(0, 6))));
-    ok('二级 = 经我的一级来的行（只有 X1，带 at）',
-      j1.invitedL2.length === 1 && j1.invitedL2[0].addr === X1
-      && j1.invitedL2[0].at === '2026-08-21T01:00:00.000Z');
-    const flat1 = JSON.stringify(j1);
-    ok('无关第三方的行不掺进来', flat1.indexOf(STR) < 0 && flat1.indexOf(SM) < 0);
-    ok('坏 JSON 行被跳过、不影响其余行、接口不 500',
-      r1.status === 200 && flat1.indexOf(BADM) < 0);
-    ok('桩下空日志 → granted === "0"（0 是链上事实，如实显示，不是 null）',
-      j1.granted === '0', 'granted=' + JSON.stringify(j1.granted));
-
-    // ---- 200 条截断：250 行同一个 ref，各带递增的 at，只留最新的 200
-    const B2 = '0x' + 'bb'.repeat(20);
-    const mOf = (i) => '0x' + String(i).padStart(40, '0');
-    const trunc = [];
-    for (let i = 0; i < 250; i++) {
-      trunc.push(JSON.stringify({
-        ref: B2, minter: mOf(i), hash: H[0],
-        at: new Date(Date.UTC(2026, 0, 1) + i * 60000).toISOString()
-      }));
-    }
-    fs.appendFileSync(RFILE, trunc.join('\n') + '\n');
-    const r2 = await call('GET', '/api/referrals/me?addr=' + B2);
-    const j2 = r2.status === 200 ? JSON.parse(r2.body) : {};
-    ok('250 行只回 200 条', r2.status === 200 && j2.invitedL1 && j2.invitedL1.length === 200,
-      j2.invitedL1 ? j2.invitedL1.length + ' 条' : r2.status + '');
-    ok('保留的是 at 最新的 200（最后写入的那行排第一）',
-      j2.invitedL1 && j2.invitedL1[0] && j2.invitedL1[0].addr === mOf(249));
-    ok('最旧的 50 条真被截掉（第 1、50 行不在，第 51 行在）',
-      j2.invitedL1 && !j2.invitedL1.some(x => x.addr === mOf(0) || x.addr === mOf(49))
-      && j2.invitedL1.some(x => x.addr === mOf(50)));
-
-    // ---- 桩链：Granted 求和。log 手搓成真实 eth_getLogs 返回的形状
-    //（topics=[topic0, 地址左补零到 32 字节]，data 头 32 字节是 amount —— marketindex-test.js 同款）。
-    const C2 = '0x' + 'cc'.repeat(20);
-    const OTH = '0x' + '99'.repeat(20);
-    const w32 = (v) => BigInt(v).toString(16).padStart(64, '0');
-    const tAddr = (a) => '0x' + String(a).replace(/^0x/, '').toLowerCase().padStart(64, '0');
-    const gLog = (to, wei) => ({ address: REF.VAULT, topics: [REF.TOPIC_GRANTED, tAddr(to)], data: '0x' + w32(wei) });
-    REF._resetGrantedCacheForTest();
-    REF._fetchGrantedLogs = async () => [
-      gLog(C2, 3n * 10n ** 18n),     // 3 BANG
-      gLog(C2, 2n * 10n ** 18n),     // 同地址第二笔 —— 要累加
-      gLog(OTH, 7n * 10n ** 18n)     // 别人的 —— 不许算进 C2
-    ];
-    const r3 = await call('GET', '/api/referrals/me?addr=' + C2);
-    const j3 = r3.status === 200 ? JSON.parse(r3.body) : {};
-    ok('同地址两笔累加：granted === "5"（字符串，不是数字）',
-      r3.status === 200 && j3.granted === '5', 'granted=' + JSON.stringify(j3.granted));
-    ok('别人的那笔归别人：OTH 的 granted === "7"',
-      JSON.parse((await call('GET', '/api/referrals/me?addr=' + OTH)).body).granted === '7');
-
-    // ---- 60 秒缓存真的在缓存：不重置、把抓日志换成会炸的，再问还是拿缓存答案
-    REF._fetchGrantedLogs = async () => { throw new Error('缓存命中时不该被调用'); };
-    ok('60 秒内命中缓存（抓日志换成会炸的桩也没被调用）',
-      JSON.parse((await call('GET', '/api/referrals/me?addr=' + C2)).body).granted === '5');
-
-    // ---- 失败路径：重置缓存后读链失败 → granted null（不是 "0"、不是 500）
-    REF._resetGrantedCacheForTest();
-    const r5 = await call('GET', '/api/referrals/me?addr=' + C2);
-    const j5 = r5.status === 200 ? JSON.parse(r5.body) : {};
-    ok('读链失败 → 200 且 granted === null（不编 0、不 500）',
-      r5.status === 200 && j5.granted === null, r5.status + ' granted=' + JSON.stringify(j5.granted));
-    ok('读链失败不影响列表照常返回', Array.isArray(j5.invitedL1) && Array.isArray(j5.invitedL2));
-
-    // ---- 审查 #1：扫描起点 = 配置的高度，不是链头往回 5 万块的滑动窗
-    REF._resetGrantedCacheForTest();
-    let seenFrom = null;
-    REF._fetchGrantedLogs = async (fromBlock) => { seenFrom = fromBlock; return [gLog(C2, 9n * 10n ** 18n)]; };
-    const rF = await call('GET', '/api/referrals/me?addr=' + C2);
-    ok('扫描起点 = BNBBANG_INDEX_FROM（126355000），不是滑动窗',
-      seenFrom === 126355000 && JSON.parse(rF.body).granted === '9', 'from=' + seenFrom);
-
-    // ---- 审查 #1：没配 BNBBANG_INDEX_FROM → 不扫、granted null（漏扫出来的 0 不是链上事实）
-    delete process.env.BNBBANG_INDEX_FROM;
-    REF._resetGrantedCacheForTest();
-    let scanned = false;
-    REF._fetchGrantedLogs = async () => { scanned = true; return [gLog(C2, 9n * 10n ** 18n)]; };
-    const rN = await call('GET', '/api/referrals/me?addr=' + C2);
-    const jN = rN.status === 200 ? JSON.parse(rN.body) : {};
-    ok('没配起扫高度 → granted === null 且根本不发扫描（不完整扫描不当链上事实）',
-      rN.status === 200 && jN.granted === null && scanned === false,
-      rN.status + ' granted=' + JSON.stringify(jN.granted) + ' scanned=' + scanned);
-    ok('没配起扫高度时列表照常返回', Array.isArray(jN.invitedL1) && Array.isArray(jN.invitedL2));
-
-    /* 冷缓存单飞：并发 /referrals/me 只扫一遍。主网从 INDEX_FROM 扫到链头
-       没有这道闸会把 getLogs 打成 N 倍。 */
-    process.env.BNBBANG_INDEX_FROM = '126355000';
-    REF._resetGrantedCacheForTest();
-    let fetches = 0;
-    REF._fetchGrantedLogs = async () => {
-      fetches++;
-      await new Promise((r) => setImmediate(r));
-      return [gLog(C2, 3n * 10n ** 18n)];
-    };
-    const [sfA, sfB, sfC] = await Promise.all([
-      call('GET', '/api/referrals/me?addr=' + C2),
-      call('GET', '/api/referrals/me?addr=' + C2),
-      call('GET', '/api/referrals/me?addr=' + OTH)
-    ]);
-    ok('granted 刷新单飞：并发三次只扫一遍链',
-      fetches === 1
-      && JSON.parse(sfA.body).granted === '3'
-      && JSON.parse(sfB.body).granted === '3'
-      && JSON.parse(sfC.body).granted === '0',
-      'fetches=' + fetches);
-
-    // ---- 还原（照 chainMod.blockByNumber = savedBBN 的 save/restore 写法）
-    REF._latestBlock = savedLatest;
-    REF._fetchGrantedLogs = savedFetch;
-    REF._resetGrantedCacheForTest();
-    if (savedIndexFrom === undefined) delete process.env.BNBBANG_INDEX_FROM;
-    else process.env.BNBBANG_INDEX_FROM = savedIndexFrom;
-  }
-
   console.log('\n[SEC] 管理员门禁 / 骗签面 / 限流 / JSON / 路径 / 泄漏');
   {
     const PNG = require('./png.js');
@@ -2241,8 +1974,8 @@ function call(method, url, body, headers) {
       && _ttlOf('600') === 600);
 
     /* ---- 管理员 IP：伪造 CF-Connecting-IP / XFF 第一段不能过门；X-Real-IP 才能 ---- */
-    const savedAdmin = process.env.BNBBANG_ADMIN_IPS;
-    process.env.BNBBANG_ADMIN_IPS = '203.0.113.10';
+    const savedAdmin = process.env.ARCBANG_ADMIN_IPS;
+    process.env.ARCBANG_ADMIN_IPS = '203.0.113.10';
     const adminHdr = (h) => call('GET', '/api/admin-check', null, h);
     const cf = await adminHdr({ 'cf-connecting-ip': '203.0.113.10' });
     const cj = cf.status === 200 ? JSON.parse(cf.body) : {};
@@ -2258,28 +1991,8 @@ function call(method, url, body, headers) {
     ok('admin-check 回的 ip 不是伪造的 CF 头',
       JSON.parse(cf.body).ip !== '203.0.113.10');
 
-    const refCf = await call('GET', '/api/referrals', null, { 'cf-connecting-ip': '203.0.113.10' });
-    ok('伪造 CF 头拿不到 /api/referrals 汇总（越权）', refCf.status === 403, refCf.status + '');
-    const refXff = await call('GET', '/api/referrals', null,
-      { 'x-forwarded-for': '203.0.113.10, 198.51.100.9' });
-    ok('伪造 XFF 第一段同样 403', refXff.status === 403);
-    const refOk = await call('GET', '/api/referrals', null, { 'x-real-ip': '203.0.113.10' });
-    ok('管理员 X-Real-IP 可以看汇总', refOk.status === 200 && JSON.parse(refOk.body).counts,
-      refOk.status + '');
-    if (savedAdmin === undefined) delete process.env.BNBBANG_ADMIN_IPS;
-    else process.env.BNBBANG_ADMIN_IPS = savedAdmin;
-
-    /* ---- /api/craft 进闸：没配造物合约是 501，但哈希有效时照样扣额度 ---- */
-    const c1 = await call('POST', '/api/craft',
-      { blockHash: B.keccak256('sec-craft-1'), ops: [{ key: 'alpha', dir: 1, steps: 1 }] }, secIp(1));
-    ok('/api/craft 没配合约 → 501，但已经进闸（有 remaining 头）',
-      c1.status === 501 && Number.isFinite(Number(c1.hdr['x-ratelimit-remaining'])),
-      c1.status + ' remaining=' + c1.hdr['x-ratelimit-remaining']);
-    const c1b = await call('POST', '/api/craft',
-      { blockHash: B.keccak256('sec-craft-2'), ops: [{ key: 'alpha', dir: 1, steps: 1 }] }, secIp(1));
-    ok('换一个宇宙的 /craft 再扣一次（不能拿这条路扫全链）',
-      Number(c1b.hdr['x-ratelimit-remaining']) === Number(c1.hdr['x-ratelimit-remaining']) - 1,
-      c1.hdr['x-ratelimit-remaining'] + ' → ' + c1b.hdr['x-ratelimit-remaining']);
+    if (savedAdmin === undefined) delete process.env.ARCBANG_ADMIN_IPS;
+    else process.env.ARCBANG_ADMIN_IPS = savedAdmin;
 
     /* ---- 客户端不能自报 deadline / nowSec 来把有效期拉长 ---- */
     const fakeDl = await call('POST', '/api/intervene', {
@@ -2293,12 +2006,6 @@ function call(method, url, body, headers) {
       && fdj.deadline <= Math.floor(Date.now() / 1000) + 3600 + 5
       && fdj.deadline >= Math.floor(Date.now() / 1000) + 30,
       'deadline=' + fdj.deadline + ' status=' + fakeDl.status + ' ' + String(fakeDl.body).slice(0, 80));
-    const costCraft = await call('POST', '/api/craft',
-      { blockHash: H[0], ops: [{ key: 'alpha', dir: 1, steps: 1 }], cost: '1' }, secIp(3));
-    ok('/api/craft 自报费用被拒（400；没配合约时 501 也表示没签出去）',
-      (costCraft.status === 400 || costCraft.status === 501) && String(costCraft.body).indexOf('"sig"') < 0,
-      costCraft.status + '');
-
     /* ---- JSON 炸弹 / 原型污染键 ---- */
     const protoBody = '{"__proto__":{"admin":true},"blockHash":"' + H[0] + '"}';
     const proto = await call('POST', '/api/bang', protoBody, secIp(4));
@@ -2370,7 +2077,7 @@ function call(method, url, body, headers) {
     const v1switch = await call('POST', '/api/intervene', {
       blockHash: H[2], tokenId: 7, oldCardHash: IV.baseHash,
       ops: [{ key: 'alpha', dir: 1, steps: 1 }],
-      sigV2: true, sigVersion: 2, BNBBANG_SIG_V2: '1',
+      sigV2: true, sigVersion: 2, ARCBANG_SIG_V2: '1',
       minter: '0x' + '22'.repeat(20), cardShape: 2
     }, secIp(11));
     const v1sj = v1switch.status === 200 ? JSON.parse(v1switch.body) : {};
@@ -2378,15 +2085,15 @@ function call(method, url, body, headers) {
       v1switch.status === 200 && v1sj.card && v1sj.card.cardShape === 3 && v1sj.sig,
       v1switch.status + ' shape=' + (v1sj.card && v1sj.card.cardShape));
     if (v1sj.sig) {
-      const dgV1 = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, IV.baseHash, v1sj.cardHash,
+      const dgV1 = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, IV.baseHash, v1sj.cardHash,
         v1sj.card.outcome.index, v1sj.card.rarity.index, BigInt(v1sj.costBang), v1sj.deadline,
         opsHashOf(v1sj.ops));
       ok('v1 摘要（无 minter）能还原签名：请求体没把协议切到 v2',
         verifyMessage(getBytes(dgV1), v1sj.sig).toLowerCase() === String(v1sj.signer).toLowerCase());
     }
 
-    const savedV2 = process.env.BNBBANG_SIG_V2;
-    process.env.BNBBANG_SIG_V2 = '1';
+    const savedV2 = process.env.ARCBANG_SIG_V2;
+    process.env.ARCBANG_SIG_V2 = '1';
     const v2off = await call('POST', '/api/intervene', {
       blockHash: H[2], tokenId: 7, oldCardHash: IV.baseHash,
       ops: [{ key: 'alpha', dir: 1, steps: 1 }],
@@ -2394,8 +2101,8 @@ function call(method, url, body, headers) {
     }, secIp(12));
     ok('v2 下请求体 sigV2:false 仍要 minter（不能靠参数把 v2 关掉）',
       v2off.status === 400 && /minter/.test(String(v2off.body)), v2off.status + '');
-    if (savedV2 === undefined) delete process.env.BNBBANG_SIG_V2;
-    else process.env.BNBBANG_SIG_V2 = savedV2;
+    if (savedV2 === undefined) delete process.env.ARCBANG_SIG_V2;
+    else process.env.ARCBANG_SIG_V2 = savedV2;
   }
   console.log('\n[SEO 落地页] /s/ 可索引：英文真页面、robots 口径、sitemap、1200×630 og 图');
   {
@@ -2409,7 +2116,7 @@ function call(method, url, body, headers) {
     const LANDING = require('./landing.js');
     const MI = require('./marketindex.js');
     const PNG = require('./png.js');
-    const BASE = process.env.BNBBANG_PUBLIC_BASE;
+    const BASE = process.env.ARCBANG_PUBLIC_BASE;
     const savedBBN = chainMod.blockByNumber;
     const NUM = 8642956;
     chainMod.blockByNumber = async (n) => (n === NUM ? { number: n, hash: H[0] }
@@ -2420,8 +2127,8 @@ function call(method, url, body, headers) {
     const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     /* 名单先全部清掉：这个高度既没铸造也不在名单里 → noindex */
-    const savedCur = process.env.BNBBANG_SHARE_CURATED, savedExtra = process.env.BNBBANG_SHARE_EXTRA;
-    delete process.env.BNBBANG_SHARE_CURATED; delete process.env.BNBBANG_SHARE_EXTRA;
+    const savedCur = process.env.ARCBANG_SHARE_CURATED, savedExtra = process.env.ARCBANG_SHARE_EXTRA;
+    delete process.env.ARCBANG_SHARE_CURATED; delete process.env.ARCBANG_SHARE_EXTRA;
     SEO._reset();
 
     const s = await call('GET', '/s/' + NUM + '?ref=K7M2X9QP', null, ipS(1));
@@ -2458,34 +2165,31 @@ function call(method, url, body, headers) {
       html.indexOf('class="btn" href="/app.html?bang=8642956&amp;ref=K7M2X9QP">Open in the simulator</a>') > 0);
     ok('上一块 / 下一块 / 回首页三条链接',
       html.indexOf('href="/s/8642955"') > 0 && html.indexOf('href="/s/8642957"') > 0
-      /* 「Back to」读的是 o.base（landing.js），自测里的 base 是 BNBBANG_PUBLIC_BASE，不是 bnbbang.com */
+      /* 「Back to」读的是 o.base（landing.js），自测里的 base 是 ARCBANG_PUBLIC_BASE，不是 bnbbang.com */
       && html.indexOf('Back to ' + BASE.replace(/^https?:\/\//, '') + '<') > 0);
     {
-      /* 站名 / 链名可配（BNBBANG_BRAND / BNBBANG_CHAIN_WORD）：三站共用这一份代码，
-         ARCBANG 那个实例从前渲出来自称 BNBBANG、把 Arc 区块叫 BNB block。
-         直接调 landingHTML，三种 base 各渲一遍；不配变量时 bnb / btc 两站必须逐字节不变。 */
-      const savedBrand = process.env.BNBBANG_BRAND, savedWord = process.env.BNBBANG_CHAIN_WORD;
+      /* 站名 / 链名可配（ARCBANG_BRAND / ARCBANG_CHAIN_WORD）：不配时退回历史默认值
+         （BNBBANG / BNB），arc 实例在自己那份 env 里覆盖成 ARCBANG / Arc。 */
+      const savedBrand = process.env.ARCBANG_BRAND, savedWord = process.env.ARCBANG_CHAIN_WORD;
       const mk = (base, extra) => LANDING.landingHTML(Object.assign({
         blockNumber: NUM, hash: H[0], card: rc, mint: { minted: null }, indexable: false,
         appUrl: '/app.html?bang=' + NUM, canonical: base + '/s/' + NUM,
         ogImage: base + '/api/art/' + H[0] + '.png?og=1', cardImage: base + '/api/art/' + H[0] + '.png?p=1', base
       }, extra || {}));
-      const btcX = { origin: 'btc', btc: { height: NUM, time: null, badges: [], zeros: null, base: 'https://bang.satloot.com' } };
       const ldOf = (h) => { try { return JSON.parse(h.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]); } catch (e) { return null; } };
       const four = (h, brand) => h.indexOf('<a class="wm" href="/">' + brand + '</a>') > 0
         && h.indexOf(' | ' + brand + '</title>') > 0
         && h.indexOf('og:site_name" content="' + brand + '"') > 0
         && !!ldOf(h) && ldOf(h).creator.name === brand;
 
-      delete process.env.BNBBANG_BRAND; delete process.env.BNBBANG_CHAIN_WORD;
-      const bnb0 = mk('https://bnbbang.com'), btc0 = mk('https://bang.satloot.com', btcX);
-      ok('不配 BNBBANG_BRAND / BNBBANG_CHAIN_WORD：bnb 站四处站名 BNBBANG、链名 BNB；btc 站 BTCBANG / Bitcoin',
+      delete process.env.ARCBANG_BRAND; delete process.env.ARCBANG_CHAIN_WORD;
+      const bnb0 = mk('https://bnbbang.com');
+      ok('不配 ARCBANG_BRAND / ARCBANG_CHAIN_WORD：四处站名退回 BNBBANG、链名退回 BNB',
         four(bnb0, 'BNBBANG') && bnb0.indexOf('<h1>Universe from BNB block #8,642,956</h1>') > 0
-        && bnb0.indexOf('<th>BNB block</th>') > 0 && bnb0.indexOf('Every BNB block hash') > 0
-        && four(btc0, 'BTCBANG') && btc0.indexOf('<h1>Universe from Bitcoin block #8,642,956</h1>') > 0);
+        && bnb0.indexOf('<th>BNB block</th>') > 0 && bnb0.indexOf('Every BNB block hash') > 0);
 
-      process.env.BNBBANG_BRAND = 'ARCBANG'; process.env.BNBBANG_CHAIN_WORD = 'Arc';
-      const arc1 = mk('https://arcbang.xyz'), btc1 = mk('https://bang.satloot.com', btcX);
+      process.env.ARCBANG_BRAND = 'ARCBANG'; process.env.ARCBANG_CHAIN_WORD = 'Arc';
+      const arc1 = mk('https://arcbang.xyz');
       ok('配成 ARCBANG / Arc：watermark、<title> 后缀、og:site_name、ld+json creator.name 全是 ARCBANG，creator.url 是 arcbang.xyz',
         four(arc1, 'ARCBANG') && ldOf(arc1).creator.url === 'https://arcbang.xyz/'
         && arc1.indexOf('Back to arcbang.xyz') > 0);
@@ -2496,19 +2200,18 @@ function call(method, url, body, headers) {
         && arc1.indexOf('<th>Arc block</th>') > 0
         && arc1.indexOf('BNBBANG') < 0 && arc1.indexOf('BNB block') < 0 && arc1.indexOf('bnbbang.com') < 0,
         (arc1.match(/BNB[A-Z]*|bnbbang\.com/g) || []).join(','));
-      ok('比特币宇宙变体不跟这两个变量走：配了也逐字节不变', btc1 === btc0);
 
-      process.env.BNBBANG_BRAND = '  '; process.env.BNBBANG_CHAIN_WORD = '';
+      process.env.ARCBANG_BRAND = '  '; process.env.ARCBANG_CHAIN_WORD = '';
       ok('变量配成空串 / 空白 = 没配：bnb 站逐字节不变', mk('https://bnbbang.com') === bnb0);
-      process.env.BNBBANG_BRAND = '<b>&"'; process.env.BNBBANG_CHAIN_WORD = '<i>';
+      process.env.ARCBANG_BRAND = '<b>&"'; process.env.ARCBANG_CHAIN_WORD = '<i>';
       {
         const hx = mk('https://arcbang.xyz');
         ok('站名 / 链名里的 < > & " 全部转义（env 写错不至于破页）',
           hx.indexOf('<b>') < 0 && hx.indexOf('<i>') < 0 && hx.indexOf('&lt;b&gt;&amp;&quot;') > 0
           && !!ldOf(hx) && ldOf(hx).creator.name === '<b>&"');
       }
-      if (savedBrand === undefined) delete process.env.BNBBANG_BRAND; else process.env.BNBBANG_BRAND = savedBrand;
-      if (savedWord === undefined) delete process.env.BNBBANG_CHAIN_WORD; else process.env.BNBBANG_CHAIN_WORD = savedWord;
+      if (savedBrand === undefined) delete process.env.ARCBANG_BRAND; else process.env.ARCBANG_BRAND = savedBrand;
+      if (savedWord === undefined) delete process.env.ARCBANG_CHAIN_WORD; else process.env.ARCBANG_CHAIN_WORD = savedWord;
     }
     ok('十二个结局各有一段解释，本页那段在正文里',
       LANDING.OUTCOME_EXPLAIN.length === 12
@@ -2550,7 +2253,7 @@ function call(method, url, body, headers) {
     /* 精选名单：env 指到一个临时 JSON 文件 → 这个高度进索引 */
     const curFile = path.join(TMP, 'curated.json');
     fs.writeFileSync(curFile, JSON.stringify([NUM, 0, 'x', -1, 1e15, '000', NUM]));
-    process.env.BNBBANG_SHARE_CURATED = curFile;
+    process.env.ARCBANG_SHARE_CURATED = curFile;
     SEO._reset();
     const s2 = await call('GET', '/s/' + NUM, null, ipS(1));
     ok('精选名单里的高度：X-Robots-Tag index, follow，meta robots index',
@@ -2559,9 +2262,9 @@ function call(method, url, body, headers) {
     ok('名单里的垃圾项被剔掉（非数字 / 负数 / 超过 12 位），去重，只剩合法高度',
       JSON.stringify(SEO.curatedHeights()) === JSON.stringify([NUM, 0]), JSON.stringify(SEO.curatedHeights()));
     ok('没配精选名单时内置 [0]（创世块）', (() => {
-      delete process.env.BNBBANG_SHARE_CURATED; SEO._reset();
+      delete process.env.ARCBANG_SHARE_CURATED; SEO._reset();
       const r = JSON.stringify(SEO.curatedHeights()) === '[0]';
-      process.env.BNBBANG_SHARE_CURATED = curFile; SEO._reset();
+      process.env.ARCBANG_SHARE_CURATED = curFile; SEO._reset();
       return r;
     })());
 
@@ -2585,7 +2288,7 @@ function call(method, url, body, headers) {
     /* 附加名单：另一个进程写的文件，60 秒缓存；缺了、坏了当空 */
     const extraFile = path.join(TMP, 'extra.json');
     fs.writeFileSync(extraFile, '[4242, 4242, "17"]');
-    process.env.BNBBANG_SHARE_EXTRA = extraFile;
+    process.env.ARCBANG_SHARE_EXTRA = extraFile;
     SEO._reset();
     const sm2 = String((await call('GET', '/sitemap-s.xml', null, ipS(1))).body);
     ok('附加名单也进 sitemap：去重，字符串数字也认',
@@ -2598,7 +2301,7 @@ function call(method, url, body, headers) {
     const sm3 = await call('GET', '/sitemap-s.xml', null, ipS(1));
     ok('附加名单文件坏了：当空，sitemap 照出（200，精选仍在）',
       sm3.status === 200 && String(sm3.body).indexOf('/s/4242<') < 0 && String(sm3.body).indexOf('/s/' + NUM + '<') > 0);
-    process.env.BNBBANG_SHARE_EXTRA = path.join(TMP, 'no-such-file.json');
+    process.env.ARCBANG_SHARE_EXTRA = path.join(TMP, 'no-such-file.json');
     SEO._reset();
     ok('附加名单文件缺了：当空，不报错', SEO.extraHeights().length === 0
       && (await call('GET', '/sitemap-s.xml', null, ipS(1))).status === 200);
@@ -2645,7 +2348,7 @@ function call(method, url, body, headers) {
       ms.minted === true && ms.tokenId === '7' && ms.owner === '0xabcdef0000000000000000000000000000001234'
       && ms.blockNumber === NUM && ms.mintedAt === 1756700000, JSON.stringify(ms));
     ok('索引没起来时，反查不到的哈希答 null（不知道），不答 false', MI.mintStatusOf(H[1]).minted === null);
-    delete process.env.BNBBANG_SHARE_CURATED; delete process.env.BNBBANG_SHARE_EXTRA; SEO._reset();
+    delete process.env.ARCBANG_SHARE_CURATED; delete process.env.ARCBANG_SHARE_EXTRA; SEO._reset();
     const s3 = await call('GET', '/s/' + NUM, null, ipS(1));
     ok('页面写 Minted as #7, owner 0xabcd…1234；已铸造 → index, follow（不靠名单）',
       String(s3.body).indexOf('Minted as #7, owner 0xabcd…1234') > 0 && s3.hdr['x-robots-tag'] === 'index, follow',
@@ -2691,7 +2394,7 @@ function call(method, url, body, headers) {
     I.setMeta(savedMeta); I.setState(savedState);
 
     /* og 图：1200×630，方卡在左、右栏文字；?w= 缩放；缓存键带变体与 n/w，不串 */
-    const PNGDIR = path.join(process.env.BNBBANG_STORE, 'png');
+    const PNGDIR = path.join(process.env.ARCBANG_STORE, 'png');
     const ihdr = (b) => ({ w: b.readUInt32BE(16), h: b.readUInt32BE(20) });
     const isPNG = (b) => Buffer.isBuffer(b) && b.length > 24 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG';
     const keyOG = (h, n, w) => 'art-' + h + '-og' + (n ? '-n' + n : '') + (w ? '-w' + w : '')
@@ -2755,577 +2458,13 @@ function call(method, url, body, headers) {
     ok('HEAD /s/<区块号> 只给头（含 X-Robots-Tag）', hd.status === 200 && hd.body === ''
       && /text\/html/.test(String(hd.hdr['content-type'])) && typeof hd.hdr['x-robots-tag'] === 'string');
 
-    if (savedCur === undefined) delete process.env.BNBBANG_SHARE_CURATED; else process.env.BNBBANG_SHARE_CURATED = savedCur;
-    if (savedExtra === undefined) delete process.env.BNBBANG_SHARE_EXTRA; else process.env.BNBBANG_SHARE_EXTRA = savedExtra;
+    if (savedCur === undefined) delete process.env.ARCBANG_SHARE_CURATED; else process.env.ARCBANG_SHARE_CURATED = savedCur;
+    if (savedExtra === undefined) delete process.env.ARCBANG_SHARE_EXTRA; else process.env.ARCBANG_SHARE_EXTRA = savedExtra;
     SEO._reset();
     chainMod.blockByNumber = savedBBN;
   }
 
-  console.log('\n[B] BTCBANG：比特币主网区块当奇点（specs/btcbang-v1.md §一、§五）');
   {
-    /* 全部走注入的假上游，不联网。盯住的事：§1.3 的 11 个向量（高度 ↔ 哈希、徽章、前导零）、
-       两层缓存（tip−6 以内落盘、更浅的只在内存 60 秒）、确认不足 412、保留块 403、开闸放行、
-       超 tip 404、非主网哈希 404、孤块 404、上游全挂 503 不回退、轮换、Host 判站（其余 Host 一个字节不变）、
-       注册表往返、出图角标、token metadata、市场索引 meta.origin、/api/btc/stats。 */
-    const btc = require('./btc.js');
-    const OGM = require('./og.js');
-    const MI = require('./marketindex.js');
-    const ipB = (n) => ({ 'x-forwarded-for': '10.9.4.' + n });
-    const hostB = (n, host) => ({ 'x-forwarded-for': '10.9.4.' + n, host });
-    const W32 = (v) => (typeof v === 'string' ? v.replace(/^0x/, '') : BigInt(v).toString(16)).padStart(64, '0');
-
-    ok('require 不联网：本段之前 btc.js 一次 tip 都没刷过', btc._tipState() === null);
-
-    /* ---- 规格 §1.3 的 11 个已核对向量（高度 ↔ 哈希）。假上游只认这几个块 + tip + 一个孤块 ---- */
-    const V = {
-      0: '000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f',
-      1: '00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048',
-      170: '00000000d1145790a8694403d4063f323d499e655c83426834d4ce2f8dd4a2ee',
-      57043: '00000000152340ca42227603908689183edc47355204e7aca59383b0aaac1fd8',
-      74638: '000000000069e1affe7161ab4bcbeacebb4ddf155b50e807f42de971b688a09b',
-      210000: '000000000000048b95347e83192f69cf0366076336c639f9b7228e9ba171342e',
-      420000: '000000000000000002cce816c0ab2c5c269cb081896b7dcb34b8422d6b74ffa1',
-      481824: '0000000000000000001c8018d9cb3b742ef25114f27563e3fc4a1902167f9893',
-      630000: '000000000000000000024bead8df69990852c202db0e0097c1a12ea637d7e96d',
-      709632: '0000000000000000000687bca986194dc2c1f949318629b44bb54ec0a94d8244',
-      840000: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
-    };
-    const VEC = Object.keys(V).map(Number);          // 11 个向量的高度（tip / 未成熟块另加，不算向量）
-    V[965997] = '0'.repeat(19) + 'c'.repeat(45);     // 未成熟块（tip − 3）
-    V[966000] = '0'.repeat(19) + 'd'.repeat(45);     // tip
-    const HX = (h) => '0x' + V[h];
-    const TIME_OF = (h) => 1231006505 + h * 600;     // 假时间戳：创世 2009-01-03 起每块十分钟
-    const ORPHAN = '0'.repeat(20) + 'a'.repeat(44);  // 按哈希能查到（高度 500000），但那个高度的主链块不是它
-    const CANON500K = '0'.repeat(20) + 'b'.repeat(44);
-    const world = { tip: 966000, down: false, failFirst: false, calls: [] };
-    const resp = (status, body) => ({
-      ok: status >= 200 && status < 300, status, text: async () => body, json: async () => JSON.parse(body)
-    });
-    const fakeFetch = async (url) => {
-      world.calls.push(url);
-      if (world.down) throw new Error('ECONNREFUSED');
-      if (world.failFirst && /mempool\.space/.test(url)) throw new Error('mempool 挂了');
-      const pth = new URL(url).pathname;
-      let mm;
-      if (/\/blocks\/tip\/height$/.test(pth)) return resp(200, String(world.tip));
-      if ((mm = pth.match(/\/block-height\/(\d+)$/))) {
-        const h = Number(mm[1]);
-        if (h > world.tip) return resp(404, 'Block not found');
-        if (V[h]) return resp(200, V[h]);
-        if (h === 500000) return resp(200, CANON500K);
-        return resp(404, 'Block not found');
-      }
-      if ((mm = pth.match(/\/block\/([0-9a-fA-F]{64})$/))) {
-        const x = mm[1].toLowerCase();
-        for (const k of Object.keys(V)) {
-          if (V[k] === x && Number(k) <= world.tip) {
-            return resp(200, JSON.stringify({ id: x, height: Number(k), timestamp: TIME_OF(Number(k)), previousblockhash: '00'.repeat(32) }));
-          }
-        }
-        if (x === ORPHAN) return resp(200, JSON.stringify({ id: x, height: 500000, timestamp: 1, previousblockhash: '00'.repeat(32) }));
-        return resp(404, 'Block not found');
-      }
-      return resp(404, 'nope');
-    };
-    let clock = Date.now();
-    btc._setFetch(fakeFetch);
-    btc._setNow(() => clock);
-    btc._reset();
-
-    /* ---- 向量：高度 ↔ 哈希、徽章、前导零 ---- */
-    {
-      const bad = [];
-      for (const h of VEC) {
-        const a = await btc.blockAt(h);
-        const b = await btc.blockByHash(V[h]);                       // 不带 0x 也认
-        if (!a || a.hash !== HX(h) || a.time !== TIME_OF(h)) bad.push('at:' + h);
-        if (!b || b.height !== h || b.hash !== HX(h)) bad.push('byHash:' + h);
-      }
-      ok('11 个向量：高度 → 哈希（带时间）、哈希 → 高度（反查回填），hash 回小写 0x', bad.length === 0, bad.join(' '));
-    }
-    const badgeKeys = (h) => btc.badgesOf(h).map((b) => b.key).join('+');
-    ok('#0 = genesis + period', badgeKeys(0) === 'genesis+period');
-    ok('四个减半块 halving（#210000 / 420000 / 630000 / 840000），n 依次 1..4，中英 label',
-      [210000, 420000, 630000, 840000].every((h, i) => {
-        const b = btc.badgesOf(h).find((x) => x.key === 'halving');
-        return b && b.n === i + 1 && /减半/.test(b.label) && b.labelEn === 'Halving #' + (i + 1);
-      }) && badgeKeys(210000) === 'halving');
-    ok('六个名块 famous：#1 / #170 / #57043 / #74638 / #481824 / #709632，中英 label 都有',
-      [1, 170, 57043, 74638, 481824, 709632].every((h) => {
-        const b = btc.badgesOf(h).find((x) => x.key === 'famous');
-        return b && b.label && b.labelEn;
-      }));
-    ok('SegWit / Taproot 激活块同时也是难度周期首块（481824 = 239×2016，709632 = 352×2016）',
-      badgeKeys(481824) === 'period+famous' && badgeKeys(709632) === 'period+famous');
-    ok('#2016 只有 period；#12345 / 负数 / 非整数没有徽章',
-      badgeKeys(2016) === 'period' && badgeKeys(12345) === '' && badgeKeys(-1) === '' && badgeKeys(1.5) === '');
-    ok('前导零：#840000 有 19 个，#0 有 10 个，#1 有 8 个；带不带 0x 一样',
-      btc.zerosOf(HX(840000)) === 19 && btc.zerosOf(V[0]) === 10 && btc.zerosOf(HX(1)) === 8 && btc.zerosOf(V[840000]) === 19);
-
-    /* ---- 缓存：tip − 6 以内落盘永久缓存；更浅的只在内存 60 秒 ---- */
-    const HF = path.join(process.env.BNBBANG_STORE, 'btc-hashes.bin');
-    const TF = path.join(process.env.BNBBANG_STORE, 'btc-times.bin');
-    const slotOf = (file, idx, size) => {
-      const buf = Buffer.alloc(size);
-      let n = 0;
-      try { const fd = fs.openSync(file, 'r'); n = fs.readSync(fd, buf, 0, size, idx * size); fs.closeSync(fd); } catch (e) { n = 0; }
-      return n === size ? buf : null;
-    };
-    {
-      const hb = slotOf(HF, 840000, 32), tb = slotOf(TF, 840000, 4);
-      ok('btc-hashes.bin 按高度 × 32 字节定位（#840000 槽里就是它的哈希）；btc-times.bin uint32 × 高度',
-        hb && hb.toString('hex') === V[840000] && tb && tb.readUInt32BE(0) === TIME_OF(840000));
-      const z = slotOf(HF, 12345, 32);
-      ok('没查过的高度是零槽（= 未知），cachedAt 答 null', z && z.every((b) => b === 0) && btc.cachedAt(12345) === null);
-      const before = world.calls.length;
-      const again = await btc.blockAt(840000);
-      ok('已落盘的块第二次不打上游', again && again.hash === HX(840000) && world.calls.length === before);
-      const cold = btc.createBtc({ store: process.env.BNBBANG_STORE, fetch: async () => { throw new Error('down'); } });
-      const c = cold.cachedAt(840000);
-      ok('冷启动的实例不联网也能从磁盘读到 #840000', !!c && c.hash === HX(840000) && c.time === TIME_OF(840000));
-    }
-    {
-      const fresh = await btc.blockAt(965997);                       // tip − 3：4 个确认
-      const onDisk = slotOf(HF, 965997, 32);
-      ok('高度 > tip − 6 的块只放内存：不落盘', !!fresh && fresh.hash === HX(965997) && (!onDisk || onDisk.every((b) => b === 0)));
-      ok('内存里 60 秒内命中', btc.cachedAt(965997) !== null);
-      clock += 61000;
-      ok('61 秒后内存过期（下次再问上游）', btc.cachedAt(965997) === null);
-    }
-
-    /* ---- /api/btc/tip：惰性刷新，30 秒内不打上游 ---- */
-    {
-      const t1 = await call('GET', '/api/btc/tip', null, ipB(1));
-      const j1 = JSON.parse(t1.body);
-      ok('/api/btc/tip → {height, hash, time, confirmationsRequired, updatedAt}，no-store',
-        t1.status === 200 && j1.height === 966000 && j1.hash === HX(966000) && j1.time === TIME_OF(966000)
-        && j1.confirmationsRequired === 6 && Number.isFinite(j1.updatedAt) && t1.hdr['cache-control'] === 'no-store',
-        t1.status + ' ' + String(t1.body).slice(0, 120));
-      const n0 = world.calls.length;
-      await call('GET', '/api/btc/tip', null, ipB(1));
-      ok('30 秒内再问 tip 不打上游（惰性刷新，不开定时器）', world.calls.length === n0);
-      clock += 31000;
-      await call('GET', '/api/btc/tip', null, ipB(1));
-      ok('过了 30 秒才刷一次', world.calls.length === n0 + 1);
-    }
-
-    /* ---- /api/btc/block ---- */
-    {
-      const r = await call('GET', '/api/btc/block/840000', null, ipB(2));
-      const j = JSON.parse(r.body);
-      ok('/api/btc/block/<高度> → height / hash / time / confirmations / mintable / reason / zeros / badges / reserved / openAt',
-        r.status === 200 && j.height === 840000 && j.hash === HX(840000) && j.time === TIME_OF(840000)
-        && j.confirmations === 966000 - 840000 + 1 && j.confirmationsRequired === 6 && j.tip === 966000
-        && j.mintable === false && j.code === 'RESERVED' && /保留块/.test(j.reason) && j.reserved === true && j.openAt === null
-        && j.zeros === 19 && j.badges.length === 1 && j.badges[0].key === 'halving' && j.badges[0].labelEn === 'Halving #4',
-        r.status + ' ' + String(r.body).slice(0, 160));
-      const r2 = await call('GET', '/api/btc/block/' + V[709632], null, ipB(2));
-      const j2 = JSON.parse(r2.body);
-      ok('/api/btc/block/<哈希>（不带 0x 也认）→ 同一形状；#709632 够确认、不保留 → mintable',
-        r2.status === 200 && j2.height === 709632 && j2.hash === HX(709632) && j2.mintable === true && j2.reason === null && j2.reserved === false);
-      const r3 = await call('GET', '/api/btc/block/0x' + V[709632].toUpperCase(), null, ipB(2));
-      ok('大写 0x 哈希也认', r3.status === 200 && JSON.parse(r3.body).height === 709632);
-      const r4 = await call('GET', '/api/btc/block/966001', null, ipB(2));
-      const j4 = JSON.parse(r4.body);
-      ok('高度 > tip → 404 {error, tip}', r4.status === 404 && j4.tip === 966000 && /还没有这个高度/.test(j4.error), String(r4.body));
-      const r5 = await call('GET', '/api/btc/block/' + H[0], null, ipB(2));
-      ok('BNB 哈希不是比特币主网的块 → 404', r5.status === 404 && /不是比特币主网/.test(JSON.parse(r5.body).error));
-      const r6 = await call('GET', '/api/btc/block/' + ORPHAN, null, ipB(2));
-      ok('孤块（按哈希查得到、但那个高度的主链块不是它）→ 404', r6.status === 404);
-      const o = btc.originOf(HX(840000));
-      ok('注册表登记了查过的块（哈希 → {height, time}）；BNB 哈希查不到',
-        !!o && o.height === 840000 && o.time === TIME_OF(840000) && btc.originOf(H[0]) === null);
-    }
-    {
-      const ip = ipB(3);
-      const a = await call('GET', '/api/btc/block/57043', null, ip);
-      const rem1 = Number(a.hdr['x-ratelimit-remaining']);
-      const b = await call('GET', '/api/btc/block/57043', null, ip);
-      ok('限流与 /card 同档、按哈希计：第一次扣一格，同一哈希再问不扣',
-        a.status === 200 && Number.isFinite(rem1) && Number(b.hdr['x-ratelimit-remaining']) === rem1, a.hdr['x-ratelimit-remaining'] + ' → ' + b.hdr['x-ratelimit-remaining']);
-      await call('GET', '/api/card/' + HX(57043), null, ip);
-      const c = await call('GET', '/api/btc/block/57043', null, ip);
-      ok('card 已缓存的哈希不进闸（响应没有限流头）', c.status === 200 && c.hdr['x-ratelimit-remaining'] === undefined);
-    }
-
-    /* ---- POST /api/btc/bang ---- */
-    {
-      const savedV2 = process.env.BNBBANG_SIG_V2;
-      process.env.BNBBANG_SIG_V2 = '1';
-      const M = '0x' + '22'.repeat(20);
-      const post = (body, n) => call('POST', '/api/btc/bang', body, ipB(n));
-
-      ok('请求体不是 JSON → 400', (await post('{nope', 4)).status === 400);
-      ok('既没 height 也没 blockHash → 400', (await post({ minter: M }, 4)).status === 400);
-      ok('v2 缺 minter → 400', /minter/.test(JSON.parse((await post({ height: 709632 }, 4)).body).error));
-      ok('height 不是非负整数 → 400', (await post({ height: -1, minter: M }, 4)).status === 400 && (await post({ height: 'abc', minter: M }, 4)).status === 400);
-      ok('blockHash 不是 64 hex → 400；零哈希 → 400',
-        (await post({ blockHash: '0x1234', minter: M }, 4)).status === 400 && (await post({ blockHash: '0x' + '0'.repeat(64), minter: M }, 4)).status === 400);
-
-      // 确认不足：tip 拉到 709635，#709632 只有 4 个确认
-      world.tip = 709635; clock += 31000; btc._reset();
-      const im = await post({ height: 709632, minter: M }, 4);
-      const imj = JSON.parse(im.body);
-      ok('确认不足 → 412 IMMATURE，文案说清差几个确认（差 2 个，约 20 分钟）',
-        im.status === 412 && imj.code === 'IMMATURE' && /差 2 个确认，约 20 分钟/.test(imj.error)
-        && imj.confirmations === 4 && imj.confirmationsRequired === 6 && imj.tip === 709635, im.status + ' ' + imj.error);
-      world.tip = 709636; clock += 31000;
-      const one = await post({ height: 709632, minter: M }, 4);
-      ok('差 1 个确认仍 412（刚刷过 tip，5 秒内不再强刷）', one.status === 412 && /差 1 个确认/.test(JSON.parse(one.body).error));
-      world.tip = 709637; clock += 6000;                             // tip 缓存还有 24 秒才过期
-      const okb = await post({ height: 709632, minter: M }, 4);
-      const oj = JSON.parse(okb.body);
-      ok('差 1 个确认时路由强刷一次 tip → 第 6 个确认到了就放行（不必等 30 秒）', okb.status === 200, okb.status + ' ' + String(okb.body).slice(0, 120));
-      ok('响应与 /bang 同形（card / cardHash / deadline / sig / signer / rarity / art）再多一个 btc',
-        JSON.stringify(Object.keys(oj).sort()) === JSON.stringify(['art', 'btc', 'card', 'cardHash', 'deadline', 'rarity', 'sig', 'signer'])
-        && oj.card.blockHash === HX(709632) && oj.card.blockNumber === 709632
-        && oj.btc.height === 709632 && oj.btc.hash === HX(709632) && oj.btc.time === TIME_OF(709632) && oj.btc.zeros === 19
-        && oj.btc.badges.map((x) => x.key).join('+') === 'period+famous' && /\/api\/art\/0x[0-9a-f]{64}\.svg\?p=1$/.test(oj.art));
-      {
-        const { cardHash: expectHash } = buildCard(HX(709632), 709632);
-        const dg = digestOf(CHAIN_ID, process.env.BNBBANG_CONTRACT, HX(709632), 709632, oj.card.outcome.index, oj.card.rarity.index, oj.cardHash, oj.deadline, M);
-        ok('签的就是 bangSigned(btcHash, 高度, …, minter) 的摘要：cardHash 与本地复算一致，签名能还原出 signer',
-          oj.cardHash === expectHash && verifyMessage(getBytes(dg), oj.sig).toLowerCase() === oj.signer.toLowerCase());
-      }
-      ok('给 blockHash 时服务端自己去核对（不信客户端）：BNB 哈希 → 404；孤块 → 404',
-        (await post({ blockHash: H[0], minter: M }, 5)).status === 404 && (await post({ blockHash: ORPHAN, minter: M }, 5)).status === 404);
-      ok('height 与 blockHash 同时给且对不上 → 400', (await post({ blockHash: HX(709632), height: 709631, minter: M }, 5)).status === 400);
-      ok('height 与 blockHash 同时给且一致 → 200', (await post({ blockHash: HX(709632), height: 709632, minter: M }, 5)).status === 200);
-      {
-        const r = await post({ height: 800000, minter: M }, 5);
-        ok('bang 高度 > tip → 404 {error, tip}', r.status === 404 && JSON.parse(r.body).tip === 709637, String(r.body));
-      }
-
-      // 保留块：默认创世 + 四个减半；到 BNBBANG_BTC_OPEN_AT 才放
-      world.tip = 966000; clock += 31000;
-      const rs = await post({ height: 840000, minter: M }, 6);
-      ok('保留块未开闸 → 403 RESERVED（openAt null = 永不）', rs.status === 403 && JSON.parse(rs.body).code === 'RESERVED' && JSON.parse(rs.body).openAt === null);
-      process.env.BNBBANG_BTC_OPEN_AT = String(Math.floor(Date.now() / 1000) - 60);
-      const op = await post({ height: 840000, minter: M }, 6);
-      const opj = JSON.parse(op.body);
-      ok('开闸后放行：200，btc.badges 是 halving #4，card.blockNumber 是比特币高度',
-        op.status === 200 && opj.btc.badges[0].key === 'halving' && opj.btc.badges[0].n === 4 && opj.card.blockNumber === 840000, op.status + ' ' + String(op.body).slice(0, 100));
-      const fut = Math.floor(Date.now() / 1000) + 3600;
-      process.env.BNBBANG_BTC_OPEN_AT = String(fut);
-      const fr = await post({ height: 840000, minter: M }, 6);
-      ok('开闸时间在未来 → 仍 403，openAt 带在响应里', fr.status === 403 && JSON.parse(fr.body).openAt === fut);
-      delete process.env.BNBBANG_BTC_OPEN_AT;
-      ok('创世块 #0 默认也保留', (await post({ height: 0, minter: M }, 6)).status === 403);
-      process.env.BNBBANG_BTC_RESERVED = '';
-      ok('BNBBANG_BTC_RESERVED 写空 = 不保留：#840000 立即可签', (await post({ height: 840000, minter: M }, 6)).status === 200);
-      process.env.BNBBANG_BTC_RESERVED = '1,170';
-      ok('保留名单可换：#1 变成保留，#840000 不再保留', (await post({ height: 1, minter: M }, 6)).status === 403 && (await post({ height: 840000, minter: M }, 6)).status === 200);
-      delete process.env.BNBBANG_BTC_RESERVED;
-      process.env.BNBBANG_BTC_CONFIRMATIONS = '0';
-      const c0 = btc.confirmationsRequired();
-      process.env.BNBBANG_BTC_CONFIRMATIONS = '500';
-      const c500 = btc.confirmationsRequired();
-      process.env.BNBBANG_BTC_CONFIRMATIONS = 'abc';
-      const cNaN = btc.confirmationsRequired();
-      delete process.env.BNBBANG_BTC_CONFIRMATIONS;
-      ok('BNBBANG_BTC_CONFIRMATIONS 夹在 [1, 100]，非数字回 6', c0 === 1 && c500 === 100 && cNaN === 6 && btc.confirmationsRequired() === 6);
-
-      // 推广留痕：与 /bang 同规矩（响应之后写盘）
-      {
-        const REFER = '0x' + '77'.repeat(20);
-        const MINT2 = '0x' + '78'.repeat(20);
-        await post({ height: 709632, minter: MINT2, ref: REFER }, 7);
-        await new Promise((r) => setImmediate(() => setImmediate(r)));
-        const binds = JSON.parse(fs.readFileSync(path.join(process.env.BNBBANG_STORE, 'ref-bindings.json'), 'utf8'));
-        ok('/api/btc/bang 也留推广痕（绑定表里 minter → ref）', binds[MINT2] && binds[MINT2].ref === REFER);
-      }
-
-      /* ---- 上游全挂 → 503，不回退常量 ---- */
-      world.down = true; btc._reset();
-      const d1 = await call('GET', '/api/btc/block/840000', null, ipB(8));
-      const d2 = await call('GET', '/api/btc/tip', null, ipB(8));
-      const d3 = await post({ height: 709632, minter: M }, 8);
-      const d4 = await call('GET', '/api/btc/block/' + V[1], null, ipB(8));
-      ok('上游全挂 → block / tip / bang / 按哈希 四条都 503，没有一条编个答案',
-        d1.status === 503 && d2.status === 503 && d3.status === 503 && d4.status === 503,
-        [d1.status, d2.status, d3.status, d4.status].join('/'));
-      world.down = false; btc._reset();
-      await btc.tipHeight(false);
-      world.down = true; clock += 31000;
-      const g = await call('GET', '/api/btc/block/840000', null, ipB(8));
-      ok('上游抖动、旧 tip 不到十分钟：磁盘上的块照答（沿用的是真数据，不是常量）', g.status === 200);
-      clock += 11 * 60 * 1000;
-      const g2 = await call('GET', '/api/btc/block/840000', null, ipB(8));
-      ok('旧 tip 超过十分钟 → 不敢用了，503', g2.status === 503);
-      world.down = false;
-      btc._reset(); world.failFirst = true; world.calls.length = 0;
-      const rot = await call('GET', '/api/btc/block/170', null, ipB(8));
-      ok('第一家上游挂了轮换到第二家：200，两家都被问过',
-        rot.status === 200 && world.calls.some((u) => /mempool\.space/.test(u)) && world.calls.some((u) => /blockstream\.info/.test(u)));
-      world.failFirst = false;
-      const savedApi = process.env.BNBBANG_BTC_API;
-      process.env.BNBBANG_BTC_API = '';
-      btc._reset(); world.calls.length = 0;
-      ok('BNBBANG_BTC_API 配空 = 用默认那两家（与 envInt 同一口径），不是没有上游',
-        (await call('GET', '/api/btc/tip', null, ipB(8))).status === 200 && world.calls.some((u) => /mempool\.space/.test(u)));
-      process.env.BNBBANG_BTC_API = 'https://only.example.org/api';
-      btc._reset(); world.calls.length = 0;
-      await call('GET', '/api/btc/tip', null, ipB(8));
-      ok('BNBBANG_BTC_API 可换：只问配置的那一家', world.calls.length > 0 && world.calls.every((u) => /only\.example\.org/.test(u)));
-      if (savedApi === undefined) delete process.env.BNBBANG_BTC_API; else process.env.BNBBANG_BTC_API = savedApi;
-
-      if (savedV2 === undefined) delete process.env.BNBBANG_SIG_V2; else process.env.BNBBANG_SIG_V2 = savedV2;
-    }
-
-    /* ---- 注册表往返 ---- */
-    {
-      const SEEDS = path.join(process.env.BNBBANG_STORE, 'btc-seeds.json');
-      btc.flush();
-      let j = null;
-      try { j = JSON.parse(fs.readFileSync(SEEDS, 'utf8')); } catch (e) { j = null; }
-      ok('btc-seeds.json 落盘（原子写、无 .tmp 残留）：哈希（小写 0x）→ {height, time}，11 个向量都在',
-        !!j && VEC.every((h) => j[HX(h)] && j[HX(h)].height === h && j[HX(h)].time === TIME_OF(h))
-        && fs.readdirSync(process.env.BNBBANG_STORE).filter((f) => /^btc-seeds.*\.tmp$/.test(f)).length === 0);
-      const inst2 = btc.createBtc({ store: process.env.BNBBANG_STORE, fetch: async () => { throw new Error('down'); } });
-      const o2 = inst2.originOf(HX(840000));
-      ok('新实例从盘上读回注册表：originOf 同步命中', !!o2 && o2.height === 840000 && o2.time === TIME_OF(840000));
-      fs.unlinkSync(SEEDS);
-      const inst3 = btc.createBtc({ store: process.env.BNBBANG_STORE, fetch: async () => { throw new Error('down'); } });
-      ok('注册表没有、但 (hash, height) 与比特币缓存对得上 → 也认（universeOf 那条路），并顺手补进注册表',
-        inst3.originOf(HX(840000)) === null && !!inst3.originOf(HX(840000), 840000)
-        && !!inst3.originOf(HX(840000)) && inst3.originOf(HX(840000), 840001) !== null);
-      ok('哈希对不上那个高度的缓存 → 不认；对得上才认',
-        inst3.originOf(H[0], 840000) === null && inst3.originOf(HX(709632), 840000) === null
-        && inst3.originOf(HX(709632)) === null && !!inst3.originOf(HX(709632), 709632));
-      btc.register(HX(0), 0, TIME_OF(0));            // 把默认实例的表标脏再写回去，后面的用例还要用文件
-      btc.flush();
-    }
-
-    /* ---- Host 判站 ---- */
-    {
-      ok('isBtcHost：默认 bang.satloot.com（大小写 / 端口 / 末尾点归一），bnbbang.com 不是，没有 Host 不是',
-        btc.isBtcHost('bang.satloot.com') && btc.isBtcHost('BANG.SATLOOT.COM:443') && btc.isBtcHost('bang.satloot.com.')
-        && !btc.isBtcHost('bnbbang.com') && !btc.isBtcHost('') && !btc.isBtcHost(undefined));
-      process.env.BNBBANG_BTC_HOSTS = 'btc.example.org, bang.satloot.com';
-      ok('BNBBANG_BTC_HOSTS 可配多个；PUBLIC_BASE 缺省 = https:// + 第一个',
-        btc.isBtcHost('btc.example.org') && btc.isBtcHost('bang.satloot.com') && btc.publicBase() === 'https://btc.example.org');
-      process.env.BNBBANG_BTC_PUBLIC_BASE = 'https://cdn.example.org/';
-      ok('BNBBANG_BTC_PUBLIC_BASE 显式配置优先，去掉末尾斜杠', btc.publicBase() === 'https://cdn.example.org');
-      delete process.env.BNBBANG_BTC_HOSTS; delete process.env.BNBBANG_BTC_PUBLIC_BASE;
-
-      const savedBBN = chainMod.blockByNumber;
-      const NUM = 8642956;
-      chainMod.blockByNumber = async (n) => (n === NUM ? { number: n, hash: H[0] } : null);
-      world.tip = 966000; clock += 31000; btc._reset();
-      const sB = await call('GET', '/s/840000', null, hostB(9, 'bang.satloot.com'));
-      const hb = String(sB.body);
-      ok('bang.satloot.com 的 /s/840000 按比特币高度解释：H1 Universe from Bitcoin block #840,000，站名 BTCBANG',
-        sB.status === 200 && hb.indexOf('<h1>Universe from Bitcoin block #840,000</h1>') > 0 && hb.indexOf('| BTCBANG</title>') > 0
-        && hb.indexOf('og:site_name" content="BTCBANG"') > 0, sB.status + ' ' + hb.slice(0, 80));
-      ok('canonical / og:image / 正文卡图的根是 btc 站',
-        hb.indexOf('<link rel="canonical" href="https://bang.satloot.com/s/840000">') > 0
-        && new RegExp('og:image" content="https://bang\\.satloot\\.com/api/art/' + HX(840000) + '\\.png\\?og=1&amp;n=840000&amp;v=').test(hb)
-        && hb.indexOf('<img src="https://bang.satloot.com/api/art/' + HX(840000) + '.png?p=1&amp;v=') > 0);
-      ok('页面写 Bitcoin block 行、徽章 Halving #4、前导零 19、mempool.space 复核链接、verified=false 属正常态的解释、Back to bang.satloot.com',
-        hb.indexOf('<th>Bitcoin block</th>') > 0 && hb.indexOf('Halving #4') > 0 && hb.indexOf('19 hex digits') > 0
-        && hb.indexOf('https://mempool.space/block/' + V[840000] + '"') > 0
-        && hb.indexOf('<code>verified</code> flag is <code>false</code>') > 0 && hb.indexOf('expected state, not an error') > 0
-        && hb.indexOf('Back to bang.satloot.com') > 0 && hb.indexOf('BNB block') < 0);
-      ok('上一块 / 下一块仍是 /s/<n±1>（btc 站里就是比特币高度）；描述写 Every Bitcoin block hash',
-        hb.indexOf('href="/s/839999"') > 0 && hb.indexOf('href="/s/840001"') > 0 && hb.indexOf('Every Bitcoin block hash') > 0);
-      ok('#840000 在 btc 站的内置精选里 → index, follow', sB.hdr['x-robots-tag'] === 'index, follow');
-      ok('/api/s/840000 别名在 btc 站也按比特币解释', String((await call('GET', '/api/s/840000', null, hostB(9, 'bang.satloot.com'))).body).indexOf('Bitcoin block #840,000') > 0);
-      const s12345 = await call('GET', '/s/12345', null, hostB(9, 'bang.satloot.com'));
-      ok('btc 站上主网没有的高度 → 302 跳首页（不是错误页）', s12345.status === 302 && s12345.hdr.location === '/');
-      world.down = true; btc._reset();
-      const sCached = await call('GET', '/s/709632', null, hostB(9, 'bang.satloot.com'));
-      ok('btc 站上游全挂、但块在磁盘缓存里：落地页照出（不联网也知道哈希）',
-        sCached.status === 200 && String(sCached.body).indexOf('Bitcoin block #709,632') > 0);
-      const sDown = await call('GET', '/s/500000', null, hostB(9, 'bang.satloot.com'));
-      ok('btc 站上游全挂、块没缓存：落地页降级成通用文案（不 500、不猜结局、og 退通用图、max-age 60），但仍按比特币高度写标题',
-        sDown.status === 200 && String(sDown.body).indexOf('Outcome not computed yet') > 0
-        && String(sDown.body).indexOf('<h1>Universe from Bitcoin block #500,000</h1>') > 0 && String(sDown.body).indexOf('BNB block') < 0
-        && String(sDown.body).indexOf('Leading zeros') < 0
-        && String(sDown.body).indexOf('https://bang.satloot.com/api/art/preview.png') > 0 && sDown.hdr['cache-control'] === 'public, max-age=60',
-        sDown.status + ' ' + sDown.hdr['cache-control']);
-      world.down = false; btc._reset();
-
-      const sA = await call('GET', '/s/' + NUM, null, ipB(10));
-      const sC = await call('GET', '/s/' + NUM, null, hostB(10, 'bnbbang.com'));
-      const sD = await call('GET', '/s/' + NUM, null, hostB(10, 'www.bnbbang.com:443'));
-      ok('bnbbang.com（无 Host / 带端口）的 /s/<n> 与改前一个字节不变：H1 仍 BNB block，页里没有 Bitcoin / bang.satloot.com',
-        sA.status === 200 && sA.body === sC.body && sC.body === sD.body
-        && String(sC.body).indexOf('<h1>Universe from BNB block #8,642,956</h1>') > 0 && String(sC.body).indexOf('| BNBBANG</title>') > 0
-        && String(sC.body).indexOf('Bitcoin') < 0 && String(sC.body).indexOf('bang.satloot.com') < 0
-        && String(sC.body).indexOf('Back to ' + process.env.BNBBANG_PUBLIC_BASE.replace(/^https?:\/\//, '') + '<') > 0 && String(sC.body).indexOf('<th>BNB block</th>') > 0);
-      ok('bnbbang.com 上的 /s/840000 仍按 BNB 区块解释（桩里没有这个高度 → 302）',
-        (await call('GET', '/s/840000', null, hostB(10, 'bnbbang.com'))).status === 302);
-      const sH = await call('GET', '/s/' + HX(709632), null, ipB(10));
-      ok('哈希链接在任何 Host：注册表认得 → Bitcoin block #709,632 变体（高度印出来，但没有上一块/下一块）',
-        sH.status === 200 && String(sH.body).indexOf('<h1>Universe from Bitcoin block #709,632</h1>') > 0
-        && String(sH.body).indexOf('rel="prev"') < 0 && String(sH.body).indexOf('Taproot activation') > 0);
-      const sHb = await call('GET', '/s/' + H[2], null, ipB(10));
-      ok('哈希链接不在注册表：原样按哈希写标题，没有 Bitcoin',
-        String(sHb.body).indexOf('<h1>Universe ' + H[2].slice(0, 10) + '…</h1>') > 0 && String(sHb.body).indexOf('Bitcoin') < 0);
-
-      const smB = await call('GET', '/sitemap-s.xml', null, hostB(11, 'bang.satloot.com'));
-      const xb = String(smB.body);
-      ok('btc 站的 sitemap 列比特币内置精选（11 条：创世 + 4 减半 + 6 名块），根是 btc 站',
-        smB.status === 200 && (xb.match(/<url>/g) || []).length === 11
-        && xb.indexOf('<loc>https://bang.satloot.com/s/840000</loc>') > 0 && xb.indexOf('/s/709632<') > 0 && xb.indexOf('/s/0<') > 0,
-        (xb.match(/<url>/g) || []).length + ' 条');
-      const smA = String((await call('GET', '/sitemap-s.xml', null, ipB(11))).body);
-      ok('其余 Host 的 sitemap 不变：没有 btc 站的根、没有比特币高度', smA.indexOf('bang.satloot.com') < 0 && smA.indexOf('/s/840000<') < 0);
-      chainMod.blockByNumber = savedBBN;
-    }
-
-    /* ---- 出图：角标 / og 右栏；缓存键带 origin ---- */
-    {
-      const { card } = buildCard(HX(840000), null);
-      const plain = renderSVG(HX(840000), card, true, false);
-      const marked = renderSVG(HX(840000), card, true, false, { origin: 'btc', height: 840000 });
-      ok('renderSVG 不传 opts：blockNumber null → 没有角标行，更没有 BTC BLOCK', plain.indexOf('BTC BLOCK') < 0 && plain.indexOf('UNIVERSE #') < 0);
-      ok('renderSVG opts.origin=btc：角标印 BTC BLOCK #840,000（千分位），水印仍是 BNBBANG',
-        marked.indexOf('>BTC BLOCK #840,000<') > 0 && marked.indexOf('>BNBBANG<') > 0 && marked.indexOf('UNIVERSE #') < 0);
-      const { card: cn } = buildCard(HX(840000), 840000);
-      ok('带 blockNumber、不传 opts 仍是 UNIVERSE #840,000（改前行为）', renderSVG(HX(840000), cn, true, false).indexOf('>UNIVERSE #840,000<') > 0);
-      ok('renderCraftedSVG 透传 origin', renderCraftedSVG(HX(840000), card, { origin: 'btc', height: 840000 }).indexOf('>BTC BLOCK #840,000<') > 0);
-      const ogB = OGM.composeOG(marked, { blockNumber: '840000', card, blockHash: HX(840000), origin: 'btc' });
-      const ogA = OGM.composeOG(plain, { blockNumber: '840000', card, blockHash: HX(840000) });
-      ok('og 右栏：origin=btc 印 Bitcoin block #840,000；不传仍是 BNB block #840,000；水印 BNBBANG 都在',
-        ogB.indexOf('>Bitcoin block #840,000<') > 0 && ogA.indexOf('>BNB block #840,000<') > 0 && ogA.indexOf('Bitcoin') < 0
-        && ogB.indexOf('>BNBBANG<') > 0);
-      const svgB = await call('GET', '/api/art/' + HX(840000) + '.svg?p=1', null, ipB(12));
-      ok('/api/art/<btc哈希>.svg?p=1：注册表认得 → 角标 BTC BLOCK #840,000，缓存键带 -btc',
-        svgB.status === 200 && String(svgB.body).indexOf('>BTC BLOCK #840,000<') > 0
-        && fs.existsSync(path.join(process.env.BNBBANG_CACHE, 'art-' + HX(840000) + '-p-v' + DERIVATION_VERSION + '-s' + api.SHAPE + '-btc.svg')));
-      const svgA = await call('GET', '/api/art/' + H[0] + '.svg?p=1', null, ipB(12));
-      ok('BNB 哈希出图不变：没有 BTC BLOCK，键不带 -btc',
-        svgA.status === 200 && String(svgA.body).indexOf('BTC BLOCK') < 0
-        && fs.existsSync(path.join(process.env.BNBBANG_CACHE, 'art-' + H[0] + '-p-v' + DERIVATION_VERSION + '-s' + api.SHAPE + '.svg')));
-      const png = await call('GET', '/api/art/' + HX(840000) + '.png?og=1&n=840000', null, ipB(12));
-      const pngKey = path.join(process.env.BNBBANG_STORE, 'png', 'art-' + HX(840000) + '-og-n840000-v' + DERIVATION_VERSION + '-s' + api.SHAPE + '-btc.png');
-      ok('og png 的缓存键也带 -btc（先后顺序不决定图长什么样）', png.status === 200 && (png.hdr['x-png-cache'] === 'fallback' || fs.existsSync(pngKey)), png.hdr['x-png-cache']);
-    }
-
-    /* ---- token metadata ---- */
-    {
-      const chain = {
-        tokenId: 9n, blockHash: HX(840000), blockNumber: 840000, mintedAt: 1, minter: '0x' + '22'.repeat(20),
-        outcome: 9, verified: false, rarity: 0, cardHash: null, name: null, burned: 0n,
-        rescue: { at: 0, fromOutcome: null, steps: null }
-      };
-      const deps = { cardFor: api.cardFor, storeGet: api.storeGet, publicBase: 'https://x.test', version: 'v' };
-      const withBtc = Object.assign({ btcOf: btc.originOf, btcBadgesOf: btc.badgesOf }, deps);
-      const attr = (m, t) => { const a = m.attributes.find((x) => x.trait_type === t); return a ? a.value : undefined; };
-      const mB = buildMetadata(chain, withBtc).meta;
-      ok('token metadata：注册表命中 → name Bitcoin Block #840000 Universe；Origin=Bitcoin、BTC block=840000、Badges=Halving #4；描述说清 verified=false 属正常',
-        mB.name === 'Bitcoin Block #840000 Universe' && attr(mB, 'Origin') === 'Bitcoin' && attr(mB, 'BTC block') === 840000
-        && attr(mB, 'Badges') === 'Halving #4' && /grown from Bitcoin block 840000/.test(mB.description)
-        && /verified flag is false by design/.test(mB.description) && attr(mB, 'Block proof') === 'off-chain', mB.name);
-      const mA = buildMetadata(chain, deps).meta;
-      ok('没注入 btcOf（老调用方）→ 一个字不变：Universe #840000，没有 Origin / Badges',
-        mA.name === 'Universe #840000' && attr(mA, 'Origin') === undefined && attr(mA, 'Badges') === undefined && /grown from BNB block/.test(mA.description));
-      const mC = buildMetadata(Object.assign({}, chain, { blockHash: H[0], blockNumber: 8642956 }), withBtc).meta;
-      ok('BNB 哈希即使注入了 btcOf 也不变：Universe #8642956，没有 Origin', mC.name === 'Universe #8642956' && attr(mC, 'Origin') === undefined);
-      const mN = buildMetadata(Object.assign({}, chain, { name: 'satoshi' }), withBtc).meta;
-      ok('命名过的比特币宇宙仍以名字为标题，Origin 属性照印', mN.name === 'satoshi' && attr(mN, 'Origin') === 'Bitcoin');
-      const m0 = buildMetadata(Object.assign({}, chain, { blockHash: HX(0), blockNumber: 0 }), withBtc).meta;
-      ok('创世块 #0：Bitcoin Block #0 Universe，Badges = Genesis block, Difficulty period start',
-        m0.name === 'Bitcoin Block #0 Universe' && attr(m0, 'Badges') === 'Genesis block, Difficulty period start');
-    }
-
-    /* ---- 市场索引 meta.origin + /api/btc/stats ---- */
-    {
-      const I = MI._internals;
-      const savedUni = I.CFG.universe;
-      const savedMeta = I.getMeta(), savedState = I.getState();
-      I.CFG.universe = '0x' + 'ab'.repeat(20);
-      const UK = (id) => I.CFG.universe + ':' + id;
-      const OWNER = '0xabcdef0000000000000000000000000000005678';
-      const st3 = MI.emptyState();
-      st3.owners[UK(21)] = OWNER; st3.owners[UK(22)] = OWNER;
-      MI.rebuildDerived(st3);                          // ownedOf 走 byOwner 倒排，得从 owners 重建一次
-      I.setState(st3);
-      const m3 = Object.create(null);
-      m3[UK(21)] = { blockHash: HX(840000), blockNumber: 840000, mintedAt: 1756700000, at: Date.now(), ph: null, phNext: Date.now() + 1e9 };
-      m3[UK(22)] = { blockHash: H[0], blockNumber: 8642956, mintedAt: 1756700000, at: Date.now(), ph: null, phNext: Date.now() + 1e9 };
-      I.setMeta(m3);
-      const owned = await MI.ownedOf(OWNER);
-      const byId = {};
-      for (const x of owned.native) byId[x.tokenId] = x;
-      ok('ownedOf 输出 meta.origin：比特币宇宙 btc、BNB 宇宙 bnb（注册表查不到默认 bnb）',
-        byId['21'] && byId['21'].origin === 'btc' && byId['22'] && byId['22'].origin === 'bnb', JSON.stringify(owned.native.map((x) => [x.tokenId, x.origin])));
-      ok('mintedWhere 按注册表筛出比特币宇宙（带 hash）；mintedHeights 形状不变（只有 n / at）',
-        JSON.stringify(MI.mintedWhere((h) => !!btc.originOf(h)).map((x) => [x.n, x.hash])) === JSON.stringify([[840000, HX(840000)]])
-        && JSON.stringify(Object.keys(MI.mintedHeights()[0]).sort()) === '["at","n"]');
-      const st = await call('GET', '/api/btc/stats', null, ipB(13));
-      const sj = JSON.parse(st.body);
-      ok('/api/btc/stats → minted 1、byBadge.halving 1、账本缺省 {budget 21000000, granted 0, entries []}',
-        st.status === 200 && sj.minted === 1 && sj.byBadge.halving === 1 && sj.byBadge.genesis === 0
-        && sj.ledger.budget === 21000000 && sj.ledger.granted === 0 && Array.isArray(sj.ledger.entries) && sj.ledger.entries.length === 0, String(st.body).slice(0, 160));
-      const LEDGER = path.join(process.env.BNBBANG_STORE, 'btc-ledger.json');
-      fs.writeFileSync(LEDGER, JSON.stringify({ budget: 2100000, granted: 210, entries: [{ to: '0x' + '22'.repeat(20), amount: 210, reason: 'btcbang:first-mint' }] }));
-      const st2 = JSON.parse((await call('GET', '/api/btc/stats', null, ipB(13))).body);
-      ok('账本文件存在就读它（人工维护）', st2.ledger.budget === 2100000 && st2.ledger.granted === 210 && st2.ledger.entries.length === 1);
-      fs.writeFileSync(LEDGER, '{broken');
-      const st3r = await call('GET', '/api/btc/stats', null, ipB(13));
-      ok('账本坏了 → 缺省账本 + error，不 500', st3r.status === 200 && JSON.parse(st3r.body).ledger.budget === 21000000 && /error/.test(JSON.stringify(JSON.parse(st3r.body).ledger)));
-      fs.unlinkSync(LEDGER);
-      // enrich（fetchMeta）时就写 origin：universeOf 打桩回比特币哈希
-      ethCallStub = (to, data) => {
-        const sel = String(data).slice(0, 10);
-        if (sel === MI.SEL.universeOf) return '0x' + W32(HX(840000)) + W32(840000) + W32(1) + W32(0) + W32(9) + W32(0) + W32(0);
-        return '0x' + W32(0);
-      };
-      const rec = await I.fetchMeta(I.CFG.universe, '21', null);
-      ethCallStub = null;
-      ok('enrich（fetchMeta）时就写 origin=btc', rec.origin === 'btc' && rec.blockHash === HX(840000) && rec.blockNumber === 840000);
-      I.CFG.universe = savedUni; I.setMeta(savedMeta); I.setState(savedState);
-    }
-
-    /* 这份样例只在单体仓库里有：导出成独立仓库的 ARCBANG（tools/export-arcbang.js）故意不带它。
-       文件不在就跳过这一条，不能让整份自测在这里 ENOENT 崩掉。 */
-    if (!fs.existsSync(path.join(__dirname, 'api.env.mainnet.example'))) {
-      console.log('  ○ 跳过：api.env.mainnet.example 不在这个仓库里（ARCBANG 导出树不带 BNB 主网样例）');
-    } else {
-      const ex = fs.readFileSync(path.join(__dirname, 'api.env.mainnet.example'), 'utf8');
-      ok('api.env.mainnet.example 列出六个 BNBBANG_BTC_* 变量',
-        ['BNBBANG_BTC_API', 'BNBBANG_BTC_HOSTS', 'BNBBANG_BTC_PUBLIC_BASE', 'BNBBANG_BTC_CONFIRMATIONS', 'BNBBANG_BTC_RESERVED', 'BNBBANG_BTC_OPEN_AT']
-          .every((k) => new RegExp('^' + k + '=', 'm').test(ex)));
-    }
-
-    btc._setFetch(null); btc._setNow(null); btc._reset();
-  }
-  {
-    console.log('\n[S1] IndexNow 推送（server/indexnow.js）');
-    const INX = require('./indexnow.js');
-    const g = INX.groupNew([{ n: 1, base: 'https://a.test' }, { n: 2, base: 'https://a.test' }, { n: 7, base: 'https://b.test' }, { n: 3, base: 'bad' }, { n: -1, base: 'https://a.test' }], new Set(['https://a.test|2']));
-    ok('groupNew 只留没推过的、按站分组、丢掉坏 base / 坏高度', g.size === 2 && g.get('https://a.test').join() === '1' && g.get('https://b.test').join() === '7');
-    const dir = path.join(TMP, 'inx'); fs.mkdirSync(dir, { recursive: true });
-    const calls = [];
-    let code = 202;
-    const fakeFetch = async (url, init) => { calls.push(JSON.parse(init.body)); return { status: code }; };
-    let now = 1000000;
-    const KEY32 = 'ab'.repeat(16);
-    const inx = INX.create({ storeDir: dir, fetch: fakeFetch, now: () => now, log: () => {}, enabled: true, key: KEY32 });
-    const items = [{ n: 5, base: 'https://x.test' }, { n: 6, base: 'https://x.test' }, { n: 9, base: 'https://y.test' }];
-    let r = await inx.pushRound(items);
-    ok('首轮：两站各一次 POST，共 3 个 URL', r.posted === 2 && r.urls === 3 && calls.length === 2);
-    ok('请求体：host / key / keyLocation / urlList 都对', calls[0].host === 'x.test' && calls[0].key === KEY32 && calls[0].keyLocation === 'https://x.test/' + KEY32 + '.txt' && calls[0].urlList.join() === 'https://x.test/s/5,https://x.test/s/6');
-    r = await inx.pushRound(items);
-    ok('同样的名单第二轮不再推', r.posted === 0 && calls.length === 2);
-    ok('推过的落了盘', fs.existsSync(inx._file) && Object.keys(JSON.parse(fs.readFileSync(inx._file, 'utf8'))).length === 3);
-    const more = items.concat([{ n: 10, base: 'https://x.test' }]);
-    code = 429; now += 1;
-    r = await inx.pushRound(more);
-    ok('429 不记录', r.posted === 0 && calls.length === 3);
-    now += 5 * 60000; r = await inx.pushRound(more);
-    ok('失败后 10 分钟内不重试', r.skipped === 1 && calls.length === 3);
-    code = 200; now += 10 * 60000; r = await inx.pushRound(more);
-    ok('过了退避期再推，只推那一条', r.posted === 1 && r.urls === 1 && calls[3].urlList.join() === 'https://x.test/s/10');
-    const inx2 = INX.create({ storeDir: dir, fetch: fakeFetch, now: () => now, log: () => {}, enabled: true, key: KEY32 });
-    r = await inx2.pushRound(more);
-    ok('重启后读回记录，不重推', r.posted === 0 && calls.length === 4);
-    const off = INX.create({ storeDir: dir, fetch: fakeFetch, enabled: false, log: () => {} });
-    r = await off.pushRound([{ n: 99, base: 'https://z.test' }]);
-    ok('BNBBANG_INDEXNOW=0 时什么都不做', r.posted === 0 && calls.length === 4);
-
     console.log('\n[S2] 上线预约（server/subscribe.js）');
     const SBX = require('./subscribe.js');
     const sdir = path.join(TMP, 'sub'); fs.mkdirSync(sdir, { recursive: true });
@@ -3447,14 +2586,14 @@ function call(method, url, body, headers) {
       && (MI3.applyLogs(stA, [aSold], cfgArc), stA.sales.length === 1));
 
     /* ---- 按 chainId 切：现读 env，不认加载时缓存的那一份 ---- */
-    const savedChain = process.env.BNBBANG_CHAIN_ID;
-    process.env.BNBBANG_CHAIN_ID = '5042';
+    const savedChain = process.env.ARCBANG_CHAIN_ID;
+    process.env.ARCBANG_CHAIN_ID = '5042';
     const arcTop = MI3.marketTopics();
     const arcOn = MI3.isArcChain();
-    process.env.BNBBANG_CHAIN_ID = '56';
+    process.env.ARCBANG_CHAIN_ID = '56';
     const bscTop = MI3.marketTopics();
     const bscOn = MI3.isArcChain();
-    process.env.BNBBANG_CHAIN_ID = savedChain;
+    process.env.ARCBANG_CHAIN_ID = savedChain;
     ok('chainId 5042 → 查 Arc 那四个 topic；56 → 查主线那三个（判定现读 env）',
       arcOn === true && bscOn === false
       && arcTop.length === 4 && arcTop.indexOf(MI3.ARC_TOPICS.PriceChanged) >= 0

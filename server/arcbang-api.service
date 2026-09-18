@@ -5,6 +5,7 @@
 #
 # 只监听 127.0.0.1:8803，外面靠 nginx 的 /api/ 反代进来 ——
 # 直接暴露到公网等于把签名服务的端口挂出去，没有任何好处。
+#
 
 [Unit]
 Description=ARCBANG API · Arc 主网 (算 card / 签名 / 出图)
@@ -23,16 +24,16 @@ RestartSec=3
 # 环境变量从这个文件读。**私钥不写在这里**，见下面的 signer.key
 EnvironmentFile=/etc/arcbang/api.env
 
-# 签名私钥单独一个文件，600，属主 bnbbang。
-# 服务启动时从 BNBBANG_SIGNER_KEY_FILE 读它（server/sign.js）。
-Environment=BNBBANG_SIGNER_KEY_FILE=/etc/arcbang/signer.key
+# 签名私钥单独一个文件，600，属主 arcbang。
+# 服务启动时从 ARCBANG_SIGNER_KEY_FILE 读它（server/sign.js）。
+Environment=ARCBANG_SIGNER_KEY_FILE=/etc/arcbang/signer.key
 
 # 端口 / 存档 / 出图缓存钉死在 unit 里，避免 env 漏填时落到测试网默认
-# （BNBBANG_PORT 默认 8801、STORE 默认 .store、CACHE 默认 .cache）。
-Environment=BNBBANG_PORT=8803
-Environment=BNBBANG_STORE=/opt/arcbang/server/.store
-Environment=BNBBANG_PNG_DIR=/opt/arcbang/server/.store/png
-Environment=BNBBANG_CACHE=/opt/arcbang/server/.cache
+# （ARCBANG_PORT 默认 8801、STORE 默认 .store、CACHE 默认 .cache）。
+Environment=ARCBANG_PORT=8803
+Environment=ARCBANG_STORE=/opt/arcbang/server/.store
+Environment=ARCBANG_PNG_DIR=/opt/arcbang/server/.store/png
+Environment=ARCBANG_CACHE=/opt/arcbang/server/.cache
 
 # ---- 收紧权限 ----
 # 这个进程手里握着签名私钥：任何人拿到它就能伪造"带参数"的 NFT。
@@ -57,7 +58,7 @@ ReadWritePaths=/opt/arcbang/server/.cache /opt/arcbang/server/.store
 # 日志
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=bnbbang-api-arc
+SyslogIdentifier=arcbang-api
 
 [Install]
 WantedBy=multi-user.target

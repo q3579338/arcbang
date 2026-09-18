@@ -23,15 +23,15 @@ function ttlOf(v) {
   if (!Number.isFinite(n)) return 600;
   return Math.min(3600, Math.max(30, n));
 }
-const TTL_SEC = ttlOf(process.env.BNBBANG_SIG_TTL);
+const TTL_SEC = ttlOf(process.env.ARCBANG_SIG_TTL);
 
 function loadWallet() {
-  const inline = process.env.BNBBANG_SIGNER_KEY;
-  const file = process.env.BNBBANG_SIGNER_KEY_FILE || '/etc/bnbbang/signer.key';
+  const inline = process.env.ARCBANG_SIGNER_KEY;
+  const file = process.env.ARCBANG_SIGNER_KEY_FILE || '/etc/bnbbang/signer.key';
   let pk = inline;
   if (!pk && fs.existsSync(file)) pk = fs.readFileSync(file, 'utf8').trim();
   if (!pk) {
-    throw new Error('没有签名私钥：设 BNBBANG_SIGNER_KEY 或把私钥放到 ' + file);
+    throw new Error('没有签名私钥：设 ARCBANG_SIGNER_KEY 或把私钥放到 ' + file);
   }
   return new Wallet(pk.startsWith('0x') ? pk : '0x' + pk);
 }
@@ -40,7 +40,7 @@ function loadWallet() {
     只认字符串 '1'；没设或任何别的值都走 v1，保证现役合约的摘要逐字节不变。
     必须每次调用现读 env：自检要在同一进程里设/清各跑一遍。 */
 function sigV2() {
-  return process.env.BNBBANG_SIG_V2 === '1';
+  return process.env.ARCBANG_SIG_V2 === '1';
 }
 
 const MINTER_RE = /^0x[0-9a-fA-F]{40}$/;
@@ -60,8 +60,8 @@ function assertMinter(minter) {
  *   v2：必填、必须是 0x + 40 位 hex、不许零地址；非法/缺省 { ok:false, error } 给人话
  * 大小写都收，进摘要之前统一小写（address 编码不认大小写，统一了两边才对得死）。
  *
- * **开关只认 process.env.BNBBANG_SIG_V2 === '1'**。请求体里的 sigV2 / sigVersion
- * / BNBBANG_SIG_V2 / cardShape 一律不看 —— 客户端不能靠参数把 v2 关掉或打开。
+ * **开关只认 process.env.ARCBANG_SIG_V2 === '1'**。请求体里的 sigV2 / sigVersion
+ * / ARCBANG_SIG_V2 / cardShape 一律不看 —— 客户端不能靠参数把 v2 关掉或打开。
  */
 function minterFromBody(body) {
   if (!sigV2()) return { ok: true, minter: null };

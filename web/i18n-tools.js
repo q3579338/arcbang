@@ -217,8 +217,6 @@
     '这个宇宙是结构性死亡，推参数救不回来 —— 关掉沙盒，去引爆下一个':
       'This universe is structurally dead; nudging parameters will not bring it back — close the sandbox and go detonate the next one',
     '这个宇宙没有区块哈希，服务端没法定位它': 'This universe has no block hash, so the server cannot locate it',
-    '这个宇宙现在能诞生观察者：共 {n} 格，真烧要 {m} BANG（沙盒不收费）。':
-      'This universe can give rise to observers now: {n} notches in all, a real burn would cost {m} BANG (the sandbox is free).',
     '这是维数判据直接给出的结论：引力与库仑势的形状不对，行星绕不成圈、电子也落不进壳层。这不是差几格余量，是几何本身的问题。':
       'This comes straight out of the dimension criteria: the gravitational and Coulomb potentials have the wrong shape, so planets cannot hold an orbit and electrons cannot settle into shells. This is not a few notches of margin — it is the geometry itself.',
     '门': 'Gates',
@@ -451,7 +449,7 @@
     '每道门都过了，但可居住性 <0.4：多半是恒星寿命太短、宜居窗口太窄或涨落幅度偏离窗口。':
       'Every gate passed, but habitability is <0.4: most likely the stellar lifetime is too short, the habitable window too narrow, or the fluctuation amplitude off-window.',
 
-    /* ---- 铸成造物（web/intervene.js 的 craft 流程，specs/crafted-v1.md §五） ----
+    /* ---- 铸成造物（web/intervene.js 的 craft 流程） ----
        两条产品线两个故事，措辞别混：原生拯救 100% 全烧（rescue），
        造物铸造 20% 销毁 / 80% 进国库（Crafted mint）。
        通用句（'正在向服务端要签名…'、'正在连接钱包…'、'已发出，等待上链…'、
@@ -461,7 +459,7 @@
        造物只烧 20%，写「真烧要」是在骗人（2026-08-21 用户指出，已拍板）。
        2026-08-21 再改：拯救那条出口接通之后，两颗按钮并排站着 ——
        这一句必须先说清「铸的是新的一枚、原来那枚不动」，否则两条路照旧分不开。
-       2026-08-21 三改（specs/rescue-mint-unified.md）：结尾原来是「你原来那枚不受影响」，
+       2026-08-21 三改：结尾原来是「你原来那枚不受影响」，
        而「铸下并拯救」上线后主路也对**一枚都没有**的人开着 —— 那种用户没有"原来那枚"。
        改成说两条产品线互不相干。旧 key 已经没有调用点，一并删掉，免得留一条死词条。 */
     '铸一枚<b>新的</b> NFT（造物系列）：费用 <b>{n} BANG</b>，20% 销毁 / 80% 进国库，与原生系列互不相干':
@@ -510,7 +508,7 @@
       'Gas estimation for the mint failed (nothing was sent): ',
     '链上给出的理由：{n}': 'The chain gave this reason: {n}',
     '链上回滚，错误数据认不出（{n}）': 'Reverted on-chain with unrecognized error data ({n})',
-    /* 模拟回滚的选择器翻译（contracts/src/MirrorCrafted.sol 的 error 定义 + Solidity 内置 Panic） */
+    /* 模拟回滚的选择器翻译（MirrorCrafted 的 error 定义 + Solidity 内置 Panic） */
     '签名验不过（BadSig）：服务端签名和合约的 signer 对不上，或签名闸中途被关了':
       'Signature check failed (BadSig): the server’s signature does not match the contract’s signer, or the signing gate was closed midway',
     '签名过期了（Expired）—— 重新点一次，拿份新签名再铸':
@@ -537,7 +535,7 @@
        '你在钱包里取消了'、'钱包没有给出账户'、授权那三句、'发交易前先查链上状态…'、
        '看这张卡的图'）已经在别处收过，这里不重复。 */
     '拯救这枚 NFT': 'Rescue this NFT',
-    /* ---- 铸下并拯救（specs/rescue-mint-unified.md）----
+    /* ---- 铸下并拯救----
        沙盒出口现在是「一条主路 + 一条备选」。主按钮的文字随「你和这个宇宙的关系」切：
        已铸且是你的 → 上面那句；**没铸过 → 下面这句**。
        英文用 Mint & Rescue（不是 Mint and Rescue）：它是一颗按钮上的名字，
@@ -581,7 +579,7 @@
     '铸造成功了，但回执里没有 Minted 事件，读不出这枚 NFT 的编号 —— 不猜编号是有意的（猜错会去改别人的那一枚）':
       'The mint succeeded, but the receipt carries no Minted event, so this NFT’s id cannot be read. Not guessing the id is deliberate — a wrong guess would rewrite somebody else’s NFT',
     /* 主编号一律是**区块号**（{n}），tokenId 只在括号里当副编号（{m}/{k}）——
-       全站口径见 web/bnb-ui.js 顶部与 web/intervene.js 的 uniNo()。 */
+       全站口径见 web/arc-ui.js 顶部与 web/intervene.js 的 uniNo()。 */
     '铸下并拯救成功 —— 宇宙 #{n} 现在是你的了（链上 NFT #{m}），参数也已经按沙盒里这一串改写了。':
       'Minted and rescued — Universe #{n} is now yours (on-chain NFT #{m}), and its parameters have been rewritten with the nudges from the sandbox.',
     /* **中途失败的话术是这条改动的重点。** 第 1 步落地之后用户已经拿到 NFT 了，
@@ -654,7 +652,7 @@
       'The nudge record from the server is not whole bytes — the transaction cannot be assembled',
     '服务端给的签名不是整字节，拼不出交易':
       'The signature from the server is not whole bytes — the transaction cannot be assembled',
-    /* 模拟回滚的选择器翻译（contracts/src/MirrorUniverse.sol 的 error 定义
+    /* 模拟回滚的选择器翻译（MirrorUniverse 的 error 定义
        + BangToken 的 Insufficient）。BadRarity / BadConfig / Panic 三句与造物共用，上面已收。 */
     '这枚 NFT 不是你的（NotOwner）—— 干预只能改写自己持有的那一枚':
       'This NFT is not yours (NotOwner) — an intervention can only rewrite one you hold yourself',

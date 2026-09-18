@@ -19,16 +19,20 @@ const { OUTCOME_EN, craftedBurnOf, craftedBurnLabel } = require('./art.js');
 
 const sel = (sig) => keccakId(sig).slice(0, 10);
 
-/* 命名合约（contracts/src/BangNames.sol）。**独立于 NFT 合约，可以不配**：
+/* 命名合约（BangNames）。**独立于 NFT 合约，可以不配**：
    没设这个环境变量时，metadata 里就是没有名字这一条，别的一个字都不变。
    它是 BANG 的第二条销毁通路，和 cardOf / 稀有度 / 结局 / 出图全都不相干。
 
    为什么从 env 直接读，而不是像 CONTRACT 那样由 index.js 传进来：
    readToken 的调用方只有 index.js 那一处，加一个参数就要动那边；而这一层是
    纯附加的，不该逼着上游改签名。给 readToken 留了第三个可选参数，测试用它注入。 */
-const NAMES = (process.env.BNBBANG_NAMES || '').toLowerCase();
+/* 描述里那个链名。**写死，不读 env** —— tokenURI 是要被市场抓走存档的链上内容，
+   必须和合约自己那份链上兜底 metadata 一字不差（ArcUniverse.sol 的 tokenURI 里
+   写的就是 "A universe grown from Arc block …"）。 */
+const CHAIN_WORD = 'Arc';
+const NAMES = (process.env.ARCBANG_NAMES || '').toLowerCase();
 /* 造物系列的名册（BangNames2）。没配就不打那一笔，metadata 其余部分一个字不变。 */
-const NAMES2 = (process.env.BNBBANG_NAMES2 || '').toLowerCase();
+const NAMES2 = (process.env.ARCBANG_NAMES2 || '').toLowerCase();
 
 /* 链上返回的 string → JS 字符串。**每一步都验长度**：这份数据来自一个可以配错的
    外部合约地址，不是我们自己的结构体。偏移或长度是垃圾时返回 null，不要抛 ——
@@ -51,7 +55,7 @@ function asString(raw) {
 }
 
 /* 名字的**独立复核**。合约那边已经把规则钉死了（ASCII、1..32、首尾不能是连字符），
-   这里再验一遍不是不信任它，是因为 BNBBANG_NAMES 指向哪个合约由配置决定：
+   这里再验一遍不是不信任它，是因为 ARCBANG_NAMES 指向哪个合约由配置决定：
    指错一个地址，返回的就可能是任意字节，而这段字符串会被原样送进 NFT metadata，
    出现在市场、钱包、扫块器上。
 
@@ -114,7 +118,7 @@ async function readToken(contract, tokenId, namesAddr) {
      eth_call 不 revert，就是干干净净回一个空的 0x。
      这是**配置错**，不是"链上没有这枚 NFT" —— 原来两者一起掉进下面那个 isZero 里
      （空数据 → word 给 null → isZero(null) 为真 → return null → 404），
-     于是 BNBBANG_CONTRACT 填错一个字符、或者服务端连的链和合约不在一条链上时，
+     于是 ARCBANG_CONTRACT 填错一个字符、或者服务端连的链和合约不在一条链上时，
      每一枚 NFT 都报「链上没有这枚 NFT」。人看到这句话会去查铸造记录、查扫块器，
      唯独不会去看配置 —— 和当年 /etc/bnbbang 权限 700 却报"没有私钥"是同一种坑。
      三类错必须报三种话：503 节点打不通 / 502 合约地址不对 / 404 这个 id 没铸过。 */
@@ -137,7 +141,7 @@ async function readToken(contract, tokenId, namesAddr) {
     blockNumber: asNum(word(uRaw, 1)),
     mintedAt: asNum(word(uRaw, 2)),
     minter: asAddr(word(uRaw, 3)),
-    /* 这是**铸造者填进 bang() 的声称值**，合约不核对（web/bnb-chain.js 的 universeAt
+    /* 这是**铸造者填进 bang() 的声称值**，合约不核对（web/arc-chain.js 的 universeAt
        标了同一件事）。只有走 bangSigned 盖过章的才是服务端签出来的。
        所以下面 metadata 里要把"这个结局是谁说的"单列一条，不能让两者看起来一样可信。 */
     outcome: asNum(word(uRaw, 4)),
@@ -176,16 +180,8 @@ function bangWhole(v) {
  *   unknown     cardOf 非零但两边都对不上。见下面的处理。
  */
 function buildMetadata(chain, deps) {
-  const { cardFor, storeGet, publicBase, version, btcOf, btcBadgesOf } = deps;
+  const { cardFor, storeGet, publicBase, version } = deps;
   const art = publicBase + '/api/art/';
-
-  /* 比特币宇宙（specs/btcbang-v1.md §五）：注册表认得这个哈希，或 (blockHash, blockNumber)
-     与比特币缓存对得上。来源判定谁都能复核（§1.1），这里只是把结论印进 metadata；
-     没注入 btcOf（marketindex-test / 老调用方）就当没有比特币这回事，输出一个字不变。 */
-  let btcO = null;
-  try { btcO = typeof btcOf === 'function' ? btcOf(chain.blockHash, chain.blockNumber) : null; }
-  catch (e) { btcO = null; }
-  const btcNo = btcO ? (chain.blockNumber == null ? btcO.height : chain.blockNumber) : null;
 
   let source = 'none', card = null, image = null;
   if (chain.cardHash) {
@@ -207,7 +203,7 @@ function buildMetadata(chain, deps) {
            两种情况下**任何一张图都是假的**：印当前版本的参数是拿另一个宇宙换掉他买到的那个，
            印 NOT DETONATED 又是在否认他确实盖过章、烧过币。
            所以宁可不给 image —— 让它在市场上显示成缺图，而不是显示成一个错的宇宙。
-           （specs/economy-v4.md §六 对第 1 种的处置就是"老卡标记为 v1 宇宙，不重算"。） */
+            */
         source = 'unknown';
       }
     }
@@ -252,13 +248,6 @@ function buildMetadata(chain, deps) {
   push('Block proof', chain.verified == null ? null : (chain.verified ? 'on-chain' : 'off-chain'));
   push('Block', chain.blockNumber);
   push('Block hash', chain.blockHash);
-  if (btcO) {
-    push('Origin', 'Bitcoin');
-    push('BTC block', btcNo);
-    let badges = [];
-    try { badges = typeof btcBadgesOf === 'function' ? btcBadgesOf(btcNo) : []; } catch (e) { badges = []; }
-    if (badges.length) push('Badges', badges.map((b) => b.labelEn || b.key).join(', '));
-  }
 
   /* 救活记录 —— economy-v4 §11 的结论是整个项目真正稀缺的只有这一样：
      区块要多少有多少，烧掉的币不是。所以它必须印在 metadata 上，而且数字要
@@ -268,7 +257,7 @@ function buildMetadata(chain, deps) {
     push('Rescued from', OUTCOME_EN[chain.rescue.fromOutcome] || null);
     push('Interventions', chain.rescue.steps);
   }
-  if (chain.burned > 0n) push('BANG burned', bangWhole(chain.burned));
+  if (chain.burned > 0n) push('Burned', bangWhole(chain.burned));
 
   /* 名字。**单独一条 trait**，即使它同时也是上面的 name 字段 ——
      市场按 trait 筛选，只写在标题里的话筛不到「已命名」这一批。
@@ -277,14 +266,9 @@ function buildMetadata(chain, deps) {
   const named = cleanName(chain.name);
   if (named) push('Name', named);
 
-  let desc = 'A universe grown from ' + (btcO ? 'Bitcoin' : 'BNB') + ' block ' + chain.blockNumber
+  let desc = 'A universe grown from ' + CHAIN_WORD + ' block ' + chain.blockNumber
     + '. One block hash, one set of genesis parameters, one outcome. '
     + 'Derived by an integer formula anyone can recompute from the block hash alone.';
-  if (btcO) {
-    /* verified=false 是比特币宇宙的正常态（规格 §一），metadata 里必须说，否则 Block proof=off-chain 会被读成假货 */
-    desc += ' Minted into the same MirrorUniverse contract on BNB Chain; its on-chain verified flag is false by design'
-      + ' (BNB Chain cannot look up a Bitcoin hash), and the origin can be checked against any Bitcoin node.';
-  }
   if (source === 'none') {
     desc += ' This one was minted without detonating: the chain carries no parameter stamp for it,'
       + ' so none are shown.';
@@ -293,13 +277,13 @@ function buildMetadata(chain, deps) {
       + ' reproduce — it was minted under an older derivation, or its intervention record is missing.'
       + ' No image is shown rather than a wrong one.';
   } else if (source === 'intervened') {
-    desc += ' Its parameters were moved by burning BANG'
-      + (chain.rescue.at ? ', and it was rescued into a universe that can hold observers.' : '.');
+    desc += ' Its parameters were moved away from the ones this block hash derives'
+      + (chain.rescue.at ? ', into a universe that can hold observers.' : '.');
   }
-  /* 命名这件事要在描述里说一句，而且要说清是**持有人**取的、是**烧掉 BANG** 换来的。
+  /* 命名这件事要在描述里说一句，而且要说清是**持有人**取的。
      不说的话，市场上一个叫 "earth" 的 NFT 看起来就像是发行方给的官方名字。 */
   if (named) {
-    desc += ' Its holder burned BANG to name it "' + named + '" — names are unique across the'
+    desc += ' Its holder named it "' + named + '" — names are unique across the'
       + ' collection and travel with the token.';
   }
 
@@ -319,7 +303,7 @@ function buildMetadata(chain, deps) {
      名字可以改、可以放弃，区块号不能，出问题时要靠它把一枚 NFT 对回链上。 */
   const meta = {
     // 比特币宇宙的名字把来源写进去：两站共用一个市场，「Universe #840000」看不出它是哪条链的块
-    name: named || (btcO ? 'Bitcoin Block #' + btcNo + ' Universe' : 'Universe #' + uniNo),
+    name: named || ('Universe #' + uniNo),
     description: desc,
     external_url: publicBase + '/',      // 还没有按 token 的深链页面，指站点根，别造死链
     attributes: attrs
@@ -331,7 +315,7 @@ function buildMetadata(chain, deps) {
 
 /**
  * MirrorCrafted.cardOf 返回值。8 槽取 burned；7 槽（旧字节码）burned=null，不报错。
- * 字段序照 contracts/src/MirrorCrafted.sol:41-50。
+ * 字段序照 MirrorCrafted:41-50。
  */
 function parseCraftedCard(raw) {
   const originHash = asHash(word(raw, 0));
@@ -440,20 +424,20 @@ function buildCraftedMetadata(chain, deps) {
   if (burn.amount != null) {
     const n = bangWhole(burn.amount);
     push('销毁', burn.estimated ? (n + '（按当前费率折算）') : n);
-    push('BANG burned', n);
+    push('Burned', n);
     if (burn.estimated) push('Burn source', 'estimated at current burnBps');
   }
 
   const named = cleanName(chain.name);
   if (named) push('Name', named);
 
-  let desc = 'A universe derived from BNB block '
+  let desc = 'A universe derived from ' + CHAIN_WORD + ' block '
     + (chain.originBlock != null ? chain.originBlock : '?')
     + ' and reshaped by a recorded sequence of interventions. Replay origin hash + ops through the open engine to recompute this exact card.';
   const burnLabel = craftedBurnLabel(chain.burned, chain.paid, chain.burnBps);
   if (burnLabel) desc += ' ' + burnLabel + '.';
   if (named) {
-    desc += ' Its holder burned BANG to name it "' + named + '" — names are unique across the'
+    desc += ' Its holder named it "' + named + '" — names are unique across the'
       + ' crafted collection and travel with the token.';
   }
 

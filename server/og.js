@@ -24,6 +24,18 @@ const MONO = 'ui-monospace,Menlo,Consolas,monospace';
 const GOLD = '#ffd08c';
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/* 站名 / 链名 / 域名：与 server/landing.js 同一组 env、同一套默认值。
+   这张图是 /s/<高度> 那一页的 og:image，两者必须口径一致 —— 页面写 ARCBANG、
+   图上写别的，分享出去就是自己拆自己的台。
+   和 art.js 的水印不同：那张是 NFT 本体（必须是纯函数，所以写死），
+   这张只是社交预览，跟着实例的 env 走没有问题。
+   在调用时读，不在模块加载时读：自检要在同一个进程里换着 env 验。 */
+const brandOf = () => String(process.env.ARCBANG_BRAND || '').trim() || 'ARCBANG';
+const chainWordOf = () => String(process.env.ARCBANG_CHAIN_WORD || '').trim() || 'Arc';
+/** 右下角那行域名。跟着 ARCBANG_PUBLIC_BASE 走，剥掉协议与尾斜杠。 */
+const siteHostOf = () => String(process.env.ARCBANG_PUBLIC_BASE || 'https://arcbang.xyz')
+  .replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'arcbang.xyz';
+
 /** 千分位。理由同 art.js：不用 toLocaleString，它跟着系统区域设置走 */
 function grp(n) {
   const t = String(Math.round(Number(n))), out = [];
@@ -58,7 +70,6 @@ function wrap2(s, max) {
  * @param {string|null} o.blockNumber  纯数字字符串；没有就不印那一行
  * @param {object|null} o.card         拿得到就印结局与常数；拿不到只印编号和域名
  * @param {string} [o.blockHash]       右栏底部那行短哈希
- * @param {string} [o.origin]          'btc' → 编号那行印 Bitcoin block #n（specs/btcbang-v1.md §五）；
  *                                     不传时输出逐字节不变。水印仍是 BNBBANG，域名那行也不动（系列名）。
  */
 function composeOG(cardSVG, o) {
@@ -109,7 +120,7 @@ function composeOG(cardSVG, o) {
   }
 
   const num = o.blockNumber != null && /^\d{1,12}$/.test(String(o.blockNumber))
-    ? (o.origin === 'btc' ? 'Bitcoin block #' : 'BNB block #') + grp(o.blockNumber) : '';
+    ? chainWordOf() + ' block #' + grp(o.blockNumber) : '';
   const short = o.blockHash ? String(o.blockHash).slice(0, 10) + '…' + String(o.blockHash).slice(-6) : '';
 
   return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
@@ -119,14 +130,14 @@ function composeOG(cardSVG, o) {
     + '<line x1="' + (CARD + 0.5) + '" y1="0" x2="' + (CARD + 0.5) + '" y2="' + H
     + '" stroke="#ffffff" stroke-opacity="0.10"/>'
     + '<text x="' + X + '" y="118" fill="' + GOLD + '" font-family="' + MONO
-    + '" font-size="34" letter-spacing="11">BNBBANG</text>'
+    + '" font-size="34" letter-spacing="11">' + esc(brandOf()) + '</text>'
     + (num ? '<text x="' + X + '" y="176" fill="#ffffff" fill-opacity="0.72" font-family="' + F
       + '" font-size="28">' + esc(num) + '</text>' : '')
     + lines
     + (short ? '<text x="' + R + '" y="596" text-anchor="end" fill="#ffffff" fill-opacity="0.35"'
       + ' font-family="' + MONO + '" font-size="18">' + esc(short) + '</text>' : '')
     + '<text x="' + X + '" y="596" fill="' + GOLD + '" fill-opacity="0.8" font-family="' + MONO
-    + '" font-size="22" letter-spacing="2">bnbbang.com</text>'
+    + '" font-size="22" letter-spacing="2">' + esc(siteHostOf()) + '</text>'
     + '</svg>';
 }
 

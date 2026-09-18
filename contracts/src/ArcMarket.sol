@@ -71,11 +71,10 @@ contract ArcMarket {
 
        token / amount / is1155 三个字段在这份合约里是**恒定值**
        （分别恒为 nft、1、false）—— 挂单只收 ArcUniverse 这一个 ERC-721 合约。
-       照抄 MirrorMarket 保留它们，是为了让前端与索引器的解码与主线**同形**：
-       market.html 的 decListingStruct / decActivePage 按下标和步长读结构体，
-       少一个字段就要重写整段解码，而那段解码同时服务 bnb / btc 两站。
-       多出来的两格 storage 在 Arc 上是 0.0008 USDC 的事（baseFee 固定 20 gwei），
-       拿它换「三站共用一份解码代码」很划算。 */
+       保留它们是为了不动前端与索引器的解码：market.html 的
+       decListingStruct / decActivePage 按下标和步长读结构体，
+       少一个字段就要重写整段解码。
+       多出来的两格 storage 在 Arc 上是 0.0008 USDC 的事（baseFee 固定 20 gwei）。 */
     struct Listing {
         address seller;
         address token;     // 恒等于 nft

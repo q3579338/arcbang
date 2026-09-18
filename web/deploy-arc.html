@@ -8,7 +8,7 @@
 <!--
   web/deploy-arc.html —— ARCBANG 两个合约的浏览器部署向导
   ============================================================================
-  为什么单独写一份：web/deploy.html 是 BNBBANG 六合约一套的向导（代币 → 宇宙 →
+  为什么单独写一份：从前那份向导是六合约一套的（代币 → 宇宙 →
   市场 → 三个金库 → 接线，3000 多行），ARCBANG 没有代币、没有金库、没有接线，
   用它等于在一堆不存在的步骤里找那两步，而且它按 BSC 的 chainId 硬核对，
   在 Arc 上第一步就停。
@@ -317,7 +317,7 @@ var NETS = {
           explorer: 'https://explorer.testnet.arc.io', rpc: ['https://rpc.testnet.arc.io'] }
 };
 (function mergeCfg() {
-  var c = window.BNBBANG_CONFIG;
+  var c = window.ARCBANG_CONFIG;
   if (!c || !c.chain || c.chain.id == null) return;
   var id = Number(c.chain.id), k;
   for (k in NETS) {
@@ -961,7 +961,7 @@ function renderOut() {
   ln("  contract: '" + S.uni + "',");
   ln("  market: '" + S.mkt + "',");
   cm('');
-  cm('# server/api.env.arc（线上 /etc/bnbbang/api.arc.env，键名照 api.env.arc.example）');
+  cm('# server/api.env.arc（线上 /etc/bnbbang/api.arc.env，键名照 api.env.example）');
   ln('BNBBANG_CONTRACT=' + S.uni);
   ln('BNBBANG_MARKET=' + S.mkt);
   if (S.uniBlock != null) ln('BNBBANG_INDEX_FROM=' + S.uniBlock);

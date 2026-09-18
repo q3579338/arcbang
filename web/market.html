@@ -4,40 +4,40 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG</title>
-<meta name="description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
-<link rel="canonical" href="https://bnbbang.com/market.html">
+<title>镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG</title>
+<meta name="description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
+<link rel="canonical" href="https://arcbang.xyz/market.html">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="BNBBANG">
-<meta property="og:url" content="https://bnbbang.com/market.html">
-<meta property="og:title" content="镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG">
-<meta property="og:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
-<meta property="og:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://arcbang.xyz/market.html">
+<meta property="og:title" content="镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG">
+<meta property="og:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
+<meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT · BNBBANG">
-<meta name="twitter:description" content="BNBBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。BNB 挂单手续费 1%，BANG 挂单 5%，合约上限 10%。">
-<meta name="twitter:image" content="https://bnbbang.com/assets/og/home.jpg">
+<meta name="twitter:title" content="镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG">
+<meta name="twitter:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
+<meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0A0F2E">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebPage","name":"镜像宇宙市场 · 用 BNB 或 BANG 买卖宇宙 NFT","url":"https://bnbbang.com/market.html","inLanguage":["zh-CN","en"],"isPartOf":{"@type":"WebSite","name":"BNBBANG","url":"https://bnbbang.com/"},"about":{"@type":"Thing","name":"Mirror Universe NFT market on BSC"},"publisher":{"@type":"Organization","name":"BNBBANG","url":"https://bnbbang.com/"}}
+{"@context":"https://schema.org","@type":"WebPage","name":"镜像宇宙市场 · 买卖宇宙 NFT","url":"https://arcbang.xyz/market.html","inLanguage":["zh-CN","en"],"isPartOf":{"@type":"WebSite","name":"ARCBANG","url":"https://arcbang.xyz/"},"about":{"@type":"Thing","name":"Mirror Universe NFT market on Arc"},"publisher":{"@type":"Organization","name":"ARCBANG","url":"https://arcbang.xyz/"}}
 </script>
 <!--
   web/market.html —— 宇宙 NFT 的交易市场（独立静态页，与模拟器分开）
   ============================================================================
-  规格：specs/economy-v4.md。三块内容：我的资产 / 宇宙市场 / 挂单。
+  规格：。三块内容：我的资产 / 宇宙市场 / 挂单。
 
   **为什么这一页没有「资源」了**
-    ERC-1155 那套资源设计（specs/market-v1.md §1，economy v3）已经**彻底废弃**：
+    ERC-1155 那套资源设计已经**彻底废弃**：
     资源有产出口没有消耗口，价格只能靠新人接盘。取代它的是 ERC-20 的 BANG 代币
-    （contracts/src/BangToken.sol）—— 铸造时发币，修正宇宙时**真的烧掉**。
+    （BangToken）—— 铸造时发币，修正宇宙时**真的烧掉**。
     所以 MirrorResources 相关的一切（七种资源余额、储量结算/揭晓/领取、资源挂单、
     剩余储量进度条）在这一页全部删除，不留注释掉的残骸：留着只会让下一个人
     以为它还能用，然后去调一个已经没人维护的合约。
@@ -47,11 +47,11 @@
     burnedOn(id)  这枚 token 累计烧掉多少 BANG
     rescueOf(id)  救活记录，at != 0 就是全场最稀缺的东西，页面上给金色
 
-  为什么是自带脚本的单文件，而不是 <script src="bnb-chain.js">：
-    bnb-chain.js 开头是 `var K = root.MirrorKeccak;`，它算函数选择器要那份 keccak256
+  为什么是自带脚本的单文件，而不是 <script src="arc-chain.js">：
+    arc-chain.js 开头是 `var K = root.MirrorKeccak;`，它算函数选择器要那份 keccak256
     （web/keccak-lite.js）。市场页只想一个文件一次 scp 就能发，所以照 deploy.html 的
     先例走：**选择器离线算好写死**（见下方 SEL 注释里的命令），手写 ABI 编解码、
-    公开 RPC 轮换、小狐狸连接与切链这些手法全部沿用 bnb-chain.js。
+    公开 RPC 轮换、小狐狸连接与切链这些手法全部沿用 arc-chain.js。
     推导（区块哈希→参数）已经搬到服务端，浏览器里不再有 MirrorBnbHash，这一页也不需要它。
 
   唯一的外部脚本是同目录的 config.js（合约地址与 RPC 列表）；它取不到时页面
@@ -228,7 +228,7 @@ button.sm{height:30px;padding:0 11px;font-size:12px}
 .uid.sub{font-weight:600;font-size:12px;color:var(--dim)}
 button.sm.name{border-color:var(--cyan-line);background:var(--cyan-bg);color:var(--cyan)}
 button.sm.name:hover:not(:disabled){background:var(--cyan-bg);filter:brightness(1.08)}
-/* 「拯救」（specs/rescue-entry.md §1）。金色 —— 与 .ucard.rescued、.b-rescue、
+/* 「拯救」。金色 —— 与 .ucard.rescued、.b-rescue、
    销毁数字同一套色，卡上凡是跟"烧 BANG"有关的东西都是金的，这颗也不例外。 */
 button.sm.fix{border-color:var(--gold-line);background:var(--gold-bg);color:var(--gold)}
 button.sm.fix:hover:not(:disabled){background:var(--gold-bg);filter:brightness(1.08)}
@@ -341,7 +341,7 @@ footer a{color:var(--cyan)}
   .ubtns button:not(.icon){flex:1 1 100%}
 }
 
-/* ------------------------------------------------------------ 卡片动作三件套（specs/share-referral-v1.md §二）
+/* ------------------------------------------------------------ 卡片动作三件套
    图标钮：与 .sm 同高，方形，SVG 描边用 currentColor 跟主题走 */
 button.sm.icon{width:30px;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
 img.uthumb[data-view]{cursor:zoom-in}
@@ -360,7 +360,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 /* 广播浮层 外观 v3（用户 2026-08-21「做好看、科幻」）：玻璃拟态半透面板 +
    顶缘扫描光 + hover 发光描边。颜色一处不写死，全走 tokens.css —— 深色主题里
    --cyan 是亮紫，发光描边自然亮；浅色主题里同一套令牌退成干净的白卡淡描边。
-   ⚠ web/bnb-ui.js 的 .bshare-* 是同款一份（app 页的浮层长在那边），
+   ⚠ web/arc-ui.js 的 .bshare-* 是同款一份（app 页的浮层长在那边），
    改这里要连那边一起改 —— 先例见本页 qrEncode 的说明。 */
 #sharePop{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:shareFade .15s ease-out}
 #sharePop.closing{opacity:0;transition:opacity .15s ease-in}
@@ -394,7 +394,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 /* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页没有模拟器画面，
    这里摆的就是要发出去的卡面 PNG（懒加载：浮层开了 fillShare 才填 src）。
    右下角来源小签压在图上，图是深底星空，签的底色写死深色不走令牌。
-   ⚠ web/bnb-ui.js 的 .bshare-shot 是同款一份，改一处连另一处一起改。 */
+   ⚠ web/arc-ui.js 的 .bshare-shot 是同款一份，改一处连另一处一起改。 */
 .share-shot{position:relative;margin:0;padding:6px;background:var(--panel2);
   border:1px solid var(--line-soft);border-radius:var(--radius-btn)}
 .share-shot[hidden]{display:none}
@@ -405,7 +405,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   color:#9fe8ff;pointer-events:none}
 .share-shot-tag:empty{display:none}
 .share-note{font-size:11.5px;line-height:1.7;color:var(--dim)}
-/* 主功能位：只有「复制文案和图片」一颗通栏大格（specs/broadcast-v2.md §三 是主路；
+/* 主功能位：只有「复制文案和图片」一颗通栏大格（
    微信在渠道网格里，点开在网格下方展开二维码面板 §四） */
 .share-feats{display:grid;grid-template-columns:1fr;gap:8px}
 .share-feat{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;
@@ -443,7 +443,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   .share-feat,.share-tile{transition:none}
   .share-tile:hover:not(:disabled){transform:none}
 }
-/* 复制的结果那一行：图片没进剪贴板时要**明说**（specs/broadcast-v2.md §三） */
+/* 复制的结果那一行：图片没进剪贴板时要**明说** */
 .share-msg{margin:0;font-size:11.5px;line-height:1.7;color:var(--dim)}
 .share-msg.warn{color:var(--gold)}
 /* 微信二维码。码本身**永远白底黑块**（相机要的是对比度），所以垫一层白 ——
@@ -471,7 +471,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 .fbar .fclear{height:26px;padding:0 10px;font-size:11.5px}
 @media (max-width:560px){.fbar .fcount{margin-left:0;flex-basis:100%}}
 
-/* ---- 物理参数那两组（维度 / 进阶常数），specs/market-physics-filter.md 第三节 ----
+/* ---- 物理参数那两组（维度 / 进阶常数），
    维度 chip 上是「D=3（能长出结构的）」这种整句，比稀有度那种单字 chip 宽得多，
    所以 .wide 放开 min-width 并允许换行内断字；.fnote / .fadv 占满一行（flex-basis:100%）
    —— 说明必须落在**它解释的那一组下面**，跟在同一行末尾就没人当它是说明了。 */
@@ -530,7 +530,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 
 <div class="wrap">
 
-  <!-- 链名从 config.js 的 chain 块来（specs/mainnet-ready.md），所以这一行由 renderChainText() 填。
+  <!-- 链名从 config.js 的 chain 块来，所以这一行由 renderChainText() 填。
        本页整页都是 JS 画的，留空比留一句写死链名的兜底诚实。 -->
   <p class="sub" id="subLede"></p>
 
@@ -589,12 +589,11 @@ img.uthumb[data-view]{cursor:zoom-in}
         </div>
         <div class="field">
           <label for="fCur">计价</label>
-          <!-- 两种币走合约里两条不同的支付路径：原生币单成交抽 1%、BANG 单抽 5%，
-               都在成交那一刻从买家付的钱里扣，卖家拿其余。挂单本身不区别对待。
-               原生币那一项的文字（tBNB / BNB）由 renderChainText() 按 config.js 的 chain 块填。 -->
+          <!-- ARCBANG 只有一种计价：native，在 Arc 上就是 USDC。成交时先按 ERC-2981 付版税
+               （ArcUniverse 默认 5%，市场侧截断在 10%），再抽 1% 手续费，其余归卖家。
+               这一项的文字由 renderChainText() 按 config.arc.js 的 chain.currency 填。 -->
           <select id="fCur">
             <option value="bnb" id="fCurNative" data-nolang></option>
-            <option value="bang" data-nolang>BANG</option>
           </select>
         </div>
         <div class="field">
@@ -608,7 +607,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         </div>
         <div id="listMsg" class="msg"></div>
         <div class="notice plain">
-          手续费在成交时从买家付的钱里扣：BNB 计价单抽 1%、BANG 计价单抽 5%。授权是一次性的：<span class="mono">setApprovalForAll</span>
+          手续费在成交时从买家付的钱里扣：先按 ERC-2981 付版税（默认 5%），再抽成交价的 1%。授权是一次性的：<span class="mono">setApprovalForAll</span>
           之后市场才有权在成交那一刻把 NFT 转给买家 —— 在那之前东西一直在你自己钱包里。<br>
           没盖章的宇宙（<span class="mono">cardOf == 0</span>，也就是没走服务端引爆的）不在这个下拉里 —— 它们没有参数卡，市场不上架。
         </div>
@@ -647,14 +646,14 @@ img.uthumb[data-view]{cursor:zoom-in}
         <button id="btnNameGo" class="primary" type="button">② 命名</button>
       </div>
       <div class="msg" id="nameMsg"></div>
-      <!-- 两套名册各自独立（specs/crafted-names-v1.md §四，用户 2026-08-21 点名要求）。
+      <!-- 两套名册各自独立。
            文案由 openName() 按当前语言填，切语言时一并重画。 -->
       <p class="modalnote" id="nameDual"></p>
       <p class="modalnote" id="nameRules"></p>
     </div>
   </div>
 
-  <!-- ============================ 灯箱（查看大图，specs/share-referral-v1.md §二） ============================
+  <!-- ============================ 灯箱（查看大图） ============================
        大图 = 去掉 ?t=1 的原图 URL。Esc / 点外关闭；「在新标签打开」给想存图的人。 -->
   <div class="lbox" id="lbox" hidden role="dialog" aria-modal="true" aria-label="查看大图">
     <img id="lboxImg" alt="宇宙大图">
@@ -664,8 +663,8 @@ img.uthumb[data-view]{cursor:zoom-in}
     </div>
   </div>
 
-  <!-- ============================ 广播浮层（specs/share-referral-v1.md §二/§三 + broadcast-v2.md §三/§四） ============================
-       外观 v3（用户 2026-08-21「做好看、科幻」）：与 web/bnb-ui.js 的 .bshare-* 浮层**同款**
+  <!-- ============================ 广播浮层 ============================
+       外观 v3（用户 2026-08-21「做好看、科幻」）：与 web/arc-ui.js 的 .bshare-* 浮层**同款**
        （渠道、图标、样式改一处连另一处一起改，先例见本页 qrEncode 的说明）。
        渠道链接全部是纯 intent URL、零 SDK，href 由 fillShare() 填，点击前零对外请求；
        一律 <a target=_blank rel="noopener noreferrer"> 普通新标签页 —— 不用 window.open 弹小窗
@@ -688,7 +687,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         <figcaption class="share-shot-tag" id="shareShotTag"></figcaption>
       </figure>
       <p class="share-preview mono" id="sharePreview"></p>
-      <!-- 主功能位：只有「复制文案和图片」一颗通栏大格（specs/broadcast-v2.md §三）。
+      <!-- 主功能位：只有「复制文案和图片」一颗通栏大格。
            微信降级进下面的渠道网格（用户 2026-08-21「微信应该和别的在一起」），
            点击行为不变：点格子 → 展开二维码面板（§四）。 -->
       <div class="share-feats">
@@ -707,7 +706,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         <a class="share-tile" id="shareWa" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5A8.5 8.5 0 0 0 4.6 16.2L3.5 20.5l4.4-1.1A8.5 8.5 0 1 0 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.8 8.4c-.5 2.6 4.2 7.3 6.8 6.8l.9-1.6-2.1-1.3-.9.8c-1.1-.5-2.1-1.5-2.6-2.6l.8-.9-1.3-2.1-1.6.9z" fill="currentColor"/></svg><span data-nolang>WhatsApp</span></a>
         <button class="share-tile" id="shareLnk" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.7 1.7"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.7-1.7"/></svg><span>复制链接</span></button>
       </div>
-      <!-- 微信二维码面板（specs/broadcast-v2.md §四）：默认收起，点上面网格里的微信格展开。
+      <!-- 微信二维码面板：默认收起，点上面网格里的微信格展开。
            二维码是本页自己算的（qrEncode），不调任何第三方二维码接口。 -->
       <div class="share-wx" id="shareWxBox" hidden>
         <div class="share-qr" id="shareQr"></div>
@@ -722,25 +721,11 @@ img.uthumb[data-view]{cursor:zoom-in}
     合约：<span id="fContract" class="mono">—</span><br>
     <!-- 「这是 XX 测试网。」那半句只在 chain.isTestnet 为真时出现，见 renderChainText()。 -->
     <span id="fChainNote"></span><br>
-    「已验证」= 合约里的 <span class="mono">cardOf</span> 非零，表示这枚 NFT 的参数是服务端算过并签过名的； 「已烧」= <span class="mono">burnedOn</span>，这枚 token 上累计销毁的 BANG，链上可查、伪造不了。<br>
-    <!-- 名字这一句单独一个文本节点：拆成几段再拼，英文的语序对不上（见 i18n-market.js 的第 2 条）。 -->
-    名字 = 持有人烧 BANG 登记的，在本系列内唯一（原生与造物是两套独立名册）；大小写和同形字（O/0、I i L l/1）都算重名，名字跟着 NFT 一起转手。<br>
+    「已验证」= 合约里的 <span class="mono">cardOf</span> 非零，表示这枚 NFT 的参数是服务端算过并签过名的；<br>
+    <!-- 命名（BangNames）整套建在 BANG 上，ARCBANG v1 不上：这一句直接删掉，不改写成含糊话。 -->
     <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
-    <a href="mailto:admin@bnbbang.com" data-nolang>admin@bnbbang.com</a>
-    <!-- 友情链接：satloot 站族五个站。样式只在 nav.js 的共用块里（.sitefriends），
-         文案键在 i18n-site.js；标记静态写在页脚里 —— 爬虫与 /en/ 预渲染要在 HTML 里看得见它。 -->
-    <nav class="sitefriends" aria-label="友情链接">
-      <span class="sitefriends-t">友情链接</span>
-      <a href="https://bang.satloot.com/" rel="noopener">BTCBANG 比特宇宙</a>
-      <a href="https://satloot.com/" rel="noopener">satloot 项目总览</a>
-      <a href="https://sim.satloot.com/" rel="noopener">合约模拟器</a>
-      <a href="https://earn.satloot.com/" rel="noopener">riskdesk 风控面板</a>
-      <a href="https://airdrop.satloot.com/" rel="noopener">空投雷达</a>
-      <a href="https://game.satloot.com/" rel="noopener">satloot 游戏厅</a>
-      <a href="https://tool.satloot.com/" rel="noopener">satloot 工具站</a>
-      <a href="https://trx.satloot.com/" rel="noopener">TRX 质押收益计算器</a>
-      <a href="https://faucet.satloot.com/" rel="noopener">比特币测试币水龙头</a>
-    </nav>
+    <a href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
+
   </footer>
 </div>
 
@@ -749,28 +734,28 @@ img.uthumb[data-view]{cursor:zoom-in}
 'use strict';
 /* ============================================================================
    市场页脚本。ES5 风格（var / 具名函数 / 不用箭头与模板串），与 web/ 下现有文件一致。
-   BigInt 用了字面量（10n），和 bnb-chain.js、deploy.html 里的写法一致。
+   BigInt 用了字面量（10n），和 arc-chain.js、deploy.html 里的写法一致。
    ============================================================================ */
 (function () {
 
   /* ------------------------------------------------------------ 配置 */
-  var CFG = window.BNBBANG_CONFIG || {};
+  var CFG = window.ARCBANG_CONFIG || {};
   var ADDR = {
     universe: addr(CFG.contract),
-    bang:     addr(CFG.bangToken),     // ERC-20 BANG，见 specs/economy-v4.md §1
+    bang:     addr(CFG.bangToken),     // ERC-20 BANG
     market:   addr(CFG.market),
-    /* 命名合约（contracts/src/BangNames.sol）—— BANG 的第二条销毁通路。
+    /* 命名合约（BangNames）—— BANG 的第二条销毁通路。
        **它是纯附加的一层**：config.js 里没填这个键（或者填错、或者合约没部署）时，
        这一页照常工作，只是所有宇宙都没有名字、命名入口不出现。
        所以它不能进 boot() 末尾那个"三个都没配就不打 RPC"的判断里 ——
        没有它市场依然成立，有它才多一栏。 */
     names:    addr(CFG.bangNames),
-    /* 造物系列（contracts/src/MirrorCrafted.sol，specs/crafted-v1.md）—— 第二套 721：
+    /* 造物系列（MirrorCrafted）—— 第二套 721：
        沙盒里干预后的宇宙铸在这里。**照 bangNames 的先例做成纯附加层**：
        config.js 里没填这个键时，本页所有造物代码第一行就返回，页面与从前逐像素一致。
        市场合约的 list(token,…) 本来就收任意 721 地址，所以挂单/买入不用任何新合约。 */
     crafted:  addr(CFG.crafted),
-    /* 造物系列的命名合约（contracts/src/BangNames2.sol，specs/crafted-names-v1.md）。
+    /* 造物系列的命名合约（BangNames2）。
        **ABI 与 BangNames 逐字节同形**（当初刻意保留的），所以选择器、编码、check()
        查重那一整套一个字都不用改，只是 eth_call 打到这个地址、名字记在另一张表里。
        两套名册**各自独立**：同一个名字在原生和造物各能占一次，查重只在本系列内。
@@ -778,7 +763,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     cnames:   addr(CFG.craftedNames)
   };
   /* ---------------------------------------------------------- 链身份
-     唯一真相来源是 config.js 的 chain 块（specs/mainnet-ready.md）；**派生只有一份**，
+     唯一真相来源是 config.js 的 chain 块；**派生只有一份**，
      在 web/nav.js 里（五个站点页共用）。这里不再抄一份兜底 —— 抄一份就是
      「改了一处漏三处」，正是这轮改造要拔掉的病。nav.js 本来就是本页的硬依赖
      （顶栏是它挂的），它不在的话页面在 MirrorNav.mount() 那一行就已经停了。 */
@@ -853,12 +838,13 @@ img.uthumb[data-view]{cursor:zoom-in}
     activeListings:   '0xaa4df6f0',   // activeListings(uint256,uint256)
     listings:         '0xde74e57b',   // listings(uint256)
     checkListing:     '0x5443b28a',   // checkListing(uint256)
-    /* v5 换了签名：多了第 5 个参数 bool inBang（true = 按 BANG 计价）。
-       旧选择器 0xbb74a1c2 在新合约上打不中任何函数，直接 revert —— 这是故意的，
-       比打中一个语义变了的函数安全。 */
-    list:             '0x05408a26',   // list(address,uint256,uint256,uint256,bool)
+    /* ARCBANG（contracts/src/ArcMarket.sol）：市场只认 ArcUniverse 一个合约、
+       721 数量恒为 1、计价只有 USDC，所以 list 只收 id 和 price 两个参数。 */
+    list:             '0x50fd7367',   // list(uint256,uint256)
     cancel:           '0x40e58ee5',   // cancel(uint256)
-    buy:              '0xd96a094a'    // buy(uint256)
+    buy:              '0xd96a094a',   // buy(uint256)
+    updatePrice:      '0x82367b2d',   // updatePrice(uint256,uint256)  ArcMarket 专有
+    cancelStale:      '0xe333b097'    // cancelStale(uint256)          ArcMarket 专有
   };
   /* 事件 topic = keccak256(事件签名)（不截断）。稀有度只在事件里，合约没有对应的 view，
      所以这是唯一的来源。 */
@@ -992,7 +978,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       function (e) { S.rpcDown = !(e && e.rpc && rpcIsRevert({ code: e.rpcCode, message: e.message })); return null; });
   }
 
-  /* ============================================================ ABI 编解码（手写，同 bnb-chain.js） */
+  /* ============================================================ ABI 编解码（手写，同 arc-chain.js） */
   function pad(h) { return String(h).replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
   function encUint(v) { return pad(BigInt(v).toString(16)); }
   function encAddr(a) { return pad(String(a || '').replace(/^0x/, '')); }
@@ -1050,7 +1036,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   /* ============================================================ 数值
      链上的两种钱都是 18 位小数，**换算一律用写死的 1e18，不猜数量级**：
        tBNB —— 原生币，定义如此
-       BANG —— contracts/src/BangToken.sol 里 `uint8 public constant decimals = 18`
+       BANG —— BangToken 里 `uint8 public constant decimals = 18`
      旧版市场页按数值大小去猜缩放倍数，遇到"衰减到只剩粉尘"的真实小额会猜错，
      把只剩 1e-16% 的东西显示成 100% 满 —— 这种 bug 在市场页是诚信问题，不是显示问题。 */
   var ONE = 1000000000000000000n;    // 1e18，两种单位共用
@@ -1108,7 +1094,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     rpcDown: false,     // 最近一次 eth_call 是不是「节点没答」（横幅按这个分因由）
     recent: [],         // 最近铸造的（盖过章的）tokenId
     meta: {},           // tokenId -> {img,outcome,blockHash,blockNumber,minter}
-    /* 来源（specs/btcbang-v1.md §1.1 / §五）：tokenId -> 'btc' | 'bnb'。**只信服务端索引**
+    /* 来源：tokenId -> 'btc' | 'bnb'。**只信服务端索引**
        （/api/market/listings 与 /api/market/owned 的条目带 origin），前端不按前导零猜 ——
        早期比特币块只有 8 个零，而 1.2 亿个 BNB 块里出 8 个前导零的概率约 3%。
        读不到就不标（uniNo 退回裸 #N）。两站共用一个市场，两站都要能分辨来源。 */
@@ -1126,7 +1112,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     namesBurned: undefined,  // 全站为命名烧掉的量（BangNames.totalBurnedForNames）
     naming: null,       // 命名弹窗的状态，见 openName()
     approved: null,     // NFT 是否已授权给市场
-    /* ---- 物理参数（specs/market-physics-filter.md）。**全部由服务端算好发下来**：
+    /* ---- 物理参数。**全部由服务端算好发下来**：
        维度、常数、与我们宇宙的偏离度，前端一个数都不推（基准值只在服务端）。
        key 是**挂单号 listingId**（不是 tokenId）：索引按挂单发，同一枚 NFT
        撤单重挂就是另一个挂单号，跟着换一条记录正好。 */
@@ -1344,7 +1330,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     });
   }
   /* crafted.cardOf(id) → Card 结构体。**字段序照合约源码**
-     （contracts/src/MirrorCrafted.sol 的 struct Card，别按感觉排）：
+     （MirrorCrafted 的 struct Card，别按感觉排）：
        0 originHash  bytes32   起源区块哈希
        1 opsHash     bytes32   keccak256(规范化的操作序列 JSON)
        2 cardHash    bytes32   最终参数卡哈希 —— 去重的钥匙，也是图的索引
@@ -1424,9 +1410,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (!seller || !token) return null;
     /* 结构体第 6 槽是 is1155。资源没了，市场页只认 ERC-721，但**这个字段还在链上的
        结构体里**，不解它就找不到后面的 active，所以照读，只用来把非 721 的单子筛掉。 */
-    var is1155 = uw(hex, base + 5), active = uw(hex, base + 6), inBang = uw(hex, base + 7);
-    if (is1155 === null || active === null || inBang === null) return null;
-    if (is1155 > 1n || active > 1n || inBang > 1n) return null;  // 字段顺序对不上
+    var is1155 = uw(hex, base + 5), active = uw(hex, base + 6);
+    if (is1155 === null || active === null) return null;
+    if (is1155 > 1n || active > 1n) return null;                 // 字段顺序对不上
     if (/^0x0{40}$/.test(seller)) return null;
     return {
       id: id,
@@ -1437,7 +1423,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       price: uw(hex, base + 4),
       is1155: is1155 === 1n,
       active: active === 1n,
-      inBang: inBang === 1n            // true = BANG 计价，false = tBNB
+      inBang: false                    // ARCBANG 只有 USDC 一种计价，这个键恒为 false
     };
   }
   /** 解一页 activeListings 的返回。认不出来返回 null（上层退回逐个扫）。 */
@@ -1448,10 +1434,10 @@ img.uthumb[data-view]{cursor:zoom-in}
       var oIds = 3, oItems = Number(uw(hex, 1)) / 32, next = Number(uw(hex, 2));
       var nIds = Number(uw(hex, oIds)), nItems = Number(uw(hex, oItems));
       if (!isFinite(oItems) || !isFinite(nIds) || !isFinite(nItems) || nIds !== nItems) return null;
-      /* 结构体步长是 8：v5 在末尾加了 inBang。前 7 个字段的下标没变，只有步长变了。 */
-      if (words(hex) < oItems + 1 + nItems * 8) return null;
+      /* ARCBANG：结构体步长是 7 —— ArcMarket 没有 inBang 那一格。 */
+      if (words(hex) < oItems + 1 + nItems * 7) return null;
       for (k = 0; k < nItems; k++) {
-        one = decListingStruct(hex, oItems + 1 + k * 8, Number(uw(hex, oIds + 1 + k)));
+        one = decListingStruct(hex, oItems + 1 + k * 7, Number(uw(hex, oIds + 1 + k)));
         if (one) out.push(one);
       }
       return { items: out, next: next };
@@ -1460,9 +1446,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     var len = Number(uw(hex, 1)), rest = words(hex) - 2;
     if (!isFinite(len) || len < 0) return null;
     if (len === 0) return { items: [], next: null };
-    if (rest >= len * 8) {                                       // b) Listing[]，没带 id
+    if (rest >= len * 7) {                                       // b) Listing[]，没带 id
       for (k = 0; k < len; k++) {
-        one = decListingStruct(hex, 2 + k * 8, k);
+        one = decListingStruct(hex, 2 + k * 7, k);
         if (one) out.push(one);
       }
       if (out.length) return { items: out, next: null, needIds: true };
@@ -1577,7 +1563,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
   function thumb(m) {
     if (m && m.img) {
-      /* data-view = 去掉 ?t=1 的原图 URL —— 点图开灯箱看大图（specs/share-referral-v1.md §二） */
+      /* data-view = 去掉 ?t=1 的原图 URL —— 点图开灯箱看大图 */
       return '<img class="uthumb" alt="' + esc(T('宇宙缩略图')) + '" src="' + esc(m.img)
         + '" data-view="' + esc(fullImg(m.img)) + '">';
     }
@@ -1614,11 +1600,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     var note = (burned === null || burned === undefined)
       ? T('链上读不到 burnedOn')
       : (has ? T('烧掉的币不会回来 —— 这个数字是这枚 NFT 的成本证明') : T('还没有人为它烧过币'));
-    var html = '<div class="burnbox">'
-      + '<div class="statlab">' + esc(T('已烧掉')) + '</div>'
-      + '<div class="burnval ' + (has ? 'burned' : 'noburn') + '">' + esc(txt)
-      + (burned === null || burned === undefined ? '' : '<span class="unit">BANG</span>') + '</div>'
-      + '<div class="statnote">' + esc(note) + '</div></div>';
+    var html = '';        // ARCBANG：拯救下线，没有 burnedOn 可报，这一格整个不出现
     if (v && v.rescuedAt) {
       html += '<div class="rescuebox"><b>★ ' + esc(T('救活过')) + '</b> · '
         + esc(TF('从「{0}」推回可能诞生观察者', outcomeName(v.fromOutcome)))
@@ -1636,15 +1618,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     var m = S.meta[id];
     return originTag(id) + ((m && m.blockNumber != null) ? '#' + m.blockNumber : '#' + id);
   }
-  /* 来源标签（specs/btcbang-v1.md §三）：BTC 宇宙两站都写「₿ #N」；BNB 宇宙在 BTCBANG 站写「BNB #N」
-     （那里 ₿ 才是默认，BNB 反而是客人），在 bnbbang.com 上照旧裸「#N」。来源未知（索引没给）一律裸 #N。 */
-  var SITE = String(CFG.site || 'bnb');
-  function originTag(id) {
-    var o = S.origin[id];
-    if (o === 'btc') return '₿ ';
-    if (o === 'bnb' && SITE === 'btc') return 'BNB ';
-    return '';
-  }
+  /* 来源标签：本站只有 Arc 一种来源，编号一律裸「#N」。
+     （服务端索引里那个 origin 字段留着，形状不变，这里不据它加前缀。） */
+  function originTag() { return ''; }
   /** 把服务端索引条目里的来源收进 S.origin（listings / owned 两条路共用）。造物没有来源，只收原生 */
   function absorbOrigin(it) {
     if (!it || it.tokenId == null) return;
@@ -1691,7 +1667,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     return S.name[id] ? S.name[id] : TF('宇宙 {0}', uniNo(id));
   }
 
-  /* 卡底动作行追加的紧凑图标钮（specs/share-referral-v1.md §二）：
+  /* 卡底动作行追加的紧凑图标钮：
      引爆（原生 =「再引爆看看」，造物 =「看它的起源宇宙」）+ 广播。
      SVG 描边走 currentColor，主题切换不用管它。 */
   var ICON_BOOM = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 1.5 4 9h3.2L6 14.5 12 7H8.6z"/></svg>';
@@ -1741,7 +1717,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      **没有「取个名字」按钮**：BangNames 的 universe 指针是 immutable，
      只认原生系列，造物命名不了 —— 摆一个必失败的按钮是骗人。 */
   function craftImg(c) {
-    /* 图按 cardHash 找服务端（specs/crafted-v1.md）：干预后参数变了，
+    /* 图按 cardHash 找服务端：干预后参数变了，
        不能再按 blockHash 索引。?t=1 = 缩略图档，与原生列表同一口径（见 loadMeta）。 */
     return (CFG.apiBase || '/api') + '/art/card/' + c.cardHash + '.svg?t=1';
   }
@@ -1890,7 +1866,7 @@ img.uthumb[data-view]{cursor:zoom-in}
                 : T('烧掉 BANG，把这组创世参数记下来')) + '">'
       + esc(has ? T('改名') : T('取个名字')) + '</button>';
   }
-  /* 造物卡的命名入口（BangNames2，specs/crafted-names-v1.md §四）。与 nameBtn 同形，
+  /* 造物卡的命名入口（BangNames2）。与 nameBtn 同形，
      只是 data-id 带 'c:' 前缀（和广播/引爆那两颗一样的写法），弹窗据此换合约与名字表。
      craftedNames 没配就整个不出现 —— 摆一颗必失败的按钮比没有按钮更糟。 */
   function cNameBtn(id) {
@@ -1901,7 +1877,7 @@ img.uthumb[data-view]{cursor:zoom-in}
                 : T('烧掉 BANG，把这组创世参数记下来')) + '">'
       + esc(has ? T('改名') : T('取个名字')) + '</button>';
   }
-  /* 「拯救」入口（specs/rescue-entry.md §1）。**带字，不是图标**：卡底原来跟拯救
+  /* 「拯救」入口。**带字，不是图标**：卡底原来跟拯救
      沾边的只有那颗闪电图标，title 写的还是「再引爆看看」—— 用户实测时以为拯救坏了，
      其实是根本没找到门。这颗按钮直达 app.html?bang=…&fix=1，落地那边自动开沙盒。
 
@@ -1914,9 +1890,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (isZero32(S.card[id])) return '';
     var m = S.meta[id] || {};
     if (!m.blockHash || isZero32(m.blockHash)) return '';
-    return '<button class="sm fix" data-act="fix" data-id="' + id + '" title="'
-      + esc(T('烧 BANG 改写它的参数，销毁量记进这枚 NFT')) + '">'
-      + esc(T('拯救')) + '</button>';
+    return '';            // ARCBANG：拯救系统下线，卡底不出这颗按钮
   }
 
   /* ============================================================ 2. 宇宙市场 */
@@ -2069,7 +2043,12 @@ img.uthumb[data-view]{cursor:zoom-in}
     return T('现在买不成');
   }
   function tradeBtn(l) {
-    if (isMine(l.seller)) return '<button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button>';
+    if (isMine(l.seller)) {
+      return '<button class="sm" data-act="reprice" data-lid="' + l.id + '">' + esc(T('改价')) + '</button>'
+        + '<button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button>';
+    }
+    // status 2/3 = 卖家不持有 / 撤了授权，正是 cancelStale 认的那两种失效
+    if (l.status === 2 || l.status === 3) return '<button class="sm" data-act="stale" data-lid="' + l.id + '">' + esc(T('清失效挂单')) + '</button>';
     if (l.status) return '<button class="sm" disabled title="' + esc(statusNote(l)) + '">' + esc(T('买不成')) + '</button>';
     return '<button class="sm primary" data-act="buy" data-lid="' + l.id + '">' + esc(T('买入')) + '</button>';
   }
@@ -2132,7 +2111,8 @@ img.uthumb[data-view]{cursor:zoom-in}
             + '<span class="dim"> · token ' + esc(String(l.tokenId)) + '</span>';
         return '<tr><td class="num">' + l.id + '</td><td>' + lbn + '</td>'
           + '<td class="num r">' + fmtPrice(l) + '</td>'
-          + '<td class="r"><button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button></td></tr>';
+          + '<td class="r"><button class="sm" data-act="reprice" data-lid="' + l.id + '">' + esc(T('改价')) + '</button>'
+          + '<button class="sm" data-act="cancel" data-lid="' + l.id + '">' + esc(T('撤单')) + '</button></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
   function currentAsset() {
@@ -2185,14 +2165,10 @@ img.uthumb[data-view]{cursor:zoom-in}
               : T('给宇宙取名字烧掉的量。这是第二条销毁通路，和干预分开记')) + '</div></div>';
     }
 
-    $('bangbar').innerHTML =
-      '<div class="stat"><div class="statlab">' + esc(T('我的 BANG 余额')) + '</div>'
-      + '<div class="statval">' + esc(bal) + (ADDR.bang && S.bang != null && S.account ? '<span class="unit">BANG</span>' : '') + '</div>'
-      + '<div class="statnote">' + esc(note) + '</div></div>'
-      + '<div class="stat"><div class="statlab">' + esc(T('全网已销毁')) + '</div>'
-      + '<div class="statval">' + esc(tb) + (S.totalBurned != null ? '<span class="unit">BANG</span>' : '') + '</div>'
-      + '<div class="statnote">' + esc(tbnote) + '</div></div>'
-      + nameStat;
+    /* ARCBANG：没有代币，也没有拯救 —— 「我的 BANG 余额 / 全网已销毁 /
+        命名已销毁」三格一个都不存在，整条数字条连同它的外边距一起收掉。 */
+    $('bangbar').innerHTML = '';
+    $('bangbar').hidden = true;
   }
 
   /* ============================================================ 命名弹窗
@@ -2336,7 +2312,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 
   /* ============================================================ 写链（钱包） */
   /* 走 web/wallet.js 选中的那个 provider，退路才是 window.ethereum ——
-     与 bnb-chain.js 的 eth() 同一个口径：连的是币安钱包，发交易就得对币安钱包说。 */
+     与 arc-chain.js 的 eth() 同一个口径：连的是币安钱包，发交易就得对币安钱包说。 */
   function eth() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum; }
   /* 切链 / 加链的实现在 web/wallet.js（MirrorWallet.ensureChain，本页第 82 行就载了它）：
      按最严的钱包清洗参数、加完重核 chainId、失败给人话。链参数从本页的 CHAIN 现读传过去。
@@ -2450,7 +2426,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     });
   }
 
-  /* ============================================================ 灯箱与广播（specs/share-referral-v1.md §二/§三） */
+  /* ============================================================ 灯箱与广播 */
   /** 多占位符版 TF（{0}{1}{2}{3}）。广播文案是长句，中英语序不同，整句进词典 */
   function TX(zh) {
     var s = T(zh);
@@ -2494,7 +2470,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      带 og 标签给爬虫，随后把人跳到 app.html），所以这里要的是 origin，
      不是当前页面所在的目录。取不到就返回空串，调用方据此退回老的
      app.html?bang=… 形式 —— 那条路在任何部署下都成立（file://、localhost、子目录）。
-     和 web/bnb-ui.js 的 siteRoot() 同一口径；本页是自带脚本的独立单文件，
+     和 web/arc-ui.js 的 siteRoot() 同一口径；本页是自带脚本的独立单文件，
      所以各留一份（理由见页头说明）。 */
   function siteRoot() {
     if (CFG.siteBase) return String(CFG.siteBase).replace(/\/+$/, '');
@@ -2504,10 +2480,10 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (String(location.pathname).replace(/[^/]*$/, '') !== '/') return '';
     return o;
   }
-  /** 广播链接（specs/broadcast-v2.md §一）。两头都砍：
+  /** 广播链接。两头都砍：
         bang 用**区块号**代替 66 字符的哈希（拿不到区块号才退回哈希）；
         ref  用**8 位短码**代替 42 字符的地址（拿不到短码才退回地址）。
-          https://bnbbang.com/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
+          https://arcbang.xyz/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
       老形式的链接**仍然有效**：落地页 /s/ 两种 token 都认，?ref= 两种格式也都认。
       连了钱包才带 ref；没连就不带，照常能广播（§二）。 */
   function shareLink(d, ref) {
@@ -2518,7 +2494,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     return base + '?bang=' + token + (ref ? '&ref=' + encodeURIComponent(ref) : '');
   }
   /** 分享图（PNG）。**多数平台不认 SVG**（X 明确不支持，微信也不认），
-      所以广播这条路一律走 .png，不是卡片列表里那条 .svg（specs/broadcast-v2.md §2.1）。 */
+      所以广播这条路一律走 .png，不是卡片列表里那条 .svg。 */
   function shareImg(d) {
     var A = (CFG.apiBase || '/api');
     if (d && d.cardHash) return A + '/art/card/' + String(d.cardHash).toLowerCase() + '.png';
@@ -2526,7 +2502,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     return '';
   }
 
-  /* 推广短码：8 位定长，字符集去掉 O/0/I/1（specs/share-referral-v1.md §8）。
+  /* 推广短码：8 位定长，字符集去掉 O/0/I/1。
      **拿不到就退回地址** —— 链接长一点，但一定能用。一次会话只问一次：
      短码是幂等生成的，问十次也是同一个，但每次都问会把服务端那道
      「生成短码」的 IP 闸白白吃掉。 */
@@ -2561,7 +2537,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     });
   }
 
-  /* 「复制文案和图片」（specs/broadcast-v2.md §三）。剪贴板能同时装文本和图片，
+  /* 「复制文案和图片」。剪贴板能同时装文本和图片，
      复制完在微信里 Ctrl+V 就是连图带字一条消息 —— 这条比二维码实用。
      两条纪律：
        1. **必须降级**：Safari 和一部分浏览器没有 ClipboardItem、或者装不下 image/png，
@@ -2570,7 +2546,7 @@ img.uthumb[data-view]{cursor:zoom-in}
           否则看起来就是卡死。
      ClipboardItem 收 Promise<Blob>：这是唯一能跨过"必须在用户手势里写剪贴板"
      那道闸的写法，所以图片的 fetch **直接当值传进去**，不要先等它再构造。
-     与 web/bnb-ui.js 里那份同一口径（本页是独立单文件，各留一份）。 */
+     与 web/arc-ui.js 里那份同一口径（本页是独立单文件，各留一份）。 */
   function copyTextAndImage(text, imgUrl) {
     var nc = navigator.clipboard, CI = window.ClipboardItem;
     if (!nc) return Promise.reject(new Error('no-clipboard'));
@@ -2591,7 +2567,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
 
   /* ============================================================ 二维码（纯前端，零外部请求）
-     specs/broadcast-v2.md §4：微信没有网页分享 API，能给的只有二维码。
+，能给的只有二维码。
      **不许调第三方二维码 API** —— 那等于把用户的推广链接发到别人的服务器上，
      而且破了离线包「零外部请求」那条红线。所以这里自己编码。
 
@@ -2604,9 +2580,9 @@ img.uthumb[data-view]{cursor:zoom-in}
      算法照 ISO/IEC 18004：分块 RS 纠错 → 交织 → 锯齿排布 → 八种掩模取罚分最低。
      返回 { size, version, mask, rows }，rows[r][c] 为 1 表示黑。
 
-     ⚠ web/bnb-ui.js 里有**逐字相同的一份**。本页是自带脚本的独立单文件
+     ⚠ web/arc-ui.js 里有**逐字相同的一份**。本页是自带脚本的独立单文件
      （理由见页头说明），而 web/build-web.js 的文件清单是写死的，
-     新开一个 web/qr.js 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
+     新开一个 另开一个 qr 模块 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
   function qrEncode(text) {
     var i, j, k;
     /* ---- GF(256)，本原多项式 0x11d（QR 规定的那一个） ---- */
@@ -2861,11 +2837,8 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
 
   function shareTextOf(d, link) {
-    if (d.kind === 'c') {
-      return TX('我把一个死宇宙救成了「{0}」（{1} 档造物宇宙 #{2}）。烧 BANG 改写物理常数——BNBBANG，宇宙可以手作。{3}',
-                d.outcome, d.rar, d.id, link).replace(/\s+$/, '');
-    }
-    return TX('我在 BNBBANG 引爆了宇宙 {0}：{1}。每个 BNB 区块哈希都是一套物理定律——来引爆你自己的，前 100 万枚每地址 10 次免费，之后 0.01 BNB。{2}',
+    /* ARCBANG：没有造物系列，价格与免费额度按 specs/arcbang-v1.md */
+    return TX('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}',
               '#' + d.no, d.outcome, link).replace(/\s+$/, '');
   }
   var SHARE_OF = null;                 // 浮层现在摆的是哪张卡（异步回填时要认它）
@@ -2913,7 +2886,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       si.removeAttribute('src');
     }
     /* 渠道链接（全部纯 intent URL、零 SDK、点击前零对外请求；一律普通新标签页，
-       与 web/bnb-ui.js 的 openShare 同一张表 —— 改一处连另一处一起改）：
+       与 web/arc-ui.js 的 openShare 同一张表 —— 改一处连另一处一起改）：
          X        https://x.com/intent/tweet?text=<正文含链接>
                   （x.com 就是「浏览器的 X」——twitter.com 那个域只是多一跳重定向）
          Telegram https://t.me/share/url?url=&text=（正文不带链接，链接单独给）
@@ -2929,12 +2902,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     $('shareWa').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(full);
     /* 激励口径（specs §一，2026-08-21 定稿）：说费率、说人工核对、说专款与反女巫。
        不说"自动到账/立即到账" —— 那是空头支票。 */
+    /* ARCBANG：没有代币，也就没有铸造奖励与邀请返利可言 */
     $('shareNote').textContent =
-      (S.account
-        ? T('链接已带上你的推广地址。邀请好友引爆宇宙：好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。')
-        : T('未连接钱包：链接不带推广地址，照常能广播。连接钱包再广播，好友铸造奖励的 10% 归你，好友的好友再给你 5% —— 人工核对后从邀请返利专款（2 亿）发放，链上留痕可查。'))
-      + ' ' + T('邀请返利专款 2 亿 BANG。')
-      + T('女巫账户（自邀、批量小号、刷量）经人工核对一律不予发放。');
+      T('链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。');
     var msg = $('shareMsg');
     function say(text, warn) {
       msg.hidden = !text;
@@ -2942,7 +2912,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       msg.textContent = text || '';
     }
     say('');
-    /* 复制文案 + 图片（specs/broadcast-v2.md §三）。剪贴板能同时装文本和图片，
+    /* 复制文案 + 图片。剪贴板能同时装文本和图片，
        复制完在微信里 Ctrl+V 就是连图带字一条消息。降级与「正在准备图片…」
        都在 copyTextAndImage 那边说明了。 */
     /* 按钮里现在带图标 SVG，文字都写在 <span> 里 —— 改字只动 span，别用
@@ -3005,7 +2975,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       drawQr();
     };
   }
-  /* 关闭带 150ms 收场过渡（与 web/bnb-ui.js 的 closeShare 同款）；
+  /* 关闭带 150ms 收场过渡（与 web/arc-ui.js 的 closeShare 同款）；
      prefers-reduced-motion（或老浏览器没有 matchMedia）直切。
      定时器句柄留着给 openShare 掐 —— 收场没走完就再开一张卡时不许把新浮层藏掉。 */
   var SHARE_CLOSE_T = null;
@@ -3048,8 +3018,8 @@ img.uthumb[data-view]{cursor:zoom-in}
     location.href = base + '?bang=' + d.hash;
   }
 
-  /* 「拯救」直达（specs/rescue-entry.md §1/§2）：和「再引爆」同一条深链、同一个
-     参数名，只多一个 fix=1 —— 落地那边（web/bnb-ui.js 的 deepLink）看到它就把
+  /* 「拯救」直达：和「再引爆」同一条深链、同一个
+     参数名，只多一个 fix=1 —— 落地那边（web/arc-ui.js 的 deepLink）看到它就把
      干预沙盒直接开出来，省掉「自己进 3D、在 HUD 上找那颗按钮」这两步。
      一样不带 ref：这是自己去救自己的宇宙，不是广播。 */
   function gotoRescue(idSpec) {
@@ -3090,8 +3060,8 @@ img.uthumb[data-view]{cursor:zoom-in}
     return { sort: 'new', rar: [], out: 'all', cur: 'all', named: 'all', src: 'all',
              dim: 'all', ck: '', cmin: '', cmax: '', dev: 'all', adv: false };
   }
-  /* 来源筛选（specs/btcbang-v1.md §三）：全部 / ₿ 比特币 / BNB。只在已拉取的数据上筛，来源由服务端索引给 */
-  var SRC_OPTS = [['all', '全部来源'], ['btc', '₿ 比特币'], ['bnb', 'BNB']];
+  /* 来源筛选：全部 / ₿ 比特币 / BNB。只在已拉取的数据上筛，来源由服务端索引给 */
+  var SRC_OPTS = [['all', '全部来源']];   /* ARCBANG：这个市场只有 Arc 宇宙，没有第二种来源 */
   var FIL = (function () {
     var d = { mine: filDefault(), uni: filDefault() };
     try {
@@ -3148,7 +3118,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     return true;
   }
   /* ---------------------------------------------------------- 物理参数筛选与排序
-     specs/market-physics-filter.md 第三节。**三件事，全部只是"套用服务端的答复"**：
+。**三件事，全部只是"套用服务端的答复"**：
        1) 把筛选条上的选择拼成 /api/market/listings 的查询串；
        2) 把它回的 listingId 集合与顺序，套到链上读来的挂单上；
        3) 显示它算好的 dim / devBand。
@@ -3405,12 +3375,12 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (sec === 'uni') {
       h += '<select data-f="cur"><option value="all">' + esc(T('全部计价')) + '</option>'
         + '<option value="bnb"' + (f.cur === 'bnb' ? ' selected' : '') + ' data-nolang>' + esc(CUR) + '</option>'
-        + '<option value="bang"' + (f.cur === 'bang' ? ' selected' : '') + ' data-nolang>BANG</option></select>';
+        + '</select>';
     }
     h += '<select data-f="named"><option value="all">' + esc(T('已命名/未命名')) + '</option>'
       + '<option value="yes"' + (f.named === 'yes' ? ' selected' : '') + '>' + esc(T('已命名')) + '</option>'
       + '<option value="no"' + (f.named === 'no' ? ' selected' : '') + '>' + esc(T('未命名')) + '</option></select>';
-    /* 来源（specs/btcbang-v1.md §三）：全部 / ₿ 比特币 / BNB。两站都有 —— 两站共用一个市场。
+    /* 来源：全部 / ₿ 比特币 / BNB。两站都有 —— 两站共用一个市场。
        「BNB」是专名，中英同形，data-nolang；「₿ 比特币」走词典。 */
     h += '<select data-f="src" aria-label="' + esc(T('来源')) + '">'
       + SRC_OPTS.map(function (p) {
@@ -3491,7 +3461,24 @@ img.uthumb[data-view]{cursor:zoom-in}
     else if (act === 'fix') gotoRescue(id);
     else if (act === 'share') openShare(id);
     else if (act === 'cancel') runTx(function () { return T('撤单') + ' #' + lid; }, function () { return sendTx(ADDR.market, SEL.cancel + encUint(lid)); });
+    else if (act === 'stale') runTx(function () { return T('清失效挂单') + ' #' + lid; }, function () { return sendTx(ADDR.market, SEL.cancelStale + encUint(lid)); });
+    else if (act === 'reprice') reprice(lid);
   });
+
+  /* 改价（ArcMarket.updatePrice）。新价用 prompt 收 —— 这一页没有现成的输入弹层，
+     为一个只填一个数的动作新建一套灯箱不值当。价格解析不出来或为 0 就一笔都不发：
+     合约那边 price==0 是 revert，白烧一次 gas 不如在这里拦住。 */
+  function reprice(lid) {
+    var l = null;
+    (S.listings || []).forEach(function (x) { if (String(x.id) === String(lid)) l = x; });
+    if (!l) { toast(function () { return T('这一单读不到了，刷新看看'); }, 'err'); return; }
+    var raw = window.prompt(TF('新的总价（{0}）', CUR), fmtBNB(l.price));
+    if (raw === null) return;                       // 点了取消
+    var wei = toWei(raw);
+    if (wei === null || wei <= 0n) { toast(function () { return T('价格填得不对，写成 0.02 这样'); }, 'err'); return; }
+    runTx(function () { return T('改价') + ' #' + lid; },
+          function () { return sendTx(ADDR.market, SEL.updatePrice + encUint(lid) + encUint(wei)); });
+  }
 
   function buy(lid) {
     var l = null;
@@ -3530,15 +3517,15 @@ img.uthumb[data-view]{cursor:zoom-in}
     say('');
     // ERC-721 的数量恒为 1（合约里 list() 对 721 也只接受 1），没有可填的量
     runTx(function () { return TV('挂单'); }, function () {
-      var inBang = $('fCur') && $('fCur').value === 'bang';
-      return sendTx(ADDR.market, SEL.list + encAddr(a.token) + encUint(a.id) + encUint(1) + encUint(wei) + encBool(inBang));
+      // ARCBANG：list(uint256 id, uint256 price)，价格是 USDC 的 wei（1 USDC = 1e18）
+      return sendTx(ADDR.market, SEL.list + encUint(a.id) + encUint(wei));
     });
   });
   $('fAsset').addEventListener('change', syncApproveState);
   /* 币种切换时把标签和示例跟着换 —— 不换的话「总价（tBNB）」下面填 5000 BANG，
      挂出去就是 5000 个 BNB 的天价单，撤单还要再花一次 gas。
      语言切换会由 attrT 把 placeholder 刷回默认，所以 mirror:lang 之后再对一次。
-     单位名不写死：原生币那一档是 config.js 的 chain.currency（specs/mainnet-ready.md）。 */
+     单位名不写死：原生币那一档是 config.js 的 chain.currency。 */
   function syncCurUI() {
     var lab = $('fPriceLab'), inp = $('fPrice'), bang = $('fCur') && $('fCur').value === 'bang';
     if (lab) lab.textContent = TF('总价（{0}）', bang ? 'BANG' : CUR);
@@ -3775,7 +3762,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 
   /* ---------------------------------------------------------- 链名 / 单位 / 测试网提示
      三处静态文字里原来写死着「BNB Smart Chain 测试网」「tBNB」「这是测试网。」，
-     现在全从 config.js 的 chain 块派生（specs/mainnet-ready.md）。
+     现在全从 config.js 的 chain 块派生。
      **两句都整句进词典**（带 {0}）—— 英文语序和中文不一样，在外面拼会拼错。
      chain.isTestnet 为假时「这是 XX。」那半句**根本不渲染**：主网上说「测试」
      比不说更糟。boot 一次，每次切语言再一次。 */
@@ -3867,12 +3854,10 @@ img.uthumb[data-view]{cursor:zoom-in}
   /* ============================================================ 装配 */
   function renderConfigBar() {
     var rows = [
+      /* ARCBANG：v1 只有两个合约（ArcUniverse + ArcMarket），
+         代币与命名那两行在这里不是「未部署」，是**永远不会有** */
       { k: '宇宙 NFT', v: ADDR.universe, key: 'contract' },
-      { k: 'BANG 代币', v: ADDR.bang, key: 'bangToken' },
-      { k: '市场', v: ADDR.market, key: 'market' },
-      /* 命名合约也列出来。没填地址时它就那么亮着"未部署"——那正是要说的话：
-         这一栏是给运维看的，缺哪一个一眼就知道要去 config.js 里补哪个键。 */
-      { k: '命名', v: ADDR.names, key: 'bangNames' }
+      { k: '市场', v: ADDR.market, key: 'market' }
     ];
     /* 造物那一枚 chip **只在配了地址时才出现** —— 与上面四个"没配也亮着未部署"
        不同：造物没配时页面必须与从前逐像素一致（验收线），配了才有资格进这一栏。 */
@@ -3986,7 +3971,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     syncThemeUI();          // 设置浮层里的三选一 + 那个不显示的旧切换按钮，一起对上当前主题
     renderConfigBar();
     renderAll();                                   // 先把空架子画出来，别让人对着白屏等 RPC
-    if (!window.BNBBANG_CONFIG) {
+    if (!window.ARCBANG_CONFIG) {
       toast(function () { return T('站点配置没读到 —— 合约都还没接上，先用公开节点浏览'); }, 'warn');
     }
     if (eth() && eth().request) {

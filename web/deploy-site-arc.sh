@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # 把 web/dist-arc 整目录发到 VPS 的 /var/www/arcbang，并装 nginx 配置。
 # 用法：bash web/deploy-site-arc.sh [ssh 私钥路径]
-# 先构建：node build.js && node web/build-web.js --site arc && node tools/check-dist.js
+# 先构建：node build.js && node web/build-web.js && node tools/check-dist.js
 set -euo pipefail
 KEY="${1:-$HOME/.ssh/arcbang_deploy_key}"
-HOST="${BNBBANG_HOST:-root@YOUR_SERVER_IP}"
+HOST="${ARCBANG_HOST:-root@YOUR_SERVER_IP}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/web/dist-arc"
 WWW=/var/www/arcbang
-[ -f "$DIST/index.html" ] || { echo "先构建：node build.js && node web/build-web.js --site arc"; exit 1; }
+[ -f "$DIST/index.html" ] || { echo "先构建：npm run build"; exit 1; }
 SSH=(ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=15 "$HOST")
 SCP=(scp -i "$KEY" -o BatchMode=yes -o ConnectTimeout=15)
 echo "→ 建目录"
