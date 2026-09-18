@@ -819,6 +819,7 @@
     '你已经收下它了': 'You already minted it',
     '这个宇宙已经被别人铸走了，换一个区块吧': 'Someone else already minted this universe — pick another block',
     '到市场看看': 'Have a look at the market',
+    '要铸造得先连接钱包（签名会绑定你的地址）': 'Connect a wallet before minting (the signature is bound to your address)',
     '下载参数卡图（PNG）': 'Download the parameter card (PNG)',
     '确认发送？': 'Send it?',
     '发送报告': 'Send report',

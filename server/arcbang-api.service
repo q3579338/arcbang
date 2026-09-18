@@ -1,12 +1,11 @@
 # /etc/systemd/system/arcbang-api.service
 #
-# ARCBANG 的 API 实例。改这个文件之后要 systemctl daemon-reload。
+# ARCBANG 服务端（Arc 主网）。独立仓库、独立目录（/opt/arcbang）、独立用户（arcbang）、独立密钥与存档，
+# 与这台机器上别的实例互不影响。改这个文件之后要 systemctl daemon-reload。
 #
-# 只监听 127.0.0.1:8803（下面的 ARCBANG_PORT），外面靠 nginx 的 /api/ 反代进来 ——
+# 只监听 127.0.0.1:8803，外面靠 nginx 的 /api/ 反代进来 ——
 # 直接暴露到公网等于把签名服务的端口挂出去，没有任何好处。
 #
-# 注：下面的 /opt/bnbbang、/etc/bnbbang、用户名 bnbbang 是**服务器上已经存在的**路径与属主。
-# 改它们要连着迁目录、改属主、改 nginx，属于运维动作，不在这份文件里替运营者决定。
 
 [Unit]
 Description=ARCBANG API · Arc 主网 (算 card / 签名 / 出图)
@@ -15,26 +14,26 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=bnbbang
-Group=bnbbang
-WorkingDirectory=/opt/bnbbang/server
+User=arcbang
+Group=arcbang
+WorkingDirectory=/opt/arcbang/server
 ExecStart=/usr/bin/node index.js
 Restart=always
 RestartSec=3
 
-# 环境变量从这个文件读（键名见 server/api.env.example）。**私钥不写在这里**，见下面的 signer.arc.key
-EnvironmentFile=/etc/bnbbang/api.arc.env
+# 环境变量从这个文件读。**私钥不写在这里**，见下面的 signer.key
+EnvironmentFile=/etc/arcbang/api.env
 
-# 签名私钥单独一个文件，600，属主 bnbbang。
+# 签名私钥单独一个文件，600，属主 arcbang。
 # 服务启动时从 ARCBANG_SIGNER_KEY_FILE 读它（server/sign.js）。
-Environment=ARCBANG_SIGNER_KEY_FILE=/etc/bnbbang/signer.arc.key
+Environment=ARCBANG_SIGNER_KEY_FILE=/etc/arcbang/signer.key
 
-# 端口 / 存档 / 出图缓存钉死在 unit 里，避免 env 漏填时落到默认值
+# 端口 / 存档 / 出图缓存钉死在 unit 里，避免 env 漏填时落到测试网默认
 # （ARCBANG_PORT 默认 8801、STORE 默认 .store、CACHE 默认 .cache）。
 Environment=ARCBANG_PORT=8803
-Environment=ARCBANG_STORE=/opt/bnbbang/server/.store-arc
-Environment=ARCBANG_PNG_DIR=/opt/bnbbang/server/.store-arc/png
-Environment=ARCBANG_CACHE=/opt/bnbbang/server/.cache-arc
+Environment=ARCBANG_STORE=/opt/arcbang/server/.store
+Environment=ARCBANG_PNG_DIR=/opt/arcbang/server/.store/png
+Environment=ARCBANG_CACHE=/opt/arcbang/server/.cache
 
 # ---- 收紧权限 ----
 # 这个进程手里握着签名私钥：任何人拿到它就能伪造"带参数"的 NFT。
@@ -53,8 +52,8 @@ LockPersonality=true
 # 这条加固对任何 JIT 语言都不适用，别再加回来。
 # 只有这两个目录可写：缓存可以随便删（是纯函数的产物，删了能重算），
 # 存档删了就没了（干预记录只在这里，链上只留一个 cardHash）——**必须进备份**。
-# ProtectSystem=strict 会挡住对别处的误写。
-ReadWritePaths=/opt/bnbbang/server/.cache-arc /opt/bnbbang/server/.store-arc
+# 不把测试网的 .cache / .store 放进来，ProtectSystem=strict 会挡住误写。
+ReadWritePaths=/opt/arcbang/server/.cache /opt/arcbang/server/.store
 
 # 日志
 StandardOutput=journal

@@ -37,3 +37,7 @@ scratchpad/
 # 系统
 .DS_Store
 Thumbs.db
+
+# 根目录下划线开头的临时脚本（agent 的验证脚本），不入库
+/_*.js
+/_*.html
