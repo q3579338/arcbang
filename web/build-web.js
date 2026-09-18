@@ -20,6 +20,9 @@ const crypto = require('crypto');
 const ROOT = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
 const min = argv.includes('--min');
+const TESTNET = argv.includes('--testnet');
+const argVal = (k) => { const i = argv.findIndex((a) => a.startsWith(k + '=')); return i >= 0 ? argv[i].slice(k.length + 1) : ''; };
+const TN_CONTRACT = argVal('--contract'), TN_MARKET = argVal('--market');
 /* 站点参数全部收在这一张表里；下面的流程不再写死任何域名 / 站名。 */
 /* ARCBANG（specs/arcbang-v1.md）：Arc 链 · 只卖 NFT · 没有代币。
    文档页的语言方向：中文在根路径（与首页同一条规矩），英文版落进 /en/（enPages）。
@@ -294,6 +297,19 @@ ST.pages.forEach(([srcF, dstF]) => {
   /* config.js：落盘的是 config.arc.js 的内容（名字仍叫 config.js —— 各页引的就是它） */
   const extra = path.join(__dirname, f === 'config.js' ? ST.config : f);
   if (!fs.existsSync(extra)) return;
+  if (f === 'config.js' && TESTNET) {
+    /* --testnet：本地/测试网联调用，把 config 里的链切到 Arc 测试网（5042002）。源文件不动，只改落盘那一份。
+       合约地址由 --contract= / --market= 给（测试网部署完填），不给就沿用源文件里的。 */
+    let c = fs.readFileSync(extra, 'utf8')
+      .replace("'https://rpc.mainnet.arc.io'", "'https://rpc.testnet.arc.io'")
+      .replace('id: 5042,', 'id: 5042002,').replace("name: 'Arc 主网'", "name: 'Arc 测试网'").replace("nameEn: 'Arc Mainnet'", "nameEn: 'Arc Testnet'")
+      .replace("explorer: 'https://explorer.arc.io'", "explorer: 'https://explorer.testnet.arc.io'").replace('isTestnet: false', 'isTestnet: true');
+    if (TN_CONTRACT) c = c.replace(/contract: '[^']*'/, "contract: '" + TN_CONTRACT + "'");
+    if (TN_MARKET) c = c.replace(/market: '[^']*'/, "market: '" + TN_MARKET + "'");
+    fs.writeFileSync(path.join(outDir, f), c);
+    console.log('  + ' + ST.config + ' → ' + ST.dist + '/config.js（--testnet：链 5042002' + (TN_CONTRACT ? '，合约 ' + TN_CONTRACT.slice(0, 10) + '…' : '') + '）');
+    return;
+  }
   fs.copyFileSync(extra, path.join(outDir, f));
   console.log('  + ' + (f === 'config.js' ? ST.config : f) + ' → ' + ST.dist + '/' + (f === 'config.js' && ST.config !== f ? f : ''));
 });
