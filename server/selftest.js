@@ -3407,6 +3407,349 @@ function call(method, url, body, headers) {
     }
   }
 
+  {
+    /* ==================================================================
+       [S5] 用 X 登录（OAuth 1.0a）与任务自动核（按量付费的 Owned Reads）
+
+       两件事钉在这一节：
+         1. **签名对不对**。OAuth 1.0a 签错了，X 只回一句 401，
+            从错误里完全看不出是编码、排序还是密钥错。所以这里逐段比：
+            百分号编码 → 基串 → 签名密钥 → HMAC。
+         2. **别人能不能冒充你登录**。回调是 X 打过来的 GET，
+            攻击者可以自己走完前两腿再把链接塞给你点 —— 那一手要被挡住。
+
+       还有一条产品规矩：**一个 X 账号只能绑一个地址**。
+       没有它，一个人拿同一个 X 号就能把任务分刷到任意多个地址上。
+       ================================================================== */
+    console.log('\n[S5] 用 X 登录 / 任务自动核');
+    const XAUTH = require('./xauth.js');
+    const XVER = require('./xverify.js');
+    const ALX5 = require('./allowlist.js');
+    const nodeCrypto = require('crypto');
+
+    /* ---- 百分号编码：RFC 3986，encodeURIComponent 漏掉的那五个 ---- */
+    ok("pct 把 ! * ' ( ) 也编掉（encodeURIComponent 不编，X 那边会算出另一个签名）",
+      XAUTH.pct("!*'()") === '%21%2A%27%28%29');
+    ok('pct 不动 RFC 3986 的那四个非保留字符 - . _ ~',
+      XAUTH.pct('-._~') === '-._~');
+    ok('pct 编空格成 %20 而不是 +', XAUTH.pct('a b') === 'a%20b');
+
+    /* ---- 基串：METHOD & pct(基地址) & pct(排序后的参数串) ---- */
+    {
+      const bs = XAUTH.baseString('post', 'https://api.x.com/1.1/x.json?b=2&a=1', { c: '3' });
+      ok('基串：方法大写、地址不带 query、query 里的参数并进来一起按字典序排',
+        bs === 'POST&' + XAUTH.pct('https://api.x.com/1.1/x.json') + '&' + XAUTH.pct('a=1&b=2&c=3'), bs);
+      const bs2 = XAUTH.baseString('GET', 'https://api.x.com/2/x#frag', { z: 'y' });
+      ok('fragment 不进基串', bs2.indexOf('frag') < 0);
+    }
+
+    /* ---- 签名密钥：pct(consumerSecret) & pct(tokenSecret) ---- */
+    ok('签名密钥两段都要单独编码，中间一个 &，没有 token 时后半段留空',
+      XAUTH.signingKey('a b', "c!d") === 'a%20b&c%21d' && XAUTH.signingKey('k') === 'k&');
+
+    /* ---- 对着 X 文档那个例子核一遍 ----
+       文档给的是**基串与签名密钥这两串文本**，这里就比这两串。
+       比它们比比一个「记得的」签名值可靠：这两串是照着算法一步步拼出来的，
+       错了能当场看出错在哪一段；而签名值只要有一个字符不同，就只剩「不等」三个字。 */
+    {
+      const p = {
+        status: 'Hello Ladies + Gentlemen, a signed OAuth request!',
+        include_entities: 'true',
+        oauth_consumer_key: 'xvz1evFS4wEEPTGEFPHBog',
+        oauth_nonce: 'kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg',
+        oauth_signature_method: 'HMAC-SHA1',
+        oauth_timestamp: '1318622958',
+        oauth_token: '370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb',
+        oauth_version: '1.0'
+      };
+      const url = 'https://api.twitter.com/1.1/statuses/update.json';
+      const want = 'POST&https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fupdate.json'
+        + '&include_entities%3Dtrue%26oauth_consumer_key%3Dxvz1evFS4wEEPTGEFPHBog'
+        + '%26oauth_nonce%3DkYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg'
+        + '%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1318622958'
+        + '%26oauth_token%3D370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb'
+        + '%26oauth_version%3D1.0%26status%3DHello%2520Ladies%2520%252B%2520Gentlemen'
+        + '%252C%2520a%2520signed%2520OAuth%2520request%2521';
+      const got = XAUTH.baseString('POST', url, p);
+      ok('X 文档那个例子：基串逐字节相同', got === want, got);
+      const cs = 'kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw';
+      const ts = 'LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE';
+      ok('X 文档那个例子：签名密钥逐字节相同',
+        XAUTH.signingKey(cs, ts) === cs + '&' + ts);
+      /* 签名值本身跟一条独立算出来的 HMAC 比 —— 证明 sign() 没在中间多做什么。 */
+      ok('sign() == 独立算的 HMAC-SHA1(签名密钥, 基串)',
+        XAUTH.sign('POST', url, p, cs, ts)
+        === nodeCrypto.createHmac('sha1', cs + '&' + ts).update(want, 'utf8').digest('base64'));
+    }
+
+    /* ---- Authorization 头：只放 oauth_*，业务参数不进头 ---- */
+    {
+      const h = XAUTH.authHeader({ status: 'x', oauth_consumer_key: 'k', oauth_nonce: 'n' }, 'SIG+/=');
+      ok('头里不带业务参数，签名值要编码', h.indexOf('status') < 0 && h.indexOf(XAUTH.pct('SIG+/=')) > 0, h);
+      ok('头以 OAuth 开头、逗号分隔、值加引号', /^OAuth oauth_consumer_key="k", /.test(h), h);
+    }
+
+    /* ---- 三腿流程：没配凭证 / state / 伪造回调 / 一 X 一地址 ---- */
+    {
+      const xdir = path.join(TMP, 'x5'); fs.mkdirSync(xdir, { recursive: true });
+      const calls = [];
+      const form = (o) => ({
+        ok: true, status: 200,
+        text: async () => Object.keys(o).map((k) => k + '=' + encodeURIComponent(o[k])).join('&')
+      });
+      let leg1 = form({ oauth_token: 'TMP1', oauth_token_secret: 'TS1', oauth_callback_confirmed: 'true' });
+      let leg3 = form({ oauth_token: 'AT', oauth_token_secret: 'ATS', user_id: '4242', screen_name: 'satoshi' });
+      const fakeFetch = async (u, o) => { calls.push(String(u)); return String(u).indexOf('request_token') >= 0 ? leg1 : leg3; };
+      const XA5 = XAUTH.create({ storeDir: xdir, publicBase: 'https://arcbang.xyz', fetch: fakeFetch });
+
+      ok('没配凭证时 configured() 为假（接口据此回 404，预热页退回手填 X 名）', XA5.configured() === false);
+      ok('没配凭证时连 cookie 都签不出来（签得出来就等于谁都能伪造一个登录态）',
+        XA5.signCookie({ id: '1', handle: 'a', exp: Date.now() + 1000 }) === null);
+      ok('没配凭证时第一腿直接回 404，不去打 X', (await XA5.begin()).status === 404 && calls.length === 0);
+
+      const sv = XA5.saveCred('consumerkey123', 'consumersecret456789012345');
+      ok('存凭证：回 key 前 4 位，secret 一个字符都不回',
+        sv.ok === true && sv.key4 === 'cons' && sv.secret === undefined);
+      ok('credInfo 只说配没配 + key 前 4 位 + 回调地址',
+        XA5.credInfo().configured === true && XA5.credInfo().key4 === 'cons'
+        && XA5.credInfo().callback === 'https://arcbang.xyz/api/x/callback'
+        && XA5.credInfo().secret === undefined);
+      /* 凭证文件权限：POSIX 上必须是 600（Windows 上 chmod 基本无效，不在这里判） */
+      if (process.platform !== 'win32') {
+        ok('凭证文件是 0600', (fs.statSync(XA5.credFile).mode & 0o777) === 0o600);
+      }
+
+      const b1 = await XA5.begin();
+      ok('第一腿：拿到跳转地址，回调地址**不带 query**（X 后台登记的要逐字相同）',
+        b1.ok === true && b1.url.indexOf('oauth_token=TMP1') > 0
+        && calls.some((u) => u.indexOf('request_token') >= 0));
+      ok('state 走的是一次性 cookie，不是回调地址上的 query 参数',
+        /arcbang_xs=[0-9a-f]{32}/.test(b1.cookie) && b1.cookie.indexOf('HttpOnly') > 0);
+
+      ok('state 对不上 → 挡住（这是防「别人把授权好的回调链接塞给你点」的那道门）',
+        (await XA5.finish({ oauth_token: 'TMP1', oauth_verifier: 'V' }, 'not-the-right-state')).ok === false);
+      ok('不带 state → 挡住',
+        (await XA5.finish({ oauth_token: 'TMP1', oauth_verifier: 'V' }, '')).ok === false);
+      ok('临时 token 不是我们发起的那一个 → 挡住（伪造回调）',
+        (await XA5.finish({ oauth_token: 'FORGED', oauth_verifier: 'V' }, b1.state)).ok === false);
+      ok('少参数 → 400', (await XA5.finish({ oauth_token: 'TMP1' }, b1.state)).status === 400);
+
+      const fin = await XA5.finish({ oauth_token: 'TMP1', oauth_verifier: 'V' }, b1.state);
+      ok('第三腿：access_token 的响应里直接就有 user_id 与 screen_name（选 1.0a 的理由）',
+        fin.ok === true && fin.session.id === '4242' && fin.session.handle === 'satoshi');
+      ok('会话 cookie 是 HttpOnly + SameSite=Lax；PUBLIC_BASE 是 https 就带 Secure',
+        fin.cookie.indexOf('HttpOnly') > 0 && fin.cookie.indexOf('SameSite=Lax') > 0
+        && fin.cookie.indexOf('Secure') > 0, fin.cookie);
+      ok('cookie 里不存 access_token（拿到之后再也用不上，存着只是多一份能被偷的东西）',
+        fin.cookie.indexOf('ATS') < 0 && JSON.stringify(fin.session).indexOf('ATS') < 0);
+      ok('同一个临时 token 不能用第二次（用完即删）',
+        (await XA5.finish({ oauth_token: 'TMP1', oauth_verifier: 'V' }, b1.state)).ok === false);
+
+      /* cookie 验签：改一个字节就不认 */
+      const raw = fin.cookie.slice(fin.cookie.indexOf('=') + 1, fin.cookie.indexOf(';'));
+      ok('原样的 cookie 读得出来', (XA5.readCookie(raw) || {}).handle === 'satoshi');
+      ok('改一个字符就读不出来（HMAC 验签）',
+        XA5.readCookie(raw.slice(0, -2) + (raw.slice(-2) === 'AA' ? 'BB' : 'AA')) === null);
+      ok('过期的 cookie 读不出来',
+        XA5.readCookie(XA5.signCookie({ id: '1', handle: 'a', exp: Date.now() - 1 })) === null);
+      ok('fromReq 从请求头里摘得出来',
+        (XA5.fromReq({ headers: { cookie: 'other=1; ' + XA5.COOKIE + '=' + raw } }) || {}).id === '4242');
+      ok('stateFromReq 摘的是另一个 cookie',
+        XA5.stateFromReq({ headers: { cookie: XA5.STATE_COOKIE + '=abc' } }) === 'abc');
+    }
+
+    /* ---- 一个 X 账号只能绑一个地址 ---- */
+    {
+      const bdir = path.join(TMP, 'al5'); fs.mkdirSync(bdir, { recursive: true });
+      const AL5 = ALX5.create({ storeDir: bdir });
+      const W = (h) => new Wallet('0x' + h.repeat(32));
+      const reg = (w, sess, x) => {
+        const sig = w.signMessageSync(ALX5.registerMessage(w.address));
+        return AL5.register({ address: w.address, xHandle: x, sig }, '9.9.9.9', sess);
+      };
+      const wa = W('a1'), wb = W('b2'), wc = W('c3');
+      const sess = { id: '999001', handle: 'alice' };
+
+      const r1 = reg(wa, sess);
+      ok('用 X 登录登记：X 名取自登录，不看用户填了什么', r1.status === 200);
+      ok('记录里标了 xSource:oauth 与 xId',
+        AL5.appliedOf(wa.address.toLowerCase()).xSource === 'oauth'
+        && AL5.appliedOf(wa.address.toLowerCase()).xId === '999001');
+      ok('addrOfXid 查得到绑定', AL5.addrOfXid('999001') === wa.address.toLowerCase());
+
+      const r2 = reg(wb, sess);
+      ok('同一个 X 账号换个地址再登记 → 409（一个 X 只能绑一个地址）',
+        r2.status === 409 && /X 账号/.test(r2.body.error), JSON.stringify(r2.body));
+      ok('第二个地址确实没写进去', AL5.appliedOf(wb.address.toLowerCase()) == null);
+
+      const r3 = reg(wa, sess);
+      ok('同一个地址再登记一次 → 409 且带 already（内容不可改）',
+        r3.status === 409 && r3.body.already === true && r3.body.xSource === 'oauth');
+
+      const r4 = reg(wc, null, 'typed_guy');
+      ok('没开通 X 登录那条老路：手填 X 名，记录标 xSource:typed',
+        r4.status === 200 && AL5.appliedOf(wc.address.toLowerCase()).xSource === 'typed'
+        && AL5.appliedOf(wc.address.toLowerCase()).xId === null);
+      ok('手填那条路不占 xId（它本来就证明不了身份）', AL5.addrOfXid('') === null);
+      /* 换名字 xId 不变 —— 这正是认 id 不认 handle 的理由 */
+      const r5 = reg(wb, { id: '999001', handle: 'alice_new' });
+      ok('X 改了名还是同一个 id，照样挡住', r5.status === 409);
+
+      /* 重读一次（模拟重启）：xId 索引要从流水里重建得回来 */
+      AL5._reload();
+      ok('重启后 xId → 地址的索引从流水里重建得回来',
+        AL5.addrOfXid('999001') === wa.address.toLowerCase());
+    }
+
+    /* ---- 自动核：分页、增量、打勾、掉勾、账单 ---- */
+    {
+      const vdir = path.join(TMP, 'xv5'); fs.mkdirSync(vdir, { recursive: true });
+      const AL6 = ALX5.create({ storeDir: vdir });
+      const savedPin6 = process.env.ARCBANG_PINNED_POST_URL;
+      process.env.ARCBANG_PINNED_POST_URL = 'https://x.com/arcbang_xyz/status/1234567890123';
+
+      /* 三个人，X id 分别是 1 / 2 / 3 */
+      const who = {};
+      ['d4', 'e5', 'f6'].forEach((h, i) => {
+        const w = new Wallet('0x' + h.repeat(32));
+        const sig = w.signMessageSync(ALX5.registerMessage(w.address));
+        AL6.register({ address: w.address, sig }, '8.8.8.8', { id: String(i + 1), handle: 'u' + (i + 1) });
+        who[i + 1] = w.address.toLowerCase();
+      });
+
+      /* 假的 X 接口：followers 两页，liking_users 一页，retweeted_by 一页 */
+      let followers = [['9', '1'], ['2', '7']];       // 第一页（新的在前）、第二页
+      let likers = [['1', '2']];
+      let reposters = [['2']];
+      const hits = [];
+      const page = (arr, i, more) => ({
+        ok: true, status: 200,
+        text: async () => JSON.stringify({
+          data: arr.map((id) => ({ id, username: 'u' + id })),
+          meta: { result_count: arr.length, next_token: more ? 'P' + (i + 1) : undefined }
+        })
+      });
+      const fakeX = async (u) => {
+        const s = String(u);
+        hits.push(s);
+        if (s.indexOf('/by/username/') >= 0) {
+          return { ok: true, status: 200, text: async () => JSON.stringify({ data: { id: '777', username: 'arcbang_xyz' } }) };
+        }
+        const m = /pagination_token=P(\d+)/.exec(s);
+        const idx = m ? Number(m[1]) : 0;
+        const src = s.indexOf('followers') >= 0 ? followers : (s.indexOf('liking_users') >= 0 ? likers : reposters);
+        return page(src[idx] || [], idx, idx + 1 < src.length);
+      };
+      const XA6 = XAUTH.create({ storeDir: vdir, publicBase: 'https://arcbang.xyz' });
+      XA6.saveCred('consumerkey123', 'consumersecret456789012345', { bearer: 'BEARER-TOKEN-XYZ' });
+      const XV6 = XVER.create({ storeDir: vdir, xauth: XA6, allowlist: AL6, fetch: fakeX, handle: 'arcbang_xyz' });
+
+      ok('配了 Bearer 才算开着（一个都没配就整套不动，一分钱不花）', XV6.configured() === true);
+
+      const r1 = await XV6.runOnce({ full: true });
+      ok('第一轮全量：followers 翻到底（两页都读了）',
+        r1.ok === true && r1.detail.follow.pages === 2 && r1.detail.follow.total === 4,
+        JSON.stringify(r1.detail));
+      ok('名单里的人被自动打上勾，来源是 api',
+        AL6.hasCheck(who[1], 'follow') && AL6.checkBy(who[1], 'follow') === 'api'
+        && AL6.hasCheck(who[2], 'like') && AL6.hasCheck(who[2], 'repost'));
+      ok('不在名单里的人没有勾', AL6.hasCheck(who[3], 'follow') === false);
+      ok('X 名单里那些没登记的 id 一概不理（9 和 7 不是我们的人）',
+        r1.applied.added.follow === 2);
+      ok('账单按条算：这一轮读了多少条、折合多少钱',
+        r1.cost.records === 1 + 4 + 2 + 1 && r1.cost.usd === +(r1.cost.records * 0.001).toFixed(4),
+        JSON.stringify(r1.cost));
+
+      /* 增量：第一页全是老人就停，不翻第二页 */
+      hits.length = 0;
+      const r2 = await XV6.runOnce();
+      ok('增量轮：第一页全是老人就停，不再翻第二页（新的排在最前面）',
+        r2.detail.follow.pages === 1 && r2.detail.follow.full === false, JSON.stringify(r2.detail.follow));
+      ok('账号 id 存下来了，不再重复查', hits.every((u) => u.indexOf('/by/username/') < 0));
+
+      /* 增量轮里来了个新人：翻到有新人的那一页之后继续翻 */
+      followers = [['3', '9'], ['1'], ['2', '7']];
+      const r3 = await XV6.runOnce();
+      ok('增量轮遇到新人就继续翻，直到一整页都是老人',
+        r3.detail.follow.pages === 2 && AL6.hasCheck(who[3], 'follow') === true,
+        JSON.stringify(r3.detail.follow));
+
+      /* 退关：只有全量轮发现得了 */
+      followers = [['9'], ['7']];
+      const r4 = await XV6.runOnce();
+      ok('增量轮发现不了退关（名单只会变大）—— 这正是每隔几轮要全量一次的原因',
+        AL6.hasCheck(who[1], 'follow') === true && r4.applied.removed.follow === 0);
+      const r5 = await XV6.runOnce({ full: true });
+      ok('全量轮把退关的勾掉了', AL6.hasCheck(who[1], 'follow') === false && r5.applied.removed.follow >= 1);
+
+      /* 只撤自己打的勾 */
+      AL6.verify(who[1], 'follow');
+      ok('管理员手打的勾标 admin', AL6.checkBy(who[1], 'follow') === 'admin');
+      await XV6.runOnce({ full: true });
+      ok('**只撤自己打的那种**：管理员手打的勾，API 这一轮不动它',
+        AL6.hasCheck(who[1], 'follow') === true && AL6.checkBy(who[1], 'follow') === 'admin');
+
+      /* 拉失败：这一项这一轮整项不动，不能当成「所有人都退关了」 */
+      const XV7 = XVER.create({
+        storeDir: vdir, xauth: XA6, allowlist: AL6, handle: 'arcbang_xyz',
+        fetch: async () => ({ ok: false, status: 429, text: async () => 'rate limited' })
+      });
+      XV7._reload();
+      const before = AL6.hasCheck(who[2], 'like');
+      const r6 = await XV7.runOnce({ full: true });
+      ok('拉不到就整项跳过：绝不能把「读失败」当成「名单空了」而清光所有人的勾',
+        r6.ok === true && !!r6.detail.like.error && AL6.hasCheck(who[2], 'like') === before,
+        JSON.stringify(r6.detail.like));
+
+      /* 置顶推没配 → 点赞和转发那两项跳过，只核关注 */
+      delete process.env.ARCBANG_PINNED_POST_URL;
+      const XV8 = XVER.create({ storeDir: vdir, xauth: XA6, allowlist: AL6, fetch: fakeX, handle: 'arcbang_xyz' });
+      XV8._reload();
+      const r7 = await XV8.runOnce({ full: true });
+      ok('没配置顶推时点赞/转发整项跳过，勾照旧',
+        r7.detail.like.skipped === true && r7.detail.repost.skipped === true
+        && AL6.hasCheck(who[2], 'like') === before);
+
+      const info = XV8.info();
+      ok('info 把账单摊开给管理员页：累计条数、请求数、折合美元、今天多少',
+        info.configured === true && info.cost.records > 0
+        && info.cost.usd === +(info.cost.records * info.price).toFixed(4)
+        && info.cost.today.records > 0, JSON.stringify(info.cost).slice(0, 160));
+
+      /* 没配凭证 → 退回信任模式，一次请求都不发 */
+      const vdir2 = path.join(TMP, 'xv5b'); fs.mkdirSync(vdir2, { recursive: true });
+      const XA9 = XAUTH.create({ storeDir: vdir2, publicBase: 'https://arcbang.xyz' });
+      XA9.saveCred('consumerkey123', 'consumersecret456789012345');   // 只开登录，不配自动核
+      let touched = 0;
+      const XV9 = XVER.create({
+        storeDir: vdir2, xauth: XA9, allowlist: AL6, handle: 'arcbang_xyz',
+        fetch: async () => { touched++; return { ok: true, status: 200, text: async () => '{}' }; }
+      });
+      ok('只配了登录、没配 Bearer / Access Token → 自动核不开，一个请求都不发',
+        XV9.configured() === false && (await XV9.runOnce()).ok === false && touched === 0);
+
+      if (savedPin6 === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = savedPin6;
+    }
+
+    /* ---- 接线：路由与页面上的那几处 ---- */
+    {
+      const srcIdx = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
+      ok('没配凭证时 /api/x/* 整段回 404（功能没开就该不存在）',
+        /XA\.configured\(\)\) return json\(res, 404/.test(srcIdx));
+      ok('登记那一路把会话传给 allowlist；开通了 X 登录却没登录 → 401',
+        srcIdx.indexOf('AL.register(parsedAl.value, RL.ipOf(req), xSess)') > 0
+        && srcIdx.indexOf("needX: true") > 0);
+      ok('回调处理完把一次性 state cookie 删掉', srcIdx.indexOf('stateCookieHeader(null)') > 0);
+      const w = fs.readFileSync(path.join(__dirname, '..', 'web', 'warmup-arc.html'), 'utf8');
+      ok('预热页带 cookie 请求（会话就是一个 HttpOnly cookie）', w.indexOf("credentials: 'include'") > 0);
+      ok('预热页在没开通时退回手填 X 名', w.indexOf("XL.configured ? XL.handle :") > 0);
+      const a = fs.readFileSync(path.join(__dirname, '..', 'web', 'admin-arc.html'), 'utf8');
+      ok('管理员页有 X 登录设置与自动核账单两块',
+        a.indexOf('/admin/xauth') > 0 && a.indexOf('/admin/xverify') > 0 && a.indexOf('xvCost') > 0);
+      ok('管理员页把手填与 X 登录两种来源分开显示', a.indexOf("r.xSource === 'oauth'") > 0);
+    }
+  }
+
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* 临时目录，删不掉也不算失败 */ }
 
   console.log('\n通过 ' + pass + ' 条，失败 ' + fail + ' 条  (derivation v' + DERIVATION_VERSION + ')\n');

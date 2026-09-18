@@ -167,6 +167,55 @@ file, never from the code.
 
 ---
 
+## 配置 X 登录 · Sign in with X
+
+预热页的登记要求先用 X 登录：登记记录以 X 的**数字 id** 为主键，一个 X 账号只能绑一个地址。
+没配好之前这条路自动关掉 —— 页面显示「用 X 登录暂未开放」，退回手填 X 名的老路，
+记录里标 `xSource: 'typed'`。
+
+凭证**不走环境变量**，存在服务器的 `server/.store/xauth.json`（权限 600），
+由管理员在 `/admin.html` 的「X 登录设置」里粘贴。走 env 的话那几串会留在
+shell 历史、部署脚本和备份里。
+
+1. 在 [developer.x.com](https://developer.x.com) 建一个 Project + App。
+2. 打开 App 的 **User authentication settings**：
+   - App permissions：**Read**（只读就够，我们只需要 user_id 与 screen_name）
+   - Type of App：**Web App**
+   - Callback URI：`https://<你的域名>/api/x/callback`
+     （本地排练再加一条 `http://localhost:8801/api/x/callback`）
+     **这条地址不带任何 query 参数**，和后台登记的要逐字相同。
+   - Website URL：`https://<你的域名>`
+3. 回到 **Keys and tokens**，复制 Consumer Keys 里的 **API Key** 与 **API Key Secret**。
+4. 打开 `/admin.html`，用 `ARCBANG_ADMIN_TOKEN` 登录，把这两串贴进「X 登录设置」保存。
+   页面上只会显示「已配置 + key 前 4 位」，贴进去之后读不回来。
+
+服务端要配 `ARCBANG_PUBLIC_BASE`（回调地址就是拿它拼的）。
+**接口必须和页面同源**（生产里 nginx 把 `/api` 挂在同一个域下）——
+会话是一个 HttpOnly + SameSite=Lax 的 cookie，跨域根本发不出去。
+
+### 任务自动核（可选，按量付费）
+
+X 从 2026-02 起没有免费档，改成按量付费；登录本身不计费，读数据算钱。
+读**自己账号**的那三条（Owned Reads）是 $0.001 一条：
+
+| 接口 | 用来核 |
+| --- | --- |
+| `GET /2/users/:id/followers` | 关注 |
+| `GET /2/tweets/:id/liking_users` | 点赞 |
+| `GET /2/tweets/:id/retweeted_by` | 转发 |
+
+在「X 登录设置」里再填 **Bearer Token**（App-only）或**本账号的 Access Token + Secret**
+（两者任选其一，用户上下文更稳），自动核就开了：每 10 分钟拉一轮，
+把三项自动打勾，来源标 `by:'api'`；退关、取消赞下一轮自动掉勾。
+省钱靠两条：平时只翻到「这一页全是老人」为止，每 6 轮才全量翻到底一次
+（**只有全量那一轮发现得了退关**）。管理员页上直接写着这一轮读了多少条、折合多少钱。
+
+一个都不填就只开登录：关注和点赞退回「用户自己点一下 + 管理员抽查」的信任模式，一分钱不花。
+「转发并在评论里回登记码」那一项仍走免费的 syndication 核回复；
+**转发这个事实**以 `retweeted_by` 为准。
+
+---
+
 ## Layout / 目录
 
 ```

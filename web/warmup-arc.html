@@ -182,6 +182,26 @@ button,input{font-family:inherit}
 .ab-notice{margin-top:14px;padding:11px 14px;border-radius:var(--r);
   background:var(--ab-plate2);font-size:var(--t-xs);color:var(--ab-graphite)}
 
+/* ---- X 身份条 ----
+   登录之后头像与 @名字就挂在统计格上方，所有任务卡都在这一个身份底下做。
+   没开通 X 登录时整条不出现（而不是变灰）—— 一个点不动的按钮比没有按钮糟。 */
+.ab-idbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+  margin-top:var(--sp-1);padding:12px 16px;background:#fff;
+  border:1px solid var(--ab-hair);border-radius:var(--r)}
+.ab-idbar .ava{display:inline-block;width:32px;height:32px;border-radius:50%;
+  overflow:hidden;background:var(--ab-plate2);flex:0 0 auto}
+.ab-idbar .ava svg{display:block;width:100%;height:100%}
+.ab-idbar-n{display:block;font-family:var(--mono);font-size:var(--t-s);font-weight:700}
+.ab-idbar-s{display:block;margin-top:2px;font-size:var(--t-xs);color:var(--ab-graphite)}
+.ab-idbar-sp{flex:1 1 auto}
+.ab-xline{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:4px}
+.ab-xline .ava{display:inline-block;width:26px;height:26px;border-radius:50%;
+  overflow:hidden;background:var(--ab-plate2)}
+.ab-xline .ava svg{display:block;width:100%;height:100%}
+/* 没登录时头像和名字是空的：空元素本身不占宽，但 flex 的 gap 照样算，
+   会把按钮往右推出两段莫名其妙的缩进。 */
+.ab-xline > :empty{display:none}
+
 /* ---- 标签页 ---- */
 .ab-tabs{display:flex;gap:4px;margin-top:var(--sp-1);border-bottom:1px solid var(--ab-hair)}
 .ab-tab{appearance:none;border:0;background:none;font-family:inherit;cursor:pointer;
@@ -346,6 +366,19 @@ button,input{font-family:inherit}
 <section class="ab-sec" id="tasks">
   <div class="ab-wrap">
 
+    <!-- X 身份条：登录后是头像 + @名字，没登录是一颗登录按钮。
+         没开通 X 登录（服务端没配凭证）时整条不出现。 -->
+    <div class="ab-idbar" id="idBar" hidden>
+      <span id="idAva"></span>
+      <span>
+        <b class="ab-idbar-n" id="idName">@—</b>
+        <span class="ab-idbar-s" id="idSub"></span>
+      </span>
+      <span class="ab-idbar-sp"></span>
+      <a class="ab-btn3" id="btnXIn" href="#" hidden>用 X 登录</a>
+      <button class="ab-btn3" type="button" id="btnXOut" hidden>退出</button>
+    </div>
+
     <!-- 五格统计。未连钱包时数字都是 —，第一格换成引导。 -->
     <div class="ab-stats" id="stats">
       <div class="ab-stat">
@@ -393,7 +426,7 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">登记</h4><span class="ab-qr-p" data-pts>+10</span></div>
-            <p class="ab-qr-d">连钱包，填 X 名，签个名。</p>
+            <p class="ab-qr-d" id="regHow">连钱包，填 X 名，签个名。</p>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
             <a class="ab-btn3" href="#join" data-act>去登记</a></div>
@@ -427,6 +460,7 @@ button,input{font-family:inherit}
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">转发置顶推，回复你的码</h4><span class="ab-qr-p" data-pts>+30</span></div>
             <p class="ab-qr-d">转发后在评论里贴你的码，再把回复链接交回来。</p>
+            <div class="ab-xline" id="xWhoRepost" hidden></div>
             <button class="ab-chip" type="button" id="chipCode" data-copy="" hidden>登记码 ——</button>
             <div id="proofBox" hidden>
               <div class="ab-inline">
@@ -466,6 +500,7 @@ button,input{font-family:inherit}
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">创作推文</h4><span class="ab-qr-p" data-pts>+20</span></div>
             <p class="ab-qr-d">发一条提到 @arcbang_xyz 并带 #ARCBANG 的推。内容随意。</p>
+            <div class="ab-xline" id="xWhoPost" hidden></div>
             <button class="ab-chip" type="button" data-copy="#ARCBANG">#ARCBANG</button>
             <div class="ab-dots" id="postDots"></div>
             <div id="postBox" hidden>
@@ -529,16 +564,27 @@ button,input{font-family:inherit}
 <section class="ab-sec" id="join">
   <div class="ab-wrap">
     <h2 class="ab-h2">登记</h2>
-    <p class="ab-say">连钱包 → 填 X 名 → 签个名。不花 gas。</p>
+    <p class="ab-say" id="joinSay">连钱包 → 填 X 名 → 签个名。不花 gas。</p>
 
     <div class="ab-card">
+      <!-- 用 X 登录：开通之后 X 名不再手填，核对推文时按登录拿到的那个号比对。 -->
+      <div id="xStep" hidden>
+        <div class="ab-xline">
+          <span id="xAva"></span>
+          <b class="mono" id="xName"></b>
+          <a class="ab-btn" id="btnXIn2" href="#">用 X 登录</a>
+          <button class="ab-btn3" type="button" id="btnXOut2" hidden>换一个 X 账号</button>
+        </div>
+        <p class="ab-qr-d" id="xHint">一个 X 账号只能绑一个地址。</p>
+      </div>
+
       <div class="ab-row">
         <button class="ab-btn" type="button" id="btnConnect">连接钱包</button>
         <span class="mono" id="whoAddr"></span>
       </div>
 
       <div id="joinForm">
-        <label class="ab-field"><span>X 用户名</span>
+        <label class="ab-field" id="xField"><span>X 用户名</span>
           <input class="ab-in" id="inX" type="text" inputmode="text" autocomplete="off"
                  spellcheck="false" maxlength="15" placeholder="arcbang_xyz"></label>
 
@@ -730,9 +776,19 @@ button,input{font-family:inherit}
     });
   }
   function api(path, opt) {
-    return fetch(BASE + path, opt).then(function (r) {
+    /* 带上 cookie：用 X 登录的会话就是一个 HttpOnly cookie。
+       **这要求接口和页面同源**（生产里 nginx 把 /api 挂在同一个域下）。
+       接口挂在别的域时 cookie 根本发不出去，X 登录也就用不了 —— 见 README。 */
+    var o = opt || {};
+    if (!o.credentials) o = Object.assign({}, o, { credentials: 'include' });
+    return fetch(BASE + path, o).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
-        if (!r.ok) { var e = new Error((j && j.error) || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+        if (!r.ok) {
+          var e = new Error((j && j.error) || ('HTTP ' + r.status));
+          e.status = r.status;
+          e.body = j || {};   // 409 有两种（地址重复 / X 已绑别的地址），靠 body 区分
+          throw e;
+        }
         return j;
       });
     });
@@ -846,7 +902,9 @@ button,input{font-family:inherit}
      按地址生成的几何头像：底色 + 两个旋转过的方块。纯自绘 SVG，
      不引任何库，也不发一个外部请求。同一个地址永远是同一张。 */
   function avatar(seed, size) {
-    var s = String(seed || '').replace(/[^0-9a-f]/gi, '');
+    /* 字母数字都留下：这个函数也给 X 的 @名字画头像，
+       只留十六进制字符的话 "arcbang_xyz" 会被削成 "acba"，几个名字撞成同一张脸。 */
+    var s = String(seed || '').replace(/[^0-9a-z]/gi, '');
     var h = 0;
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     var hue = function (k) { return (h >> (k * 5)) % 360; };
@@ -858,6 +916,109 @@ button,input{font-family:inherit}
       + '<rect x="9" y="9" width="14" height="14" fill="' + c[2] + '" transform="rotate(' + r2 + ' 16 16)"/>'
       + '</svg></span>';
   }
+
+  /* ---------------- 用 X 登录 ----------------
+     走 OAuth 1.0a（server/xauth.js）。这一页只做三件事：问「登录了吗」、
+     把人送去 /api/x/login、回来之后把头像和 @名字挂上。
+
+     **没开通就当它不存在**：服务端没配凭证时 /api/x/me 回 404，
+     这里把 configured 记成 false，登录按钮不出现，X 名退回手填那条老路。
+     用一个点了报错的按钮糊过去，比没有按钮糟得多。 */
+  var XL = { configured: false, login: false, handle: null, id: null, bound: null };
+  function loadX() {
+    return api('/x/me').then(function (j) {
+      XL = {
+        configured: true, login: !!j.login,
+        handle: j.handle || null, id: j.id || null, bound: j.bound || null
+      };
+    }, function (e) {
+      /* 404 = 功能没开；别的错（断网、500）也一样退回手填 —— 至少还能登记。 */
+      XL = { configured: false, login: false, handle: null, id: null, bound: null };
+    }).then(renderX);
+  }
+  function renderX() {
+    var loginUrl = BASE + '/x/login';
+    /* 顶部身份条 */
+    var bar = $('idBar');
+    bar.hidden = !XL.configured;
+    if (XL.configured) {
+      $('idAva').innerHTML = XL.login ? avatar(XL.handle) : '';
+      $('idName').textContent = XL.login ? '@' + XL.handle : T('还没连 X');
+      $('idSub').textContent = XL.login
+        ? (XL.bound ? TF('已绑 {0}', XL.bound) : T('还没绑地址'))
+        : T('任务按这个账号核对');
+      $('btnXIn').hidden = XL.login;
+      $('btnXIn').href = loginUrl;
+      $('btnXOut').hidden = !XL.login;
+    }
+    /* 登记卡里的那一步。登记过了就收起来 —— 绑定改不了，
+       再摆一颗「换一个 X 账号」只会让人以为换了就换了。 */
+    $('xStep').hidden = !XL.configured || !!(ST && ST.registered);
+    $('xField').hidden = XL.configured;      // 开通了就不再手填
+    if (XL.configured) {
+      $('xAva').innerHTML = XL.login ? avatar(XL.handle) : '';
+      $('xName').textContent = XL.login ? '@' + XL.handle : '';
+      $('btnXIn2').hidden = XL.login;
+      $('btnXIn2').href = loginUrl;
+      $('btnXOut2').hidden = !XL.login;
+      $('xHint').textContent = XL.login
+        ? (XL.bound ? TF('这个 X 已经绑了 {0}。一个 X 账号只能绑一个地址。', XL.bound)
+          : T('一个 X 账号只能绑一个地址，绑了不能改。'))
+        : T('先用 X 登录。任务和推文都按这个账号核对。');
+      $('joinSay').textContent = T('用 X 登录 → 连钱包 → 签个名。不花 gas。');
+      /* 任务卡上那句话也跟着改：开通之后 X 名不是填的，是登录带来的。 */
+      var rh = $('regHow');
+      if (rh) rh.textContent = T('用 X 登录，连钱包，签个名。');
+    }
+    renderWho();
+    syncJoinBtn();
+  }
+  /** 两张要交链接的卡上写清楚「按谁核」：自动核的第一关就是比作者，
+      作者对不上直接不通过 —— 那就该在他贴链接之前说，而不是之后。
+      状态和 X 登录是两路各自回来的，所以两边回来都要调一次。 */
+  function renderWho() {
+    var who = (ST && ST.x) || (XL.login ? XL.handle : null);
+    ['xWhoRepost', 'xWhoPost'].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.hidden = !who;
+      if (who) el.innerHTML = avatar(who) + '<span class="ab-qr-d">'
+        + esc(TF('核对 @{0} 发的那条', who)) + '</span>';
+    });
+  }
+  /** 「签名并登记」什么时候能点：钱包连上了，而且（开通了 X 登录的话）X 也登了。 */
+  function syncJoinBtn() {
+    $('btnJoin').disabled = !ADDR || (XL.configured && !XL.login);
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#btnXOut') || t.closest('#btnXOut2')) {
+      ev.preventDefault();
+      api('/x/logout', { method: 'POST' }).then(loadX, loadX);
+    }
+  });
+  /* 从 X 回来：?x=1 成功、?xerr=… 失败。把参数从地址栏擦掉，
+     不然刷新一次又弹一遍同样的话。 */
+  (function () {
+    var q = location.search;
+    var err = /[?&]xerr=([^&]*)/.exec(q);
+    var ok = /[?&]x=1(?:&|$)/.test(q);
+    if (!err && !ok) return;
+    var XERR = {
+      denied: '你在 X 那边取消了授权。',
+      state: '这次登录过期了，再点一次「用 X 登录」。',
+      token: 'X 那边没认这次请求，稍后再试。'
+    };
+    setTimeout(function () {
+      if (err) msg(T(XERR[decodeURIComponent(err[1])] || '用 X 登录没成功，再试一次。'), 'err');
+      else msg(T('X 连上了。接着连钱包，然后签名登记。'), 'ok');
+    }, 0);
+    try {
+      history.replaceState(null, '', location.pathname
+        + q.replace(/[?&](x=1|xerr=[^&]*)/g, '').replace(/^&/, '?') + location.hash);
+    } catch (e) { }
+  })();
 
   /* ---------------- 数字滚动 ----------------
      只在**真的变了**的时候滚。这一页每 60 秒自刷一次，
@@ -1081,6 +1242,8 @@ button,input{font-family:inherit}
       if (cb) cb.hidden = !p.claim;
     });
 
+    renderWho();
+
     /* 登记码芯片：登记之后才有 */
     var chip = $('chipCode');
     if (reg && st.code) { chip.hidden = false; chip.textContent = T('登记码') + ' ' + st.code; chip.setAttribute('data-copy', st.code); }
@@ -1149,9 +1312,11 @@ button,input{font-family:inherit}
     var done = !!(ADDR && st && st.registered);
     $('joinForm').hidden = done;
     $('joinDone').hidden = !done;
-    if (!done) return;
+    if (done) $('xStep').hidden = true;
+    if (!done) { renderX(); return; }
     $('doneCode').textContent = st.code || '——';
-    $('doneX').textContent = st.x ? '@' + st.x : '—';
+    $('doneX').textContent = (st.x ? '@' + st.x : '—')
+      + (st.xSource === 'oauth' ? ' · ' + T('用 X 登录绑定') : '');
     var at = st.registeredAt ? new Date(st.registeredAt) : null;
     var txt = '—';
     if (at && !isNaN(at.getTime())) { try { txt = at.toLocaleString(); } catch (e) { txt = st.registeredAt; } }
@@ -1279,7 +1444,7 @@ button,input{font-family:inherit}
   function setAddr(a) {
     ADDR = a ? String(a).toLowerCase() : null;
     $('whoAddr').textContent = ADDR ? shortAddr(ADDR) : '';
-    $('btnJoin').disabled = !ADDR;
+    syncJoinBtn();
     $('btnConnect').textContent = ADDR ? T('换一个钱包') : T('连接钱包');
     return load();
   }
@@ -1298,7 +1463,9 @@ button,input{font-family:inherit}
   /* ---------------- 登记 ---------------- */
   $('btnJoin').addEventListener('click', function () {
     if (!ADDR) { msg(T('先连钱包'), 'err'); return; }
-    var x = String($('inX').value || '').trim().replace(/^@+/, '');
+    /* 开通了 X 登录就不看输入框：X 名以登录拿到的为准，页面也不该给一个能填的框。 */
+    if (XL.configured && !XL.login) { msg(T('先用 X 登录'), 'err'); return; }
+    var x = XL.configured ? XL.handle : String($('inX').value || '').trim().replace(/^@+/, '');
     if (!/^[A-Za-z0-9_]{1,15}$/.test(x)) { msg(T('X 用户名填 1–15 位字母、数字或下划线，不带 @'), 'err'); return; }
     var ref = String($('inRef').value || '').trim().toUpperCase();
     if (ref && !/^[A-Z0-9]{6}$/.test(ref)) { msg(T('邀请码是 6 位大写字母数字；没有就留空'), 'err'); return; }
@@ -1327,14 +1494,19 @@ button,input{font-family:inherit}
       });
     }).then(function (r) {
       msg(T('登记完成，先拿到登记分。接着去转发置顶推 —— 那一项分最多。'), 'ok');
+      loadX();                 // 身份条上的「已绑 0x…」要跟着变
       return load();
     }).catch(function (e) {
       /* 409 = 这个地址早就登记过了（登记之后不能改）。这不是错误，是状态：
          把话说清楚，然后 load() 会把表单换成「已登记」卡片。 */
-      if (e && e.status === 409) {
+      if (e && e.status === 409 && e.body && e.body.already) {
         msg(T('这个地址已经登记过了，登记内容不能修改。'), 'ok');
         return load();
       }
+      /* 另一种 409：这个 X 账号绑的是别的地址。换地址或者换 X 账号，两条路都得自己选。 */
+      if (e && e.status === 409) { msg(e.message, 'err'); return loadX(); }
+      /* 401 = 开通了 X 登录但这次没带上会话（cookie 过期，或中途退了）。 */
+      if (e && e.status === 401) { msg(T('先用 X 登录'), 'err'); return loadX(); }
       msg((e && e.code === 4001) ? T('你在钱包里取消了') : ((e && e.message) || String(e)), 'err');
     }).then(function () { btn.disabled = !ADDR; });
   });
@@ -1424,6 +1596,9 @@ button,input{font-family:inherit}
     var m = /[?&]ref=([A-Za-z0-9]{6})(?:&|$)/.exec(location.search);
     if (m) $('inRef').value = m[1].toUpperCase();
   })();
+  /* 先问「X 登录开通了吗 / 我登了吗」，再恢复钱包地址。
+     两件事互不依赖，但按钮的可点状态要等 X 那一问回来才定得下来。 */
+  loadX();
   /* 已经授权过的话静默恢复地址（eth_accounts 不弹窗） */
   (function () {
     var p = prov();

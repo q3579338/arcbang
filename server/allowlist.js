@@ -415,10 +415,12 @@ function create(opts) {
   /* ---------------------------------------------------------------- 登记流水 */
   let applied = null;              // Map(addr → rec)
   let byCode = null;               // Map(code → [addr, …])，同码多地址的极小概率也要认得出来
+  let byXid = null;                // Map(xId → addr)：一个 X 账号只能绑一个地址
   function loadApplied() {
     if (applied) return applied;
     applied = new Map();
     byCode = new Map();
+    byXid = new Map();
     try {
       for (const line of fs.readFileSync(appliedFile, 'utf8').split('\n')) {
         if (!line.trim()) continue;
@@ -431,6 +433,10 @@ function create(opts) {
           const rec = {
             addr: a,
             x: normX(j.x),
+            /* xId 是 X 那边的数字主键：**改名字它不变**，所以一 X 一地址要认它，
+               不能认 handle —— 认 handle 的话，改个名就能再登记一个地址。 */
+            xId: j.xId ? String(j.xId) : null,
+            xSource: j.xSource === 'oauth' ? 'oauth' : 'typed',
             ref: normCode(j.ref),
             inviter: normAddr(j.inviter),
             ip: j.ip || null,
@@ -440,6 +446,7 @@ function create(opts) {
           applied.set(a, rec);
           if (!byCode.has(rec.code)) byCode.set(rec.code, []);
           byCode.get(rec.code).push(a);
+          if (rec.xId) byXid.set(rec.xId, a);
         } catch (e) { /* 坏行跳过 */ }
       }
     } catch (e) { /* 还没有文件 */ }
@@ -449,6 +456,13 @@ function create(opts) {
   function appliedOf(addr) { const a = normAddr(addr); return a ? loadApplied().get(a) || null : null; }
   /** 码 → 地址。同一个码撞上两个地址（36^6 里的极小概率）时返回 null 并喊一声，
       宁可让管理员手输地址，也不能把名额发错人。 */
+  /** 这个 X 账号已经绑过哪个地址了（没绑过回 null）。 */
+  function addrOfXid(xId) {
+    const s = String(xId == null ? '' : xId).trim();
+    if (!s) return null;
+    loadApplied();
+    return byXid.get(s) || null;
+  }
   function addrOfCode(codeRaw) {
     const c = normCode(codeRaw);
     if (!c) return null;
@@ -1015,6 +1029,48 @@ function create(opts) {
     mutState((n) => { n[task].set(addr, { at: new Date(now == null ? Date.now() : now).toISOString(), by: 'trust' }); });
     return { status: 200, body: { ok: true, task, points: scoreOf(addr).total } };
   }
+  /**
+   * X API 那一轮拉回来的结果，一次性写进来（server/xverify.js 每 10 分钟调一次）。
+   *
+   * @param sets {{follow?:Set<string>, like?:Set<string>, repost?:Set<string>}}
+   *        每一项是**X 的数字 id 集合**（followers / liking_users / retweeted_by 里的人）。
+   *        没给的那一项整项跳过 —— 比如置顶推没配时，点赞和转发就不该被当成「全空」而清光。
+   * @returns {{added:object, removed:object, seen:number}}
+   *
+   * 两条规矩：
+   *   1. **只认得出有 xId 的人**。手填 X 名的老记录没有 xId，API 说不了话，一律不动。
+   *   2. **只撤自己打的勾**（by === 'api'）。管理员手打的、贴链接自动核过的、
+   *      用户自称的，都不归这一轮管 —— 尤其是转发那一项：有人只回了评论没点转发，
+   *      他的 30 分是 proof 给的，不能因为 retweeted_by 里没有他就抹掉。
+   *   3. 整轮只落一次盘。逐个人调 mutState 的话，一千个人就是一千次全量重写。
+   *
+   * 被标成不信任的地址照样能被 API 打勾 —— 不信任挡的是「他自己说他做了」，
+   * 而 X 的名单里有没有他不是他说了算的。
+   */
+  function syncApi(sets, now) {
+    loadApplied();
+    const iso = new Date(now == null ? Date.now() : now).toISOString();
+    const added = {}, removed = {};
+    let seen = 0;
+    mutState((n) => {
+      for (const k of CHECKS) {
+        const want = sets && sets[k];
+        if (!want) continue;                 // 这一项这一轮没拉到，跳过
+        added[k] = 0; removed[k] = 0;
+        for (const [xId, addr] of byXid) {
+          if (!applied.has(addr)) continue;
+          const on = want.has(String(xId));
+          const cur = n[k].get(addr);
+          const by = cur ? ((typeof cur === 'object' && cur.by) ? cur.by : 'admin') : null;
+          if (on && !cur) { n[k].set(addr, { at: iso, by: 'api' }); added[k]++; }
+          else if (!on && by === 'api') { n[k].delete(addr); removed[k]++; }
+        }
+      }
+      seen = byXid.size;
+    });
+    return { added, removed, seen };
+  }
+
   /** 管理员抽查撤销：撤掉那一项，并把这个地址标成不再信任。 */
   function distrust(token, which) {
     const a = normAddr(token) || addrOfCode(token);
@@ -1412,12 +1468,27 @@ function create(opts) {
    * 登记 = 上榜 + 拿登记码 + 得 ARCBANG_PTS_REGISTER 分。名单由榜算，这里不发名额。
    * @returns {{status:number, body:object}}
    */
-  function register(input, ip) {
+  /**
+   * @param session 用 X 登录拿到的那一份 {id, handle}（server/xauth.js 验过 cookie 之后传进来）。
+   *   给了就用它 —— **X 名不再由用户自己填**，自动核推文时也拿它比作者。
+   *   没给（还没开通 X 登录）才退回手填那条老路，记录里标 xSource:'typed'。
+   */
+  function register(input, ip, session) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
     if (!addr) return { status: 400, body: { error: '地址不对（要 0x 开头的 40 位十六进制，且不能是零地址）' } };
-    const x = normX(b.xHandle);
+    const sess = session && session.id && session.handle ? session : null;
+    const x = sess ? normX(sess.handle) : normX(b.xHandle);
     if (!x) return { status: 400, body: { error: 'X 用户名不对（1–15 位字母、数字或下划线）' } };
+    const xId = sess ? String(sess.id) : null;
+    /* **一个 X 账号只能绑一个地址**。认的是 xId 不是 handle —— 改名字 xId 不变。
+       没这一条的话，一个人用同一个 X 号就能把所有任务分刷到任意多个地址上。 */
+    if (xId) {
+      const had = addrOfXid(xId);
+      if (had && had !== addr) {
+        return { status: 409, body: { error: '这个 X 账号已经绑过另一个地址了。一个 X 账号只能绑一个地址。', boundTo: shortAddr(had) } };
+      }
+    }
     const sig = String(b.sig == null ? '' : b.sig).trim();
     if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对（要 65 字节的 0x 串）' } };
 
@@ -1452,6 +1523,7 @@ function create(opts) {
         body: {
           error: '这个地址已经登记过了，登记内容不能修改。要改 X 用户名请联系我们。',
           already: true, code: old.code, x: xOf(addr), at: old.at,
+          xSource: old.xSource || 'typed',
           ref: old.ref || null, points: scoreOf(addr).total
         }
       };
@@ -1466,7 +1538,10 @@ function create(opts) {
     if (seen.size >= MAX_APPLIED) return { status: 503, body: { error: '登记通道暂时满了，稍后再试' } };
 
     /* IP 只留前缀 —— 审核时看得出「同一个网段一口气登记 20 个」，又不是完整地址。 */
-    const rec = { addr, x, ref: ref || null, inviter: inviter || null, ip: ipPrefix(ip), at: new Date().toISOString() };
+    const rec = {
+      addr, x, xId, xSource: xId ? 'oauth' : 'typed',
+      ref: ref || null, inviter: inviter || null, ip: ipPrefix(ip), at: new Date().toISOString()
+    };
     try {
       fs.mkdirSync(path.dirname(appliedFile), { recursive: true });
       fs.appendFileSync(appliedFile, JSON.stringify(rec) + '\n');
@@ -1477,6 +1552,7 @@ function create(opts) {
     seen.set(addr, Object.assign({ code: myCode }, rec));
     if (!byCode.has(myCode)) byCode.set(myCode, []);
     byCode.get(myCode).push(addr);
+    if (xId) byXid.set(xId, addr);
     boardCache = null;
     return { status: 200, body: { ok: true, code: myCode, points: scoreOf(addr).total, pinnedPost: pinnedPost() } };
   }
@@ -1598,6 +1674,7 @@ function create(opts) {
       /* 登记内容（登记之后不可改）：页面刷新后靠这两个字段直接渲染「已登记」卡片，
          不必再让用户看见一个填了也没用的表单。 */
       x: addr ? xOf(addr) : null,
+      xSource: (addr && appliedOf(addr) && appliedOf(addr).xSource) || null,
       registeredAt: (addr && appliedOf(addr) && appliedOf(addr).at) || null,
       code: addr ? codeOf(addr) : null,            // 登记码 = 邀请码，从地址现算
       points: s.total,
@@ -1649,6 +1726,7 @@ function create(opts) {
       const x = xOf(r.addr);
       return {
         addr: r.addr, short: shortAddr(r.addr), code: r.code, x,
+        xId: r.xId || null, xSource: r.xSource || 'typed',
         xUrl: x ? 'https://x.com/' + x : null,
         at: r.at, ip: r.ip, ipCount: perIp.get(r.ip) || 1,
         ref: r.ref || null, inviter: r.inviter || null,
@@ -1769,12 +1847,13 @@ function create(opts) {
     tierOf, counts, publicCounts, isFrozen, freeze, unfreeze,
     addAddresses, removeAddresses, setTier, listFile, appliedFile, stateFile,
     // 登记 / 核验 / 分享
-    register, share, verify, unverify, setX, xOf, registerMessage, codeOf, addrOfCode, appliedOf,
+    register, share, verify, unverify, setX, xOf, registerMessage, codeOf, addrOfCode, addrOfXid, appliedOf,
+    shortAddr,
     // 自动核 / 信任
     submitProof, proofOf, checkProof, fetchTweet, runProofQueue, rejectProof,
     submitPost, postsOf, checkPost, runPostQueue, postsThisWeek,
     warmupWindow, inviteMilestones,
-    claim, distrust, retrust, isDistrusted, checkBy, pinnedTweetId,
+    claim, distrust, retrust, isDistrusted, checkBy, pinnedTweetId, syncApi,
     // 后台切段
     setPhase, phaseBase, phaseNow, nextOpenNow,
     appliedCount, appliedRows, appliedCsv, domain,

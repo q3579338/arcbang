@@ -423,6 +423,29 @@
     '没提到 @arcbang_xyz': 'it does not mention @arcbang_xyz',
     '没带 #ARCBANG': 'it is missing #ARCBANG',
 
+    /* ---- 用 X 登录 ---- */
+    '用 X 登录': 'Sign in with X', '退出': 'Sign out', '换一个 X 账号': 'Use another X account',
+    '还没连 X': 'X not connected', '任务按这个账号核对': 'Quests are checked against this account',
+    '还没绑地址': 'No wallet bound yet', '已绑 {0}': 'Bound to {0}',
+    '一个 X 账号只能绑一个地址。': 'One X account, one wallet.',
+    '一个 X 账号只能绑一个地址，绑了不能改。': 'One X account, one wallet. This cannot be changed later.',
+    '这个 X 已经绑了 {0}。一个 X 账号只能绑一个地址。':
+      'This X account is already bound to {0}. One X account, one wallet.',
+    '先用 X 登录。任务和推文都按这个账号核对。':
+      'Sign in with X first. Quests and posts are checked against that account.',
+    '用 X 登录 → 连钱包 → 签个名。不花 gas。':
+      'Sign in with X → connect a wallet → sign. No gas.',
+    '先用 X 登录': 'Sign in with X first',
+    '用 X 登录，连钱包，签个名。': 'Sign in with X, connect a wallet, sign.',
+    '用 X 登录绑定': 'via Sign in with X',
+    '核对 @{0} 发的那条': 'We check the post from @{0}',
+    'X 连上了。接着连钱包，然后签名登记。':
+      'X connected. Now connect a wallet and sign up.',
+    '用 X 登录没成功，再试一次。': 'Sign in with X did not go through. Try again.',
+    '你在 X 那边取消了授权。': 'You cancelled on the X side.',
+    '这次登录过期了，再点一次「用 X 登录」。': 'That sign-in expired. Tap Sign in with X again.',
+    'X 那边没认这次请求，稍后再试。': 'X rejected the request. Try again in a moment.',
+
     /* ---- FAQ ---- */
     '常见问题': 'Asked a lot',
     'ARCBANG 是什么？': 'What is ARCBANG?',

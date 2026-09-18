@@ -521,6 +521,14 @@ const STALL = require('./stall.js').create({ storeDir: STORE_DIR, take: RL.take 
 /* 白名单与四段放号（server/allowlist.js）：/api/bang 到底签不签、签的是不是免费，
    全由它决定。freeLeft 读的是 wouldBeFreeMint 那份缓存，看状态不额外打 RPC。 */
 const AL = require('./allowlist.js').create({ storeDir: STORE_DIR, take: RL.take, freeLeft: freeLeftOnChain });
+/* 用 X 登录（OAuth 1.0a）。凭证不走 env，存在 .store/xauth.json，由管理员在审核页粘贴。
+   没配的话 /api/x/* 一律 404，预热页退回手填 X 名的老路。 */
+const XA = require('./xauth.js').create({ storeDir: STORE_DIR });
+/* X 任务自动核（server/xverify.js）：每 10 分钟拉一次关注 / 点赞 / 转发名单，
+   自动打勾也自动掉勾。**要花钱**（Owned Reads $0.001 一条），所以没配
+   Bearer / Access Token 时它整个不动，三连退回原来的信任模式。 */
+const XV = require('./xverify.js').create({ storeDir: STORE_DIR, xauth: XA, allowlist: AL });
+XV.start();
 /* 自动核推文的重试队列：每分钟推一次（取不到推文的那些 1/5/30 分钟后再试）。unref 让它不挡进程退出。 */
 if (typeof AL.runProofQueue === 'function') {
   const t = setInterval(() => { AL.runProofQueue(Date.now()).catch((e) => console.error('[allowlist] 重试队列：' + (e && e.message))); }, 60 * 1000);
@@ -733,6 +741,110 @@ async function handle(req, res, u) {
     return;
   }
 
+
+  /* ================================================================ 用 X 登录
+     OAuth 1.0a 三腿（server/xauth.js）。选 1.0a 是因为 access_token 的响应里
+     **自带 user_id 与 screen_name** —— 不必再调 users/me，而那一条要读取额度，
+     免费档的读取额度是 0。
+
+     没配凭证时这几条一律 404：功能没开就该不存在，预热页据此退回手填 X 名。 */
+  if (p.indexOf('/x/') === 0) {
+    if (!XA.configured()) return json(res, 404, { error: '还没开通用 X 登录' }, { 'cache-control': 'no-store' });
+
+    if (p === '/x/login' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const r = await XA.begin();
+      if (!r.ok) return json(res, r.status || 502, { error: r.error }, { 'cache-control': 'no-store' });
+      /* 直接 302 过去。把 URL 回给前端再跳也行，但那样会多一次「点了没反应」的窗口。
+         同时下发一次性的 state cookie —— 回调那一步要拿它验，见 server/xauth.js。 */
+      return send(res, 302, '', { location: r.url, 'set-cookie': r.cookie, 'cache-control': 'no-store' });
+    }
+
+    if (p === '/x/callback' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const q = {};
+      u.searchParams.forEach((v, k) => { q[k] = v; });
+      const r = await XA.finish(q, XA.stateFromReq(req));
+      /* 回调是浏览器跟过来的，所以**不回 JSON 回跳转** —— 失败也跳回去，
+         把原因塞在 query 里让页面说人话。 */
+      const back = (process.env.ARCBANG_PUBLIC_BASE || '').replace(/\/+$/, '') + '/warmup.html';
+      /* 不管成没成，那个一次性 state cookie 都当场删掉。 */
+      const killState = XA.stateCookieHeader(null);
+      if (!r.ok) {
+        return send(res, 302, '', {
+          location: back + '?xerr=' + encodeURIComponent(r.error || 'failed'),
+          'set-cookie': killState,
+          'cache-control': 'no-store'
+        });
+      }
+      return send(res, 302, '', {
+        location: back + '?x=1',
+        'set-cookie': [r.cookie, killState],
+        'cache-control': 'no-store'
+      });
+    }
+
+    /* 页面问「我登录了吗」。没登录回 200 + {login:false} —— 这不是错误。 */
+    if (p === '/x/me' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const s = XA.fromReq(req);
+      if (!s) return json(res, 200, { login: false }, { 'cache-control': 'no-store' });
+      /* 顺手回这个号绑没绑过地址：页面据此**在连钱包之前**就能说清楚
+         「这个 X 已经绑了 0x1234…abcd」，不用等到提交才吃一个 409。 */
+      const bound = AL.addrOfXid(s.id);
+      return json(res, 200, {
+        /* 没有 avatar 字段：OAuth 1.0a 的 access_token 只给 user_id 与 screen_name，
+           取头像要调 users/me，而免费档的读取额度是 0。页面用 handle 生成首字母头像。 */
+        login: true, id: s.id, handle: s.handle,
+        bound: bound ? AL.shortAddr(bound) : null
+      }, { 'cache-control': 'no-store' });
+    }
+
+    if (p === '/x/logout' && req.method === 'POST') {
+      return json(res, 200, { ok: true }, { 'cache-control': 'no-store', 'set-cookie': XA.cookieHeader(null) });
+    }
+
+    return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+  }
+
+  /* 管理员那一侧：贴 consumer key / secret。GET 只回「配没配 + key 前 4 位」，
+     secret 一个字符都不回 —— 贴进去之后连管理员自己也读不回来。 */
+  if (p === '/admin/xauth') {
+    if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+    if (!adminTokenOk(req)) return json(res, 401, { error: '口令不对' }, { 'cache-control': 'no-store' });
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return json(res, 200, XA.credInfo(), { 'cache-control': 'no-store' });
+    }
+    if (req.method === 'POST') {
+      const rb = await bodyOf(req, res);
+      if (rb === null) return;
+      const q = parseJsonObject(rb);
+      if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
+      const r = q.value.clear ? XA.clearCred() : XA.saveCred(q.value.key, q.value.secret, {
+        bearer: q.value.bearer,
+        accessToken: q.value.accessToken,
+        accessSecret: q.value.accessSecret
+      });
+      return json(res, r.ok ? 200 : 400, Object.assign({}, r, XA.credInfo()), { 'cache-control': 'no-store' });
+    }
+    return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+  }
+
+  /* 自动核的状态与账单。POST {run:true} 立刻拉一轮（管理员想马上看结果时用），
+     POST {run:true, full:true} 强制翻到底 —— 那一次读得最多，也最花钱。 */
+  if (p === '/admin/xverify') {
+    if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+    if (!adminTokenOk(req)) return json(res, 401, { error: '口令不对' }, { 'cache-control': 'no-store' });
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return json(res, 200, XV.info(), { 'cache-control': 'no-store' });
+    }
+    if (req.method === 'POST') {
+      const rb = await bodyOf(req, res);
+      if (rb === null) return;
+      const q = parseJsonObject(rb);
+      if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
+      const r = await XV.runOnce({ full: !!q.value.full });
+      return json(res, r.ok ? 200 : 400, Object.assign({}, r, { info: XV.info() }), { 'cache-control': 'no-store' });
+    }
+    return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+  }
   /* ================================================================ 积分榜与白名单
      五条路，权限一条比一条高：
        GET  /api/allowlist/board?top=     公开的积分榜。**只给地址缩写** ——
@@ -762,7 +874,13 @@ async function handle(req, res, u) {
     if (rb === null) return;
     const parsedAl = parseJsonObject(rb);
     if (parsedAl.error) return json(res, 400, { error: parsedAl.error }, { 'cache-control': 'no-store' });
-    const r = AL.register(parsedAl.value, RL.ipOf(req));
+    /* 开通了用 X 登录，就**只认登录拿到的那个号**：手填的 xHandle 一律不看，
+       没登录直接挡回去。手填那条老路只在没配凭证时还活着（记录里标 xSource:'typed'）。 */
+    const xSess = XA.configured() ? XA.fromReq(req) : null;
+    if (XA.configured() && !xSess) {
+      return json(res, 401, { error: '先用 X 登录，再登记', needX: true }, { 'cache-control': 'no-store' });
+    }
+    const r = AL.register(parsedAl.value, RL.ipOf(req), xSess);
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
   }
 
