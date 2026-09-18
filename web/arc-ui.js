@@ -1,11 +1,11 @@
 /*
- * web/arc-ui.js —— BNBBANG 面板（只在站点版加载）
+ * web/arc-ui.js —— ARCBANG 面板（只在站点版加载）
  * ------------------------------------------------------------
  * 起爆页上多一块：拿一个 BNB 区块哈希当奇点。
  *   取区块（最新 / 指定高度 / 随机 / 直接粘哈希）→ 免费引爆 → 喜欢再 mint
  * 引爆完全在本地算，不需要钱包、不需要连链；只有 mint 才走小狐狸。
  *
- * 首屏为什么长这样（specs/market-v1.md §4「首屏信息量爆炸」）：
+ * 首屏为什么长这样：
  * 原来 hero + 面板 + 20 参数表 + 我保存的宇宙 + 帮助折叠一起铺开，新手第一眼看到七八个入口，
  * 反而不知道先点哪个。现在首屏只留**一句话 + 一个大按钮**：
  *   · 取区块的四个入口（最新/随机/高度/粘哈希）收进「自己挑一个区块」折叠 —— 功能一个没删
@@ -25,7 +25,7 @@
  *     首屏这一行与 #gpuChk 双向同步，状态由 MirrorOnboard 真跑一次 requestAdapter() 给出
  *
  * 依赖：window.MirrorBnbApi（服务端算 card）、window.MirrorChain（链）、window.MirrorApp（主程序）
- * 注：爆炸的计算不在这里 —— 它在服务端（specs/server-side.md）。本文件只负责问、显示、发交易。
+ * 注：爆炸的计算不在这里 —— 它在服务端。本文件只负责问、显示、发交易。
  *       window.MirrorOnboard（引导与人话表，缺席时退回符号与原文案，不炸）
  */
 (function (root, doc) {
@@ -67,7 +67,7 @@
   function genesisDate() {
     return (C && C.CHAIN && C.CHAIN.id === GENESIS_REF.chainId) ? GENESIS_REF.date : '';
   }
-  /* 链名与币符号只有一个来源：web/config.js 的 chain 块（specs/mainnet-ready.md），
+  /* 链名与币符号只有一个来源：web/config.arc.js 的 chain 块，
      由 arc-chain.js 派生成 C.CHAIN / C.chainName()。这个文件里不许再写死任何一个。
      退路是防着页面装了旧版 arc-chain.js（缓存），不是给换链用的。 */
   function chainName() {
@@ -119,7 +119,7 @@
     return fallback != null ? '#' + fallback : '';
   }
 
-  /* ============================================================ 广播与推广（specs/share-referral-v1.md）
+  /* ============================================================ 广播与推广
      ref 的一生：广播链接带 ?ref=<广播者地址> → 落地页把它存进 localStorage
      （**首触优先**，30 天）→ 被邀请者第一次成功铸造时随 /api/bang 一起提交 →
      服务端只留痕。发钱是 owner 拿着留痕人工核对后用 BangPromo.grant 手动发。
@@ -132,7 +132,7 @@
     var s = String(a || '').toLowerCase();
     return /^0x[0-9a-f]{40}$/.test(s) ? s : '';
   }
-  /* 推广短码：8 位定长，字符集去掉 O/0/I/1（specs/share-referral-v1.md §8）。
+  /* 推广短码：8 位定长，字符集去掉 O/0/I/1。
      **两种 ?ref= 都要认** —— 老链接里是 0x 地址，新链接里是短码。
      已经发出去的链接不能因为这一版改造而失效，所以地址那条路一个字都不动，
      短码只是**多认一种**。 */
@@ -251,10 +251,10 @@
     return o;
   }
 
-  /** 分享链接（specs/broadcast-v2.md §一）。两头都砍：
+  /** 分享链接。两头都砍：
         bang 用**区块号**代替 66 字符的哈希（拿不到区块号才退回哈希）；
         ref  用**8 位短码**代替 42 字符的地址（拿不到短码才退回地址）。
-          https://bnbbang.com/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
+          https://arcbang.xyz/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
       老形式的链接**仍然有效** —— 落地页 /s/ 两种 token 都认，?ref= 两种格式也都认，
       所以这里只管把新发出去的链接缩短，已经发出去的一条都不会失效。
       不用 URL()：这段要在老一点的 WebView 里也能跑，字符串拼起来就够了。 */
@@ -270,7 +270,7 @@
   function appShareUrl(hash, myAddr) { return shareUrl({ hash: hash }, myAddr); }
 
   /** 分享图（PNG）。**多数平台不认 SVG**（X 明确不支持，微信也不认），
-      所以广播这条路一律走 /api/art/*.png（specs/broadcast-v2.md §2.1）。
+      所以广播这条路一律走 /api/art/*.png。
       造物按 cardHash 索引 —— 干预之后参数变了，blockHash 已经不是它的身份。 */
   function shareImgUrl(o) {
     var H32 = /^0x[0-9a-fA-F]{64}$/;
@@ -321,7 +321,7 @@
     var no = uniNo(o && o.no, null) || (o && o.hash ? String(o.hash).slice(0, 10) : '?');
     var oc = (o && o.outcome) || (o && o.oid && T(OUTCOME_CN[o.oid] || o.oid)) || '?';
     var label = TX('宇宙 {0} · {1}', no, oc);
-    var site = siteRoot().replace(/^https?:\/\//, '') || String(location.host || '') || 'BNBBANG';
+    var site = siteRoot().replace(/^https?:\/\//, '') || String(location.host || '') || 'ARCBANG';
     var bh = Math.max(24, Math.min(44, Math.round(h * 0.055)));
     var fs = Math.max(11, Math.round(bh * 0.46));
     var pad = Math.round(bh * 0.55), y = h - bh / 2 + 0.5;
@@ -377,7 +377,7 @@
     });
   }
 
-  /* 「复制文案和图片」（specs/broadcast-v2.md §三）。剪贴板能同时装文本和图片，
+  /* 「复制文案和图片」。剪贴板能同时装文本和图片，
      复制完在微信里 Ctrl+V 就是连图带字一条消息 —— 这条比二维码实用。
      两条纪律：
        1. **必须降级**：Safari 和一部分浏览器没有 ClipboardItem、或者装不下 image/png，
@@ -417,7 +417,7 @@
   }
 
   /* ============================================================ 二维码（纯前端，零外部请求）
-     specs/broadcast-v2.md §4：微信没有网页分享 API，能给的只有二维码。
+，能给的只有二维码。
      **不许调第三方二维码 API** —— 那等于把用户的推广链接发到别人的服务器上，
      而且破了离线包「零外部请求」那条红线。所以这里自己编码。
 
@@ -432,7 +432,7 @@
 
      ⚠ web/market.html 里有**逐字相同的一份**。那一页是自带脚本的独立单文件
      （理由见它开头的说明），而 web/build-web.js 的文件清单是写死的，
-     新开一个 web/qr.js 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
+     新开一个 另开一个 qr 模块 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
   function qrEncode(text) {
     var i, j, k;
     /* ---- GF(256)，本原多项式 0x11d（QR 规定的那一个） ---- */
@@ -825,7 +825,7 @@
         + '<figcaption class="bshare-shot-tag" id="bshareShotTag"></figcaption>'
         + '</figure>'
         + '<p class="bshare-preview mono">' + esc(full) + '</p>'
-        /* 主功能位（specs/broadcast-v2.md §三）：只有「复制文案和图片」一颗通栏大格。
+        /* 主功能位：只有「复制文案和图片」一颗通栏大格。
            微信降级进下面的渠道网格（用户 2026-08-21「微信应该和别的在一起」），
            点击行为不变：点格子 → 展开二维码面板（§四）。 */
         + '<div class="bshare-feats">'
@@ -845,7 +845,7 @@
         + '<a class="bshare-tile" href="' + esc(waUrl) + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">' + SICO.wa + '<span>WhatsApp</span></a>'
         + '<button type="button" class="bshare-tile" id="bshareLnk">' + SICO.link + '<span>' + esc(T('复制链接')) + '</span></button>'
         + '</div>'
-        /* 微信二维码面板（specs/broadcast-v2.md §四）：默认收起，点上面网格里的微信格展开。
+        /* 微信二维码面板：默认收起，点上面网格里的微信格展开。
            二维码本地算（qrEncode），不调第三方接口。 */
         + '<div class="bshare-wx" id="bshareWxBox" hidden>'
         + '<div class="bshare-qr" id="bshareQr"></div>'
@@ -980,7 +980,7 @@
 
   /* ============================================================ 样式 */
   var CSS = [
-    /* ============================================================ 外观 v2（specs/redesign-v2.md §3）
+    /* ============================================================ 外观 v2
        层次改成「白卡片浮在浅灰底上」：--panel 白面 + 极淡的 --line 一线 + --shadow-card 柔和阴影，
        不再靠重描边分块。颜色一处都不写死 —— 这块面板深浅两套主题都要能看，
        写死 hex 必然有一套是瞎的。裸色值只许出现在**永远深底**的两处例外里：
@@ -1142,7 +1142,7 @@
     '#bnbParams table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}',
     '#bnbParams td{padding:5px 6px;border-bottom:1px solid var(--line-soft);white-space:nowrap}',
     '#bnbParams tr:last-child td{border-bottom:0}',
-    /* 人话在前、符号退到第二列（specs/market-v1.md §4「术语裸奔」） */
+    /* 人话在前、符号退到第二列 */
     '#bnbParams td.plain{color:var(--ink);white-space:normal;font-family:var(--sans);font-size:12px}',
     '#bnbParams td.sym{color:var(--dim2);width:1%}',
     '#bnbParams td.nm{color:var(--dim);white-space:normal}',
@@ -1172,7 +1172,7 @@
     '#bnbWallet .w-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}',
     '#bnbWallet .w-dim{color:var(--dim)}',
     '#bnbWallet .w-err{color:var(--bad)}',
-    /* ============================================================ 确认屏 · 太空时刻（specs/detonate-confirm-scifi.md）
+    /* ============================================================ 确认屏 · 太空时刻
        原来这里是乳白确认页上的一条上下文信息（#bnbConfirmInfo，ci-* 一族只归它用）。
        用户拍板：确认屏只留「引爆」「取消」两个交互件，信息块整个退场——数在上一屏都看过了。
        这一屏**刻意不跟浅色主题走**：按下引爆就进黑色的 3D 视图，从确认到爆炸不该有一次
@@ -1279,7 +1279,7 @@
        占满了，通栏放哪儿都会挡。收窄之后仍由 hudPlace() 顶到按钮列左边的空当里。
        130 = 右侧按钮列（~91）+ 两边留白 */
     '@media (max-width:520px){#bnbMintHud{max-width:calc(100vw - 130px);font-size:12px}}',
-    /* ---------- 分析面板开着时，铸造卡片收成右上角小徽标（specs/detonate-confirm-scifi.md 附加任务）
+    /* ---------- 分析面板开着时，铸造卡片收成右上角小徽标
        分析面板（#analysis）是右侧 min(600px,100vw) 的抽屉（z-index 40），这张卡片 fixed 在
        top:114/right:14、z-index 55 —— 面板一开正好压在它的内容上，被盖住的那栏读不了。
        过渡只挂 opacity/transform：top/right 由 hudPlace() 随时在写，挂上过渡会变成飘来飘去。
@@ -1305,7 +1305,7 @@
     '  #bnbCore i,#pageConfirm #btnFire{animation:none}',
     '  #bnbMintHud,#bnbMintHud.hud-away,#bnbHudBadge,#pageConfirm .big-btn{transition:none}}',
 
-    /* ---------- 广播浮层（specs/share-referral-v1.md §二/§五 + broadcast-v2.md §三/§四）
+    /* ---------- 广播浮层
        外观 v3（用户 2026-08-21「做好看、科幻」）：玻璃拟态半透面板 + 顶缘扫描光 +
        hover 发光描边。颜色一处不写死，全走 tokens.css —— 深色主题里 --cyan 是亮紫，
        发光描边自然亮；浅色主题里同一套令牌退成干净的白卡淡描边。
@@ -1365,7 +1365,7 @@
     '.bshare-preview{margin:0 0 12px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--ink2);',
     '  background:var(--panel2);border:1px solid var(--line-soft);border-left:2px solid var(--cyan-line);',
     '  border-radius:var(--radius-btn,10px);word-break:break-all;user-select:text}',
-    /* 主功能位：只有「复制文案和图片」一颗通栏大格（specs/broadcast-v2.md §三 是主路；
+    /* 主功能位：只有「复制文案和图片」一颗通栏大格（
        微信在渠道网格里，点开在网格下方展开二维码面板 §四） */
     '.bshare-feats{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px}',
     '.bshare-feat{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;',
@@ -1398,7 +1398,7 @@
     '@media (prefers-reduced-motion:reduce){.bshare-pop,.bshare-box{animation:none}',
     '  .bshare-pop.closing,.bshare-pop.closing .bshare-box{transition:none}',
     '  .bshare-feat,.bshare-tile{transition:none}.bshare-tile:hover{transform:none}}',
-    /* 复制的结果那一行（图片没进剪贴板时要**明说**，见 specs/broadcast-v2.md §三） */
+    /* 复制的结果那一行（图片没进剪贴板时要**明说**） */
     '.bshare-msg{margin:0 0 10px;font-size:11.5px;line-height:1.7;color:var(--dim)}',
     '.bshare-msg.warn{color:var(--gold,var(--ink2))}',
     /* 微信二维码那一块。二维码本身**永远白底黑块**（相机要的是对比度），
@@ -1420,7 +1420,7 @@
   /* ============================================================ 面板 */
   var HTML = [
     '<div class="bnb-head">',
-    '  <span class="bnb-title">BNBBANG</span>',
+    '  <span class="bnb-title">ARCBANG</span>',
     '  <span class="bnb-sub">免费引爆，喜欢再铸造</span>',
     '  <button type="button" class="bnb-btn bnb-how" id="bnbHow" title="重看三步引导">怎么玩</button>',
     '  <a class="bnb-mk" id="bnbMarket" href="' + MARKET_URL + '" title="挂单、买卖宇宙 NFT 与资源（独立页面）">市场 ↗</a>',
@@ -1870,7 +1870,7 @@
     });
   }
 
-  /* card 由服务端算好送来（specs/server-side.md）。这里只做显示。
+  /* card 由服务端算好送来。这里只做显示。
      旧版在这一步本地跑 bnbhash.derive + engine.simulate —— 那份代码已经不打进站点包了。 */
   function renderCard(card, cardHash, blockNumber, note) {
     var d = {
@@ -2071,7 +2071,7 @@
   /* 打开干预沙盒。刻意不在这里算结局：那会把"引爆看结果"的悬念提前剧透掉，
      按钮文案保持中性，进了沙盒自然就看到了。
 
-     **返回开没开成**（specs/rescue-entry.md §2）：深链 fix=1 要靠这个布尔决定
+     **返回开没开成**：深链 fix=1 要靠这个布尔决定
      "还要不要再试一次 / 就地停在确认屏"。MirrorIntervene.open() 自己在引擎或 DOM
      没就绪时返回 false 且不抛，所以这里只是把它如实透出来。
      作为 click 监听时返回值没有任何作用（addEventListener 不看返回值），不影响原行为。 */
@@ -2120,7 +2120,7 @@
       'style="font-size:15px;font-weight:700">' + esc(alive ? T('活了：') : T('死了：')) + esc(cn) + '</span></div>' +
       (line ? '<div class="bnb-note" style="font-size:13px;color:var(--ink2)">' + esc(line) + '</div>' : '');
 
-    // 死宇宙 83% 能救（specs/economy.md v3 §2）——这个出口必须就摆在结局旁边，
+    // 死宇宙 83% 能救——这个出口必须就摆在结局旁边，
     // 而不是让新手自己想到去点上面那个"干预沙盒"
     /* 拯救整套下线，「救救它」这个说法跟着下线 —— 但沙盒还在，而且是免费玩法，
        所以这一格照出，只用不带拯救色彩的说法。 */
@@ -2234,7 +2234,7 @@
     }
     var refAddr = refStored();
     Promise.resolve(null).then(function () {
-      /* 推广留痕（specs/share-referral-v1.md §一）：ref 要随 /api/bang 一起交，
+      /* 推广留痕：ref 要随 /api/bang 一起交，
          而服务端按 minter 绑定，所以还得知道钱包地址。eth_accounts 不弹窗；
          只有「被邀请而来、这台浏览器从没连过钱包」这一种情况才把连接提前 ——
          那次连接本来就是铸造流程的一步，下面的 C.connect() 会复用结果，不弹第二次。
@@ -2321,7 +2321,7 @@
           // report 是调用方给的：面板与 3D 上的 HUD 共用这一条，改一处两边都变
           var same = S.hash === hash0;
           mintedNow = same;
-          /* 刚铸完是广播意愿最高的一刻（specs/share-referral-v1.md §五），
+          /* 刚铸完是广播意愿最高的一刻，
              所以「广播这枚」就长在成功提示里。走 data-bnbshare 委托：这行字
              随时会被 innerHTML 重写，直接绑监听器活不过下一次重写。 */
           report(esc(same ? T('铸造成功！') : T('刚才那个宇宙铸造成功了（你现在看的已经是另一个了）　')) +
@@ -2402,7 +2402,7 @@
 
   /* 确认屏（#pageConfirm）：只往里挂一次氛围层（能量核），别的什么都不加。
      原来这里的 confirmInfo() 会塞一条上下文（结局名/维数/哈希/区块 + 一句提示）——
-     specs/detonate-confirm-scifi.md 把它整个撤了：确认屏只留「引爆」「取消」两个交互件，
+ 把它整个撤了：确认屏只留「引爆」「取消」两个交互件，
      数在上一屏都看过了。ci-* 那族类名只归那块信息用（全文件唯一用途），随它一起退场。 */
   function confirmMount() {
     var page = doc.getElementById('pageConfirm');
@@ -2522,7 +2522,7 @@
     if (HUD.el && !HUD.el.hidden) { HUD.el.hidden = true; HUD.lastKey = ''; hudMinSync(); }
   }
 
-  /* ============================================================ 给分析面板让路（specs/detonate-confirm-scifi.md 附加任务）
+  /* ============================================================ 给分析面板让路
      开合信号：app.js 不派事件，但 openAnalysis/closeAnalysis 都只拨 #analysis 的 hidden，
      MutationObserver 盯这个属性就等于订阅了开关 —— app.js / intervene.js 一个字不用改。
      （intervene.js 的沙盒是全屏遮罩 dialog，开着时人机都到不了 HUD，不归这里管。） */
@@ -2931,7 +2931,7 @@
   /* ============================================================ 画廊 */
   /* 结局一律以**服务端算的**为准，不用链上那个数。
      链上的 outcome 是 bang() 的一个入参 —— 直接调合约的人想填几就填几，
-     合约不会去核对（能核对就不需要服务端签名这套了，见 specs/server-side.md）。
+     合约不会去核对（能核对就不需要服务端签名这套了）。
      实测就有：NFT #3 链上写着 9（可能诞生观察者），服务端按同一个哈希算出来是
      UNSTABLE_ORBITS。照抄链上那个数等于替铸造者的一面之词背书，
      而且和点进去看到的结局自相矛盾。 */
@@ -3010,7 +3010,7 @@
     }).catch(function () { /* 读链失败就不显示画廊 */ });
   }
 
-  /* ============================================================ 深链（specs/share-referral-v1.md §四）
+  /* ============================================================ 深链
      app.html?bang=<0x哈希或区块号>：加载后自动走「直接粘哈希 / 指定高度」那条现成路
      （useInput 会核对真区块 / 按高度取块），card 就绪后直接进确认屏。
      与 MIRROR_LOCK_TO_BLOCKS 不冲突 —— 深链恰恰是"认区块"的正路。
@@ -3020,7 +3020,7 @@
     try {
       var q = new URLSearchParams(location.search);
       v = q.get('bang');
-      /* fix=1（specs/rescue-entry.md §2）：从市场 / 个人中心那颗「拯救」按钮过来的。
+      /* fix=1：从市场 / 个人中心那颗「拯救」按钮过来的。
          参数名沿用现成的 bang，只多这一个开关，不另起炉灶。 */
       fix = q.get('fix') === '1';
     } catch (e) { return; }
@@ -3043,7 +3043,7 @@
     }());
   }
 
-  /* fix=1 的落地动作（specs/rescue-entry.md §2）：**直接把干预沙盒开出来**，
+  /* fix=1 的落地动作：**直接把干预沙盒开出来**，
      跳过「用户自己进 3D、再在 HUD 上找那颗按钮」那两步。走的就是 #bnbFix 那颗
      按钮的行为（openSandbox），不另写一套开法。
 

@@ -3,7 +3,7 @@
 BNBBANG / BTCBANG 的第三套变体：**Arc 主网 · 只卖 NFT · 不发代币**。
 用户 2026-09-16 拍板：「代币取消，只卖 NFT」。本文件是那句话的展开。
 
-底稿：`specs/bnb-bang.md`（玩法）、`specs/economy-v5.md`（**整份作废**，代币经济不再适用）。
+代币经济那一套**整份作废**，不适用于本站。
 
 ---
 
@@ -186,9 +186,8 @@ NFT / 艺术在它 49 篇官方博客、四大 Request for Builders 方向、六
 8. `MirrorMarket` 无币版（删 `inBang`，结构体 8 字段 → 7，前端解码与 `server/marketindex.js` 同步改）。
 9. 主网部署（自备 1 USDC 绰绰有余：部署 0.088 + 两笔接线 ≈ 0.1 USDC）→ 提交 Microgrants。
 10. OpenSea 上架二级（ERC-721 + ERC-2981 已实现；SeaDrop 已在 Arc 主网）。
-11. **Microgrants 申请包已写好**：`promo/arcbang/microgrants-application.md`（英文文案 + 提交清单 + 公开 repo 三选一）。
-    **公开 repo 已解决**（2026-09-17）—— ARCBANG 单独建了公开仓库 `github.com/q3579338/arcbang`：
-    从单体仓库导出（`node tools/export-arcbang.js`），不搬提交历史，站内链接一律指它，不再链接任何 bnbbang 仓库。
+11. **公开 repo 已解决**（2026-09-17）—— ARCBANG 有自己的公开仓库 `github.com/q3579338/arcbang`，
+    不搬提交历史，站内链接一律指它。
 
 ---
 

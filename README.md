@@ -165,9 +165,8 @@ engine/      物理引擎：哈希 → 23 个参数 → 从奇点到热寂。纯
 ui/          模拟器界面：N 体、行星表面、高维投影、参数面板
 index.html   模拟器的底稿（build.js 把 engine/ 与 ui/ 内联进它）
 web/         站点层：取块、钱包、铸造、市场、文档页、各语言词典、构建脚本
-  arc-patch.js   三站共用的源文件里，ARCBANG 和主线差在哪 —— 全部差异只有这一个文件
 contracts/   ArcUniverse（NFT）与 ArcMarket，以及跑真字节码的本地 EVM 测试
-server/      算卡 / 签名 / 出图的 API（三个站共用一份代码，按 env 跑成不同实例）
+server/      算卡 / 签名 / 出图的 API（配置全走 ARCBANG_* 环境变量，见 server/api.env.example）
 tools/       复算工具、产物自检
 specs/       规格：arcbang-v1.md 是这个站的总纲
 ```

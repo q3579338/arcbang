@@ -20,7 +20,7 @@ const { makeSigner, TTL_SEC, minterFromBody } = require('./sign.js');
 const { evaluate, interveneDigest, opsHashOf, suggestNext, MAX_OPS } = require('./intervene.js');
 const { readToken, buildMetadata } = require('./token.js');
 const RL = require('./ratelimit.js');
-/* 广播 v2（specs/broadcast-v2.md）三件套。全部是**旁路**：
+/* 广播 v2三件套。全部是**旁路**：
    出图退通用预览、落地页退跳首页、短码只是留痕的别名 ——
    任何一环挂了，铸造/干预/市场照常。 */
 const PNG = require('./png.js');
@@ -32,12 +32,12 @@ const RELAY = require('./rpcrelay.js');
 const LANDING = require('./landing.js');
 const SEO = require('./seo.js');
 const OG = require('./og.js');
-/* 邀请奖励 + 邀请列表（specs/profile-referral-v2.md）。同样是旁路：
+/* 邀请奖励 + 邀请列表。同样是旁路：
    它挂了个人中心少两块数据，铸造/干预/市场一个字节都不经过它。 */
 /* 按高度取块要走 chainMod.blockByNumber 而**不是**解构出来的引用：
    selftest 靠替换模块上的方法来打桩，解构走的那份换不掉（token.js 踩过这个坑）。 */
 const chainMod = require('./chain.js');
-/* 市场索引（specs/market-index-v1.md）。**require 它不会启动任何东西** ——
+/* 市场索引。**require 它不会启动任何东西** ——
    后台扫链要 MI.startIndexer() 显式开，而那一句只在 start() 里（selftest 直接
    require 本文件，不该因此在后台开始扫链）。索引整个挂掉的后果上限是市场页
    看到旧数据并自己说自己旧；铸造/干预/造物三条写链路一个字节都不经过它。 */
@@ -73,7 +73,7 @@ function serverEnvErrors(opts) {
     logRpcs: opts.logRpcs || undefined
   });
   if (!publicBase) {
-    errs.push('ARCBANG_PUBLIC_BASE 必须显式配置（主网 https://bnbbang.com），禁止默认测试域名');
+    errs.push('ARCBANG_PUBLIC_BASE 必须显式配置（主网 https://arcbang.xyz），禁止默认测试域名');
   } else if (id === 56 && /satloot|testnet/i.test(publicBase)) {
     errs.push('主网 ARCBANG_PUBLIC_BASE 不能是测试域名：' + publicBase);
   }
@@ -169,7 +169,7 @@ function storePut(cardHash, card) {
   return card;
 }
 
-/* ---------------------------------------------------------------- 推广留痕（specs/share-referral-v1.md §六）
+/* ---------------------------------------------------------------- 推广留痕
    两份数据，都只是留痕，发钱是 owner 拿着它人工核对后用 BangPromo.grant 手动发：
      .store/ref-bindings.json   绑定表 minter → {ref, at}。**首触定终身**：
                                 一个 minter 只绑一次，之后再带别的 ref 一律不改。
@@ -438,7 +438,7 @@ function cardPoolBusy(res, e) {
 }
 
 /* 市场索引要往 meta 里补物理字段（维度、卡面上那几个常数），得有一条拿 card 的路。
-   specs/market-physics-filter.md 第一节：**服务端内部直调 card.js，不要走 HTTP
+ard.js，不要走 HTTP
    自己打自己** —— 自己打自己会白白吃一遍限流、序列化、TCP 往返，而且
    /api/card 的限流本来就是拿来挡「挨个哈希扫全链」的，索引补元数据正好长得像它。
 
@@ -482,7 +482,7 @@ async function handle(req, res, u) {
 
   /* ---- 限流 ----
      只卡「算宇宙」这两条：免费引爆本身就是扫描接口，用户不需要拿到推导算法，
-     挨个哈希点引爆、只 mint 好的即可（specs/economy-v4.md §七）。
+     挨个哈希点引爆、只 mint 好的即可。
      /health 和出图不卡：前者要给监控用，后者是纯静态且有强缓存。
 
      额度按**不同的哈希**计，所以要先把哈希拿出来再判：
@@ -648,7 +648,7 @@ async function handle(req, res, u) {
        ops    = [{ key, dir, steps }]   ← 相对档位，服务端自己查生存半径算距离
 
      ops 是为了让浏览器**根本不算这段距离**：一格 = 步长 × 生存半径，
-     而半径表是整套推导里唯一藏得住的东西（specs/economy-v4.md §七）。
+     而半径表是整套推导里唯一藏得住的东西。
      前端自己算就得在站点包里带一份表，等于原样发给每个访客。
 
      返回里的 ops 是**上链用的位移记录**（0x 开头的 hex，5 字节一条：参数下标 + unit×1e9）。
@@ -669,7 +669,7 @@ async function handle(req, res, u) {
     if (parsedIv.error) return json(res, 400, { error: parsedIv.error });
     const q = parsedIv.value;
 
-    /* 费用只能服务端算（specs/economy-v4.md §3）。请求里带了费用就**明着拒绝**，
+    /* 费用只能服务端算。请求里带了费用就**明着拒绝**，
        不是默默忽略：默默忽略的话，前端作者看到自己算的费用发过去也能通，
        就会以为服务端认这个数，等哪天有人改了那段前端代码，问题才爆出来。 */
     if (q.cost != null || q.costBang != null) {
@@ -927,7 +927,7 @@ async function handle(req, res, u) {
   }
 
   /* ================================================================ 分享图（PNG）
-     specs/broadcast-v2.md §2.1。**多数平台不认 SVG**（X 明确不支持，微信也不认），
+。**多数平台不认 SVG**（X 明确不支持，微信也不认），
      所以每条 .svg 都配一条 .png。选型、缓存、并发闸与"绝不 500"的实现都在 png.js。
 
      NFT 的图仍然是 SVG（tokenURI 指的还是 .svg，逐字节可重建）——
@@ -1034,7 +1034,7 @@ async function handle(req, res, u) {
   }
 
   /* ================================================================ 市场索引
-     specs/market-index-v1.md 第二节的三条。全部 no-store：市场数据实时性优先，
+。全部 no-store：市场数据实时性优先，
      而且 stale 标志本身就是「这份数据有多新」的答案，缓存它等于把答案也缓存了。
 
      三条都**不会抛**：marketindex.js 里的实现最坏返回空集 + stale:true，
@@ -1049,7 +1049,7 @@ async function handle(req, res, u) {
       const out = await MI.listingsPage({
         sort: q.get('sort'), series: q.get('series'), cur: q.get('cur'),
         rarity: q.get('rarity'), outcome: q.get('outcome'), named: q.get('named'),
-        /* 物理筛选（specs/market-physics-filter.md 第二节）：
+        /* 物理筛选：
              dim=3 | 3-5 | frac | int | >3     维度
              const=<键>&min=&max=              卡面上印的常数（c/h/e/G/alpha/alphaInv/alphaGRel）
              sort=const_asc&by=<键>            按某个常数排序
@@ -1115,7 +1115,7 @@ async function handle(req, res, u) {
 
   /* ================================================================ 分享落地页
      GET /s/<区块号>（也认 /s/<0x哈希>：造物的起源、老存档拿不到区块号）。
-     第一版是「爬虫拿 og，人拿跳转」（specs/broadcast-v2.md §2.2 方案 A）；现在是一张
+     第一版是「爬虫拿 og，人拿跳转」；现在是一张
      **可索引的真页面**（landing.js）：结局、物理解释、常数表、铸造状态、进模拟器的按钮，
      不再自动跳转，爬虫和人拿同一份。这里只负责"把哈希、card、铸造状态弄到手，弄不到就降级"。
      索引口径（seo.js）：已铸造 / 精选 / 附加名单 → index, follow；其余 noindex, follow，页面照样出。
@@ -1188,7 +1188,7 @@ async function handle(req, res, u) {
       try { html = LANDING.landingHTML(Object.assign({}, opts, { card: null, mint: { minted: null } })); }
       catch (e2) {
         /* 连通用文案都渲不出来（landing.js 本身坏了）：最后一道，一行硬编码的页，仍然指向 app.html。 */
-        html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>BNBBANG</title></head>'
+        html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ARCBANG</title></head>'
           + '<body><p><a href="' + SHARE.esc(appUrl) + '">Open in the simulator</a></p></body></html>';
       }
     }

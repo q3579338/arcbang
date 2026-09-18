@@ -42,7 +42,7 @@
 (function (root, doc) {
   'use strict';
 
-  var KEY_SEEN = 'bnbbang.onboard.v1';      // 键名由 specs/market-v1.md 定死，别改
+  var KEY_SEEN = 'bnbbang.onboard.v1';      // 键名由 定死，别改
   var KEY_NOVICE = 'bnbbang.novice.v1';
 
   /* ============================================================ 中英双语

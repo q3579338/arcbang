@@ -20,19 +20,14 @@ const { esc, grp } = require('./share.js');
    c/h/e/G 各自带了 ratio；α 这一行自己除一下，不算猜 —— α 是引擎真算出来的内部可观测量。 */
 const ALPHA_INV_0 = 137.035999084;
 
-/* 页脚「Open source engine」指向哪个仓库。
-   默认是 BNBBANG / BTCBANG 两站一直在用的那个（不配这个变量时输出逐字节不变）；
-   ARCBANG 是独立仓库（2026-09-17 用户拍板），在它那一份 env 里写 ARCBANG_REPO_URL 覆盖。
-   分享页是服务端渲染的，站点包里的改写表（web/arc-patch.js）够不到这里。 */
+/* 页脚「Open source engine」指向哪个仓库。换仓库时配 ARCBANG_REPO_URL 覆盖。 */
 const REPO_URL = process.env.ARCBANG_REPO_URL || 'https://github.com/q3579338/arcbang/tree/main/engine';
 
-/* 站名与链名，同一个道理。站名出现在 watermark、<title> 后缀、og:site_name、ld+json 的 creator.name；
-   链名出现在 H1「Universe from BNB block #n」、描述「Every BNB block hash…」、常数表「BNB block」那一行。
-   从前两样都按 isBtc 二选一写死 —— ARCBANG 那个实例（arcbang.xyz）渲出来就自称 BNBBANG、
-   把 Arc 的区块叫 BNB block。
-   只管**非 btc** 那一支：比特币宇宙的变体按 Host / 注册表判，和 bnb 共用同一个进程，
-   站名 BTCBANG / 链名 Bitcoin 不跟 env 走。不配这两个变量时输出逐字节不变。
-   在调用时读（不在模块加载时读）：selftest 要在同一个进程里换着 env 验三种站。 */
+/* 站名与链名。站名出现在 watermark、<title> 后缀、og:site_name、ld+json 的 creator.name；
+   链名出现在 H1「Universe from Arc block #n」、描述「Every Arc block hash…」、常数表「Arc block」那一行。
+   **两个都必须配**（server/api.env.example 里写着）：不配时退回的是历史默认值 BNBBANG / BNB，
+   在 Arc 上是事实错误。默认值留着只是为了「没配」和「配成空串」是同一个结果，不至于渲出空站名。
+   在调用时读（不在模块加载时读）：selftest 要在同一个进程里换着 env 验。 */
 const brandOf = () => String(process.env.ARCBANG_BRAND || '').trim() || 'BNBBANG';
 const chainWordOf = () => String(process.env.ARCBANG_CHAIN_WORD || '').trim() || 'BNB';
 

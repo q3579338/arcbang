@@ -4146,8 +4146,8 @@
 
   /* ---------------------------------------------------------- 站点顶栏
      结构在 index.html 里（#siteNav），样式是那份「站点顶栏 · 共用块 v1」——
-     同一段 CSS 逐字出现在 index.html / web/market.html / web/economy.html 三处，
-     三条栏因此长得一模一样（specs/redesign-v2.md §3.3 / §3.5）。
+     同一段 CSS 逐字出现在 index.html 与 web/market.html 两处，
+     三条栏因此长得一模一样。
      顶栏里的类名一律带 #siteNav 前缀：本页另有一个别的 .seg（参数分段控件），
      裸类名会互相打架。这里只管三件事：
 
@@ -4268,7 +4268,7 @@
   /* ---------- 顶栏浮层的两个小助手 ----------
      下面三处（Esc / 「选宇宙」/ 「模拟器」）一直在调 closeNavPop() / navPopOpen()，
      但这两个函数从来没在本文件里定义过 —— 点「选宇宙」先抛 ReferenceError，setState('select')
-     根本走不到，按钮看起来就是「没反应」（2026-09-17 用户在 ARCBANG 站上撞到；bnbbang.com 同样有）。
+     根本走不到，按钮看起来就是「没反应」（2026-09-17 用户实测撞到）。
      浮层归 web/nav.js 管（MirrorNav.pop.closeAll / anyOpen）；离线单文件包里没有 nav.js，
      所以都要能在它缺席时静默通过。 */
   function navPops() { var N = (typeof window !== 'undefined') ? window.MirrorNav : null; return N && N.pop ? N.pop : null; }
@@ -4317,8 +4317,8 @@
   })();
 
   /* ---------- 市场 / 经济模型：只在这两页真的存在时才摆出来 ----------
-     站点版（web/dist/index.html）里 market.html 与 economy.html 就在同一个目录，
-     web/config.js 也是那一层注入的，所以 window.ARCBANG_CONFIG 正好是判据。
+     站点版（web/dist-arc/app.html）里 market.html 就在同一个目录，
+     web/config.arc.js 也是那一层注入的，所以 window.ARCBANG_CONFIG 正好是判据。
      离线单文件（dist/mirror.html）里那两页根本不存在 —— 死链接比没有链接更糟，
      整条页面切换收起来，顶栏只剩「选宇宙」和设置，仍然有用。
      config.js 在 app.js 之后才执行（构建把整层追加在 </script> 前），所以要等一拍。 */

@@ -1,5 +1,5 @@
 /*
- * web/i18n-site.js —— web/onboard.js, index.html, web/economy.html, web/profile.html 的中英词条
+ * web/i18n-site.js —— web/onboard.js, index.html, web/profile.html 的中英词条
  * ------------------------------------------------------------
  * 只放**界面上真会出现**的句子；注释、日志、开发用文字不进这里。
  * key 是中文原文，逐字相等才命中；漏翻的自动退回中文，不会出现裸 key。
@@ -75,7 +75,7 @@
     "分析界面": "Analysis"
   }, 'site');
 
-  /* ---- web/economy.html —— 经济模型页（248 条） ---- */
+  /* ---- 经济模型页（那一页不在本仓库，下面是它留下的通用词条） ---- */
   I.add({
     "合约实测": "Contract tests",
     "地基": "Foundation",
@@ -499,7 +499,7 @@
     '复制链接': 'Copy link',
     '复制不了 —— 手动选中上面那串链接复制':
       'Cannot copy — select the link above and copy it by hand',
-    /* ---- 推广短码（specs/share-referral-v1.md §8 + broadcast-v2.md §一）。
+    /* ---- 推广短码。
        8 位定长，链接里那 42 个字符的地址换成它。认领要签一次名（不花 gas）。 */
     '换一个': 'Reroll',
     '自定义': 'Custom',
@@ -524,7 +524,7 @@
     '点卡片去市场页看详情、挂单': 'Click a card to see details and list it on the market page',
     '还没有带参数的原生宇宙。': 'No native universes with parameters yet.',
     '去引爆一个 →': 'Go detonate one →',
-    /* 持仓卡上的「拯救」（specs/rescue-entry.md §4）。**与市场卡逐字同一句英文**
+    /* 持仓卡上的「拯救」。**与市场卡逐字同一句英文**
        （见 i18n-market.js 同名两条）—— 两个入口通向同一条路，文案走散就等于
        让用户以为是两件事。值一样，i18n.js 的全局撞车警告不会响。 */
     '拯救': 'Rescue',
@@ -619,7 +619,7 @@
     '{0} 项': '{0} flagged'
   }, 'status');
 
-  /* ---- web/economy.html 页面标题（2026-08-21 定稿的新标题） ---- */
+  /* ---- 经济模型页的标题（历史词条） ---- */
   I.add({
   }, 'site');
 
@@ -690,7 +690,7 @@
      中英同形，只翻它们后面的话。 */
   I.add({
     "友情链接": "Friends",
-    /* 经济页：2026-09-09 上交易所费用池划拨 2,100 万给 BTCBANG 点火基金的披露 */
+
     "上交易所费用池（1 亿）中划出": "Out of the 100M exchange-listing pool, ",
     "运营承诺，不是合约保证": "An operating promise, not a contract guarantee",
     "satloot 项目总览": "satloot home",

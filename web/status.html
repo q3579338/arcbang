@@ -427,7 +427,7 @@ footer a:hover{text-decoration:underline}
       <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
       <a href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
     </span>
-    <!-- 只在 config.js 的 chain.isTestnet 为真时出现（specs/mainnet-ready.md）；
+    <!-- 只在 config.js 的 chain.isTestnet 为真时出现；
          主网上整条不渲染。默认 hidden，脚本里的 renderChainText() 才放出来。 -->
     <span id="chainLegal" hidden></span>
 
@@ -438,17 +438,6 @@ footer a:hover{text-decoration:underline}
 (function () {
   'use strict';
   var CFG = window.ARCBANG_CONFIG || {};
-
-  /* BTCBANG（config.site === 'btc'，specs/btcbang-v1.md §三）：这一页两站共用，只把站名换掉。
-     读数全部链上现读，合约与 bnbbang.com 是同一套，所以正文一个字不改；
-     config.js 在本脚本之前加载，这里读到的就是最终值。bnb 模式一个字节不变。 */
-  if (CFG.site === 'btc') {
-    document.title = 'BTCBANG · 系统状态';
-    var eb = document.getElementById('eyebrow');
-    if (eb) eb.textContent = 'BTCBANG · STATUS';
-    var h1 = document.querySelector('main > h1');
-    if (h1 && h1.firstChild && h1.firstChild.nodeType === 3) h1.firstChild.nodeValue = 'BTCBANG ';
-  }
 
   /* 本页词条的命名空间是 'status'（web/i18n-site.js）。查不到落回全局表；
      i18n 整个没加载就原样返回中文 —— 页面照常能用。 */
@@ -468,7 +457,7 @@ footer a:hover{text-decoration:underline}
 
   /* ---------------------------------------------------------- 链身份
      链名跟着顶栏的语言开关走 —— 两边不至于一半中文一半英文。
-     唯一真相来源是 config.js 的 chain 块（specs/mainnet-ready.md）；**派生只有一份**，
+     唯一真相来源是 config.js 的 chain 块；**派生只有一份**，
      在 web/nav.js 里（五个站点页共用）。这里不再抄一份兜底 —— 抄一份就是
      「改了一处漏三处」，正是这轮改造要拔掉的病。nav.js 本来就是本页的硬依赖
      （顶栏是它挂的），它不在的话页面在 MirrorNav.mount() 那一行就已经停了。 */

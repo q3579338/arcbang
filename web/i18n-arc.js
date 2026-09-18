@@ -2,7 +2,7 @@
  * web/i18n-arc.js —— ARCBANG（Arc 链 · USDC · 没有代币）专属文案的中英词条
  * ------------------------------------------------------------
  * 只在 `node web/build-web.js --site arc` 的产物里加载（app.html 的注入层 + 各独立页的 <script>），
- * bnbbang.com / bang.satloot.com 的包里没有它。格式与 web/i18n-btc.js 相同：
+ * 格式与其余 i18n 分册相同：
  * key 是中文原文，逐字相等才命中；漏翻的自动退回中文，不会出现裸 key。机制见 web/i18n.js 顶部。
  *
  * 这里**只收 arc 分支才会出现的句子**。凡是三站共用的句子仍走 i18n-app / i18n-tools /
@@ -14,7 +14,7 @@
  *   'app'   = web/arc-ui.js 的 T()/TF()/TX()；
  *   'tools' = web/intervene.js 的 T()/TN()；
  *   'site'  = web/onboard.js 的 T()（新手引导）；
- *   'market'= web/market.html（arc 改写后的那几句，见 web/arc-patch.js）。
+ *   'market'= web/market.html（市场页里 arc 口径的那几句）。
  * 带 {0}/{n} 的整句进词典 —— 英文语序不一定跟中文一样，别在外面拼。
  */
 (function (root) {
@@ -76,10 +76,10 @@
       'A bad ending is not the end of it. Open the parameter sandbox and push the constants one notch at a time, following the prompts; the gauges on the right move with you. The ending label often takes a dozen notches to flip, so watch the gauges. In testing, 83% of dead universes can be pushed back to life, four steps being the median. The sandbox costs nothing, touches no chain, and every step can be undone.'
   }, 'site');
 
-  /* ---- web/market.html 的 arc 改写（命名空间 'market'，改写表见 web/arc-patch.js） ---- */
+  /* ---- web/market.html 的 arc 改写（命名空间 'market'） ---- */
   I.add({
     /* 拯救系统下线：市场页上「拯救」按钮与「已烧 / 全网已销毁」那几格连同它们的
-       词条一起删掉了，改写表见 web/arc-patch.js。 */
+       词条一起删掉了。 */
     '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}':
       'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a set of physical laws — come detonate your own. First 387 mints free, 1 per address, then 1 USDC. @arcbang_xyz {2}',
     '链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。':
@@ -101,5 +101,5 @@
   }, 'status');
 
   /* ---- web/profile.html 的 arc 改写 ----
-     拯救入口在 arc 上整个删掉了（见 web/arc-patch.js），这里已经没有 arc 专属词条。 */
+     拯救入口整个删掉了，这里已经没有专属词条。 */
 })(typeof window !== 'undefined' ? window : this);

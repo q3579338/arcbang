@@ -186,7 +186,7 @@
       'The contracts are not on Arc mainnet yet. The two cards above light up on their own the day they are.',
 
     /* ---- 2026-09-17 首页改版（web/landing-arc.html v2「测绘板」）新增的句子 ----
-       旧版整份在 web/landing-arc-v1.html。 */
+       （旧版已经不在仓库里。） */
     '跳到主要内容': 'Skip to content',
     '窗口里那片星场是引擎此刻算出来的。Arc 每出一个新块，它闪一次。':
       'That star field is the engine computing, right now. It flashes once for every new Arc block.',

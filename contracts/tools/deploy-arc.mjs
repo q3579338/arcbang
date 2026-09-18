@@ -4,7 +4,7 @@
  *   2. ArcMarket   —— 挂单簿。构造参数是**刚部署的那个 ArcUniverse 地址**，
  *      而且它是 immutable：顺序不能反，也不能事后接线。
  *
- * 为什么不用 web/deploy.html：那个向导是六合约一套（BangToken → Universe → Market → 三个金库 → 接线），
+ * 为什么不用浏览器里那份向导：它是六合约一套（BangToken → Universe → Market → 三个金库 → 接线），
  * ARCBANG 没有代币、没有金库、没有接线，用它等于在一堆不存在的步骤里找那两步。
  *
  * 用法（私钥只从环境变量读，不接受命令行参数 —— 命令行会进 shell 历史）：

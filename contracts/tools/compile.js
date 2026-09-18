@@ -58,7 +58,7 @@ Object.keys(out.contracts).sort().forEach((file) => {
     fs.writeFileSync(path.join(OUT, nm + '.abi.json'), JSON.stringify(c.abi, null, 1));
     fs.writeFileSync(path.join(OUT, nm + '.bytecode.hex'), init);
     fs.writeFileSync(path.join(OUT, nm + '.runtime.hex'), runtime);
-    if (nm === 'MirrorUniverse') {                       // 老名字，web/deploy.html 在用
+    if (nm === 'MirrorUniverse') {                       // 老名字，部署向导在用
       fs.writeFileSync(path.join(OUT, 'abi.json'), JSON.stringify(c.abi, null, 1));
       fs.writeFileSync(path.join(OUT, 'bytecode.hex'), init);
       fs.writeFileSync(path.join(OUT, 'runtime.hex'), runtime);

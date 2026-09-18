@@ -4,15 +4,15 @@
  * 玩家真正动手的地方：拿一个死掉的宇宙，一格一格地推参数，看它能不能活过来。
  * 沙盒 = 随便推、不花钱、不上链、可撤销；关掉之后原宇宙一个字节都没变。
  *
- * 为什么值得做成玩法：tools/bnb-intervene.js 用贪心爬山（玩家的下限）实测，
+ * 为什么值得做成玩法：半径表的离线标定脚本 用贪心爬山（玩家的下限）实测，
  * 83% 的死宇宙能救活、中位 4 步 —— 够得着，又不是一步到位的老虎机。
- * 救不活的三类（黑洞主导 / 无稳定轨道 / D≠3）恰好是结构性死亡，见 specs/economy.md v3 §2。
+ * 救不活的三类（黑洞主导 / 无稳定轨道 / D≠3）恰好是结构性死亡 v3 §2。
  *
  * 为什么右半边非得是仪表盘：同一份实测里，把 α 连续扫向我们的值，
  * ξ 从 0.8635 平滑降到 0.6508、f_O 从 0.0187 爬到 0.0499，而结局标签全程不变。
  * 只显示结局的话，玩家推一格屏幕上什么都不动，这个游戏当场就死了。
  *
- * 新手模式（默认开，specs/market-v1.md §4「沙盒 20 个旋钮全暴露」）：
+ * 新手模式（默认开，」）：
  *   20 个旋钮一起摆出来，新手唯一的策略是乱推。所以默认只显示
  *   MirrorHint.diagnose() 指出的那几个参数（它是纯查表，不跑模拟，随便刷），
  *   再配一个大按钮「照提示推一格」。右上角开关一点就回到全部 20 个 ——
@@ -24,7 +24,7 @@
  *   窄搜找不到能变好的一格时**自动退回全量 suggest**，省的是时间不是能力。
  *
  * ------------------------------------------------------------
- * 「推一格有多远」不在这个文件里（2026-08-19 改，见 specs/economy-v4.md §七）：
+ * 「推一格有多远」不在这个文件里（2026-08-19 改）：
  * 一格 = 该参数「生存半径」的一小截，而那张半径表是整套推导里唯一藏得住的东西
  * —— 参数表和物理引擎本来就得发到浏览器里跑，只有它能留在服务端。
  * 这个文件会被 build-web.js 打进站点包，所以它一个数都不能带。
@@ -36,7 +36,7 @@
  *   → 本地拿这份参数跑一次引擎，喂给仪表盘和诊断
  * 本地引擎照跑不误：它本来就是公开的，跑它才有仪表和"卡在哪"的实时反馈。
  * 费用一律用服务端返回的那个数，客户端不再自己编一条成本曲线
- * （specs/server-side.md C3：费用只能服务端算并签名）。
+ * 。
  *
  * 预览与真干预共用 /api/intervene：preview:true 时不签名、不落盘，
  * 所以沙盒仍然是「随便推、不花钱、不上链」的。
@@ -74,7 +74,7 @@
      **不能把 MirrorParams / MirrorEngine 在工厂参数上捕获成常量。**
 
      站点包（web/build-web.js 的 LAYER）把本文件排在 engine/params.js **之前** ——
-     实测 web/dist/index.html 里 web/intervene.js 是第 24 个 <script>，
+     实测 web/dist-arc/app.html 里 web/intervene.js 是第 24 个 <script>，
      engine/params.js 第 29、engine/engine.js 第 30。执行到这一行时那两个全局还不存在，
      捕获下来就永远是 undefined，于是 open() 开头那句
      `if (!Params || !Engine) return false` **永远成立**：
@@ -195,7 +195,7 @@
 
   /* ============================================================ 第一步：把维度推到 3
 
-     specs/economy-v4.md §4.1 把玩法定成**两段式**：
+**：
        第一段调维度 —— 98% 的死宇宙都要做，**有确定答案**，花钱就能过；
        第二段调其余参数 —— 58% 的人做完第一段就赢了，剩下的才是真正的博弈。
      第一段实测 D≠3 能推到 D=3 的比例是 **100%**。
@@ -640,7 +640,7 @@
      *      这条路**写死只走 DIM_KEYS**，那三个键不在生存半径表上，标定碰不到半径。
      *   ② 按标定出来的格数预览一次，拿回服务端算的费用。
      * 费用一律用服务端返回的 costBang，客户端不自己编一条成本曲线
-     * （specs/server-side.md C3：费用只能服务端算并签名）。
+     * 。
      * @returns Promise<{key, dir, steps, costBang, D} | null>
      */
     function quoteDimension() {
@@ -840,7 +840,7 @@
       moves: function () { return ops.length; },
       ops: function () { return compactOps(ops); },
       busy: function () { return busy > 0; },
-      /* 费用只有服务端算得了（specs/server-side.md C3）。沙盒里它只是"要是真烧会花多少"，
+      /* 费用只有服务端算得了。沙盒里它只是"要是真烧会花多少"，
          所以直接把服务端那个数原样显示，不再本地编一条成本曲线 —— 编的那条
          迟早会和真正收的钱对不上，而对不上的时候玩家已经烧完币了。 */
       costBang: function () { return current().costBang || '0'; },
@@ -867,7 +867,7 @@
           那颗旋钮物理上就是死的，推别的参数只是在给尸体调妆。
        ② 结局是 UNSTABLE_ORBITS / BEYOND_MODEL_DIM —— 这两个结局本身就是维数判据给的。
 
-     **BLACK_HOLE_DOMINATED 刻意不收**，哪怕 specs/economy.md v3 §2 把它列在"救不活"那一栏：
+     **BLACK_HOLE_DOMINATED 刻意不收**，哪怕 v3 §2 把它列在"救不活"那一栏：
      那张表上它只有 1 个样本。重扫 4000 个哈希拿到 45 个黑洞主导的宇宙，贪心救活了 3 个
      （把 A_s 推下去就翻过来了）。收了它就会误伤这 3 个，正是最不能犯的那种错。
 
@@ -878,8 +878,8 @@
      返回 null = 没有把握说它救不活，一律按"能救"走。 */
   var DOOM_OUTCOMES = { UNSTABLE_ORBITS: 1, BEYOND_MODEL_DIM: 1 };
 
-  /* 这句原来讲的是「救不活的宇宙产稀有资源（反常 A / 奇点 K）」，依据是 specs/economy.md v3。
-     **资源那套已经被 BANG 代币取代**（specs/economy-v4.md），合约里一个字都没有了，
+  /* 这句原来讲的是「救不活的宇宙产稀有资源（反常 A / 奇点 K）」，依据是 v3。
+     **资源那套已经被 BANG 代币取代**，合约里一个字都没有了，
      可这句文案留在了干预面板上，等于向用户描述一个不存在的机制。
      换成 v4 下真实成立的说法：按 §4「币烧在哪」，拯救的销毁通路属于**救得活的死宇宙**；
      天生活着的 S 档反而没有出口（§4.2，已知且未修）。
@@ -903,7 +903,7 @@
    * 一格的位移小到被取整吃掉，旋钮确实是死的。
    * 可服务端固定跑 MODULES_ON（弦气开），dimS 根本不在参数表里 ——
    * 维度是 stringGasT / n_w / κ **派生**出来的，而这三颗旋钮推得动。
-   * specs/economy-v4.md §4.1 实测：D≠3 能推到 D=3 的比例是 **100%**。
+   * D=3 的比例是 **100%**。
    *
    * 于是这条规则在真实配置下的效果，是对着 98% 的死宇宙说「别玩了」——
    * 正好把玩法说反，也正好是最该救的那批人被劝退。
@@ -1076,19 +1076,19 @@
     busyAt: null, busyWhat: null, lastStep: null,
     /* 连点冻结：lastNudge = 上一次推格的时刻，thaw = 停手后补画那一次的定时器 */
     lastNudge: 0, thaw: null,
-    /* 铸成造物（specs/crafted-v1.md §五）：craftBusy = 三步流程（要签名 → 授权 → 铸）
+    /* 铸成造物：craftBusy = 三步流程（要签名 → 授权 → 铸）
        正在走；craftMsg = 那一行的状态话术（带 box/steps 快照，推格或换宇宙后自动失效）。
        craftBusy 刻意**不在 open() 里清零**：面板关了再开，链上那笔交易还在飞，
        清了它就能再点一次 —— 双击双铸。 */
     craftBusy: false, craftMsg: null,
-    craftShare: null,      // 铸成那一刻的广播现场（specs/share-referral-v1.md §五），BnbShare 消费
+    craftShare: null,      // 铸成那一刻的广播现场，BnbShare 消费
     /* 拯救这枚 NFT（MirrorUniverse.intervene）。规矩同上面那一组：
        rescueBusy 刻意**不在 open() 里清零** —— 面板关了再开，链上那笔还在飞，
        清了它就能再点一次，那是白烧第二遍币。
        own = 这个 blockHash 的链上身份（铸了没有 / 是谁的 / 参数章 / 已烧多少），
        按哈希缓存，见 rescueProbe；rescued = 本次会话里已经拯救过的哈希，见 renderRescue。 */
     rescueBusy: false, rescueMsg: null, own: null, ownBusy: false, rescued: {},
-    /* 主按钮当前是哪条路（specs/rescue-mint-unified.md）。renderRescue 每帧算一次，
+    /* 主按钮当前是哪条路。renderRescue 每帧算一次，
        rescueBtnGo 只照着分发 —— 一个按钮两条路，判断只能有一处，两处必然漂移。
        取值见 rescueMode()：'mint' = 铸下并拯救，'mine' = 拯救这枚 NFT，其余都不出按钮。 */
     rescueMode: null,
@@ -1144,7 +1144,7 @@
 
   var CSS = [
     /* ============================================================ 外观
-       规范见 specs/redesign-v2.md：白卡片浮在浅灰底上、极淡描边、柔和大范围阴影、
+       规范：白卡片浮在浅灰底上、极淡描边、柔和大范围阴影、
        克制的单一强调色（靛蓝 --cyan）。圆角与阴影一律走令牌
        （--radius-card / --radius-btn / --shadow-card / --shadow-pop），
        **一个颜色都不许写死** —— 令牌表在 web/tokens.css，三页共用，深浅两套都在那儿。 */
@@ -1345,7 +1345,7 @@
     '.mi-meta b{color:var(--ink2)}',
     '.mi-meta i{font-style:normal;color:var(--dim2)}',
     '.mi-id{font-size:11px;color:var(--dim2);font-family:var(--mono);line-height:1.7}',
-    /* ---------- 铸成造物（specs/crafted-v1.md §五）。挂在底部信息卡里，
+    /* ---------- 铸成造物。挂在底部信息卡里，
        和「真烧要 X BANG」那行做邻居 —— 它花的就是那个数。 */
     '.mi-craft{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;',
     '  padding-top:9px;border-top:1px dashed var(--line-soft)}',
@@ -1362,7 +1362,7 @@
        上面那条虚线归 .mi-two 画，列里不再各画一条 */
     '.mi-two>.mi-craft{flex:1 1 250px;min-width:0;flex-direction:column;align-items:flex-start;',
     '  gap:6px;margin-top:0;padding-top:0;border-top:0}',
-    /* ---------- 一条主路 + 一条备选（specs/rescue-mint-unified.md）
+    /* ---------- 一条主路 + 一条备选
        两条出口不再平级：左边那一列是**主路**（拯救 / 铸下并拯救），占更多宽度；
        「铸成造物」是第二条产品线，退成次级，不该和主路抢注意力。 */
     '.mi-two>#miRescue{flex:2 1 320px}',
@@ -1425,12 +1425,12 @@
        ④ 细节（参数表，默认收起）
      原来的顺序是反的：一进来先撞上 23 个参数 × 每个两颗按钮 + 26 道门 + 8 个仪表。
 
-     **所有已有的 id 一个都没改名、没删**（specs/redesign-v2.md §一）：
+     **所有已有的 id 一个都没改名、没删**：
      miOut / miSay / miModeBox / miMode / miModeTxt / miX / miWin / miParamSec / miDoom /
      miStuck / miParams / miMsg / miMeta / miId / miLegend / miGauges / miTip /
      miAuto / miUndo / miReset / miHint / miClose 全在，绑定关系也没动。
      新增的是 miAct / miActK / miActT / miActW / miActP / miDim / miMoreSum，
-     以及造物入口的 miCraft / miCraftBtn / miCraftP（specs/crafted-v1.md §五）—— 只增不改。
+     以及造物入口的 miCraft / miCraftBtn / miCraftP—— 只增不改。
 
      #miAuto 从底栏搬进了主行动卡（它是第二步的主动作），**节点本身没有重建**，
      所以 ensureEl 里那句 addEventListener 仍然挂在同一个元素上。 */
@@ -1485,7 +1485,7 @@
       '    <div class="mi-msg" id="miMsg"></div>',
       '    <div class="mi-card">',
       '      <div class="mi-meta" id="miMeta"></div>',
-      /* 铸成造物（specs/crafted-v1.md §五）。原来这里的口径是「干预后的宇宙不能铸」——
+      /* 铸成造物。原来这里的口径是「干预后的宇宙不能铸」——
          现在能了：铸进独立的造物合约（MirrorCrafted）。常驻节点，render 只切显隐和文字；
          未部署（CONFIG.crafted 空）或一格没推时整行 hidden（见 renderCraft）。 */
       /* 两条出口并排。**#miCraft / #miCraftBtn / #miCraftP 三个 id 一个没改**，
@@ -1494,7 +1494,7 @@
          #miRescueBtn 默认 hidden：只有确认「这条主路对你开着」之后才露面
          （见 renderRescue），别的情况下那一格只留一句说明。
 
-         2026-08-21（specs/rescue-mint-unified.md）：两颗按钮不再平级。
+         2026-08-21：两颗按钮不再平级。
          #miRescueBtn 是**主按钮**（class 带 pri，实心）—— 它的文字随「你和这个宇宙的关系」
          在「拯救这枚 NFT」和「铸下并拯救」之间切；#miCraftBtn 退成次级（普通描边），
          因为造物是第二条产品线，不该和主路抢注意力。 */
@@ -1585,7 +1585,7 @@
         ? T('目标换成「冷液体宇宙」：引力弱到气体不塌缩、没有恒星，但分子还在液态温区里。结局仍是「没有恒星的宇宙」，判据见分析面板的 R_OCEAN（启发式）。')
         : T('目标换回「可能诞生观察者」。'));
     });
-    // 铸成造物（specs/crafted-v1.md §五）。常驻节点只绑一次，render 只切显隐和文字
+    // 铸成造物。常驻节点只绑一次，render 只切显隐和文字
     $('miCraftBtn').addEventListener('click', craftMint);
     /* 主按钮。同样是常驻节点，只绑一次；显隐、文字和**点了走哪条路**都由
        renderRescue 决定（它把当前模式写进 S.rescueMode，这里只做分发）。 */
@@ -1669,7 +1669,7 @@
        ② 还差什么         → #miStuck + #miGauges（默认**只列没过的门**）
        ③ 细节             → 参数表（默认收起）
 
-     玩法是两段式（specs/economy-v4.md §4.1）：
+     玩法是两段式：
        第一段「把维度推到 3」—— 98% 的死宇宙要做，**有确定答案，100% 有解**，所以是一键；
        第二段「调其余参数」—— 做完第一段 58% 的人已经赢了，剩下的才是真正的博弈。
      stageOf() 就是这两段加上"赢了"和"真死局"的四选一。 */
@@ -2526,7 +2526,7 @@
     if (!box.solved()) { win.hidden = true; win.innerHTML = ''; return; }
     win.hidden = false;
     /* 赢了要**当场判赢**，而且要说清它是怎么赢的：
-       58% 的人推完维度就直接活了（specs/economy-v4.md §4.1），
+       58% 的人推完维度就直接活了，
        那一刻界面必须立刻说"活了"，不能让人自己去仪表盘里数门。 */
     /* ARCBANG：拯救整套下线，沙盒是纯玩法 —— 这里不再报费用，也没有销毁可言。 */
     win.innerHTML = '<div class="mi-win-t">' + esc(T('活了 —— 这个宇宙能诞生观察者。')) + '</div>' +
@@ -2569,12 +2569,12 @@
   }
 
   /* 新手模式的主动作：不用读懂任何东西，点一下就替他推对的那一格。
-     它不是作弊 —— tools/bnb-intervene.js 的贪心爬山本来就是"玩家的下限"，
+     它不是作弊 —— 半径表的离线标定脚本 的贪心爬山本来就是"玩家的下限"，
      这个按钮只是把下限交到手上，剩下的判断（推几格、什么时候收手）还是玩家的。 */
   /**
    * 第一步的主动作：一键把维度推到 3。
    *
-   * 这不是替玩家作弊 —— 这一步**本来就有确定答案**（specs/economy-v4.md §4.1 实测 100% 有解），
+   * 这不是替玩家作弊 —— 这一步**本来就有确定答案**，
    * 让玩家在 23 个旋钮里先猜出弦气那三个、再猜出该推几百格，那不是难度，是折磨。
    * 真正的博弈在第二步：推完维度还有 42% 的宇宙没活，那一段没有解析解。
    *
@@ -2755,14 +2755,14 @@
 
   /* ---------------------------------------------------------- 铸成造物（MirrorCrafted）
 
-     specs/crafted-v1.md §五：沙盒里调教出来的宇宙铸进独立的造物合约 ——
+独立的造物合约 ——
      原生系列铸的是「哈希派生的原样」，造物铸的是「哈希 + 这一串位移」。
      链上只存 originHash + opsHash + cardHash，任何人拿区块哈希和位移记录
      都能把参数复算出来，可验证性不降级。
 
      流程照市场页 BANG 单的两段式（web/market.html 的 buy()，「买入双路径」那段）：
        ① POST /api/craft {blockHash, ops} —— 费用**绝不带上**：
-          服务端对带 cost 的请求明着拒（specs/server-side.md C3，费用只能服务端算并签名）；
+          服务端对带 cost 的请求明着拒；
        ② 查 BANG allowance(owner=用户, spender=造物合约)，不够先 approve ——
           **只批本单 cost，不批无限**：合约只会为这一单扣钱，多批的额度
           只是白留一个永久的口子（照 market.html 命名那一步的规矩）；
@@ -2787,8 +2787,8 @@
   var SEL_ALLOWANCE = '0xdd62ed3e';   // allowance(address,address)
   var SEL_APPROVE = '0x095ea7b3';     // approve(address,uint256)
   var SEL_BALANCEOF = '0x70a08231';   // balanceOf(address)
-  /* signer() —— 造物合约的签名闸（contracts/src/MirrorCrafted.sol 65 行）。
-     选择器与 web/deploy.html 的 SEL 表同一份（那边 477 行写着同一个数）。 */
+  /* signer() —— 造物合约的签名闸（MirrorCrafted 65 行）。
+     选择器与部署向导的 SEL 表同一份。 */
   var SEL_SIGNER = '0x238ac933';
 
   /* ---------- 发交易前的预检（2026-08-21 加）
@@ -2801,7 +2801,7 @@
        ① 发任何交易之前，把「必败」的原因用人话说出来（signer 闸、BANG 余额、模拟回滚）；
        ② 真发的每一笔都带显式 gas（估值 ×1.3 封顶 1e6），**绝不让钱包自己瞎填**。 */
 
-  /** mintCrafted 会撞上的自定义错误（contracts/src/MirrorCrafted.sol 104–113 行）
+  /** mintCrafted 会撞上的自定义错误（MirrorCrafted 104–113 行）
       + Solidity 内置的 Panic。模拟 eth_call 回滚时把 revert data 前 4 字节
       对照这张表翻成人话；选择器用 web/keccak-lite.js 现算，不写死 ——
       合约改签名这里自动跟上，keccak 缺席时查不到就原样展示 hex。 */
@@ -2984,7 +2984,7 @@
   }
   function craftSpin(text) { craftSay('<i class="mi-spin"></i>' + esc(text), ''); }
 
-  /* 「广播」链接的委托（specs/share-referral-v1.md §五）：铸成那行话术由 render()
+  /* 「广播」链接的委托：铸成那行话术由 render()
      每帧按 S.craftMsg 重写 innerHTML，元素上的监听器活不过一帧，所以挂在 doc 上认 id。
      广播现场（S.craftShare）在铸成那一刻存好，浮层本体在 web/arc-ui.js（BnbShare）。 */
   if (doc && doc.addEventListener) {
@@ -2996,7 +2996,7 @@
     });
   }
 
-  /* 造物入口的三种状态（specs/crafted-v1.md §五）：
+  /* 造物入口的三种状态：
        未部署（CONFIG.crafted 空）或一格没推 → 整行**不出现**：
          前者照 bangNames 的先例（config 空 = 入口不存在），
          后者是服务端的硬规矩 ——「一格都没推：原生宇宙请走普通铸造，造物必须有位移」；
@@ -3033,7 +3033,7 @@
          走的是另一套合约、另一套经济；隔壁那条主路动的才是原生系列。
          原来这句结尾是「你原来那枚不受影响」——「铸下并拯救」上线之后它就不成立了：
          主路现在也对**一枚都没有**的用户开着，那种人根本没有"原来那枚"
-         （specs/rescue-mint-unified.md 文案节）。改成说两条产品线互不相干。 */
+         。改成说两条产品线互不相干。 */
       p.innerHTML = TN('铸一枚<b>新的</b> NFT（造物系列）：费用 <b>{n} BANG</b>，20% 销毁 / 80% 进国库，与原生系列互不相干',
         esc(bangText(box.costBang())));
     }
@@ -3165,7 +3165,7 @@
         craftSay(esc(T('铸造交易被链上回滚了 —— 多半是签名过期或这张卡已经铸过，重新点一次再试')), 'warn');
       } else {
         /* 铸造序号从回执的 Transfer 事件里挖（造物合约、from=0 的那条）。
-           挖不到也不拦广播 —— 文案退回不带编号的那句（specs/share-referral-v1.md §五）。 */
+           挖不到也不拦广播 —— 文案退回不带编号的那句。 */
         var tid = null;
         try {
           var TR = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
@@ -3179,7 +3179,7 @@
         /* 广播现场存在 S 上、链接走**委托**（见 craftShareWire）：这一行话术是
            craftSay 落进 S.craftMsg 的，render() 每一帧都会拿它重写 innerHTML，
            直接 addEventListener 活不过下一帧。 */
-        /* no / cardHash 是 specs/broadcast-v2.md 那一轮加的，**两个都可以缺**：
+        /* no / cardHash 是 那一轮加的，**两个都可以缺**：
              no      = 起源区块号，广播链接优先用它（/s/<区块号> 比 /s/<66 位哈希> 短得多）；
                        服务端签名时就给了 originBlock，这里顺手带上，缺了就退回哈希。
              cardHash= 分享图的索引。造物干预过，参数已经不是起源区块那一套了，
@@ -3220,7 +3220,7 @@
        拯救（这里）   改写**你已经持有的那枚原生 NFT**：MirrorUniverse.intervene()。
                       费用 **100% 销毁**（burnFeeBps 默认 0，上限也只有 10%），
                       烧掉的量永久累加进 burnedOn[id] —— 那是整个项目里唯一真正稀缺的凭证
-                      （contracts/src/MirrorUniverse.sol「干预记录」那一段：区块不稀缺，
+                      （MirrorUniverse「干预记录」那一段：区块不稀缺，
                       现存 1.17 亿个还在长；烧掉的币才稀缺）。这枚 NFT 的 cardOf、结局和
                       稀有度都会**真的被改写**，市场上看到的就是新的。
        铸成造物       铸一枚**新的**第二套 NFT（MirrorCrafted），20% 烧 / 80% 进国库，
@@ -3279,7 +3279,7 @@
     try { if (K && K.keccak256) return K.keccak256(sig).slice(0, 10); } catch (e) { /* 落到写死的那份 */ }
     return MU_SELS[sig];
   }
-  /* Minted 事件的 topic0（contracts/src/MirrorUniverse.sol 298 行）：
+  /* Minted 事件的 topic0（MirrorUniverse 298 行）：
        event Minted(uint256 indexed id, uint8 rarity, bool paidWithBang)
      **刚铸出来的那一枚是几号，只能从这里读。** 不许用 totalSupply() 猜：
      并发下同一个区块里可能有别人也在铸，猜出来的号是别人的 NFT，
@@ -3311,7 +3311,7 @@
     return a.length > 12 ? a.slice(0, 6) + '…' + a.slice(-4) : a;
   }
 
-  /** intervene 会撞上的自定义错误（contracts/src/MirrorUniverse.sol 303–315 行）
+  /** intervene 会撞上的自定义错误（MirrorUniverse 303–315 行）
       + BangToken 的 Insufficient（burnFrom / transferFrom 会从代币合约里抛上来）
       + Solidity 内置的 Panic。翻译机制与造物那张表同一套 —— craftRevertHex /
       craftDecodeStr 是通用件（名字带 craft 只是因为先写在那儿），只有表不一样。 */
@@ -3367,7 +3367,7 @@
     if (p) { p.className = 'mi-craftp' + (cls ? ' ' + cls : ''); p.innerHTML = html; }
   }
   function rescueSpin(text) { rescueSay('<i class="mi-spin"></i>' + esc(text), ''); }
-  /* 带进度的那一版（specs/rescue-mint-unified.md）。**这条不是装饰。**
+  /* 带进度的那一版。**这条不是装饰。**
      EVM 改不了「铸造 / 授权 / 干预各是一笔交易」这件事，所以「铸下并拯救」这一次点击
      背后钱包会依次弹三次；界面上不写清楚现在是第几步，连弹三次只会让人以为出错了、
      半路关掉窗口 —— 而那正是最坏的结局：铸造已经上链，拯救停在半路。
@@ -3437,7 +3437,7 @@
     });
   }
 
-  /* 主按钮走哪条路（specs/rescue-mint-unified.md 的那张表）。
+  /* 主按钮走哪条路。
      **判断只能有一处** —— renderRescue 和点击分发要是各判一遍，两边迟早漂移，
      而漂移的后果是"看到的按钮和实际发生的事不是一回事"。
 
@@ -3545,7 +3545,7 @@
         + ' · <a href="#" id="miRescueRetry">' + esc(T('重试')) + '</a>';
     } else if (mode === 'mint') {
       /* 原来这一格只有一句「你可以先铸下它」，按钮**根本不出现** —— 推活了却拿不走，
-         那是条断头路（specs/rescue-mint-unified.md「现在错在哪」）。现在它是主路，
+         那是条断头路。现在它是主路，
          这一句要把两段代价一次说清：铸造免费期只花 gas，拯救烧的是 BANG。 */
       p.innerHTML = esc(T('先把这个宇宙铸成你的 NFT（免费额度内只花 gas），'))
         /* ARCBANG：费用是 native USDC，全额打进销毁地址 */
@@ -3662,7 +3662,7 @@
 
     rescueStep(sA, sN, T('正在向服务端要签名…'));
     /* body：{blockHash, tokenId, oldCardHash, ops}，已连钱包时再带小写 minter。
-       费用**绝不带上**：服务端对带 cost 的请求明着拒（specs/server-side.md C3）。 */
+       费用**绝不带上**：服务端对带 cost 的请求明着拒。 */
     var extra = null, minter = String(from || '').toLowerCase();
     if (/^0x[0-9a-f]{40}$/.test(minter)) extra = { minter: minter };
     return api.intervene(ctx.hash, tokenId.toString(), ctx.oldCard, ctx.ops, extra)
@@ -3840,7 +3840,7 @@
 
   /* ---------------------------------------------------------- 铸下并拯救（新的主路）
 
-     用户拍板（specs/rescue-mint-unified.md）：「拯救+铸造应该是一体的」「实际上就是一个操作」。
+     用户拍板：「拯救+铸造应该是一体的」「实际上就是一个操作」。
      所以这条路**只让用户点一次**：中途不做任何决策、不填任何东西、不回别的页面。
      EVM 改不了三件事各是一笔交易，钱包会依次弹三次 —— 那是硬约束，
      但界面必须全程写清楚现在是第几步（rescueStep），否则连弹三次就是"出错了"的样子。
@@ -4051,7 +4051,7 @@
       var why = (e && e.code === 4001) ? T('你在钱包里取消了') : String((e && e.message) || e);
       if (S.mintDone) {
         /* **铸造那一笔是实打实拿到东西的。** 这里绝不能笼统说一句"失败了"，
-           那会让用户以为钱白花了（specs/rescue-mint-unified.md 第 5 条点名要演练这条）。
+           那会让用户以为钱白花了。
            说清三件事：它已经是你的了、拯救为什么没完成、它现在还是原始状态、去哪儿重来。 */
         var idTxt = S.mintDone.uni;                  // 主编号 = 区块号，不是 tokenId
         rescueSay((idTxt != null

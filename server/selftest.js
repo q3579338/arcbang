@@ -1,5 +1,5 @@
 /*
- * 服务端自检 —— 对着 specs/server-side.md 的验收表逐条跑
+ * 服务端自检 —— 对着 的验收表逐条跑
  * 用法：node selftest.js  （不需要服务在跑；需要联网的那两条会自己跳过并说明）
  */
 'use strict';
@@ -923,7 +923,7 @@ function call(method, url, body, headers) {
     String(attr(noRarity.meta, 'Rarity')));
 
   /* ---------------------------------------------------------------- 名字
-     BangNames（contracts/src/BangNames.sol）—— 烧 BANG 给宇宙命名，
+     BangNames（BangNames）—— 烧 BANG 给宇宙命名，
      BANG 的第二条销毁通路。**它是纯附加的一层**：没配、配错、读不到，
      metadata 的其余部分一个字都不许变。
      这里要盯的还是那句老话：**链上说什么就是什么，读不准的宁可不印** ——
@@ -1455,7 +1455,7 @@ function call(method, url, body, headers) {
 
   console.log('\n[广播 PNG] 分享图：出图、缓存、并发闸、依赖缺失退通用图');
   {
-    /* specs/broadcast-v2.md §2.1。多数平台不认 SVG（X 明确不支持，微信也不认），
+    /*。多数平台不认 SVG（X 明确不支持，微信也不认），
        所以每条 .svg 都配一条 .png。这一节盯死四件事：
        出的是真 PNG、第二次走缓存、同一张图并发只渲一次、依赖没了也**绝不 500**。 */
     const PNG = require('./png.js');
@@ -1559,7 +1559,7 @@ function call(method, url, body, headers) {
 
   console.log('\n[广播 落地页] /s/<区块号>：真页面，爬虫与人拿同一份');
   {
-    /* specs/broadcast-v2.md §2.2 方案 A 的演进版。app.html 是 SPA，静态 HTML 里的 og 是死的，
+    /*。app.html 是 SPA，静态 HTML 里的 og 是死的，
        所以服务端单开这条路：真实 og + 真页面（不再自动跳转，见 landing.js）。 */
     const { OUTCOME_EN } = require('./art.js');
     const savedBBN = chainMod.blockByNumber;

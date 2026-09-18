@@ -13,7 +13,7 @@
  * 要联调铸造流程时整块替换 chain + rpc。
  */
 window.ARCBANG_CONFIG = {
-  /* 服务端 API 前缀。引爆的计算和出图都在那边（specs/server-side.md）。
+  /* 服务端 API 前缀。引爆的计算和出图都在那边。
      同域部署时保持 '/api'；本地联调改成 'http://127.0.0.1:8801/api'。 */
   apiBase: '/api',
   /* 留空 = 跟着访问者当前的域名走。 */

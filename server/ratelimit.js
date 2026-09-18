@@ -1,7 +1,7 @@
 /*
  * 限流 —— 免费引爆的那道闸
  * ------------------------------------------------------------
- * 为什么需要它（specs/economy-v4.md §七「关于算法保密」）：
+ * 为什么需要它：
  * 免费引爆**本身就是扫描接口**。用户不需要拿到推导算法，挨个哈希点引爆、
  * 服务端把结局告诉他、他只 mint 好的即可。把算法藏在服务端没堵住这条路，
  * 只是把扫描的算力成本转嫁到了我们的服务器上。
@@ -113,7 +113,7 @@ function take(key, limit, windowMs, hash) {
 }
 
 /* ---------------------------------------------------------------- 客户端 IP
-   nginx（web/nginx-test.satloot.com.conf）在 Cloudflare 后面：
+   nginx（web/nginx-arcbang.xyz.conf）在 Cloudflare 后面：
      real_ip_header CF-Connecting-IP;          ← $remote_addr 已经是真实访客
      proxy_set_header X-Real-IP $remote_addr;  ← **覆盖**客户端带来的同名头
      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; ← 末尾追加 $remote_addr

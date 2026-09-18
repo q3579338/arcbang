@@ -356,7 +356,7 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
     + (miss.length ? '：缺 ' + miss.slice(0, 5).join('、') : ''));
 
   /* c. 一个 bnbbang 仓库的链接都不许有（2026-09-17 用户拍板：本站独立） */
-  /* 这几个仓库名**拼出来**，不写成整串字面量：导出脚本（tools/export-arcbang.js）会把
+  /* 这几个仓库名**拼出来**，不写成整串字面量：从前那个导出脚本会把
      导出树里所有文本过一遍 repoify()，整串写在这里的话，这个判据自己会被改成 arcbang，
      于是「有没有 bnbbang 链接」变成「有没有 arcbang 链接」，整节反着报。踩过一次。 */
   var BAD_REPO = new RegExp(['bnbbang', '-engine|bnbbang', '-economy|mirror-universe-', 'BNBBANG'].join(''));

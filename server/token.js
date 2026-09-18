@@ -19,7 +19,7 @@ const { OUTCOME_EN, craftedBurnOf, craftedBurnLabel } = require('./art.js');
 
 const sel = (sig) => keccakId(sig).slice(0, 10);
 
-/* 命名合约（contracts/src/BangNames.sol）。**独立于 NFT 合约，可以不配**：
+/* 命名合约（BangNames）。**独立于 NFT 合约，可以不配**：
    没设这个环境变量时，metadata 里就是没有名字这一条，别的一个字都不变。
    它是 BANG 的第二条销毁通路，和 cardOf / 稀有度 / 结局 / 出图全都不相干。
 
@@ -199,7 +199,7 @@ function buildMetadata(chain, deps) {
            两种情况下**任何一张图都是假的**：印当前版本的参数是拿另一个宇宙换掉他买到的那个，
            印 NOT DETONATED 又是在否认他确实盖过章、烧过币。
            所以宁可不给 image —— 让它在市场上显示成缺图，而不是显示成一个错的宇宙。
-           （specs/economy-v4.md §六 对第 1 种的处置就是"老卡标记为 v1 宇宙，不重算"。） */
+            */
         source = 'unknown';
       }
     }
@@ -311,7 +311,7 @@ function buildMetadata(chain, deps) {
 
 /**
  * MirrorCrafted.cardOf 返回值。8 槽取 burned；7 槽（旧字节码）burned=null，不报错。
- * 字段序照 contracts/src/MirrorCrafted.sol:41-50。
+ * 字段序照 MirrorCrafted:41-50。
  */
 function parseCraftedCard(raw) {
   const originHash = asHash(word(raw, 0));

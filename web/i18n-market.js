@@ -240,10 +240,10 @@
     '非零，表示这枚 NFT 的参数是服务端算过并签过名的； 「已烧」=':
       'in the contract is non-zero, meaning this NFT\'s parameters were computed and signed by the server; "Burned" =',
     /* 唯一性口径 2026-08-21 改定：**不是全站唯一，是本系列内唯一** ——
-       原生 BangNames 与造物 BangNames2 是两套独立名册（specs/crafted-names-v1.md §四）。 */
+       原生 BangNames 与造物 BangNames2 是两套独立名册。 */
 
     /* ================================================================ 命名
-       烧 BANG 给宇宙命名（contracts/src/BangNames.sol）。功能的来由是《镜子》
+       烧 BANG 给宇宙命名（BangNames）。功能的来由是《镜子》
        第八章白冰那句「我要把这组创世参数记下来」——**引文本身也要翻**，
        它是这个弹窗的第一句话，不是装饰。 */
     '命名': 'Names',                       // 配置条上那一枚 chip（合约名，与「命名已销毁」区分）
@@ -313,7 +313,7 @@
     '链上读不到 totalBurnedForNames': 'totalBurnedForNames could not be read on-chain',
 
     /* ================================================================ 造物系列
-       第二套 721（contracts/src/MirrorCrafted.sol，specs/crafted-v1.md）：
+       第二套 721（MirrorCrafted）：
        沙盒里干预后的宇宙。config.js 的 crafted 没配时这些词条一条都不会上屏。
        「全部」在 i18n-app.js 里已有（'All'），按第 1 条规矩不重复收。 */
     '造物': 'Crafted',                     // 徽标 / 筛选分段 / 下拉分组 / 配置条 chip，同一个词
@@ -345,12 +345,12 @@
       'The burn share cannot be read (burnBps) — only the total paid is shown; the burned part is not guessed',
     '链上读不到 cardOf 的 paid': 'paid in cardOf cannot be read on-chain',
 
-    /* ================================================================ 广播与推广（specs/share-referral-v1.md）
+    /* ================================================================ 广播与推广
        激励口径 2026-08-21 定稿：说费率（10%/5%）、说人工核对、说专款与反女巫；
        绝不说「自动到账 / 立即到账」。文案是长句，整句进词典，别拆开拼。 */
     '广播': 'Broadcast',
     '再引爆看看': 'Detonate it again',
-    /* 拯救入口（specs/rescue-entry.md）。术语跟 i18n-tools.js 定的一致：
+    /* 拯救入口。术语跟 i18n-tools.js 定的一致：
        rescue = 救 / 拯救，burn = 烧（不是 spend）。
        「拯救」这个词个人中心那张持仓卡也用，i18n-site.js 里收的是**同一句英文** ——
        两处值一样，i18n.js 的撞车警告不会响；哪天要改，两处一起改。 */
@@ -369,7 +369,7 @@
        中英同形不进词典，进词典的只有这两条。与 app 分册（i18n-app.js）同句同译。 */
     '微博': 'Weibo',
     '复制链接': 'Copy link',
-    /* ---- 广播 v2（specs/broadcast-v2.md §三/§四）：复制带图、微信二维码。
+    /* ---- 广播 v2：复制带图、微信二维码。
        市场页与 web/arc-ui.js 的广播浮层共用这几条 —— 本分册的抬头就说了它管两处。 */
     '复制文案和图片': 'Copy text and image',
     '正在准备图片…': 'Preparing the image…',
@@ -408,7 +408,7 @@
       'No universes match these filters — hit "Clear filters" to see everything.',
 
     /* ================================================================ 物理参数筛选与排序
-       specs/market-physics-filter.md 第三节。维度那一组是**人话**，不是让人填数字，
+。维度那一组是**人话**，不是让人填数字，
        所以英文也别退回 "dim=3" 这种参数写法。「全部」在 i18n-app.js 里已有（'All'），
        按第 1 条规矩不重复收。 */
     '维度': 'Dimension',

@@ -26,7 +26,7 @@
   读失败 / 404 一律显示「统计生成中」，不报错。这是刻意的时序容错，别“修”掉。
 
   选择器照 market.html 的先例离线算好写死（复核命令见 SEL 的注释）。
-  合约地址全部来自 web/config.js，没配的块显示「还没配置」，页面其余照常。
+  合约地址全部来自 web/config.arc.js，没配的块显示「还没配置」，页面其余照常。
 -->
 <!-- 主题要在首屏绘制前定下来，否则闪一下浅色再跳深色；全站唯一一份实现在 ui/theme.js。
      构建时 web/build-web.js 把这个路径改写成同目录的 theme.js。 -->
@@ -140,7 +140,7 @@ button.sm{height:30px;padding:0 11px;font-size:12px}
 .refedit input:focus{outline:none;border-color:var(--cyan-line)}
 /* 短码那一行的回话既报错也报成功，所以配一个 .ok（.err 早就有了） */
 .ok{color:var(--green)}
-/* 邀请奖励 + 我邀请的人（specs/profile-referral-v2.md）。奖励数字复用 .balgrid/.bal
+/* 邀请奖励 + 我邀请的人。奖励数字复用 .balgrid/.bal
    那一套；这里只补列表自己的。行内允许 wrap —— 375 宽不给横滚留口子（同 .refcode 的思路），
    地址已缩短显示、时间一小段，换行也只是掉到下一行，不溢出。 */
 .grantnote{margin:8px 0 0;font-size:12px;color:var(--dim);line-height:1.6}
@@ -164,7 +164,7 @@ button.sm{height:30px;padding:0 11px;font-size:12px}
   transition:border-color .15s,box-shadow .15s,transform .15s}
 .pcard:hover{border-color:var(--cyan-line);box-shadow:var(--shadow-card),0 0 14px var(--cyan-bg);
   transform:translateY(-1px)}
-/* 原生卡底多了一条「拯救」链接（specs/rescue-entry.md §4），所以整张卡不能再是
+/* 原生卡底多了一条「拯救」链接，所以整张卡不能再是
    一个 <a> —— <a> 里嵌 <a> 是非法的，浏览器会当场把它拆开。改成：卡是 <div>，
    缩略图+编号那块归 .pcardlink，「拯救」是与它并列的第二条链接。
    造物卡没有拯救通路，仍然是整张 <a class="pcard">，两种写法共用同一套盒子样式。 */
@@ -326,7 +326,7 @@ footer a{color:var(--cyan)}
     return '';
   })();
   /* ---------------------------------------------------------- 链身份
-     唯一真相来源是 config.js 的 chain 块（specs/mainnet-ready.md）；**派生只有一份**，
+     唯一真相来源是 config.js 的 chain 块；**派生只有一份**，
      在 web/nav.js 里（五个站点页共用）。这里不再抄一份兜底 —— 抄一份就是
      「改了一处漏三处」，正是这轮改造要拔掉的病。nav.js 本来就是本页的硬依赖
      （顶栏是它挂的），它不在的话页面在 MirrorNav.mount() 那一行就已经停了。 */
@@ -342,7 +342,7 @@ footer a{color:var(--cyan)}
        node -e "var K=require('./web/keccak-lite.js'); console.log(K.keccak256('burnedOn(uint256)').slice(0,10))"   // → 0xffeb9ad4
        node -e "var K=require('./web/keccak-lite.js'); console.log(K.keccak256('cardOf(uint256)').slice(0,10))"     // → 0xc22b8d82
      其余把签名换掉同法复核。注意：MirrorUniverse.cardOf 返回一个 bytes32，
-     MirrorCrafted.cardOf 返回 8 槽的 Card 结构体（旧字节码 7 槽；字段序照 contracts/src/MirrorCrafted.sol：
+     MirrorCrafted.cardOf 返回 8 槽的 Card 结构体（旧字节码 7 槽；字段序照 MirrorCrafted：
      originHash / opsHash / cardHash / outcome / rarity / originBlock / paid）——
      选择器相同，解码不同。 */
   var SEL = {
@@ -619,17 +619,9 @@ footer a{color:var(--cyan)}
     });
   }
 
-  /* 来源标签（specs/btcbang-v1.md §三）：BTC 宇宙两站都写「₿ #N」，BNB 宇宙在 BTCBANG 站写「BNB #N」，
-     在 bnbbang.com 上照旧裸「#N」。**只信服务端索引**（/api/market/owned 的 native 条目带 origin），
-     不按前导零猜（规格 §1.1）。索引问不到就不标，页面照常。市场页 originTag 同一口径。 */
-  var SITE = String(CFG.site || 'bnb');
-  var ORIGIN = {};                                      // tokenId -> 'btc' | 'bnb'
-  function originTag(id) {
-    var o = ORIGIN[String(Number(id))];
-    if (o === 'btc') return '₿ ';
-    if (o === 'bnb' && SITE === 'btc') return 'BNB ';
-    return '';
-  }
+  /* 来源标签：本站只有 Arc 一种来源，编号一律裸「#N」。市场页 originTag 同一口径。 */
+  var ORIGIN = {};                                      // tokenId -> 服务端索引给的来源标记
+  function originTag() { return ''; }
   function loadOrigins() {
     var a = S.account;
     if (!a) return;
@@ -714,7 +706,7 @@ footer a{color:var(--cyan)}
     } catch (e) { done(null); }
   }
 
-  /* 邀请奖励（链上已发放）+ 一级/二级邀请列表（specs/profile-referral-v2.md）。
+  /* 邀请奖励（链上已发放）+ 一级/二级邀请列表。
      时序容错照 loadReferrals() 的同一套：404 / 网络失败 / 形状不认识，一律
      安静地当「还没有数据」，不弹错、不显示红字。 */
   function loadReferralGrants() {
@@ -748,7 +740,7 @@ footer a{color:var(--cyan)}
   }
 
   /* ============================================================ 推广短码
-     specs/share-referral-v1.md §8。8 位定长、字符集去掉 O/0/I/1、一地址一码。
+。8 位定长、字符集去掉 O/0/I/1、一地址一码。
      GET 是**幂等**的：这个地址没有码时服务端当场生成一个并落盘，所以进这一页
      就等于领了码，不用单独一个「生成」按钮。
      问不到（服务端没上线 / 网络不通）就是 null —— 链接退回 ?ref=<地址> 的长形式，
@@ -835,7 +827,7 @@ footer a{color:var(--cyan)}
     cell($('pRef1'), S.ref && S.ref.l1);
     cell($('pRef2'), S.ref && S.ref.l2);
   }
-  /* 邀请奖励 + 邀请列表（specs/profile-referral-v2.md）。
+  /* 邀请奖励 + 邀请列表。
      奖励三态照 balHtml() 的现成模式：undefined = 读取中，null = 链上查询暂不可用，
      字符串 = 正常显示 —— "0" 也是 0 BANG，不藏、不省略。 */
   function shortAddr(a) { return a.slice(0, 6) + '...' + a.slice(-4); }
@@ -886,7 +878,7 @@ footer a{color:var(--cyan)}
     if (img) return '<img class="pthumb" loading="lazy" alt="' + esc(alt) + '" src="' + esc(img) + '">';
     return '<div class="pthumb"></div>';
   }
-  /* 「拯救」直达（specs/rescue-entry.md §4）。**与市场卡同一条路、同一句文案**：
+  /* 「拯救」直达。**与市场卡同一条路、同一句文案**：
      app.html?bang=<blockHash>&fix=1 —— 落地那边（web/arc-ui.js 的 deepLink）
      引爆完直接把干预沙盒开出来，不用再自己在 3D 里找 HUD 上那颗按钮。
 
@@ -1094,7 +1086,7 @@ footer a{color:var(--cyan)}
   });
 
   /* ------------------------------------------------------------ 短码：换一个 / 自定义
-     认领必须**验签**（specs/share-referral-v1.md §8.2）：没有签名的话任何人都能把
+     认领必须**验签**：没有签名的话任何人都能把
      别人的短码改到自己名下 —— 短码是拿返利的凭据，那等于把别人的推广收益转走。
      要签的那句话服务端定死了：`BNBBANG refcode <CODE> <Unix 秒>`，
      差一个空格都验不过，所以这里一个字符都不许自己发挥。

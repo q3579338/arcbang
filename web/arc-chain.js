@@ -8,7 +8,7 @@
  * 读链走公开 RPC（不需要钱包，未连钱包也能浏览）；写链走小狐狸。
  *
  * API：
- *   CHAIN                       链参数（全部从 web/config.js 的 chain 块派生）
+ *   CHAIN                       链参数（全部从 web/config.arc.js 的 chain 块派生）
  *   chainName()                 界面上给人看的链名（跟随当前语言）
  *   rpc(method, params)         直连公开 RPC
  *   latestBlockNumber()  blockHashOf(n)  blockAt(n)
@@ -26,7 +26,7 @@
   var CFG = root.ARCBANG_CONFIG || {};
 
   /* ---------------------------------------------------------- 链身份
-     唯一真相来源是 web/config.js 的 chain 块（specs/mainnet-ready.md）。
+     唯一真相来源是 web/config.arc.js 的 chain 块。
      这一层只做派生：id → hex、currency 字符串 → 钱包要的 nativeCurrency 结构、
      isTestnet → 水龙头给不给。**这个文件里不再有任何写死的链名或浏览器域名。**
      老的 config.js 没有 chain 块时：rpc 像主网就按主网身份兜底，否则按测试网；
@@ -73,7 +73,7 @@
     if (missing && !root.__bnbbangChainWarned) {
       root.__bnbbangChainWarned = 1;
       if (root.console && root.console.warn) {
-        root.console.warn('[config] web/config.js 里没有 chain 块，按 RPC 推断链身份 —— 换链请改那一块（specs/mainnet-ready.md）');
+        root.console.warn('[config] web/config.arc.js 里没有 chain 块，按 RPC 推断链身份 —— 换链请改那一块');
       }
     }
     var c = raw || {};
@@ -115,7 +115,7 @@
   function chainName() {
     return (root.MirrorI18n && root.MirrorI18n.lang() === 'en') ? CC.nameEn : CC.name;
   }
-  var CONTRACT = CFG.contract || '';                // 部署后填进 web/config.js
+  var CONTRACT = CFG.contract || '';                // 部署后填进 web/config.arc.js
 
   /* ============================================================ RPC
      2026-09-02 改：① 每次 fetch 8 秒超时 —— 国内被 DNS 污染的节点一挂就是十几秒，页面整段「读不到」；
@@ -258,7 +258,7 @@
 
   /* ============================================================ 合约读 */
   function needContract() {
-    if (!CONTRACT) throw new Error('合约地址还没配置（web/config.js 里的 contract）');
+    if (!CONTRACT) throw new Error('合约地址还没配置（web/config.arc.js 里的 contract）');
     return CONTRACT;
   }
   function call(sig, argsHex) {
@@ -275,7 +275,7 @@
     return call('totalSupply()', '').then(function (r) { return decUint(r); });
   }
   /* 免费期还剩多少枚。合约里是 freeCap - totalSupply（发完返回 0）。
-     v5 起 price() 就是付费期的一口价（specs/economy-v5.md §二：固定 0.01，不分档）——
+     v5 起 price() 就是付费期的一口价——
      签名路和 bang() 那条不带签名的路收的是同一个数。 */
   function freeLeft() {
     return call('freeLeft()', '').then(function (r) { return decUint(r); });

@@ -1,7 +1,7 @@
 /*
  * 市场索引层 —— 后台跟事件，前端只打一页 API
  * ============================================================================
- * specs/market-index-v1.md 第一、二节。目标：挂单一百万也能开得动市场页。
+ *。目标：挂单一百万也能开得动市场页。
  *
  * 一条贯穿全文件的纪律：**索引只服务「看」，不服务「写」**。
  * 铸造（/api/bang）、干预（/api/intervene）、造物（/api/craft）三条链路
@@ -17,7 +17,7 @@
  * ----------------------------------------------------------------------------
  * 为什么不用 chain.js 的 overNodes
  * ----------------------------------------------------------------------------
- * 它没导出，而 specs/market-index-v1.md 划死了改动边界（只许新建本文件与测试文件、
+ * 它没导出，而 划死了改动边界（只许新建本文件与测试文件、
  * 在 index.js 挂三条路由）。chain.js 导出了 RPCS 与 ethCall，够用：
  * eth_getLogs 这边自己轮换节点（它需要比 8 秒更长的超时、和不一样的重试口径），
  * 元数据补齐直接复用 ethCall。
@@ -43,7 +43,7 @@ const CFG = {
   universe: lc(process.env.ARCBANG_CONTRACT),
   crafted: lc(process.env.ARCBANG_CRAFTED),
   names: lc(process.env.ARCBANG_NAMES),      // BangNames  → 原生宇宙的名字
-  names2: lc(process.env.ARCBANG_NAMES2),    // BangNames2 → 造物的名字（specs/crafted-names-v1.md）
+  names2: lc(process.env.ARCBANG_NAMES2),    // BangNames2 → 造物的名字
   /* 起点：合约部署高度。没配就从当前高度往回 50,000 块 ——
      BSC 三秒一块，五万块约等于 41 小时，够覆盖「今天刚部署」这个常态。
      真上主网时必须显式配部署高度，否则每次冷启动都白扫五万块。 */
@@ -85,7 +85,7 @@ const CFG = {
   logTimeoutMs: 20000,
   staleAfterMs: 90000,     // 这么久没有一轮成功的扫描就报 stale
 
-  /* ---- 物理字段（specs/market-physics-filter.md 第一节） ----
+  /* ---- 物理字段 ----
      physColdBudget：一次 ensureMeta 里最多允许几次**冷算**（.cache 里没有、
        必须真跑一遍引擎的 buildCard，实测 14 ms/次）。热的（缓存命中）不占预算。
        没这道闸的话，一次带筛选的冷请求会考察 metaFilterBudget=600 个候选，
@@ -775,7 +775,7 @@ function chunkRanges(from, to, span) {
      data-seed-prebsc-2-s1.bnbchain.org:8545 同上
 
    也就是说 data-seed 那两条**根本不提供日志查询**，不是「跨度超了」——
-   它们对任何 eth_getLogs 都回同一句 limit exceeded。web/config.js 里
+   它们对任何 eth_getLogs 都回同一句 limit exceeded。web/config.arc.js 里
    把它们列为 RPC 备份是对的（eth_call 它们答得好好的），但索引这一侧
    一旦 publicnode 挂掉就等于全挂：那时候索引停在原地并报 stale，
    市场页走前端的直读降级 —— 这是设计内的降级，不是 bug。
@@ -1011,7 +1011,7 @@ function mintStatusOf(blockHash) {
 }
 
 /**
- * 反查表里已铸宇宙的高度，可按哈希筛（BTCBANG 拿它数「注册表认得的哈希」）。
+ * 反查表里已铸宇宙的高度，可按哈希筛。
  * 没有 blockNumber 的记录（旧格式缓存）跳过。
  * @param {function|null} pred (blockHash, rec) → 要不要；null = 全部
  * @returns {Array<{n:number, at:number|null, hash:string}>}
@@ -1132,7 +1132,7 @@ function decString(raw) {
 const soft = { nullOnRevert: true };
 
 /* ============================================================ 物理字段
-   specs/market-physics-filter.md 第一节。用户要按**维度和卡面上印的那几个常数**
+。用户要按**维度和卡面上印的那几个常数**
    筛选排序，而这些东西链上一个都没有 —— 它们是引擎从区块哈希推出来的。
 
    三条纪律：
@@ -1253,7 +1253,7 @@ let physBudget = 0;
 function resolvePhys(kind, rec) {
   const ch = rec && rec.cardHash;
   /* 1) 存档优先。**造物系列的参数只在这儿** —— 它是沙盒里推出来的，
-        区块哈希复算不出来（specs/market-physics-filter.md 第一节末）。
+        区块哈希复算不出来。
         被干预救过的原生卡同理：cardOf 已经改写，按 blockHash 算出来的是老宇宙。 */
   if (ch) {
     const archived = srcStoreGet(ch);
@@ -1393,7 +1393,7 @@ async function fetchMeta(token, tokenId, prev) {
   if (kind === 'crafted') {
     /* MirrorCrafted.cardOf(id) → 8 槽 Card（旧字节码 7 槽，burned 落 null）：
          0 originHash  1 opsHash  2 cardHash  3 outcome  4 rarity  5 originBlock  6 paid  7 burned
-       字段序照 contracts/src/MirrorCrafted.sol:41-50，只许往末尾追加。
+       字段序照 MirrorCrafted:41-50，只许往末尾追加。
        老缓存没 burned 键时必须重读一次，否则造物 Card 永久有效会把「未知」钉死。 */
     const keepCard = prev && prev.perm && prev.cardHash != null
       && Object.prototype.hasOwnProperty.call(prev, 'burned');
@@ -1443,7 +1443,7 @@ async function fetchMeta(token, tokenId, prev) {
 
 /**
  * 批量补齐一页的元数据。**一次补一页，不是一枚一个 RPC 往返** ——
- * 那正是 specs/market-scale.md 第三条病灶要消灭的东西。
+ * 那正是。
  * @param {Array<{token:string,tokenId:string}>} pairs
  */
 async function ensureMeta(pairs) {
@@ -1619,7 +1619,7 @@ function parseSet(s, lo, hi) {
   return out.size ? out : null;
 }
 
-/* ---- 物理筛选的入参解析（specs/market-physics-filter.md 第二节） ---- */
+/* ---- 物理筛选的入参解析 ---- */
 
 const NUMRE = '\\d+(?:\\.\\d+)?';
 /**
@@ -1696,7 +1696,7 @@ const isPhysSort = (s) => s === 'dim_asc' || s === 'dim_desc' || s === 'const_as
 /**
  * GET /api/market/listings 的实现。
  * @param {object} q sort/series/cur/rarity/outcome/named/page/size
- *                   + dim / const+min+max / by / dev（specs/market-physics-filter.md 第二节）
+ *                   + dim / const+min+max / by / dev
  */
 async function listingsPage(q) {
   q = q || {};
@@ -1825,7 +1825,7 @@ async function listingsPage(q) {
 /**
  * GET /api/market/owned?addr=… 的实现。
  * **这一条替代前端「倒扫 totalSupply + 逐个 ownerOf」** ——
- * 那条路在十万枚时是十万次 RPC，浏览器直接死（specs/market-scale.md 第一条病灶）。
+ * 那条路在十万枚时是十万次 RPC，浏览器直接死。
  */
 async function ownedOf(addrRaw) {
   const addr = lc(addrRaw);
@@ -1996,7 +1996,7 @@ module.exports = {
   /* Arc（无币版市场）那一套。marketTopics() 现读 env 决定这条链查哪些 topic。 */
   ARC_TOPICS, ARC_EVENT_SIGS, ARC_CHAIN_IDS, isArcChain, marketTopics,
   decodeMirrorMarketLog, decodeArcMarketLog,
-  /* 物理字段（specs/market-physics-filter.md）。setCardSource 由 index.js 在
+  /* 物理字段。setCardSource 由 index.js 在
      模块加载时调用，把带磁盘缓存的 cardFor/storeGet/cardCached 注进来 ——
      **服务端内部直调 card.js，不走 HTTP 自己打自己**。 */
   setCardSource, CONST_KEYS,

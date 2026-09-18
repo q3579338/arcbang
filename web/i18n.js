@@ -72,8 +72,8 @@
     '确认': 'Confirm',
     '加载中…': 'Loading…',
     '出错了': 'Something went wrong',
-    /* 链名不再进词典：它是**数据**，来源是 web/config.js 的 chain 块
-       （specs/mainnet-ready.md）——中文态取 chain.name、英文态取 chain.nameEn，
+    /* 链名不再进词典：它是**数据**，来源是 web/config.arc.js 的 chain 块
+       ——中文态取 chain.name、英文态取 chain.nameEn，
        页面按语言现挑一个。原来这里的 'BSC 测试网' / 'BNB Smart Chain 测试网' /
        '这是测试网' 三条已随之删掉：留着就是在词典里再写死一次链名，
        换主网那天必然有人只改 config.js、改不到这里。 */

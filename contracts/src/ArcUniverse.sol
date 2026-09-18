@@ -285,7 +285,7 @@ contract ArcUniverse {
         if (blockHash == bytes32(0)) revert BadHash();
         if (tokenOfHash[blockHash] != 0) revert AlreadyBanged();
         if (outcome > 11) revert BadOutcome();
-        /* 总量封顶（specs/economy-v5.md §2）。第 1,707,000 枚能铸，第 1,707,001 枚不行。
+        /* 总量封顶。第 1,707,000 枚能铸，第 1,707,001 枚不行。
            放在这里而不是 _settle 里：封顶是"这枚 NFT 存不存在"的事，
            跟用什么付钱无关，两条付款路都得挡。 */
         if (totalSupply >= MINT_CAP) revert MintCapReached();
@@ -360,7 +360,7 @@ contract ArcUniverse {
      * 铸造封顶了没有。**BangToken.sealRewards() 的触发条件就是这一个 bool**：
      * 铸满 1,707,000 枚之后，任何人都能去把剩余的铸造额度永久作废。
      * 放在这里而不是让代币自己数：只有 NFT 合约知道铸了多少枚，
-     * 而 MINT_CAP 只存在于这一处，不复制第二份（specs/economy-v5.md §3.2 的同一条道理）。
+     * 而 MINT_CAP 只存在于这一处，不复制第二份。
      */
     function mintCapReached() external view returns (bool) {
         return totalSupply >= MINT_CAP;

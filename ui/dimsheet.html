@@ -41,7 +41,7 @@ canvas{display:block;max-width:100%}</style>
     });
   }
 
-  fetch('/contracts/out/samples/dims/results.json').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
+  fetch('/维度抽样的结果表on').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
   .then(function (stats) {
     var byD = {}; stats.forEach(function (s) { byD[s.D] = s; });
     return Promise.all(LIST.map(function (D) {

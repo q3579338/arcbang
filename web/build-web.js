@@ -84,7 +84,7 @@ const LAYER = [
   // ARCBANG 专属词条：那些「付 USDC / Arc 区块 / 没有代币」的句子
   'web/i18n-arc.js',
   'web/' + ST.config,
-  // engine/arcbang-hash.js 已经不打进站点包：爆炸的计算搬到服务端了。
+  // engine/archash.js 已经不打进站点包：爆炸的计算搬到服务端了。
   // 浏览器只需要 keccak256 来算 ABI 选择器，那是个哈希函数，泄露不了参数映射。
   // 多钱包发现要排在 arc-chain 之前：后者的 eth() 会问它选了哪个
   'web/wallet.js',
@@ -218,7 +218,8 @@ function siteify(h) {
   const headEnd = h.indexOf('</head>');
   if (headAt < 0 || headEnd < 0) return h;
   let head = h.slice(headAt, headEnd);
-  /* ld+json 里的域名与站名也要换：市场页等静态页的结构化数据写的是 bnbbang.com */
+  /* ld+json 里的站点根与站名按 ST 表统一（源文件里写的已经就是本站，这一步现在是空操作，
+     换域时只改 ST.base 一处） */
   head = head.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, (s) =>
     s.replace(/https:\/\/bnbbang\.com\//g, ST.base + '/').replace(/BNBBANG(?![_A-Za-z0-9])/g, ST.name));
   head = head.replace(/<title>[^<]*<\/title>|<(?:meta|link)\b[^>]*>/g, (tag) =>
@@ -299,7 +300,7 @@ ST.pages.forEach(([srcF, dstF]) => {
 
 /* 首页图廊（web/assets/gallery/）：模拟器实况截图 + index.json（每张的区块号 / 哈希 / 结局 / 视图）。
    整目录原样拷进 dist/assets/gallery/ —— 文件清单是写死的，新目录不进这里就永远上不了线
-   （scp -r web/dist/. 会连子目录一起推，tools/deploy-site.sh 的「文件齐全」也查它）。
+   （web/deploy-site-arc.sh 用 tar 整目录推，子目录一起带走）。
    HTML 里对图片的每一处引用（src / srcset / data-full）都打内容指纹 ?v=：理由同 config.js，
    Cloudflare 对图片默认缓得更久，换了图旧图还在边缘节点上活着。 */
 const GAL_SRC = path.join(__dirname, 'assets', 'gallery');

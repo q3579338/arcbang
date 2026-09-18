@@ -68,7 +68,7 @@ function inIndexSet(height, minted) {
 }
 
 /**
- * 名单 ∪ 已铸 → 升序去重的 [{n, at}]。纯函数，btc 站（specs/btcbang-v1.md）拿它合自己那套
+ * 名单 ∪ 已铸 → 升序去重的 [{n, at}]。纯函数，btc 站拿它合自己那套
  * 名单（创世 / 减半 / 名块）与已铸的比特币宇宙，规则与这里一字不差。
  * @param {number[]} curated              名单里的高度（无时间戳）
  * @param {Array<{n:number,at:number|null}>} minted  已铸的

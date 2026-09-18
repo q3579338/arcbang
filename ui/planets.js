@@ -347,7 +347,7 @@
      M 矮星（⟨M⟩≈0.3 M☉）热木星出现率 0.11%（Obermeier et al. 2016, AJ 152, 223），
      FGK（⟨M⟩≈0.85 M☉）0.43%（Fressin 2013）–1.2%（Wright et al. 2012, ApJ 753, 160），
      取 0.8% 则 ln(0.8/0.11)/ln(0.85/0.3) ≈ 1.9；方向与 Johnson et al. 2010（巨行星出现率随 M★ 上升）一致。
-     系数按"雪线外有可迁移巨行星的系统占比"标定，实测见 specs/object-diversity.md A.8。 */
+     系数按"雪线外有可迁移巨行星的系统占比"标定，实测 A.8。 */
   var HJ_MIG_K = 0.135, HJ_MIG_EXP = 1.9;
   function hjMigrateProb(hostMass) { return clamp(HJ_MIG_K * Math.pow(Math.max(hostMass, 0.05), HJ_MIG_EXP), 0, 0.25); }
   var HJ_NOTE = '热木星：形成于雪线以外，靠盘内迁移或高偏心率迁移 + 潮汐圈化进到恒星跟前，' +
@@ -5164,7 +5164,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
         var t = terrainMetersAt(maps, S.vp, latDeg * DEG, lonDeg * DEG, surfOct());
         return { m: t.m, water: t.water, oct: surfOct(), normEpsM: normEpsOf(S.vp), rangeM: S.vp.rangeM };
       },
-      // 验证钩子：同步渲染当前帧并导出 PNG（默认 POST 到同源 /__save，由 tools/serve.js 写入 research/shots/；也可只取 dataUrl）
+      // 验证钩子：同步渲染当前帧并导出 PNG（默认 POST 到同源 /__save，由 本地静态服务器 写入 research/shots/；也可只取 dataUrl）
       exportPNG: function (name, o) { o = o || {}; frameOnce(performance.now()); var dataUrl; try { dataUrl = canvas.toDataURL('image/png'); } catch (e) { return Promise.reject(e); }
         if (o.dataUrlOnly || !name) return Promise.resolve({ dataUrl: dataUrl, w: W, h: H });
         if (typeof fetch !== 'function') return Promise.resolve({ dataUrl: dataUrl, w: W, h: H, saved: false });
@@ -5441,7 +5441,7 @@ else if (code === 'Minus' || code === 'NumpadSubtract') { rebuildDemo(demo.D, de
     createView: createView, renderOceanWorld: renderOceanWorld,
     getMaps: getMaps, buildPalette: buildPalette, terrainMetersAt: terrainMetersAt, citiesFor: cityListFor,
     city: { plan: cityPlan, warp: cityWarpAt, buildings: buildingsFor, radiusM: cityRadiusM },   // Node 侧校验用（不依赖 GPU）
-    // 天体种类与比例（specs/object-diversity.md A 节）：Node 侧统计校验用
+    // 天体种类与比例：Node 侧统计校验用
     stellar: { imfSample: imfSample, imfTable: imfTable, spectralOf: spectralOf, starClassOf: starClassOf, sptName: sptName, bbColor: bbColor, brownDwarf: brownDwarf, evolveStar: evolveStar, msLifeGyr: msLifeGyr, remnantKind: remnantKind, variableOf: variableOf, starMassWindow: starMassWindow, starLifeSolar: starLifeSolar, PM13: PM13, IMF_BREAKS: IMF_BREAKS, MULT_NOTE: MULT_NOTE },
     planetTypes: { KEPLER_CLASSES: KEPLER_CLASSES, keplerClass: keplerClass, planetRadiusRel: planetRadiusRel, planetMassEarth: planetMassEarth, tidalLockAU: tidalLockAU, diskOf: diskOf, gasCloudClass: gasCloudClass, applyGasLook: applyGasLook,
       sublimationAU: sublimationAU, rocheAU: rocheAU, hotJupiterPeriodD: hotJupiterPeriodD, hjMigrateProb: hjMigrateProb, migrateInnerGiant: migrateInnerGiant, T_SUBLIM_K: T_SUBLIM_K, HJ_PILEUP_D: HJ_PILEUP_D, HJ_NOTE: HJ_NOTE,

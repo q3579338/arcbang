@@ -533,8 +533,8 @@
   function tt(zh) { return root.MirrorI18n ? root.MirrorI18n.t(zh) : zh; }
   function ttf(zh, a) { return tt(zh).split('{0}').join(String(a)); }
 
-  /* ============================================================ 链身份（specs/mainnet-ready.md）
-     唯一真相来源是 web/config.js 的 chain 块；**派生只有这一份**，首页 / 市场 /
+  /* ============================================================ 链身份
+     唯一真相来源是 web/config.arc.js 的 chain 块；**派生只有这一份**，首页 / 市场 /
      经济 / 状态 / 个人中心五个页面都调 MirrorNav.chain()，各自不再抄一遍。
      抄一遍就是「改了一处漏三处」，而这正是这轮改造要拔掉的病。
      （模拟器那条线走 web/arc-chain.js 自己那份 —— 链访问层不该反过来依赖顶栏这个
@@ -584,7 +584,7 @@
     if (missing && !root.__bnbbangChainWarned) {
       root.__bnbbangChainWarned = 1;
       if (root.console && root.console.warn) {
-        root.console.warn('[config] web/config.js 里没有 chain 块，按 RPC 推断链身份 —— 换链请改那一块（specs/mainnet-ready.md）');
+        root.console.warn('[config] web/config.arc.js 里没有 chain 块，按 RPC 推断链身份 —— 换链请改那一块');
       }
     }
     var c = raw || {};

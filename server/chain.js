@@ -1,7 +1,7 @@
 /*
  * 链上查询 —— 只做一件事：这个哈希到底是不是本链上的一个区块
  * ------------------------------------------------------------
- * specs/server-side.md 的 C3：查不到就拒绝，**绝不回退常量**。
+ * 的 C3：查不到就拒绝，**绝不回退常量**。
  * 回退常量意味着一个凭空编造的哈希也能算出一个宇宙来，那这个项目就没有意义了。
  */
 'use strict';
@@ -27,7 +27,7 @@ function redactUrl(u) {
    模块被 require 时不退出（selftest 要先设 env 再加载）。 */
 const RPCS = splitUrls(process.env.ARCBANG_RPC);
 /* 付费/归档节点专供 eth_getLogs。公共节点经常能 eth_call 却拒日志查询
-   （specs/market-index-v1.md「公共 RPC 日志能力实测」）。索引层优先用它。 */
+   。索引层优先用它。 */
 const LOG_RPCS = splitUrls(process.env.ARCBANG_LOG_RPC);
 
 const CHAIN_ID = process.env.ARCBANG_CHAIN_ID != null && process.env.ARCBANG_CHAIN_ID !== ''

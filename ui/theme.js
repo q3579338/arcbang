@@ -8,7 +8,7 @@
  *      @media (prefers-color-scheme: dark) :root:not([data-theme="light"]) 两路覆盖。
  * 本文件在文档头部同步执行：首屏绘制前 data-theme 就已就位，不会闪白/闪黑。
  * **三个页面都引它**（index.html 直接引 ui/theme.js；web/market.html 与
- * web/economy.html 引 ../ui/theme.js，构建时被 web/build-web.js 改写成同目录的
+ * 各独立页引 ../ui/theme.js，构建时被 web/build-web.js 改写成同目录的
  * theme.js）—— 这是全站唯一一份主题实现，别处不许再写第二套。
  *
  * 右下角那颗浮动小按钮 #themeToggle：**默认不再注入**。
@@ -41,7 +41,7 @@
     var m = mql();
     return (m && m.matches) ? 'dark' : 'light';
   }
-  /* MIRROR_LIGHT_ONLY（bang.satloot.com 等新站，build-web 在 <head> 首行打的标记）：一律浅色，
+  /* MIRROR_LIGHT_ONLY（build-web 在每个产物 HTML 的 <head> 首行打的标记）：一律浅色，
      不读记忆、不跟随系统 —— 用户 2026-09-08 定的规矩「新做的网站默认浅色，不要跟随系统深色」。 */
   function resolve() { if (window.MIRROR_LIGHT_ONLY) return 'light'; return readStored() || systemTheme(); }
 
