@@ -2815,8 +2815,11 @@
     '  {',
     '    vec4 f0=fieldAt(n,uOct);',
     '    vec3 up=abs(n.y)<0.999?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0); vec3 T=normalize(cross(up,n)); vec3 B=cross(n,T);',
+    /* 中心点也必须用同一个函数取高度：拿 fieldGrad 的邻点去减 fieldAt 的中心点，
+       差值里会混进「两档细节 vs 六档细节」的系统性偏差，再除以极小的 uEps 就炸了 —— 近景会糊成一张平面。 */
+    '    float h0g=fieldGrad(n);',
     '    float hx=fieldGrad(normalize(n+T*uEps)), hy=fieldGrad(normalize(n+B*uEps));',
-    '    float hs=uHRange/uPlanetR*uSlope; float dhx=(hx-f0.x)*hs/uEps, dhy=(hy-f0.x)*hs/uEps;',
+    '    float hs=uHRange/uPlanetR*uSlope; float dhx=(hx-h0g)*hs/uEps, dhy=(hy-h0g)*hs/uEps;',
     '    Surf S=shadeSurface(n,f0,1.0);',
     '    if(uDetail>0.02){ const float EB=0.0025; float b0=surfBump(n);',
     '      float bx=surfBump(normalize(n+T*EB)), by=surfBump(normalize(n+B*EB));',
