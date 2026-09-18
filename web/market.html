@@ -47,11 +47,11 @@
     burnedOn(id)  这枚 token 累计烧掉多少 BANG
     rescueOf(id)  救活记录，at != 0 就是全场最稀缺的东西，页面上给金色
 
-  为什么是自带脚本的单文件，而不是 <script src="bnb-chain.js">：
-    bnb-chain.js 开头是 `var K = root.MirrorKeccak;`，它算函数选择器要那份 keccak256
+  为什么是自带脚本的单文件，而不是 <script src="arc-chain.js">：
+    arc-chain.js 开头是 `var K = root.MirrorKeccak;`，它算函数选择器要那份 keccak256
     （web/keccak-lite.js）。市场页只想一个文件一次 scp 就能发，所以照 deploy.html 的
     先例走：**选择器离线算好写死**（见下方 SEL 注释里的命令），手写 ABI 编解码、
-    公开 RPC 轮换、小狐狸连接与切链这些手法全部沿用 bnb-chain.js。
+    公开 RPC 轮换、小狐狸连接与切链这些手法全部沿用 arc-chain.js。
     推导（区块哈希→参数）已经搬到服务端，浏览器里不再有 MirrorBnbHash，这一页也不需要它。
 
   唯一的外部脚本是同目录的 config.js（合约地址与 RPC 列表）；它取不到时页面
@@ -360,7 +360,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 /* 广播浮层 外观 v3（用户 2026-08-21「做好看、科幻」）：玻璃拟态半透面板 +
    顶缘扫描光 + hover 发光描边。颜色一处不写死，全走 tokens.css —— 深色主题里
    --cyan 是亮紫，发光描边自然亮；浅色主题里同一套令牌退成干净的白卡淡描边。
-   ⚠ web/bnb-ui.js 的 .bshare-* 是同款一份（app 页的浮层长在那边），
+   ⚠ web/arc-ui.js 的 .bshare-* 是同款一份（app 页的浮层长在那边），
    改这里要连那边一起改 —— 先例见本页 qrEncode 的说明。 */
 #sharePop{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:shareFade .15s ease-out}
 #sharePop.closing{opacity:0;transition:opacity .15s ease-in}
@@ -394,7 +394,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 /* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页没有模拟器画面，
    这里摆的就是要发出去的卡面 PNG（懒加载：浮层开了 fillShare 才填 src）。
    右下角来源小签压在图上，图是深底星空，签的底色写死深色不走令牌。
-   ⚠ web/bnb-ui.js 的 .bshare-shot 是同款一份，改一处连另一处一起改。 */
+   ⚠ web/arc-ui.js 的 .bshare-shot 是同款一份，改一处连另一处一起改。 */
 .share-shot{position:relative;margin:0;padding:6px;background:var(--panel2);
   border:1px solid var(--line-soft);border-radius:var(--radius-btn)}
 .share-shot[hidden]{display:none}
@@ -664,7 +664,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   </div>
 
   <!-- ============================ 广播浮层（specs/share-referral-v1.md §二/§三 + broadcast-v2.md §三/§四） ============================
-       外观 v3（用户 2026-08-21「做好看、科幻」）：与 web/bnb-ui.js 的 .bshare-* 浮层**同款**
+       外观 v3（用户 2026-08-21「做好看、科幻」）：与 web/arc-ui.js 的 .bshare-* 浮层**同款**
        （渠道、图标、样式改一处连另一处一起改，先例见本页 qrEncode 的说明）。
        渠道链接全部是纯 intent URL、零 SDK，href 由 fillShare() 填，点击前零对外请求；
        一律 <a target=_blank rel="noopener noreferrer"> 普通新标签页 —— 不用 window.open 弹小窗
@@ -734,12 +734,12 @@ img.uthumb[data-view]{cursor:zoom-in}
 'use strict';
 /* ============================================================================
    市场页脚本。ES5 风格（var / 具名函数 / 不用箭头与模板串），与 web/ 下现有文件一致。
-   BigInt 用了字面量（10n），和 bnb-chain.js、deploy.html 里的写法一致。
+   BigInt 用了字面量（10n），和 arc-chain.js、deploy.html 里的写法一致。
    ============================================================================ */
 (function () {
 
   /* ------------------------------------------------------------ 配置 */
-  var CFG = window.BNBBANG_CONFIG || {};
+  var CFG = window.ARCBANG_CONFIG || {};
   var ADDR = {
     universe: addr(CFG.contract),
     bang:     addr(CFG.bangToken),     // ERC-20 BANG，见 specs/economy-v4.md §1
@@ -978,7 +978,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       function (e) { S.rpcDown = !(e && e.rpc && rpcIsRevert({ code: e.rpcCode, message: e.message })); return null; });
   }
 
-  /* ============================================================ ABI 编解码（手写，同 bnb-chain.js） */
+  /* ============================================================ ABI 编解码（手写，同 arc-chain.js） */
   function pad(h) { return String(h).replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
   function encUint(v) { return pad(BigInt(v).toString(16)); }
   function encAddr(a) { return pad(String(a || '').replace(/^0x/, '')); }
@@ -2318,7 +2318,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 
   /* ============================================================ 写链（钱包） */
   /* 走 web/wallet.js 选中的那个 provider，退路才是 window.ethereum ——
-     与 bnb-chain.js 的 eth() 同一个口径：连的是币安钱包，发交易就得对币安钱包说。 */
+     与 arc-chain.js 的 eth() 同一个口径：连的是币安钱包，发交易就得对币安钱包说。 */
   function eth() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum; }
   /* 切链 / 加链的实现在 web/wallet.js（MirrorWallet.ensureChain，本页第 82 行就载了它）：
      按最严的钱包清洗参数、加完重核 chainId、失败给人话。链参数从本页的 CHAIN 现读传过去。
@@ -2476,7 +2476,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      带 og 标签给爬虫，随后把人跳到 app.html），所以这里要的是 origin，
      不是当前页面所在的目录。取不到就返回空串，调用方据此退回老的
      app.html?bang=… 形式 —— 那条路在任何部署下都成立（file://、localhost、子目录）。
-     和 web/bnb-ui.js 的 siteRoot() 同一口径；本页是自带脚本的独立单文件，
+     和 web/arc-ui.js 的 siteRoot() 同一口径；本页是自带脚本的独立单文件，
      所以各留一份（理由见页头说明）。 */
   function siteRoot() {
     if (CFG.siteBase) return String(CFG.siteBase).replace(/\/+$/, '');
@@ -2552,7 +2552,7 @@ img.uthumb[data-view]{cursor:zoom-in}
           否则看起来就是卡死。
      ClipboardItem 收 Promise<Blob>：这是唯一能跨过"必须在用户手势里写剪贴板"
      那道闸的写法，所以图片的 fetch **直接当值传进去**，不要先等它再构造。
-     与 web/bnb-ui.js 里那份同一口径（本页是独立单文件，各留一份）。 */
+     与 web/arc-ui.js 里那份同一口径（本页是独立单文件，各留一份）。 */
   function copyTextAndImage(text, imgUrl) {
     var nc = navigator.clipboard, CI = window.ClipboardItem;
     if (!nc) return Promise.reject(new Error('no-clipboard'));
@@ -2586,7 +2586,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      算法照 ISO/IEC 18004：分块 RS 纠错 → 交织 → 锯齿排布 → 八种掩模取罚分最低。
      返回 { size, version, mask, rows }，rows[r][c] 为 1 表示黑。
 
-     ⚠ web/bnb-ui.js 里有**逐字相同的一份**。本页是自带脚本的独立单文件
+     ⚠ web/arc-ui.js 里有**逐字相同的一份**。本页是自带脚本的独立单文件
      （理由见页头说明），而 web/build-web.js 的文件清单是写死的，
      新开一个 web/qr.js 就得改构建 —— 所以两处各留一份，**改一处要连另一处一起改**。 */
   function qrEncode(text) {
@@ -2892,7 +2892,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       si.removeAttribute('src');
     }
     /* 渠道链接（全部纯 intent URL、零 SDK、点击前零对外请求；一律普通新标签页，
-       与 web/bnb-ui.js 的 openShare 同一张表 —— 改一处连另一处一起改）：
+       与 web/arc-ui.js 的 openShare 同一张表 —— 改一处连另一处一起改）：
          X        https://x.com/intent/tweet?text=<正文含链接>
                   （x.com 就是「浏览器的 X」——twitter.com 那个域只是多一跳重定向）
          Telegram https://t.me/share/url?url=&text=（正文不带链接，链接单独给）
@@ -2981,7 +2981,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       drawQr();
     };
   }
-  /* 关闭带 150ms 收场过渡（与 web/bnb-ui.js 的 closeShare 同款）；
+  /* 关闭带 150ms 收场过渡（与 web/arc-ui.js 的 closeShare 同款）；
      prefers-reduced-motion（或老浏览器没有 matchMedia）直切。
      定时器句柄留着给 openShare 掐 —— 收场没走完就再开一张卡时不许把新浮层藏掉。 */
   var SHARE_CLOSE_T = null;
@@ -3025,7 +3025,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
 
   /* 「拯救」直达（specs/rescue-entry.md §1/§2）：和「再引爆」同一条深链、同一个
-     参数名，只多一个 fix=1 —— 落地那边（web/bnb-ui.js 的 deepLink）看到它就把
+     参数名，只多一个 fix=1 —— 落地那边（web/arc-ui.js 的 deepLink）看到它就把
      干预沙盒直接开出来，省掉「自己进 3D、在 HUD 上找那颗按钮」这两步。
      一样不带 ref：这是自己去救自己的宇宙，不是广播。 */
   function gotoRescue(idSpec) {
@@ -3977,7 +3977,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     syncThemeUI();          // 设置浮层里的三选一 + 那个不显示的旧切换按钮，一起对上当前主题
     renderConfigBar();
     renderAll();                                   // 先把空架子画出来，别让人对着白屏等 RPC
-    if (!window.BNBBANG_CONFIG) {
+    if (!window.ARCBANG_CONFIG) {
       toast(function () { return T('站点配置没读到 —— 合约都还没接上，先用公开节点浏览'); }, 'warn');
     }
     if (eth() && eth().request) {

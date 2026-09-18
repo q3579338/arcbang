@@ -1,10 +1,14 @@
 /*
- * BNBBANG 服务端
+ * ARCBANG 服务端
  * ------------------------------------------------------------
- * 跑在 127.0.0.1:8801，由 nginx 以 /api/ 反代出去（见 web/nginx-test.satloot.com.conf）。
- * 职责三件：算 card、盖章（签名）、出图。规格见 specs/server-side.md。
+ * 跑在 127.0.0.1:8801（ARCBANG_PORT 可改），由 nginx 以 /api/ 反代出去
+ * （见 web/nginx-arcbang.xyz.conf）。
+ * 职责三件：算 card、盖章（签名）、出图。
  */
 'use strict';
+/* 环境变量旧名兼容（BNBBANG_* → ARCBANG_*）。**必须排在所有 require 之前** ——
+   下面每个模块都在自己的顶层就把 env 读进常量了。 */
+require('./env-compat.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -40,18 +44,18 @@ const chainMod = require('./chain.js');
 const MI = require('./marketindex.js');
 /* 算卡线程池（server/cardpool.js）。**require 它不会起任何线程** —— 线程是第一次
    真要算卡时才惰性起的，而且闲着时 unref，所以 selftest 直接 require 本文件不会
-   被它钉住不退出。BNBBANG_CARD_WORKERS=0 可以整个关掉，退回主线程同步算。 */
+   被它钉住不退出。ARCBANG_CARD_WORKERS=0 可以整个关掉，退回主线程同步算。 */
 const CARDPOOL = require('./cardpool.js');
 const { envInt } = require('./envint.js');
 
-const PORT = envInt(process.env.BNBBANG_PORT, 8801, 1, 65535);
-const CONTRACT = (process.env.BNBBANG_CONTRACT || '').toLowerCase();
-const PUBLIC_BASE = process.env.BNBBANG_PUBLIC_BASE || '';
-const CACHE_DIR = process.env.BNBBANG_CACHE || path.join(__dirname, '.cache');
-const STORE_DIR = process.env.BNBBANG_STORE || path.join(__dirname, '.store');
+const PORT = envInt(process.env.ARCBANG_PORT, 8801, 1, 65535);
+const CONTRACT = (process.env.ARCBANG_CONTRACT || '').toLowerCase();
+const PUBLIC_BASE = process.env.ARCBANG_PUBLIC_BASE || '';
+const CACHE_DIR = process.env.ARCBANG_CACHE || path.join(__dirname, '.cache');
+const STORE_DIR = process.env.ARCBANG_STORE || path.join(__dirname, '.store');
 
 if (!/^0x[0-9a-f]{40}$/.test(CONTRACT)) {
-  console.error('必须设 BNBBANG_CONTRACT（合约地址）—— 签名要绑死它，否则能被喂给别的合约');
+  console.error('必须设 ARCBANG_CONTRACT（合约地址）—— 签名要绑死它，否则能被喂给别的合约');
   process.exit(1);
 }
 
@@ -61,26 +65,26 @@ function serverEnvErrors(opts) {
   opts = opts || {};
   const id = opts.chainId != null ? Number(opts.chainId) : CHAIN_ID;
   const publicBase = opts.publicBase != null ? opts.publicBase : PUBLIC_BASE;
-  const indexFrom = opts.indexFrom != null ? opts.indexFrom : process.env.BNBBANG_INDEX_FROM;
-  const vault = String(opts.referralVault != null ? opts.referralVault : (process.env.BNBBANG_REFERRAL_VAULT || '')).toLowerCase();
+  const indexFrom = opts.indexFrom != null ? opts.indexFrom : process.env.ARCBANG_INDEX_FROM;
+  const vault = String(opts.referralVault != null ? opts.referralVault : (process.env.ARCBANG_REFERRAL_VAULT || '')).toLowerCase();
   const errs = chainConfigErrors({
     chainId: id,
     rpcs: opts.rpcs || undefined,
     logRpcs: opts.logRpcs || undefined
   });
   if (!publicBase) {
-    errs.push('BNBBANG_PUBLIC_BASE 必须显式配置（主网 https://bnbbang.com），禁止默认测试域名');
+    errs.push('ARCBANG_PUBLIC_BASE 必须显式配置（主网 https://bnbbang.com），禁止默认测试域名');
   } else if (id === 56 && /satloot|testnet/i.test(publicBase)) {
-    errs.push('主网 BNBBANG_PUBLIC_BASE 不能是测试域名：' + publicBase);
+    errs.push('主网 ARCBANG_PUBLIC_BASE 不能是测试域名：' + publicBase);
   }
   if (id === 56) {
     if (!(Number(indexFrom) > 0)) {
-      errs.push('主网必须设 BNBBANG_INDEX_FROM=合约部署高度，禁止默认回看 50000 块');
+      errs.push('主网必须设 ARCBANG_INDEX_FROM=合约部署高度，禁止默认回看 50000 块');
     }
     if (!/^0x[0-9a-f]{40}$/.test(vault)) {
-      errs.push('主网必须设 BNBBANG_REFERRAL_VAULT（返利金库地址），禁止测试网默认值');
+      errs.push('主网必须设 ARCBANG_REFERRAL_VAULT（返利金库地址），禁止测试网默认值');
     } else if (vault === '0x052e9c4bc320706e1bdb1bae618256f54b5ae4a5') {
-      errs.push('主网 BNBBANG_REFERRAL_VAULT 不能是测试网默认金库');
+      errs.push('主网 ARCBANG_REFERRAL_VAULT 不能是测试网默认金库');
     }
   }
   return errs;
@@ -187,8 +191,8 @@ const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
    「这一签会不会是免费的」按合约当下状态判（totalSupply < freeCap 且 freeMintCount(minter) < freePerAddr），
    四个 view 都读不到（RPC 抖动）就当付费放行 —— 宁可漏一个，不能把真人拦在门外。
    同一地址在窗口内反复取签（铸造前必须再签一次）只扣一次（take 的 hash 去重）。
-   只在 Arc 链生效；BNBBANG_FREE_PER_IP_DAY=0 关掉。 */
-const FREE_PER_IP_DAY = (() => { const n = Number(process.env.BNBBANG_FREE_PER_IP_DAY); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 3; })();
+   只在 Arc 链生效；ARCBANG_FREE_PER_IP_DAY=0 关掉。 */
+const FREE_PER_IP_DAY = (() => { const n = Number(process.env.ARCBANG_FREE_PER_IP_DAY); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 3; })();
 const FREE_SEL = { totalSupply: '0x18160ddd', freeCap: '0x69b126ef', freePerAddr: '0x21daa6e7', freeMintCount: '0x5ecf8a80' };
 async function wouldBeFreeMint(minter) {
   const to = CONTRACT;
@@ -222,7 +226,7 @@ function json(res, code, obj, headers) {
 }
 
 /* ---------------------------------------------------------------- 管理员 IP 门
-   /api/admin-check、/deploy-gate、/api/referrals 共用。BNBBANG_ADMIN_IPS：逗号分隔
+   /api/admin-check、/deploy-gate、/api/referrals 共用。ARCBANG_ADMIN_IPS：逗号分隔
    的白名单；**没配就一律不是管理员**。真正的链上权限（owner / 受益人）不在这，
    但这扇门一旦被伪造头骗开，访客就能拿到 deploy.html 和全站邀请汇总。
 
@@ -233,7 +237,7 @@ function json(res, code, obj, headers) {
    所以 X-Real-IP / XFF 末跳就是那一个地址，不必再去信可伪造的那两头。 */
 function clientIpOf(req) { return RL.ipOf(req); }
 function adminAllowed(ip) {
-  const allow = String(process.env.BNBBANG_ADMIN_IPS || '')
+  const allow = String(process.env.ARCBANG_ADMIN_IPS || '')
     .split(',').map(s => s.trim().replace(/^::ffff:/i, '')).filter(Boolean);
   return !!ip && ip !== 'unknown' && allow.indexOf(ip) >= 0;
 }
@@ -379,7 +383,7 @@ const cardInflight = new Map();
  * 同步读盘、同步 parse、同步返回），只有未命中才把「派生 + 引擎 + 拼 card」
  * 这段纯计算丢进 worker 线程池，算完照旧落盘。
  *
- * 线程池关掉（BNBBANG_CARD_WORKERS=0）或自保退回时，buildCardJSON 就在主线程
+ * 线程池关掉（ARCBANG_CARD_WORKERS=0）或自保退回时，buildCardJSON 就在主线程
  * 同步算完再交出一个 resolved promise —— 行为与 cardFor 逐字节相同。
  *
  * 为什么不干脆把 cardFor 也改成异步：marketindex.js 那条注入（MI.setCardSource）
@@ -449,7 +453,7 @@ MI.setCardSource({ cardFor, storeGet, cardCached });
 /* 上线预约（server/subscribe.js）：tool 站等「即将开放」页留邮箱。 */
 const SUB = require('./subscribe.js').create({ storeDir: STORE_DIR, take: RL.take });
 /* 卡死报告（server/stall.js）：前端看门狗抓到的现场，用户点一下发过来。
-   配了 BNBBANG_RESEND_KEY 才发邮件；没配就只落盘，启动日志里说一声。 */
+   配了 ARCBANG_RESEND_KEY 才发邮件；没配就只落盘，启动日志里说一声。 */
 const STALL = require('./stall.js').create({ storeDir: STORE_DIR, take: RL.take });
 
 /* ---------------------------------------------------------------- 路由 */
@@ -540,7 +544,7 @@ async function handle(req, res, u) {
 
   /* GET /deploy-gate —— 部署页本体从这里发。nginx 把 location = /deploy.html
      反代到这条路由（配置不在本仓库），于是：
-       白名单命中 → 200，正文就是 BNBBANG_WEBROOT/deploy.html 的内容；
+       白名单命中 → 200，正文就是 ARCBANG_WEBROOT/deploy.html 的内容；
        未命中     → 200，正文换成公开的系统状态页（status.html）——
                     访客照旧拿不到向导 HTML 的一个字节，但也不再被 302 弹回首页，
                     同一个 URL 两副面孔：管理员见操作台，访客见舷窗。
@@ -550,7 +554,7 @@ async function handle(req, res, u) {
      所有分支都 no-store：这条路的答案跟着请求方 IP 走，缓存哪个都是错的。 */
   if (p === '/deploy-gate') {
     if (!adminAllowed(clientIpOf(req))) {
-      const pub = path.join(process.env.BNBBANG_WEBROOT || '/var/www/bnbbang', 'status.html');
+      const pub = path.join(process.env.ARCBANG_WEBROOT || '/var/www/bnbbang', 'status.html');
       try {
         const html = await fs.promises.readFile(pub, 'utf8');
         return send(res, 200, html, {
@@ -560,7 +564,7 @@ async function handle(req, res, u) {
         return send(res, 302, '', { location: '/', 'cache-control': 'no-store' });
       }
     }
-    const file = path.join(process.env.BNBBANG_WEBROOT || '/var/www/bnbbang', 'deploy.html');
+    const file = path.join(process.env.ARCBANG_WEBROOT || '/var/www/bnbbang', 'deploy.html');
     try {
       /* 80 KB 的单文件，整读比流式省掉"发了一半才炸、500 发不出去"那档故障；
          读失败（WEBROOT 配错、文件没部署）必须是 500 不是进程崩。 */
@@ -570,7 +574,7 @@ async function handle(req, res, u) {
       });
     } catch (e) {
       console.error('[deploy-gate] 部署页读不出来：' + (e && e.message));
-      return json(res, 500, { error: '部署页读不出来，核对 BNBBANG_WEBROOT' },
+      return json(res, 500, { error: '部署页读不出来，核对 ARCBANG_WEBROOT' },
         { 'cache-control': 'no-store' });
     }
   }
@@ -1005,17 +1009,17 @@ async function handle(req, res, u) {
     try {
       chain = await readToken(CONTRACT, BigInt(m[1]));
     } catch (e) {
-      /* universeOf 都 revert 了，说明 BNBBANG_CONTRACT 指的根本不是这个合约 ——
+      /* universeOf 都 revert 了，说明 ARCBANG_CONTRACT 指的根本不是这个合约 ——
          那是我们的配置错，不是链的问题，报 503 会让人一直等节点恢复。 */
       if (e.reverted) {
-        return json(res, 502, { error: '配置的合约地址不认识 universeOf，请核对 BNBBANG_CONTRACT' });
+        return json(res, 502, { error: '配置的合约地址不认识 universeOf，请核对 ARCBANG_CONTRACT' });
       }
       /* 地址上压根没有合约（eth_call 回空数据，不 revert）。同样是配置错，
          但和上面那条是两种毛病，话要分开说：一个是"地址上没东西"，
          一个是"地址上有东西但不是这个合约"。报成 404 的后果见 token.js 里的注释。 */
       if (e.noContract) {
         console.error('[token] 地址上没有合约：' + (e && e.message));
-        return json(res, 502, { error: '配置的合约地址上没有合约，请核对 BNBBANG_CONTRACT 与 chainId' });
+        return json(res, 502, { error: '配置的合约地址上没有合约，请核对 ARCBANG_CONTRACT 与 chainId' });
       }
       /* 与 /bang 同一口径：节点全挂是我们的故障，必须报 503。
          报成 404 的话，一次网络抖动会让市场以为这枚 NFT 被烧了。 */
@@ -1244,7 +1248,7 @@ const NUM2HASH_MAX = 5000;
    这条链接抓到的 og 里没有结局（分享出去最有说服力的那半句就没了）。
    上限还是要有：爬虫大多 10 秒左右就放弃，转圈到它超时等于连通用文案都没有。
    NaN 会让 setTimeout 立刻触发，分享页永远降级。 */
-const BLOCK_LOOKUP_MS = envInt(process.env.BNBBANG_SHARE_RPC_MS, 6000, 500, 30000);
+const BLOCK_LOOKUP_MS = envInt(process.env.ARCBANG_SHARE_RPC_MS, 6000, 500, 30000);
 async function blockNumToHash(n) {
   if (NUM2HASH.has(n)) return NUM2HASH.get(n);
   const pending = NUM2HASH_PENDING.get(n);
@@ -1312,7 +1316,7 @@ function start() {
       json(res, 500, { error: '服务端出错' });
     });
   }).listen(PORT, '127.0.0.1', () => {
-    console.log('BNBBANG api  http://127.0.0.1:' + PORT);
+    console.log('ARCBANG api  http://127.0.0.1:' + PORT);
     console.log('  chainId   ' + CHAIN_ID + '   （' + CHAIN_NAME + '）');
     console.log('  contract  ' + CONTRACT);
     console.log('  signer    ' + signer.address + '   ← 这个地址必须和合约里的 signer 一致');
@@ -1323,7 +1327,7 @@ function start() {
       + (CARDPOOL.size() ? '' : '（已关闭，退回主线程同步算）')
       + '，全站上限 ' + RL.GLOBAL_PER_MIN + '/分钟');
     console.log('  store     ' + STORE_DIR + '   ← 干预记录在这儿，别当缓存删');
-    console.log('  stall     ' + (STALL.mailOn ? '报告落盘 + 邮件 → ' + STALL.mailTo : '卡死报告只落盘，未配邮件（要发信就设 BNBBANG_RESEND_KEY）'));
+    console.log('  stall     ' + (STALL.mailOn ? '报告落盘 + 邮件 → ' + STALL.mailTo : '卡死报告只落盘，未配邮件（要发信就设 ARCBANG_RESEND_KEY）'));
     /* 市场索引后台扫链。**放在 listen 回调里、且不 await** ——
        索引起不起得来与站点能不能服务无关，它自己会重试，
        起不来时市场页走直读降级。绝不能让它拦在 listen 前面。 */

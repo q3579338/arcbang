@@ -35,7 +35,7 @@
     "区块号 —— 这个宇宙的身份。token #{0}": "Block number — this universe’s identity. token #{0}",
     "算不出": "Cannot compute",
     "（你的，还没炸开看）": "(yours, not opened yet)",
-    /* 分析面板开着时，铸造卡片收成的右上角小徽标（bnb-ui.js） */
+    /* 分析面板开着时，铸造卡片收成的右上角小徽标（arc-ui.js） */
     "收下": "Mint",
     "展开铸造卡片": "Show the mint card",
     "收起铸造卡片": "Hide the mint card",
@@ -684,7 +684,7 @@
     '中': 'Medium',
     '高': 'High',
 
-    /* ---------------- 广播与推广（specs/share-referral-v1.md，web/bnb-ui.js 消费） ----------------
+    /* ---------------- 广播与推广（specs/share-referral-v1.md，web/arc-ui.js 消费） ----------------
        激励口径 2026-08-21 定稿：说费率（10%/5%）、说人工核对、说专款与反女巫；
        不说「自动到账 / 立即到账」。广播文案与市场分册同句同译（撞 key 时值一致，不冲突）。 */
     '广播': 'Broadcast',
@@ -697,7 +697,7 @@
        中英同形不进词典，进词典的只有这两条。与市场分册同句同译。 */
     '微博': 'Weibo',
     '复制链接': 'Copy link',
-    /* 游戏内截图（用户 2026-08-21「附带一张游戏内的截图」，web/bnb-ui.js 消费）：
+    /* 游戏内截图（用户 2026-08-21「附带一张游戏内的截图」，web/arc-ui.js 消费）：
        第一条是烙进截图底部字幕条里的（{0}=#区块号，{1}=结局名）；
        第二条是预览图右下角的来源小签（另一种来源「卡面图」在市场分册，两页共用）。 */
     '宇宙 {0} · {1}': 'Universe {0} · {1}',
@@ -706,7 +706,7 @@
     /* ---------------- 站点版管理目录的过滤提示（ui/app.js） ---------------- */
     '{0} 条非区块宇宙已隐藏（离线版可见）': '{0} non-block universes hidden (visible in the offline build)',
 
-    /* ---------------- 链名与币符号（specs/mainnet-ready.md，web/bnb-ui.js 消费） ----------------
+    /* ---------------- 链名与币符号（specs/mainnet-ready.md，web/arc-ui.js 消费） ----------------
        {0} 一律由 config.js 的 chain 块填（中文态 chain.name、英文态 chain.nameEn），
        {1}/{2} 是原生币符号。**整句进词典**：英文的语序和中文对不上，
        在外面拼 T('这不是') + 链名 会拼出「This is not BSC Mainnet 上的区块」。 */
@@ -728,7 +728,7 @@
     '{0} {1} 铸造': 'Mint for {0} {1}'
   }, 'app');
 
-  /* ---- BNBBANG 起爆页（web/bnb-ui.js 的静态模板 + 运行时消息，2026-08-21 英文校订补收）
+  /* ---- BNBBANG 起爆页（web/arc-ui.js 的静态模板 + 运行时消息，2026-08-21 英文校订补收）
      静态模板那部分靠 bnb-ui 挂载后补跑的 MirrorI18n.apply() 整树翻译；
      运行时消息全部改走 T()/TF()/TX()。产品动词统一 Detonate（引爆）/ Mint（铸造）/
      Rescue（拯救）—— 与核心词典、市场分册同一套口径。 ---- */

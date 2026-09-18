@@ -19,7 +19,7 @@
  *     落盘的字节 = worker 里 JSON.stringify 的字节，与同步路径同一行代码产出。
  * 浮点在同一个进程版本、同一台机器上是确定的，worker 与主线程用的是同一份 V8。
  *
- * 关掉它：BNBBANG_CARD_WORKERS=0 → 退回主线程同步算，老行为逐字节不变。
+ * 关掉它：ARCBANG_CARD_WORKERS=0 → 退回主线程同步算，老行为逐字节不变。
  * 这条退路不是摆设 —— 崩溃自保、线程起不来、池子被判定不健康时都会自动走它。
  */
 'use strict';
@@ -39,9 +39,9 @@ if (!isMainThread && parentPort) {
   parentPort.on('message', (msg) => {
     if (!msg || typeof msg !== 'object' || msg.id == null) return;
     /* 测试钩子：空转 N 毫秒，用来验「超时 → 杀线程 → 重建」这条路真的能走通。
-       必须 BNBBANG_CARD_TEST_HOOKS=1 才认，而且 dispatch 只在 _spin() 提交的
+       必须 ARCBANG_CARD_TEST_HOOKS=1 才认，而且 dispatch 只在 _spin() 提交的
        任务上带这个字段 —— HTTP 那头的请求体永远碰不到它。 */
-    if (msg.__spinMs && process.env.BNBBANG_CARD_TEST_HOOKS === '1') {
+    if (msg.__spinMs && process.env.ARCBANG_CARD_TEST_HOOKS === '1') {
       const until = Date.now() + Number(msg.__spinMs);
       while (Date.now() < until) { /* 就是要占死这条线程 */ }
       parentPort.postMessage({ id: msg.id, ok: true, json: 'spun' });
@@ -65,12 +65,12 @@ if (!isMainThread && parentPort) {
 /** 默认线程数：留一个核给主线程（HTTP + 签名 + 索引），再封到 4 个 —— 4 核机器上刚好。 */
 const DEFAULT_WORKERS = Math.min(4, Math.max(1, os.cpus().length - 1));
 /** 0 = 关掉线程池，退回主线程同步算（老行为）。上限 16，防止有人手抖写个 999。 */
-const WORKERS = envInt(process.env.BNBBANG_CARD_WORKERS, DEFAULT_WORKERS, 0, 16);
+const WORKERS = envInt(process.env.ARCBANG_CARD_WORKERS, DEFAULT_WORKERS, 0, 16);
 /** 排队上限。满了直接 503「服务器正忙」——排到天荒地老的请求对谁都没好处：
     客户端早断了，我们还在为它烧 CPU，后面正常的人继续排。 */
-const QUEUE_MAX = envInt(process.env.BNBBANG_CARD_QUEUE_MAX, 500, 1, 100000);
+const QUEUE_MAX = envInt(process.env.ARCBANG_CARD_QUEUE_MAX, 500, 1, 100000);
 /** 单张卡超时。正常 3–20 ms，30 s 意味着线程真的卡死了（死循环 / 被换页拖垮）。 */
-const TASK_TIMEOUT_MS = envInt(process.env.BNBBANG_CARD_TIMEOUT_MS, 30000, 1000, 600000);
+const TASK_TIMEOUT_MS = envInt(process.env.ARCBANG_CARD_TIMEOUT_MS, 30000, 1000, 600000);
 /** 一分钟内崩这么多次就判定池子不健康，整池关掉退回同步 —— 宁可慢，不要循环重启。 */
 const CRASH_FUSE = 8;
 
@@ -309,7 +309,7 @@ function _killOne(busyOnly) {
   try { s.worker.terminate(); } catch (e) { return false; }
   return true;
 }
-/** 提交一个「空转 ms 毫秒」的假任务（要 BNBBANG_CARD_TEST_HOOKS=1）。 */
+/** 提交一个「空转 ms 毫秒」的假任务（要 ARCBANG_CARD_TEST_HOOKS=1）。 */
 function _spin(ms) {
   return new Promise((resolve, reject) => {
     queue.push({ blockHash: '0x' + '00'.repeat(32), blockNumber: null, spinMs: ms, resolve, reject, retried: true, id: 0 });

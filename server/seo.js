@@ -5,9 +5,9 @@
  * （每个没算过的宇宙都是一次冷算 + 一次出图），而且搜索引擎会把它当成垃圾站降权。
  * 所以只有三类页面给 index，其余一律 noindex, follow（**页面照样服务**，分享预览不受影响）：
  *   1. 已铸造的 —— marketindex 反查得到（mintStatusOf），那是真有主人的宇宙；
- *   2. 人工精选 —— BNBBANG_SHARE_CURATED 指向一个 JSON 数组文件（高度列表）；
+ *   2. 人工精选 —— ARCBANG_SHARE_CURATED 指向一个 JSON 数组文件（高度列表）；
  *      没配就只有内置的 [0]；
- *   3. 别的进程写出来的附加名单 —— BNBBANG_SHARE_EXTRA（比如「今天最好看的十个」）。
+ *   3. 别的进程写出来的附加名单 —— ARCBANG_SHARE_EXTRA（比如「今天最好看的十个」）。
  * 两个文件都是 60 秒读一次；缺了、坏了、不是数组 → 当空，绝不因此让落地页出错。
  *
  * sitemap 只列有高度的宇宙：/s/<0x哈希> 那种链接（造物起源、老存档）没有高度，
@@ -50,10 +50,10 @@ function cached(slot, file, fallback) {
   return list;
 }
 function curatedHeights() {
-  return cached('curated', process.env.BNBBANG_SHARE_CURATED || '', CURATED_DEFAULT);
+  return cached('curated', process.env.ARCBANG_SHARE_CURATED || '', CURATED_DEFAULT);
 }
 function extraHeights() {
-  return cached('extra', process.env.BNBBANG_SHARE_EXTRA || '', []);
+  return cached('extra', process.env.ARCBANG_SHARE_EXTRA || '', []);
 }
 
 /**

@@ -1,9 +1,9 @@
 /*
- * web/bnb-chain.js —— BNB 链访问层（只在站点版加载，离线单文件版没有这一层）
+ * web/arc-chain.js —— BNB 链访问层（只在站点版加载，离线单文件版没有这一层）
  * ------------------------------------------------------------
  * 零依赖：不引 ethers/web3，只用 fetch + window.ethereum，
  * ABI 编解码手写（我们只需要 5 个函数和 1 个事件，不值得为此拖进一个库）。
- * keccak256 复用 engine/bnbhash.js 里那份（函数选择器和事件 topic 都要它）。
+ * keccak256 复用 engine/archash.js 里那份（函数选择器和事件 topic 都要它）。
  *
  * 读链走公开 RPC（不需要钱包，未连钱包也能浏览）；写链走小狐狸。
  *
@@ -23,7 +23,7 @@
   'use strict';
 
   var K = root.MirrorKeccak;                        // 只要 keccak256 算选择器；推导在服务端，不打进站点包
-  var CFG = root.BNBBANG_CONFIG || {};
+  var CFG = root.ARCBANG_CONFIG || {};
 
   /* ---------------------------------------------------------- 链身份
      唯一真相来源是 web/config.js 的 chain 块（specs/mainnet-ready.md）。
@@ -387,7 +387,7 @@
         mintedAt: Number(decUint(raw, 2)),
         minter: decAddress(raw, 3),
         /* 注意：这是**铸造者填进 bang() 的声称值**，合约不核对。
-           要显示结局请拿 blockHash 去问服务端重算（web/bnb-ui.js 的 galFill）。 */
+           要显示结局请拿 blockHash 去问服务端重算（web/arc-ui.js 的 galFill）。 */
         outcome: Number(decUint(raw, 4)),
         verified: body.length >= 6 * 64 ? decUint(raw, 5) === 1n : null,
         /* 稀有度就在结构体第 7 个字段（Universe.rarity），直接解得出来。

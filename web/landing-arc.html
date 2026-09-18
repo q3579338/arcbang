@@ -837,7 +837,7 @@ a.cardc:hover code{color:var(--ab-signal)}
 <!-- ============================ 找到你的宇宙 ============================
      AKA 的 FIND YOURSELF 是硬造了一张星空来展示一份名单；我们的数据本来就是星空。
      星图页（查询 / 画廊 / 名人堂 / 分享卡）还没做，这里**先把入口摆出来**：
-     高度或哈希直接深链到 app.html?bang=…（web/bnb-ui.js 的 deepLink()），
+     高度或哈希直接深链到 app.html?bang=…（web/arc-ui.js 的 deepLink()），
      钱包地址暂时给一条诚实的去路，不假装已经能查。 -->
 <section class="ab-sec" id="find">
   <div class="ab-wrap">
@@ -1116,7 +1116,7 @@ a.cardc:hover code{color:var(--ab-signal)}
 <script>
 (function () {
   'use strict';
-  var CFG = window.BNBBANG_CONFIG || {};
+  var CFG = window.ARCBANG_CONFIG || {};
 
   /* ---------------------------------------------------------- 链身份
      唯一真相来源是 config.js（arc 站落盘的是 web/config.arc.js）的 chain 块；
@@ -1302,7 +1302,7 @@ a.cardc:hover code{color:var(--ab-signal)}
   /* ---------------------------------------------------------- 分享（X intent）
      纯 intent URL、零 SDK，**用户点了才跳**的普通新标签页（不 window.open ——
      用户 2026-08-21：「X不要打开窗口 打开浏览器的X即可」）。
-     文案与 web/bnb-ui.js 的 shareText() ARC 分支同一个口径，带 @arc。
+     文案与 web/arc-ui.js 的 shareText() ARC 分支同一个口径，带 @arc。
      链接按当前域名现拼 —— 域名不写死在页面里，从 bnbbang 那边学来的规矩。 */
   function siteUrl() {
     var b = String(CFG.siteBase || '').replace(/\/+$/, '');
@@ -1335,7 +1335,7 @@ a.cardc:hover code{color:var(--ab-signal)}
        · 纯数字     → 区块高度，深链 app.html?bang=<高度>
        · 0x + 64 位 → 区块哈希，同一条深链（哈希是种子，哪条链上都成立）
        · 0x + 40 位 → 钱包地址：**不假装能查**，给一条诚实的去路（个人中心）
-     深链的解析在 web/bnb-ui.js 的 deepLink()，参数名沿用现成的 bang，不另起炉灶。
+     深链的解析在 web/arc-ui.js 的 deepLink()，参数名沿用现成的 bang，不另起炉灶。
      认不出来的时候把话说清楚，并且**焦点留在输入框里** —— 报错不该让人自己找回去。 */
   (function () {
     var form = $('findForm'), inp = $('findInp'), msg = $('findMsg');

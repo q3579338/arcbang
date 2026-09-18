@@ -304,7 +304,7 @@ footer a{color:var(--cyan)}
 (function () {
   'use strict';
 
-  var CFG = window.BNBBANG_CONFIG || {};
+  var CFG = window.ARCBANG_CONFIG || {};
   function addr(a) {
     a = String(a || '').trim();
     return /^0x[0-9a-fA-F]{40}$/.test(a) ? a.toLowerCase() : '';
@@ -887,7 +887,7 @@ footer a{color:var(--cyan)}
     return '<div class="pthumb"></div>';
   }
   /* 「拯救」直达（specs/rescue-entry.md §4）。**与市场卡同一条路、同一句文案**：
-     app.html?bang=<blockHash>&fix=1 —— 落地那边（web/bnb-ui.js 的 deepLink）
+     app.html?bang=<blockHash>&fix=1 —— 落地那边（web/arc-ui.js 的 deepLink）
      引爆完直接把干预沙盒开出来，不用再自己在 3D 里找 HUD 上那颗按钮。
 
      持仓卡在这之前是纯只读的，唯一沾边的是空态里那句链到 app.html（不带哈希）的

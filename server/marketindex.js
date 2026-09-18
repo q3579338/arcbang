@@ -31,7 +31,7 @@ const { envInt } = require('./envint.js');
 
 /* ============================================================ 配置 */
 
-const STORE_DIR = process.env.BNBBANG_STORE || path.join(__dirname, '.store');
+const STORE_DIR = process.env.ARCBANG_STORE || path.join(__dirname, '.store');
 const INDEX_FILE = path.join(STORE_DIR, 'market-index.json');
 const META_FILE = path.join(STORE_DIR, 'meta-cache.json');
 
@@ -39,29 +39,29 @@ const lc = (s) => String(s || '').toLowerCase();
 const ADDR_RE = /^0x[0-9a-f]{40}$/;
 
 const CFG = {
-  market: lc(process.env.BNBBANG_MARKET),
-  universe: lc(process.env.BNBBANG_CONTRACT),
-  crafted: lc(process.env.BNBBANG_CRAFTED),
-  names: lc(process.env.BNBBANG_NAMES),      // BangNames  → 原生宇宙的名字
-  names2: lc(process.env.BNBBANG_NAMES2),    // BangNames2 → 造物的名字（specs/crafted-names-v1.md）
+  market: lc(process.env.ARCBANG_MARKET),
+  universe: lc(process.env.ARCBANG_CONTRACT),
+  crafted: lc(process.env.ARCBANG_CRAFTED),
+  names: lc(process.env.ARCBANG_NAMES),      // BangNames  → 原生宇宙的名字
+  names2: lc(process.env.ARCBANG_NAMES2),    // BangNames2 → 造物的名字（specs/crafted-names-v1.md）
   /* 起点：合约部署高度。没配就从当前高度往回 50,000 块 ——
      BSC 三秒一块，五万块约等于 41 小时，够覆盖「今天刚部署」这个常态。
      真上主网时必须显式配部署高度，否则每次冷启动都白扫五万块。 */
-  from: envInt(process.env.BNBBANG_INDEX_FROM, 0, 0, Number.MAX_SAFE_INTEGER),
+  from: envInt(process.env.ARCBANG_INDEX_FROM, 0, 0, Number.MAX_SAFE_INTEGER),
   /* NaN/0 会让 setInterval 按 0ms 狂火，跟正在跑的 scanOnce 叠出一串 enrichSome。 */
-  intervalMs: envInt(process.env.BNBBANG_INDEX_INTERVAL, 15000, 1000, 300000),
+  intervalMs: envInt(process.env.ARCBANG_INDEX_INTERVAL, 15000, 1000, 300000),
   /* **分片上限 5,000 块，不能赌。** 公共 RPC 对 eth_getLogs 的跨度普遍设了上限，
      超了是直接报错（"exceed maximum block range"），**不是**返回前 5000 块的部分结果。
      赌一把的代价不是慢，是整轮扫描失败、索引永远停在原地。
      Arc（5042 / 5042002）那边单次上限是 20,000 块，比这里宽：
      envInt 的第四个参数把 chunk 夹死在 5,000，**环境变量也调不上去**，
      所以 Arc 上永远是 5,000 ≤ 20,000，不用分链设第二个值。 */
-  chunk: envInt(process.env.BNBBANG_INDEX_CHUNK, 5000, 1, 5000),
+  chunk: envInt(process.env.ARCBANG_INDEX_CHUNK, 5000, 1, 5000),
   /* 重组容错：只把 latest-15 之前的块记成「已确认」，之后的每轮重扫。
      BSC 终局很快（PoSA），15 块是保守值。
      重扫不怕：状态机按 (blockNumber, logIndex) 单调推进，同一事件重放不改变结果。
      NaN 会让 lastScanned 永远不前进（NaN > n 恒 false）。 */
-  confirmations: envInt(process.env.BNBBANG_INDEX_CONFIRMATIONS, 15, 0, 256),
+  confirmations: envInt(process.env.ARCBANG_INDEX_CONFIRMATIONS, 15, 0, 256),
   lookback: 50000,
   flushMs: 10000,          // 落盘节流：内存为准，最多每 10 秒写一次盘
   /* 「只有 lastScanned 往前挪了」这种轮次的落盘间隔。
@@ -93,13 +93,13 @@ const CFG = {
        超预算的留 ph:null + phNext:now，下一轮后台补齐时再算。
      physRetryMs：物理量真的读不出来（造物没存档、复算对不上 cardHash）时的重试间隔。
        不能不重试 —— 存档可能是后来才恢复的；也不能每轮重试 —— 那是白烧 eth_call。 */
-  physColdBudget: envInt(process.env.BNBBANG_INDEX_PHYS_BUDGET, 48, 1, 256),
+  physColdBudget: envInt(process.env.ARCBANG_INDEX_PHYS_BUDGET, 48, 1, 256),
   physRetryMs: 1800000,
   devLow: 0.10,            // 「与我们宇宙偏离小」的门槛：三项相对偏差的最大值 ≤10%
   devHigh: 0.50            // 「偏离大」：>50%
 };
 
-const enabled = () => process.env.BNBBANG_INDEX_OFF !== '1'
+const enabled = () => process.env.ARCBANG_INDEX_OFF !== '1'
   && ADDR_RE.test(CFG.market) && ADDR_RE.test(CFG.universe);
 
 /* ============================================================ 事件与选择器
@@ -209,7 +209,7 @@ const ARC_EVENT_SIGS = {
    之后 env 补上了也回不来 —— 表现正是「Arc 站一条挂单都收不到」。
    现读一次 Number() 的代价对每条 log 来说也可以忽略。 */
 const ARC_CHAIN_IDS = new Set([5042, 5042002]);
-const isArcChain = () => ARC_CHAIN_IDS.has(Number(process.env.BNBBANG_CHAIN_ID));
+const isArcChain = () => ARC_CHAIN_IDS.has(Number(process.env.ARCBANG_CHAIN_ID));
 
 /** 这条链上市场合约会发的 topic0 列表（scanOnce 的 eth_getLogs 按它查） */
 const marketTopics = () => (isArcChain()
@@ -574,7 +574,7 @@ function decodeLog(log, cfg) {
   if (addr === lc(c.universe) || (c.crafted && addr === lc(c.crafted))) {
     /* **必须正好 4 个 topic。** ERC-20 的 Transfer 用的是同一个 topic0，
        但它只索引 from/to（3 个 topic），金额在 data 里。我们只对 NFT 合约地址发查询，
-       本来撞不上；这道检查是为了「有人把 BANG 代币地址误配成 BNBBANG_CRAFTED」那天 ——
+       本来撞不上；这道检查是为了「有人把 BANG 代币地址误配成 ARCBANG_CRAFTED」那天 ——
        那时候错的是配置，而索引应该安静地一条都不认，
        而不是把一笔转账金额当成 tokenId 存进持仓表。 */
     if (t0 !== TOPICS.Transfer || log.topics.length !== 4) return null;
@@ -682,7 +682,7 @@ function applyOne(state, ev) {
 
   if (ev.kind === 'Cancelled' || ev.kind === 'Sold') {
     if (!l) {
-      /* Listed 发生在索引起点之前（BNBBANG_INDEX_FROM 配得晚，或默认只回看五万块）。
+      /* Listed 发生在索引起点之前（ARCBANG_INDEX_FROM 配得晚，或默认只回看五万块）。
          这不是错：那张单我们本来就没见过。但**残桩必须建**，
          否则下一轮重扫时这条 Sold 会被再记一笔成交。 */
       l = state.listings[id] = {
@@ -765,8 +765,8 @@ function chunkRanges(from, to, span) {
    15 秒一轮的定时器很快就会开始重叠。
 
    ----------------------------------------------------------------------------
-   **BNBBANG_RPC / BNBBANG_LOG_RPC 里必须至少有一个节点肯答 eth_getLogs**
-   主网请把付费节点写进 BNBBANG_LOG_RPC，索引层优先用它。
+   **ARCBANG_RPC / ARCBANG_LOG_RPC 里必须至少有一个节点肯答 eth_getLogs**
+   主网请把付费节点写进 ARCBANG_LOG_RPC，索引层优先用它。
    ----------------------------------------------------------------------------
    2026-08-21 实测（BSC 测试网，逐个节点探）：
 
@@ -803,10 +803,10 @@ async function rpcOne(url, method, params, timeoutMs) {
 }
 
 async function rpcAny(method, params, timeoutMs) {
-  /* getLogs 优先走 BNBBANG_LOG_RPC（付费节点专供日志）；其余方法走普通 RPC。 */
+  /* getLogs 优先走 ARCBANG_LOG_RPC（付费节点专供日志）；其余方法走普通 RPC。 */
   const list = method === 'eth_getLogs' ? rpcsForLogs() : RPCS;
   if (!list.length) {
-    const err = new Error('没有可问的 RPC 节点（BNBBANG_RPC / BNBBANG_LOG_RPC 都空）');
+    const err = new Error('没有可问的 RPC 节点（ARCBANG_RPC / ARCBANG_LOG_RPC 都空）');
     err.rpcDown = true;
     throw err;
   }
@@ -856,7 +856,7 @@ async function fillTimestamps(blockNos, cap) {
  * @returns {Promise<{ok:boolean, from?:number, to?:number, logs?:number, error?:string}>}
  */
 async function scanOnce() {
-  if (!enabled()) return { ok: false, error: '索引未启用（BNBBANG_MARKET / BNBBANG_CONTRACT 没配全）' };
+  if (!enabled()) return { ok: false, error: '索引未启用（ARCBANG_MARKET / ARCBANG_CONTRACT 没配全）' };
   if (runtime.running) return { ok: false, error: '上一轮还在跑' };
   runtime.running = true;
   try {
@@ -1123,7 +1123,7 @@ function decString(raw) {
   if (body.length < at + len * 2) return null;
   const s = Buffer.from(body.slice(at, at + len * 2), 'hex').toString('utf8');
   /* 名字会被原样送进市场页。合约那边已经把字符集钉死了（ASCII 字母数字与连字符、1..32），
-     这里独立复核一遍：BNBBANG_NAMES 指向哪个合约由配置决定，指错一个地址返回的
+     这里独立复核一遍：ARCBANG_NAMES 指向哪个合约由配置决定，指错一个地址返回的
      就可能是任意字节。**验不过当没有名字，绝不「清洗后照印」** ——
      清洗等于印一个链上不存在的名字。 */
   return /^[A-Za-z0-9-]{1,32}$/.test(s) ? s : null;
@@ -1934,7 +1934,7 @@ async function runRoundHooks() {
 function startIndexer() {
   if (runtime.started) return false;
   if (!enabled()) {
-    console.log('[marketindex] 未启用：BNBBANG_MARKET / BNBBANG_CONTRACT 没配全，'
+    console.log('[marketindex] 未启用：ARCBANG_MARKET / ARCBANG_CONTRACT 没配全，'
       + '市场页会走它自己的直读降级路径');
     return false;
   }

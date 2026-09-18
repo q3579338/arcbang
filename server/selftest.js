@@ -3,6 +3,7 @@
  * 用法：node selftest.js  （不需要服务在跑；需要联网的那两条会自己跳过并说明）
  */
 'use strict';
+require('./env-compat.js');            // 环境变量旧名兼容，排在所有 require 之前
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -14,7 +15,7 @@ const { evaluate, interveneDigest, craftDigest, opsHashOf, applyOps, suggestNext
   encodeOps, decodeOps, applyOpsHex, cardHashOf, cardHashFromCard, quantizeUnit, OPS_SCALE, PARAM_KEYS, CARD_SHAPE: IV_SHAPE } = require('./intervene.js');
 const { Wallet, verifyMessage, getBytes, id: keccakId } = require('ethers');
 
-const B = require(path.join(__dirname, '..', 'engine/bnbhash.js'));
+const B = require(path.join(__dirname, '..', 'engine/archash.js'));
 const P = require(path.join(__dirname, '..', 'engine/params.js'));
 const E = require(path.join(__dirname, '..', 'engine/engine.js'));
 
@@ -68,9 +69,9 @@ for (const h of H) {
 
 console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
 {
-  /* 基线默认 v1：进程外带进来的 BNBBANG_SIG_V2=1 不能把改前向量打红。
+  /* 基线默认 v1：进程外带进来的 ARCBANG_SIG_V2=1 不能把改前向量打红。
      v2 用例在下面同进程内自己设/清。 */
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
 
   const w = new Wallet('0x' + '11'.repeat(32));
   const CA = '0x1111111111111111111111111111111111111111';
@@ -129,7 +130,7 @@ console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
   ok('v1 即使传入 minter 摘要也不变', v1bangWithMinter === dA);
 
   /* ---- 同进程内打开 v2：摘要末尾多一个 address，换地址就变 ---- */
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   const M1 = '0x' + '22'.repeat(20);
   const M2 = '0x' + '33'.repeat(20);
   const v2b = digestOf(97, CA, H[0], 42, 9, 0, cardHash, dl, M1);
@@ -145,27 +146,27 @@ console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
 
   const OH = opsHashOf('0x0100000005');
   const A32 = '0x' + 'aa'.repeat(32), B32 = '0x' + 'bb'.repeat(32);
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
   const v1i = interveneDigest(97, CA, 7n, A32, B32, 9, 0, 123n, dl, OH);
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   const v2i = interveneDigest(97, CA, 7n, A32, B32, 9, 0, 123n, dl, OH, M1);
   const v2i2 = interveneDigest(97, CA, 7n, A32, B32, 9, 0, 123n, dl, OH, M2);
   ok('v2 intervene 摘要与 v1 不同', v2i !== v1i);
   ok('v2 intervene 换 minter 摘要就变', v2i !== v2i2);
 
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
   const v1c = craftDigest(1n, CA, A32, 1n, OH, B32, 9, 0, 1n, dl);
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   const v2c = craftDigest(1n, CA, A32, 1n, OH, B32, 9, 0, 1n, dl, M1);
   const v2c2 = craftDigest(1n, CA, A32, 1n, OH, B32, 9, 0, 1n, dl, M2);
   ok('v2 craft 摘要与 v1 不同', v2c !== v1c);
   ok('v2 craft 换 minter 摘要就变', v2c !== v2c2);
 
   /* 请求体校验：v2 必填合法地址，v1 忽略 */
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
   ok('v1 minterFromBody 忽略缺省', minterFromBody({}).ok === true && minterFromBody({}).minter === null);
   ok('v1 minterFromBody 忽略非法', minterFromBody({ minter: 'zz' }).ok === true);
-  process.env.BNBBANG_SIG_V2 = '1';
+  process.env.ARCBANG_SIG_V2 = '1';
   ok('v2 缺 minter 拒', minterFromBody({}).ok === false && /minter/.test(minterFromBody({}).error));
   ok('v2 非法 minter 拒并给人话',
     minterFromBody({ minter: '0xzz' }).ok === false
@@ -178,14 +179,14 @@ console.log('\n[A5/A7] 签名摘要绑死 chainId + 合约地址');
     && /零地址/.test(minterFromBody({ minter: '0x' + '00'.repeat(20) }).error));
   ok('v2 非字符串 minter 拒', minterFromBody({ minter: { toString: () => M1 } }).ok === false);
   ok('v2 请求体 sigV2/cardShape 不影响开关（只认 env）',
-    minterFromBody({ sigV2: false, cardShape: 2, BNBBANG_SIG_V2: '0' }).ok === false);
+    minterFromBody({ sigV2: false, cardShape: 2, ARCBANG_SIG_V2: '0' }).ok === false);
   let threwNoMinter = false;
   try { digestOf(97, CA, H[0], 42, 9, 0, cardHash, dl); }
   catch (e) { threwNoMinter = /minter/.test(e.message); }
   ok('v2 组摘要缺 minter 直接抛，不把 null 编成零地址', threwNoMinter);
 
   /* 后面 HTTP 基线按 v1 跑；v2 HTTP 用例自己再设。 */
-  delete process.env.BNBBANG_SIG_V2;
+  delete process.env.ARCBANG_SIG_V2;
 }
 
 console.log('\n[跨进程] 同一哈希在新进程里出的图必须还是同一张');
@@ -537,16 +538,16 @@ console.log('\n[HTTP] /api/intervene 与按 cardHash 出图');
 /* 直接调 index.js 的 handle()，不起真端口：起端口要挑没被占的口、等监听、再收尾，
    测试会变成看天吃饭。缓存和存档都指到临时目录，免得自检往真的存档里写垃圾。 */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bnbbang-selftest-'));
-process.env.BNBBANG_CONTRACT = '0x1111111111111111111111111111111111111111';
-process.env.BNBBANG_SIGNER_KEY = '0x' + '11'.repeat(32);
-process.env.BNBBANG_CACHE = path.join(TMP, 'cache');
-process.env.BNBBANG_STORE = path.join(TMP, 'store');
+process.env.ARCBANG_CONTRACT = '0x1111111111111111111111111111111111111111';
+process.env.ARCBANG_SIGNER_KEY = '0x' + '11'.repeat(32);
+process.env.ARCBANG_CACHE = path.join(TMP, 'cache');
+process.env.ARCBANG_STORE = path.join(TMP, 'store');
 /* 链身份必须显式。自检自己选测试网，不是服务端缺省偷偷落到 97。 */
-process.env.BNBBANG_CHAIN_ID = process.env.BNBBANG_CHAIN_ID || '97';
-process.env.BNBBANG_RPC = process.env.BNBBANG_RPC || 'https://bsc-testnet-rpc.publicnode.com';
-process.env.BNBBANG_PUBLIC_BASE = process.env.BNBBANG_PUBLIC_BASE || 'https://x.test';
+process.env.ARCBANG_CHAIN_ID = process.env.ARCBANG_CHAIN_ID || '97';
+process.env.ARCBANG_RPC = process.env.ARCBANG_RPC || 'https://bsc-testnet-rpc.publicnode.com';
+process.env.ARCBANG_PUBLIC_BASE = process.env.ARCBANG_PUBLIC_BASE || 'https://x.test';
 /* 金库地址也显式：生产代码不再带测试网默认。 */
-process.env.BNBBANG_REFERRAL_VAULT = process.env.BNBBANG_REFERRAL_VAULT
+process.env.ARCBANG_REFERRAL_VAULT = process.env.ARCBANG_REFERRAL_VAULT
   || '0x052e9c4bc320706e1bdb1bae618256f54b5ae4a5';
 /* /api/token/<id> 是全站唯一读链上状态的端点，自检里不能真去打 RPC：
    测试网上没有这个合约地址，而且测试也不该看网络脸色。所以给 ethCall 挂一个可控的桩。
@@ -608,7 +609,7 @@ function call(method, url, body, headers) {
     ok('缺 CHAIN_ID 启动检查报错',
       chainConfigErrors({ chainId: NaN, rpcs: ['https://bsc-dataseed.binance.org'] }).some((e) => /CHAIN_ID/.test(e)));
     ok('缺 RPC 启动检查报错',
-      chainConfigErrors({ chainId: 56, rpcs: [] }).some((e) => /BNBBANG_RPC/.test(e)));
+      chainConfigErrors({ chainId: 56, rpcs: [] }).some((e) => /ARCBANG_RPC/.test(e)));
     ok('主网配测试网 RPC 启动检查报错',
       chainConfigErrors({ chainId: 56, rpcs: ['https://bsc-testnet-rpc.publicnode.com'] }).some((e) => /测试网地址/.test(e)));
     ok('测试网显式 97 + 自备 RPC 通过',
@@ -630,11 +631,11 @@ function call(method, url, body, headers) {
         publicBase: 'https://bnbbang.com', indexFrom: '42000000',
         referralVault: '0x' + '11'.repeat(20)
       }).length === 0);
-    const savedLog = process.env.BNBBANG_LOG_RPC;
-    process.env.BNBBANG_LOG_RPC = 'http://127.0.0.1:8546';
+    const savedLog = process.env.ARCBANG_LOG_RPC;
+    process.env.ARCBANG_LOG_RPC = 'http://127.0.0.1:8546';
     ok('rpcsForLogs 把 LOG_RPC 放在最前', rpcsForLogs()[0] === 'http://127.0.0.1:8546');
-    if (savedLog === undefined) delete process.env.BNBBANG_LOG_RPC;
-    else process.env.BNBBANG_LOG_RPC = savedLog;
+    if (savedLog === undefined) delete process.env.ARCBANG_LOG_RPC;
+    else process.env.ARCBANG_LOG_RPC = savedLog;
   }
 
   const OLD = IV.baseHash;
@@ -657,18 +658,18 @@ function call(method, url, body, headers) {
   /* 签名必须是合约那套摘要签出来的。这条是整件事的地基：
      摘要错一个字段，链上就只会甩一个 BadSig，从签名本身看不出错在哪。 */
   if (j.sig) {
-    const dg = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, j.cardHash,
+    const dg = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, j.cardHash,
       j.card.outcome.index, j.card.rarity.index, BigInt(j.costBang), j.deadline, opsHashOf(j.ops));
     ok('签名能用合约摘要还原出 signer',
       verifyMessage(getBytes(dg), j.sig).toLowerCase() === String(j.signer).toLowerCase(),
       j.signer);
-    const bad = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 8n, OLD, j.cardHash,
+    const bad = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 8n, OLD, j.cardHash,
       j.card.outcome.index, j.card.rarity.index, BigInt(j.costBang), j.deadline, opsHashOf(j.ops));
     ok('换个 tokenId 就验不过', verifyMessage(getBytes(bad), j.sig).toLowerCase() !== String(j.signer).toLowerCase());
     /* 签的是**服务端发出去的那一段 ops**。改一个字节还能验过的话，调用者就能一手拿着
        合法签名、一手往链上写自己编的位移记录 —— 链上那段字节也就不值得信了。 */
     const flip = j.ops.slice(0, -1) + (j.ops.slice(-1) === '0' ? '1' : '0');
-    const tampered = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, j.cardHash,
+    const tampered = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, j.cardHash,
       j.card.outcome.index, j.card.rarity.index, BigInt(j.costBang), j.deadline, opsHashOf(flip));
     ok('ops 改一个字节就验不过（链上那段位移记录动不了）',
       verifyMessage(getBytes(tampered), j.sig).toLowerCase() !== String(j.signer).toLowerCase());
@@ -679,8 +680,8 @@ function call(method, url, body, headers) {
   console.log('\n[摘要 v2 HTTP] /api/bang /intervene 读 minter');
   {
     const MINTER = '0x' + '22'.repeat(20);
-    const saved = process.env.BNBBANG_SIG_V2;
-    process.env.BNBBANG_SIG_V2 = '1';
+    const saved = process.env.ARCBANG_SIG_V2;
+    process.env.ARCBANG_SIG_V2 = '1';
 
     const bangMiss = await call('POST', '/api/bang', { blockHash: H[0] });
     const bangMissJ = bangMiss.status === 400 ? JSON.parse(bangMiss.body) : {};
@@ -711,24 +712,24 @@ function call(method, url, body, headers) {
     ok('v2 /api/intervene 带合法 minter → 200', ivOk.status === 200,
       ivOk.status === 200 ? '' : String(ivOk.body).slice(0, 120));
     if (ivj.sig) {
-      const dg = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, ivj.cardHash,
+      const dg = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, ivj.cardHash,
         ivj.card.outcome.index, ivj.card.rarity.index, BigInt(ivj.costBang), ivj.deadline,
         opsHashOf(ivj.ops), MINTER);
       ok('v2 干预签名能用含 minter 的摘要还原',
         verifyMessage(getBytes(dg), ivj.sig).toLowerCase() === String(ivj.signer).toLowerCase());
-      const dgOther = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, OLD, ivj.cardHash,
+      const dgOther = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, OLD, ivj.cardHash,
         ivj.card.outcome.index, ivj.card.rarity.index, BigInt(ivj.costBang), ivj.deadline,
         opsHashOf(ivj.ops), '0x' + '33'.repeat(20));
       ok('v2 换个 minter 就验不过',
         verifyMessage(getBytes(dgOther), ivj.sig).toLowerCase() !== String(ivj.signer).toLowerCase());
     }
 
-    delete process.env.BNBBANG_SIG_V2;
+    delete process.env.ARCBANG_SIG_V2;
     const bangV1 = await call('POST', '/api/bang', { blockHash: H[0] });
     ok('v1 /api/bang 不因缺 minter 拒（错误里没有 minter）',
       bangV1.status !== 400 || !/minter/.test(String(bangV1.body)),
       bangV1.status + ' ' + String(bangV1.body).slice(0, 80));
-    delete process.env.BNBBANG_SIG_V2;
+    delete process.env.ARCBANG_SIG_V2;
     void saved;
   }
 
@@ -950,7 +951,7 @@ function call(method, url, body, headers) {
     ok('没命名 → 一条 Name 属性都不印', attr(unnamed.meta, 'Name') === undefined);
     ok('没命名 → 描述里不提命名这件事', !/burned BANG to name/.test(unnamed.meta.description));
 
-    /* 名字来自**另一个合约**，而那个地址由 BNBBANG_NAMES 配置决定 —— 配错就可能
+    /* 名字来自**另一个合约**，而那个地址由 ARCBANG_NAMES 配置决定 —— 配错就可能
        返回任意字节。合约那边已经把规则钉死了，这里独立再验一遍，验不过一律当没名字。
        **绝不"清洗后照印"**：清洗出来的是一个链上不存在的名字。 */
     const junk = [
@@ -1153,7 +1154,7 @@ function call(method, url, body, headers) {
     /* 换一份干净的限流器实例，额度调小便于测边界。
        require 缓存会让别的用例共用同一份计数，所以先删缓存。 */
     delete require.cache[require.resolve('./ratelimit.js')];
-    process.env.BNBBANG_ANON_LIMIT = '3';
+    process.env.ARCBANG_ANON_LIMIT = '3';
     const RL = require('./ratelimit.js');
     const req = ip => ({ headers: { 'x-forwarded-for': '10.0.0.1, ' + ip }, socket: {} });
     const h1 = '0x' + '11'.repeat(32), h2 = '0x' + '22'.repeat(32),
@@ -1198,7 +1199,7 @@ function call(method, url, body, headers) {
     ok('::ffff: 前缀剥掉再比',
       RL.ipOf({ headers: { 'x-real-ip': '::ffff:203.0.113.9' }, socket: {} }) === '203.0.113.9');
 
-    delete process.env.BNBBANG_ANON_LIMIT;
+    delete process.env.ARCBANG_ANON_LIMIT;
     delete require.cache[require.resolve('./ratelimit.js')];
   }
 
@@ -1263,7 +1264,7 @@ function call(method, url, body, headers) {
        各用例用自己的 IP 分桶，免得互相吃额度。 */
     const ipOf = (n) => ({ 'x-forwarded-for': '10.9.0.' + n });
     const rem = (r) => Number(r.hdr['x-ratelimit-remaining']);
-    /* 额度上限从响应头读，不写死 30 —— 环境里设了 BNBBANG_ANON_LIMIT 的话，
+    /* 额度上限从响应头读，不写死 30 —— 环境里设了 ARCBANG_ANON_LIMIT 的话，
        写死的期望值会让这些用例莫名其妙地红，而红的原因和被测的行为无关。 */
     const lim = (r) => Number(r.hdr['x-ratelimit-limit']);
     const OUT_EN = require('./art.js').OUTCOME_EN;
@@ -1357,15 +1358,15 @@ function call(method, url, body, headers) {
     const hOrd = B.keccak256('cache-order-dep');
     api.cardFor(hOrd, 125988327);                        // 先走一遍"铸造"：知道真实高度
     const artA = await call('GET', '/api/art/' + hOrd + '.svg?p=1');
-    for (const f of fs.readdirSync(process.env.BNBBANG_CACHE)) {
-      fs.unlinkSync(path.join(process.env.BNBBANG_CACHE, f));
+    for (const f of fs.readdirSync(process.env.ARCBANG_CACHE)) {
+      fs.unlinkSync(path.join(process.env.ARCBANG_CACHE, f));
     }
     const artB = await call('GET', '/api/art/' + hOrd + '.svg?p=1');   // 换成"先出图"的顺序
     ok('出图与请求顺序无关（没进键的入参就不许进内容）',
       artA.status === 200 && sha(artA.body) === sha(artB.body),
       sha(artA.body).slice(0, 12) + ' vs ' + sha(artB.body).slice(0, 12));
     ok('缓存里存的是规范形态（blockNumber 一律 null）',
-      JSON.parse(fs.readFileSync(path.join(process.env.BNBBANG_CACHE,
+      JSON.parse(fs.readFileSync(path.join(process.env.ARCBANG_CACHE,
         'card-' + hOrd.toLowerCase() + '-v' + DERIVATION_VERSION + '-s' + api.SHAPE + '.json'),
         'utf8')).card.blockNumber === null);
     ok('但调用方给了高度就以它为准（前端 BigInt(null) 会抛，这条不能退）',
@@ -1377,7 +1378,7 @@ function call(method, url, body, headers) {
        之后**每一次**问这个哈希都是 500，直到有人手动去删。 */
     const hTorn = B.keccak256('cache-torn');
     const first = await call('GET', '/api/card/' + hTorn);
-    const cfile = path.join(process.env.BNBBANG_CACHE,
+    const cfile = path.join(process.env.ARCBANG_CACHE,
       'card-' + hTorn.toLowerCase() + '-v' + DERIVATION_VERSION + '-s' + api.SHAPE + '.json');
     const good = fs.readFileSync(cfile, 'utf8');
     fs.writeFileSync(cfile, good.slice(0, Math.floor(good.length / 2)));
@@ -1390,7 +1391,7 @@ function call(method, url, body, headers) {
     /* 写盘走临时文件 + rename：被 kill 时要么是旧的完整内容、要么是新的完整内容，
        不会在真路径上留下半截。顺带确认临时文件没有漏在缓存目录里。 */
     ok('缓存目录里没有漏下的临时文件',
-      fs.readdirSync(process.env.BNBBANG_CACHE).filter(f => /\.tmp$/.test(f)).length === 0);
+      fs.readdirSync(process.env.ARCBANG_CACHE).filter(f => /\.tmp$/.test(f)).length === 0);
 
     /* 同一个哈希同时来一堆请求：结果必须一致、不能有人拿到 500。
        （单进程里 writeFileSync 不会被别的 JS 打断，这条测的是整条路的一致性） */
@@ -1430,7 +1431,7 @@ function call(method, url, body, headers) {
     ethCallStub = () => '0x';
     const noCode = await call('GET', '/api/token/5');
     ok('合约地址上没有合约 → 502 说配置不对，不是 404「链上没有这枚 NFT」',
-      noCode.status === 502 && /BNBBANG_CONTRACT/.test(noCode.body),
+      noCode.status === 502 && /ARCBANG_CONTRACT/.test(noCode.body),
       noCode.status + ' ' + noCode.body.slice(0, 70));
 
     // 2. 地址上有合约，但不认识 universeOf（revert）
@@ -1458,7 +1459,7 @@ function call(method, url, body, headers) {
        所以每条 .svg 都配一条 .png。这一节盯死四件事：
        出的是真 PNG、第二次走缓存、同一张图并发只渲一次、依赖没了也**绝不 500**。 */
     const PNG = require('./png.js');
-    const PNGDIR = path.join(process.env.BNBBANG_STORE, 'png');
+    const PNGDIR = path.join(process.env.ARCBANG_STORE, 'png');
     const isPNG = (b) => Buffer.isBuffer(b) && b.length > 8
       && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG';
     const keyOf = (h, p) => 'art-' + h.toLowerCase() + '-' + (p ? 'p' : 'n')
@@ -1547,9 +1548,9 @@ function call(method, url, body, headers) {
       g2.status === 200 && g2.hdr['x-ratelimit-remaining'] === undefined,
       'remaining 头=' + g2.hdr['x-ratelimit-remaining']);
 
-    /* 审查 #19：BNBBANG_PNG_CONCURRENCY 配错（非数字）时 Number() 是 NaN，
+    /* 审查 #19：ARCBANG_PNG_CONCURRENCY 配错（非数字）时 Number() 是 NaN，
        running < NaN 恒 false —— 一个名额都发不出去，所有请求进 waiters 永远等。 */
-    ok('BNBBANG_PNG_CONCURRENCY 非数字/0/负数不锁死信号量（NaN→2、0→1、"4"→4）；Infinity/过大夹到 8',
+    ok('ARCBANG_PNG_CONCURRENCY 非数字/0/负数不锁死信号量（NaN→2、0→1、"4"→4）；Infinity/过大夹到 8',
       PNG._renderMaxOf('abc') === 2 && PNG._renderMaxOf(undefined) === 2
       && PNG._renderMaxOf('') === 2 && PNG._renderMaxOf('0') === 1
       && PNG._renderMaxOf('-3') === 1 && PNG._renderMaxOf('4') === 4
@@ -1638,8 +1639,8 @@ function call(method, url, body, headers) {
     const RELAY = require('./rpcrelay.js');
     const CH = require('./chain.js');
     const OK_TO = '0x' + '33'.repeat(20);
-    const savedTo = process.env.BNBBANG_RELAY_TO;
-    process.env.BNBBANG_RELAY_TO = OK_TO;
+    const savedTo = process.env.ARCBANG_RELAY_TO;
+    process.env.ARCBANG_RELAY_TO = OK_TO;
     RELAY._reset();
     const savedFetch = global.fetch;
     let seen = [];                      // 每次上游请求：{ url, payload }
@@ -1714,7 +1715,7 @@ function call(method, url, body, headers) {
       const many = await call('POST', '/api/rpc', Array.from({ length: RELAY.MAX_BATCH + 1 }, (_, i) => ({ jsonrpc: '2.0', id: i, method: 'eth_blockNumber', params: [] })));
       ok('批量超过 ' + RELAY.MAX_BATCH + ' 条 → 400', many.status === 400, String(many.status));
       // 限流：按 IP、按条计
-      RELAY._reset(); process.env.BNBBANG_RELAY_TO = OK_TO;
+      RELAY._reset(); process.env.ARCBANG_RELAY_TO = OK_TO;
       ok('限流：额度内放行', RELAY.take('9.9.9.9', RELAY.PER_MIN).ok === true);
       ok('限流：超一条就拒', RELAY.take('9.9.9.9', 1).ok === false);
       ok('限流：别的 IP 不受影响', RELAY.take('9.9.9.8', 1).ok === true);
@@ -1722,7 +1723,7 @@ function call(method, url, body, headers) {
       ok('限流命中 → 429 + retry-after', lim.status === 429 && lim.hdr['retry-after'], String(lim.status));
     } finally {
       global.fetch = savedFetch;
-      if (savedTo === undefined) delete process.env.BNBBANG_RELAY_TO; else process.env.BNBBANG_RELAY_TO = savedTo;
+      if (savedTo === undefined) delete process.env.ARCBANG_RELAY_TO; else process.env.ARCBANG_RELAY_TO = savedTo;
       RELAY._reset();
     }
   }
@@ -1732,12 +1733,12 @@ function call(method, url, body, headers) {
     const vm = require('vm');
     const readWeb = (f) => fs.readFileSync(path.join(__dirname, '..', 'web', f), 'utf8');
 
-    /* ---- bnb-chain.js：freeStatus 三态（新合约 / 旧合约 revert / 网络失败）+ 模拟总检。
+    /* ---- arc-chain.js：freeStatus 三态（新合约 / 旧合约 revert / 网络失败）+ 模拟总检。
        在 vm 沙盒里加载**真文件**，fetch 换成可控桩 —— 测的是发布的那份代码，不是复述。 */
     {
       const sb = {
         MirrorKeccak: { keccak256: B.keccak256 },
-        BNBBANG_CONFIG: {
+        ARCBANG_CONFIG: {
           contract: '0x' + '11'.repeat(20),
           rpc: ['http://rpc-stub.invalid'],
           chain: { id: 97, name: 'BSC 测试网', nameEn: 'BSC Testnet', explorer: 'https://x.invalid', currency: 'tBNB', isTestnet: true }
@@ -1749,7 +1750,7 @@ function call(method, url, body, headers) {
       sb.fetch = (...a) => fetchImpl(...a);
       sb.window = sb;
       vm.createContext(sb);
-      vm.runInContext(readWeb('bnb-chain.js'), sb, { filename: 'bnb-chain.js' });
+      vm.runInContext(readWeb('arc-chain.js'), sb, { filename: 'arc-chain.js' });
       const MC = sb.MirrorChain;
       const ADDR = '0x' + '22'.repeat(20);
       const w32 = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
@@ -1840,7 +1841,7 @@ function call(method, url, body, headers) {
         navigator: { userAgent: 'iPhone' },
         location: { href: 'https://bnbbang.com/app.html?bang=8642956&ref=K7M2X9QP' },
         setTimeout: () => null,                        // 掐掉 300/1200ms 的自动重扫，测试手动 rescan
-        BNBBANG_CONFIG: { chain: { id: 56 } },
+        ARCBANG_CONFIG: { chain: { id: 56 } },
         BinanceChain: {
           request: (args) => { seenSign.push(args); return Promise.resolve('0x' + '00'.repeat(65)); },
           switchNetwork: () => Promise.resolve()
@@ -1878,7 +1879,7 @@ function call(method, url, body, headers) {
     /* ---- DOM 绑死的流程（bnb-ui / intervene）桩不进来，用**源码不变量**把关：
        改回老写法（活指针、无守卫、无刷新）这些会当场红。 */
     {
-      const src = readWeb('bnb-ui.js');
+      const src = readWeb('arc-ui.js');
       ok('铸造签名按 hash0 要（活指针 S.hash 不再进 API.bang）',
         src.indexOf('API.bang(hash0') >= 0 && src.indexOf('API.bang(S.hash') < 0);
       ok('铸造有 blockHash === hash0 硬校验（intervene.js 拯救路径的同款）',
@@ -1940,8 +1941,8 @@ function call(method, url, body, headers) {
       && _ttlOf('600') === 600);
 
     /* ---- 管理员 IP：伪造 CF-Connecting-IP / XFF 第一段不能过门；X-Real-IP 才能 ---- */
-    const savedAdmin = process.env.BNBBANG_ADMIN_IPS;
-    process.env.BNBBANG_ADMIN_IPS = '203.0.113.10';
+    const savedAdmin = process.env.ARCBANG_ADMIN_IPS;
+    process.env.ARCBANG_ADMIN_IPS = '203.0.113.10';
     const adminHdr = (h) => call('GET', '/api/admin-check', null, h);
     const cf = await adminHdr({ 'cf-connecting-ip': '203.0.113.10' });
     const cj = cf.status === 200 ? JSON.parse(cf.body) : {};
@@ -1957,8 +1958,8 @@ function call(method, url, body, headers) {
     ok('admin-check 回的 ip 不是伪造的 CF 头',
       JSON.parse(cf.body).ip !== '203.0.113.10');
 
-    if (savedAdmin === undefined) delete process.env.BNBBANG_ADMIN_IPS;
-    else process.env.BNBBANG_ADMIN_IPS = savedAdmin;
+    if (savedAdmin === undefined) delete process.env.ARCBANG_ADMIN_IPS;
+    else process.env.ARCBANG_ADMIN_IPS = savedAdmin;
 
     /* ---- 客户端不能自报 deadline / nowSec 来把有效期拉长 ---- */
     const fakeDl = await call('POST', '/api/intervene', {
@@ -2043,7 +2044,7 @@ function call(method, url, body, headers) {
     const v1switch = await call('POST', '/api/intervene', {
       blockHash: H[2], tokenId: 7, oldCardHash: IV.baseHash,
       ops: [{ key: 'alpha', dir: 1, steps: 1 }],
-      sigV2: true, sigVersion: 2, BNBBANG_SIG_V2: '1',
+      sigV2: true, sigVersion: 2, ARCBANG_SIG_V2: '1',
       minter: '0x' + '22'.repeat(20), cardShape: 2
     }, secIp(11));
     const v1sj = v1switch.status === 200 ? JSON.parse(v1switch.body) : {};
@@ -2051,15 +2052,15 @@ function call(method, url, body, headers) {
       v1switch.status === 200 && v1sj.card && v1sj.card.cardShape === 3 && v1sj.sig,
       v1switch.status + ' shape=' + (v1sj.card && v1sj.card.cardShape));
     if (v1sj.sig) {
-      const dgV1 = interveneDigest(CHAIN_ID, process.env.BNBBANG_CONTRACT, 7n, IV.baseHash, v1sj.cardHash,
+      const dgV1 = interveneDigest(CHAIN_ID, process.env.ARCBANG_CONTRACT, 7n, IV.baseHash, v1sj.cardHash,
         v1sj.card.outcome.index, v1sj.card.rarity.index, BigInt(v1sj.costBang), v1sj.deadline,
         opsHashOf(v1sj.ops));
       ok('v1 摘要（无 minter）能还原签名：请求体没把协议切到 v2',
         verifyMessage(getBytes(dgV1), v1sj.sig).toLowerCase() === String(v1sj.signer).toLowerCase());
     }
 
-    const savedV2 = process.env.BNBBANG_SIG_V2;
-    process.env.BNBBANG_SIG_V2 = '1';
+    const savedV2 = process.env.ARCBANG_SIG_V2;
+    process.env.ARCBANG_SIG_V2 = '1';
     const v2off = await call('POST', '/api/intervene', {
       blockHash: H[2], tokenId: 7, oldCardHash: IV.baseHash,
       ops: [{ key: 'alpha', dir: 1, steps: 1 }],
@@ -2067,8 +2068,8 @@ function call(method, url, body, headers) {
     }, secIp(12));
     ok('v2 下请求体 sigV2:false 仍要 minter（不能靠参数把 v2 关掉）',
       v2off.status === 400 && /minter/.test(String(v2off.body)), v2off.status + '');
-    if (savedV2 === undefined) delete process.env.BNBBANG_SIG_V2;
-    else process.env.BNBBANG_SIG_V2 = savedV2;
+    if (savedV2 === undefined) delete process.env.ARCBANG_SIG_V2;
+    else process.env.ARCBANG_SIG_V2 = savedV2;
   }
   console.log('\n[SEO 落地页] /s/ 可索引：英文真页面、robots 口径、sitemap、1200×630 og 图');
   {
@@ -2082,7 +2083,7 @@ function call(method, url, body, headers) {
     const LANDING = require('./landing.js');
     const MI = require('./marketindex.js');
     const PNG = require('./png.js');
-    const BASE = process.env.BNBBANG_PUBLIC_BASE;
+    const BASE = process.env.ARCBANG_PUBLIC_BASE;
     const savedBBN = chainMod.blockByNumber;
     const NUM = 8642956;
     chainMod.blockByNumber = async (n) => (n === NUM ? { number: n, hash: H[0] }
@@ -2093,8 +2094,8 @@ function call(method, url, body, headers) {
     const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     /* 名单先全部清掉：这个高度既没铸造也不在名单里 → noindex */
-    const savedCur = process.env.BNBBANG_SHARE_CURATED, savedExtra = process.env.BNBBANG_SHARE_EXTRA;
-    delete process.env.BNBBANG_SHARE_CURATED; delete process.env.BNBBANG_SHARE_EXTRA;
+    const savedCur = process.env.ARCBANG_SHARE_CURATED, savedExtra = process.env.ARCBANG_SHARE_EXTRA;
+    delete process.env.ARCBANG_SHARE_CURATED; delete process.env.ARCBANG_SHARE_EXTRA;
     SEO._reset();
 
     const s = await call('GET', '/s/' + NUM + '?ref=K7M2X9QP', null, ipS(1));
@@ -2131,12 +2132,12 @@ function call(method, url, body, headers) {
       html.indexOf('class="btn" href="/app.html?bang=8642956&amp;ref=K7M2X9QP">Open in the simulator</a>') > 0);
     ok('上一块 / 下一块 / 回首页三条链接',
       html.indexOf('href="/s/8642955"') > 0 && html.indexOf('href="/s/8642957"') > 0
-      /* 「Back to」读的是 o.base（landing.js），自测里的 base 是 BNBBANG_PUBLIC_BASE，不是 bnbbang.com */
+      /* 「Back to」读的是 o.base（landing.js），自测里的 base 是 ARCBANG_PUBLIC_BASE，不是 bnbbang.com */
       && html.indexOf('Back to ' + BASE.replace(/^https?:\/\//, '') + '<') > 0);
     {
-      /* 站名 / 链名可配（BNBBANG_BRAND / BNBBANG_CHAIN_WORD）：不配时退回历史默认值
+      /* 站名 / 链名可配（ARCBANG_BRAND / ARCBANG_CHAIN_WORD）：不配时退回历史默认值
          （BNBBANG / BNB），arc 实例在自己那份 env 里覆盖成 ARCBANG / Arc。 */
-      const savedBrand = process.env.BNBBANG_BRAND, savedWord = process.env.BNBBANG_CHAIN_WORD;
+      const savedBrand = process.env.ARCBANG_BRAND, savedWord = process.env.ARCBANG_CHAIN_WORD;
       const mk = (base, extra) => LANDING.landingHTML(Object.assign({
         blockNumber: NUM, hash: H[0], card: rc, mint: { minted: null }, indexable: false,
         appUrl: '/app.html?bang=' + NUM, canonical: base + '/s/' + NUM,
@@ -2148,13 +2149,13 @@ function call(method, url, body, headers) {
         && h.indexOf('og:site_name" content="' + brand + '"') > 0
         && !!ldOf(h) && ldOf(h).creator.name === brand;
 
-      delete process.env.BNBBANG_BRAND; delete process.env.BNBBANG_CHAIN_WORD;
+      delete process.env.ARCBANG_BRAND; delete process.env.ARCBANG_CHAIN_WORD;
       const bnb0 = mk('https://bnbbang.com');
-      ok('不配 BNBBANG_BRAND / BNBBANG_CHAIN_WORD：四处站名退回 BNBBANG、链名退回 BNB',
+      ok('不配 ARCBANG_BRAND / ARCBANG_CHAIN_WORD：四处站名退回 BNBBANG、链名退回 BNB',
         four(bnb0, 'BNBBANG') && bnb0.indexOf('<h1>Universe from BNB block #8,642,956</h1>') > 0
         && bnb0.indexOf('<th>BNB block</th>') > 0 && bnb0.indexOf('Every BNB block hash') > 0);
 
-      process.env.BNBBANG_BRAND = 'ARCBANG'; process.env.BNBBANG_CHAIN_WORD = 'Arc';
+      process.env.ARCBANG_BRAND = 'ARCBANG'; process.env.ARCBANG_CHAIN_WORD = 'Arc';
       const arc1 = mk('https://arcbang.xyz');
       ok('配成 ARCBANG / Arc：watermark、<title> 后缀、og:site_name、ld+json creator.name 全是 ARCBANG，creator.url 是 arcbang.xyz',
         four(arc1, 'ARCBANG') && ldOf(arc1).creator.url === 'https://arcbang.xyz/'
@@ -2167,17 +2168,17 @@ function call(method, url, body, headers) {
         && arc1.indexOf('BNBBANG') < 0 && arc1.indexOf('BNB block') < 0 && arc1.indexOf('bnbbang.com') < 0,
         (arc1.match(/BNB[A-Z]*|bnbbang\.com/g) || []).join(','));
 
-      process.env.BNBBANG_BRAND = '  '; process.env.BNBBANG_CHAIN_WORD = '';
+      process.env.ARCBANG_BRAND = '  '; process.env.ARCBANG_CHAIN_WORD = '';
       ok('变量配成空串 / 空白 = 没配：bnb 站逐字节不变', mk('https://bnbbang.com') === bnb0);
-      process.env.BNBBANG_BRAND = '<b>&"'; process.env.BNBBANG_CHAIN_WORD = '<i>';
+      process.env.ARCBANG_BRAND = '<b>&"'; process.env.ARCBANG_CHAIN_WORD = '<i>';
       {
         const hx = mk('https://arcbang.xyz');
         ok('站名 / 链名里的 < > & " 全部转义（env 写错不至于破页）',
           hx.indexOf('<b>') < 0 && hx.indexOf('<i>') < 0 && hx.indexOf('&lt;b&gt;&amp;&quot;') > 0
           && !!ldOf(hx) && ldOf(hx).creator.name === '<b>&"');
       }
-      if (savedBrand === undefined) delete process.env.BNBBANG_BRAND; else process.env.BNBBANG_BRAND = savedBrand;
-      if (savedWord === undefined) delete process.env.BNBBANG_CHAIN_WORD; else process.env.BNBBANG_CHAIN_WORD = savedWord;
+      if (savedBrand === undefined) delete process.env.ARCBANG_BRAND; else process.env.ARCBANG_BRAND = savedBrand;
+      if (savedWord === undefined) delete process.env.ARCBANG_CHAIN_WORD; else process.env.ARCBANG_CHAIN_WORD = savedWord;
     }
     ok('十二个结局各有一段解释，本页那段在正文里',
       LANDING.OUTCOME_EXPLAIN.length === 12
@@ -2219,7 +2220,7 @@ function call(method, url, body, headers) {
     /* 精选名单：env 指到一个临时 JSON 文件 → 这个高度进索引 */
     const curFile = path.join(TMP, 'curated.json');
     fs.writeFileSync(curFile, JSON.stringify([NUM, 0, 'x', -1, 1e15, '000', NUM]));
-    process.env.BNBBANG_SHARE_CURATED = curFile;
+    process.env.ARCBANG_SHARE_CURATED = curFile;
     SEO._reset();
     const s2 = await call('GET', '/s/' + NUM, null, ipS(1));
     ok('精选名单里的高度：X-Robots-Tag index, follow，meta robots index',
@@ -2228,9 +2229,9 @@ function call(method, url, body, headers) {
     ok('名单里的垃圾项被剔掉（非数字 / 负数 / 超过 12 位），去重，只剩合法高度',
       JSON.stringify(SEO.curatedHeights()) === JSON.stringify([NUM, 0]), JSON.stringify(SEO.curatedHeights()));
     ok('没配精选名单时内置 [0]（创世块）', (() => {
-      delete process.env.BNBBANG_SHARE_CURATED; SEO._reset();
+      delete process.env.ARCBANG_SHARE_CURATED; SEO._reset();
       const r = JSON.stringify(SEO.curatedHeights()) === '[0]';
-      process.env.BNBBANG_SHARE_CURATED = curFile; SEO._reset();
+      process.env.ARCBANG_SHARE_CURATED = curFile; SEO._reset();
       return r;
     })());
 
@@ -2254,7 +2255,7 @@ function call(method, url, body, headers) {
     /* 附加名单：另一个进程写的文件，60 秒缓存；缺了、坏了当空 */
     const extraFile = path.join(TMP, 'extra.json');
     fs.writeFileSync(extraFile, '[4242, 4242, "17"]');
-    process.env.BNBBANG_SHARE_EXTRA = extraFile;
+    process.env.ARCBANG_SHARE_EXTRA = extraFile;
     SEO._reset();
     const sm2 = String((await call('GET', '/sitemap-s.xml', null, ipS(1))).body);
     ok('附加名单也进 sitemap：去重，字符串数字也认',
@@ -2267,7 +2268,7 @@ function call(method, url, body, headers) {
     const sm3 = await call('GET', '/sitemap-s.xml', null, ipS(1));
     ok('附加名单文件坏了：当空，sitemap 照出（200，精选仍在）',
       sm3.status === 200 && String(sm3.body).indexOf('/s/4242<') < 0 && String(sm3.body).indexOf('/s/' + NUM + '<') > 0);
-    process.env.BNBBANG_SHARE_EXTRA = path.join(TMP, 'no-such-file.json');
+    process.env.ARCBANG_SHARE_EXTRA = path.join(TMP, 'no-such-file.json');
     SEO._reset();
     ok('附加名单文件缺了：当空，不报错', SEO.extraHeights().length === 0
       && (await call('GET', '/sitemap-s.xml', null, ipS(1))).status === 200);
@@ -2314,7 +2315,7 @@ function call(method, url, body, headers) {
       ms.minted === true && ms.tokenId === '7' && ms.owner === '0xabcdef0000000000000000000000000000001234'
       && ms.blockNumber === NUM && ms.mintedAt === 1756700000, JSON.stringify(ms));
     ok('索引没起来时，反查不到的哈希答 null（不知道），不答 false', MI.mintStatusOf(H[1]).minted === null);
-    delete process.env.BNBBANG_SHARE_CURATED; delete process.env.BNBBANG_SHARE_EXTRA; SEO._reset();
+    delete process.env.ARCBANG_SHARE_CURATED; delete process.env.ARCBANG_SHARE_EXTRA; SEO._reset();
     const s3 = await call('GET', '/s/' + NUM, null, ipS(1));
     ok('页面写 Minted as #7, owner 0xabcd…1234；已铸造 → index, follow（不靠名单）',
       String(s3.body).indexOf('Minted as #7, owner 0xabcd…1234') > 0 && s3.hdr['x-robots-tag'] === 'index, follow',
@@ -2360,7 +2361,7 @@ function call(method, url, body, headers) {
     I.setMeta(savedMeta); I.setState(savedState);
 
     /* og 图：1200×630，方卡在左、右栏文字；?w= 缩放；缓存键带变体与 n/w，不串 */
-    const PNGDIR = path.join(process.env.BNBBANG_STORE, 'png');
+    const PNGDIR = path.join(process.env.ARCBANG_STORE, 'png');
     const ihdr = (b) => ({ w: b.readUInt32BE(16), h: b.readUInt32BE(20) });
     const isPNG = (b) => Buffer.isBuffer(b) && b.length > 24 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG';
     const keyOG = (h, n, w) => 'art-' + h + '-og' + (n ? '-n' + n : '') + (w ? '-w' + w : '')
@@ -2424,8 +2425,8 @@ function call(method, url, body, headers) {
     ok('HEAD /s/<区块号> 只给头（含 X-Robots-Tag）', hd.status === 200 && hd.body === ''
       && /text\/html/.test(String(hd.hdr['content-type'])) && typeof hd.hdr['x-robots-tag'] === 'string');
 
-    if (savedCur === undefined) delete process.env.BNBBANG_SHARE_CURATED; else process.env.BNBBANG_SHARE_CURATED = savedCur;
-    if (savedExtra === undefined) delete process.env.BNBBANG_SHARE_EXTRA; else process.env.BNBBANG_SHARE_EXTRA = savedExtra;
+    if (savedCur === undefined) delete process.env.ARCBANG_SHARE_CURATED; else process.env.ARCBANG_SHARE_CURATED = savedCur;
+    if (savedExtra === undefined) delete process.env.ARCBANG_SHARE_EXTRA; else process.env.ARCBANG_SHARE_EXTRA = savedExtra;
     SEO._reset();
     chainMod.blockByNumber = savedBBN;
   }
@@ -2552,14 +2553,14 @@ function call(method, url, body, headers) {
       && (MI3.applyLogs(stA, [aSold], cfgArc), stA.sales.length === 1));
 
     /* ---- 按 chainId 切：现读 env，不认加载时缓存的那一份 ---- */
-    const savedChain = process.env.BNBBANG_CHAIN_ID;
-    process.env.BNBBANG_CHAIN_ID = '5042';
+    const savedChain = process.env.ARCBANG_CHAIN_ID;
+    process.env.ARCBANG_CHAIN_ID = '5042';
     const arcTop = MI3.marketTopics();
     const arcOn = MI3.isArcChain();
-    process.env.BNBBANG_CHAIN_ID = '56';
+    process.env.ARCBANG_CHAIN_ID = '56';
     const bscTop = MI3.marketTopics();
     const bscOn = MI3.isArcChain();
-    process.env.BNBBANG_CHAIN_ID = savedChain;
+    process.env.ARCBANG_CHAIN_ID = savedChain;
     ok('chainId 5042 → 查 Arc 那四个 topic；56 → 查主线那三个（判定现读 env）',
       arcOn === true && bscOn === false
       && arcTop.length === 4 && arcTop.indexOf(MI3.ARC_TOPICS.PriceChanged) >= 0

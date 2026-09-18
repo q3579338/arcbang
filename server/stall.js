@@ -6,7 +6,7 @@
  *
  * 落盘：.store/stall-reports.jsonl，一行一条 { id, at, ip, site, page, appVersion, sentAt, dump }。
  *       IP 只留前缀（IPv4 前两段 / IPv6 前两组），够看「是不是同一个人连发」，又不是完整地址。
- * 邮件：配了 BNBBANG_RESEND_KEY 才发，走 Resend 的 HTTPS API（Node 自带 fetch，不引入依赖）。
+ * 邮件：配了 ARCBANG_RESEND_KEY 才发，走 Resend 的 HTTPS API（Node 自带 fetch，不引入依赖）。
  *       发失败只记日志，**不影响 200 返回** —— 报告已经落盘了，用户那边不该看到失败。
  * 防刷：同一 IP 每小时 10 条（借 ratelimit.take 的独立桶，不占引爆额度）。
  * 体积：调用方（index.js 的 bodyOf）已经限过；这里再兜一道 32 KB，超了直接拒。
@@ -96,9 +96,9 @@ function create(opts) {
   const file = path.join(storeDir, 'stall-reports.jsonl');
   const take = o.take;                       // ratelimit.take(key, limit, windowMs)
   const env = o.env || process.env;
-  const mailTo = String(env.BNBBANG_STALL_MAIL_TO || 'admin@arcbang.xyz').trim();
-  const mailFrom = String(env.BNBBANG_STALL_MAIL_FROM || 'stall@arcbang.xyz').trim();
-  const resendKey = String(env.BNBBANG_RESEND_KEY || '').trim();
+  const mailTo = String(env.ARCBANG_STALL_MAIL_TO || 'admin@arcbang.xyz').trim();
+  const mailFrom = String(env.ARCBANG_STALL_MAIL_FROM || 'stall@arcbang.xyz').trim();
+  const resendKey = String(env.ARCBANG_RESEND_KEY || '').trim();
   const mailOn = !!resendKey;
 
   async function sendMail(rec) {

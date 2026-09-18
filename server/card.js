@@ -18,11 +18,11 @@ const path = require('path');
 const { keccak256, AbiCoder } = require('ethers');
 
 const ROOT = path.join(__dirname, '..');
-const B = require(path.join(ROOT, 'engine/bnbhash.js'));
+const B = require(path.join(ROOT, 'engine/archash.js'));
 require(path.join(ROOT, 'engine/params.js'));
 const E = require(path.join(ROOT, 'engine/engine.js'));
 
-/** 结局顺序必须与合约 outcomeName() 一致（与 web/bnb-ui.js 的 OUTCOME_ORDER 同一份） */
+/** 结局顺序必须与合约 outcomeName() 一致（与 web/arc-ui.js 的 OUTCOME_ORDER 同一份） */
 const OUTCOME_ORDER = [
   'UNSTABLE_ORBITS', 'BIG_CRUNCH', 'BIG_RIP', 'HEAT_DEATH_NO_STRUCTURE',
   'BLACK_HOLE_DOMINATED', 'NO_ATOMS', 'NO_CHEMISTRY', 'NO_STARS',

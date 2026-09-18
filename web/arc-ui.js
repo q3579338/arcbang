@@ -1,5 +1,5 @@
 /*
- * web/bnb-ui.js —— BNBBANG 面板（只在站点版加载）
+ * web/arc-ui.js —— BNBBANG 面板（只在站点版加载）
  * ------------------------------------------------------------
  * 起爆页上多一块：拿一个 BNB 区块哈希当奇点。
  *   取区块（最新 / 指定高度 / 随机 / 直接粘哈希）→ 免费引爆 → 喜欢再 mint
@@ -68,8 +68,8 @@
     return (C && C.CHAIN && C.CHAIN.id === GENESIS_REF.chainId) ? GENESIS_REF.date : '';
   }
   /* 链名与币符号只有一个来源：web/config.js 的 chain 块（specs/mainnet-ready.md），
-     由 bnb-chain.js 派生成 C.CHAIN / C.chainName()。这个文件里不许再写死任何一个。
-     退路是防着页面装了旧版 bnb-chain.js（缓存），不是给换链用的。 */
+     由 arc-chain.js 派生成 C.CHAIN / C.chainName()。这个文件里不许再写死任何一个。
+     退路是防着页面装了旧版 arc-chain.js（缓存），不是给换链用的。 */
   function chainName() {
     if (C && C.chainName) return C.chainName();
     return (C && C.CHAIN && C.CHAIN.name) || '';
@@ -139,7 +139,7 @@
   var CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/;
   /** 服务端前缀。MirrorBnbApi 已经算过一次，缺席时按 config.js 自己算，别写死 */
   function apiBase() {
-    var c = root.BNBBANG_CONFIG || {};
+    var c = root.ARCBANG_CONFIG || {};
     if (API && API.base) return API.base;
     return (c.apiBase != null ? String(c.apiBase) : '/api').replace(/\/$/, '');
   }
@@ -241,7 +241,7 @@
      取不到就返回空串，调用方据此退回老的 app.html?bang=… 形式 ——
      那条路在任何部署下都成立（本地 file://、localhost 联调、塞在子目录里的站点）。 */
   function siteRoot() {
-    var c = root.BNBBANG_CONFIG || {};
+    var c = root.ARCBANG_CONFIG || {};
     if (c.siteBase) return String(c.siteBase).replace(/\/+$/, '');
     var o = String(location.origin || '');
     if (!/^https?:/.test(o)) return '';
@@ -2669,7 +2669,7 @@
 
   function shortAddr(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
 
-  /* 钱包 provider 与 bnb-chain.js 的 eth() 同一个口径：多钱包发现（wallet.js）
+  /* 钱包 provider 与 arc-chain.js 的 eth() 同一个口径：多钱包发现（wallet.js）
      选中的那个优先，退回 window.ethereum。断开/切换要对**同一个** provider 说话，
      不然连的是币安钱包、撤的却是小狐狸。 */
   function provider() {

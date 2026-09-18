@@ -579,7 +579,7 @@
     '铸造成功了，但回执里没有 Minted 事件，读不出这枚 NFT 的编号 —— 不猜编号是有意的（猜错会去改别人的那一枚）':
       'The mint succeeded, but the receipt carries no Minted event, so this NFT’s id cannot be read. Not guessing the id is deliberate — a wrong guess would rewrite somebody else’s NFT',
     /* 主编号一律是**区块号**（{n}），tokenId 只在括号里当副编号（{m}/{k}）——
-       全站口径见 web/bnb-ui.js 顶部与 web/intervene.js 的 uniNo()。 */
+       全站口径见 web/arc-ui.js 顶部与 web/intervene.js 的 uniNo()。 */
     '铸下并拯救成功 —— 宇宙 #{n} 现在是你的了（链上 NFT #{m}），参数也已经按沙盒里这一串改写了。':
       'Minted and rescued — Universe #{n} is now yours (on-chain NFT #{m}), and its parameters have been rewritten with the nudges from the sandbox.',
     /* **中途失败的话术是这条改动的重点。** 第 1 步落地之后用户已经拿到 NFT 了，

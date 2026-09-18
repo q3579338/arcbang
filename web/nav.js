@@ -263,11 +263,11 @@
      那时已经在树上，照样被翻到。 */
   /* 站点标识（specs/arcbang-v1.md）：'arc' = ARCBANG，品牌名「ARC宇宙」。
      **每次现读，不在文件顶层捕获**：市场 / 文档页里 nav.js 排在 config.js 之前，顶层读到的永远是空。
-     两个来源按序：window.BNBBANG_SITE（build-web.js 在每页 <head> 里打的一行，
-     mount 时一定已经在）→ BNBBANG_CONFIG.site（config.js 先于 nav.js 的页面，或 mount 之后的补正）。 */
+     两个来源按序：window.ARCBANG_SITE（build-web.js 在每页 <head> 里打的一行，
+     mount 时一定已经在）→ ARCBANG_CONFIG.site（config.js 先于 nav.js 的页面，或 mount 之后的补正）。 */
   function siteOf() {
-    var c = root.BNBBANG_CONFIG || {};
-    return String(root.BNBBANG_SITE || c.site || '');
+    var c = root.ARCBANG_CONFIG || {};
+    return String(root.ARCBANG_SITE || c.site || '');
   }
   function brandName() {
     return siteOf() === 'arc' ? 'ARC宇宙' : '镜像宇宙';
@@ -537,7 +537,7 @@
      唯一真相来源是 web/config.js 的 chain 块；**派生只有这一份**，首页 / 市场 /
      经济 / 状态 / 个人中心五个页面都调 MirrorNav.chain()，各自不再抄一遍。
      抄一遍就是「改了一处漏三处」，而这正是这轮改造要拔掉的病。
-     （模拟器那条线走 web/bnb-chain.js 自己那份 —— 链访问层不该反过来依赖顶栏这个
+     （模拟器那条线走 web/arc-chain.js 自己那份 —— 链访问层不该反过来依赖顶栏这个
        UI 模块，两边各自从同一个 chain 块派生，不互相调用。）
 
      nav.js 在好几个页面上比 config.js **先**加载，所以每次现取，
@@ -578,7 +578,7 @@
     return false;
   }
   function chainCfg() {
-    var cfg = root.BNBBANG_CONFIG || {};
+    var cfg = root.ARCBANG_CONFIG || {};
     var raw = cfg.chain;
     var missing = !raw;
     if (missing && !root.__bnbbangChainWarned) {
@@ -868,7 +868,7 @@
 
     slot.parentNode.replaceChild(header, slot);
 
-    /* 品牌名补正：mount 时 config.js 还没到（也没有 BNBBANG_SITE 那一行）的页面，
+    /* 品牌名补正：mount 时 config.js 还没到（也没有 ARCBANG_SITE 那一行）的页面，
        等文档解析完再对一次 —— 那时 config.js 一定已经执行。写的是中文原文，
        随后叫 MirrorI18n.apply() 让英文态照常翻（新文本节点没被走过，apply 会补上）。 */
     if (d.readyState === 'loading') {

@@ -11,7 +11,7 @@
  *
  * 分节按命名空间：
  *   不带命名空间 = 静态文本（顶栏品牌名、面板副标题），由 DOM 遍历翻；
- *   'app'   = web/bnb-ui.js 的 T()/TF()/TX()；
+ *   'app'   = web/arc-ui.js 的 T()/TF()/TX()；
  *   'tools' = web/intervene.js 的 T()/TN()；
  *   'site'  = web/onboard.js 的 T()（新手引导）；
  *   'market'= web/market.html（arc 改写后的那几句，见 web/arc-patch.js）。
@@ -31,7 +31,7 @@
       'Every Arc block hash is a set of physical laws: detonate it and see whether such a universe can grow life'
   });
 
-  /* ---- web/bnb-ui.js，ARC 模式（命名空间 'app'） ---- */
+  /* ---- web/arc-ui.js，ARC 模式（命名空间 'app'） ---- */
   I.add({
     '正在从 Arc 链上取一个区块…': 'Fetching a block from Arc…',
     'ARC宇宙 · ARCBANG': 'ARCBANG · Simulator',

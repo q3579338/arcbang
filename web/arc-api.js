@@ -2,7 +2,7 @@
  * 服务端 API 客户端
  * ------------------------------------------------------------
  * 爆炸的计算和出图都在服务端（specs/server-side.md）。
- * 浏览器不再持有 engine/bnbhash.js —— 它只负责问、显示、发交易。
+ * 浏览器不再持有 engine/archash.js —— 它只负责问、显示、发交易。
  *
  * 三个端点：
  *   GET  /api/card/<hash>  幂等，只算不签名，用来在页面上展示这个宇宙是什么
@@ -13,7 +13,7 @@
  */
 (function (root) {
   'use strict';
-  var CFG = root.BNBBANG_CONFIG || {};
+  var CFG = root.ARCBANG_CONFIG || {};
   var BASE = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
 
   function req(path, opts) {
@@ -82,7 +82,7 @@
         所以这里也不做校验——校验做两遍只会两边漂移。
 
         **两个调用点，返回的 cardHash 有两种用途**：
-          web/bnb-ui.js  起爆页的铸造按钮 —— 拿 sig 去 bangSigned()，铸完就结束
+          web/arc-ui.js  起爆页的铸造按钮 —— 拿 sig 去 bangSigned()，铸完就结束
           web/intervene.js「铸下并拯救」（specs/rescue-mint-unified.md）—— 铸完之后
             **同一个 cardHash 直接当下一步的 oldCardHash** 交给 /api/intervene。
             那一步刻意不去链上 cardOf(tokenId) 现读：铸造那笔刚上链，

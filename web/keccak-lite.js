@@ -1,14 +1,14 @@
 /*
  * keccak256（浏览器用的精简版）
  * ------------------------------------------------------------
- * 从 engine/bnbhash.js 里抽出来的哈希部分，**不含任何派生逻辑**。
+ * 从 engine/archash.js 里抽出来的哈希部分，**不含任何派生逻辑**。
  *
  * 为什么要拆：爆炸的计算已经搬到服务端（specs/server-side.md 目标 1），
- * bnbhash.js 因此不再打进站点包。但 bnb-chain.js 还需要 keccak256 来算
+ * archash.js 因此不再打进站点包。但 arc-chain.js 还需要 keccak256 来算
  * ABI 的函数选择器和事件 topic —— 那只是个哈希函数，发到浏览器里
  * 泄露不了参数映射，而派生表留在服务端。
  *
- * 与 bnbhash.js 里那份必须逐位一致；tools/keccak-parity.js 会比对。
+ * 与 archash.js 里那份必须逐位一致；tools/keccak-parity.js 会比对。
  */
 (function (root, factory) {
   if (typeof module !== 'undefined' && module.exports) module.exports = factory();

@@ -377,7 +377,7 @@
 
   /* 首次引导的正主已经换成 web/tour.js（盖在真实界面上、按步点的那种，specs/sim-ui-v1.md）。
      这里只做转交：有它就走它，并把「看过」记在两边——「怎么玩」按钮与首访自动弹
-     都走这个函数，一处转交就够，bnb-ui.js 一个字都不用改。
+     都走这个函数，一处转交就够，arc-ui.js 一个字都不用改。
      它缺席时（并行开发、或构建里被跳过）照旧退回下面这套三步弹窗。 */
   function show(force, onDone) {
     if (!doc || !doc.body) return false;

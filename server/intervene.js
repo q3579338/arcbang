@@ -20,7 +20,7 @@
  *   ops    = [{ key, dir, steps }]         —— 调用方只说「往哪个方向推几格」
  *
  * 为什么要有 ops：一格的长度 = STEP × 该参数的生存半径，而生存半径表
- * （engine/bnbhash.js 的 RADIUS）是这套推导里唯一藏得住的东西 —— 参数表和物理引擎
+ * （engine/archash.js 的 RADIUS）是这套推导里唯一藏得住的东西 —— 参数表和物理引擎
  * 本来就必须发到浏览器里跑。前端要是自己算「推一格到哪」，就得在包里带一份半径表，
  * 于是这张表原样发给了每个访客；给它开个 /api/steps 端点同样没用，因为
  * 步长 = 0.05 × 半径，把步长交出去就等于把半径交出去。
@@ -34,7 +34,7 @@
 const path = require('path');
 const { keccak256, AbiCoder } = require('ethers');
 const { sigV2, assertMinter } = require('./sign.js');
-const B = require(path.join(__dirname, '..', 'engine/bnbhash.js'));
+const B = require(path.join(__dirname, '..', 'engine/archash.js'));
 const P = require(path.join(__dirname, '..', 'engine/params.js'));
 const E = require(path.join(__dirname, '..', 'engine/engine.js'));
 /* 提示（诊断 + 贪心爬山）也搬到了服务端，理由同上：爬山每试一步都要"推一格"，
@@ -465,8 +465,8 @@ function evaluate(baseCard, deltas, ops) {
    上面整套 UNIT_COST / STRING_GAS / DIFFICULTY 算出来的 cost 是「BANG 枚数」（v5：一次救援 ≈ 12,000）。
    Arc 上没有代币，救援付的是 native USDC 并全额打进 0x…dEaD，合约要求 msg.value == cost，
    照旧返回 12,000e18 就是向用户要 12,000 美元。所以在 Arc 链上按比例换算：
-     12,000 BANG ≈ 3 USDC（BNBBANG_RESCUE_SCALE=4000，可用环境变量改），
-     再兜一个下限 0.5 USDC（BNBBANG_RESCUE_MIN_USDC），免得极小位移算出几分钱。
+     12,000 BANG ≈ 3 USDC（ARCBANG_RESCUE_SCALE=4000，可用环境变量改），
+     再兜一个下限 0.5 USDC（ARCBANG_RESCUE_MIN_USDC），免得极小位移算出几分钱。
    相对难度表一个字不动 —— 越死越贵的比例关系在两条链上一样。字段名仍叫 costBang：
    前端与签名链路（index.js 里 BigInt(out.costBang) 进摘要）都认这个名字，值的单位随链走。 */
 const ARC_CHAIN_IDS = new Set([5042, 5042002]);
@@ -475,10 +475,10 @@ function rescueWei(costUnits) {
   /* 直接读环境变量，**不 require('./chain.js')**：selftest 会先单独调 evaluate 再加载 index.js，
      那时 env 还没设链；这里若先把 chain.js 拉起来，它会以 NaN 的 chainId 被缓存，
      后面 index.js 再拿到的就是这份 NaN → 签名摘要 underflow。 */
-  const chainId = Number(process.env.BNBBANG_CHAIN_ID);
+  const chainId = Number(process.env.ARCBANG_CHAIN_ID);
   if (!ARC_CHAIN_IDS.has(chainId)) return wei;
-  const scale = BigInt(Math.max(1, Math.floor(Number(process.env.BNBBANG_RESCUE_SCALE || 4000))));
-  const minUsdc = Number(process.env.BNBBANG_RESCUE_MIN_USDC || 0.5);
+  const scale = BigInt(Math.max(1, Math.floor(Number(process.env.ARCBANG_RESCUE_SCALE || 4000))));
+  const minUsdc = Number(process.env.ARCBANG_RESCUE_MIN_USDC || 0.5);
   const minWei = BigInt(Math.round(minUsdc * 1e6)) * 10n ** 12n;
   const scaled = wei / scale;
   return scaled < minWei ? minWei : scaled;

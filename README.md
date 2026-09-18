@@ -116,11 +116,11 @@ Last full run of this tree (2026-09-17, Node 24, Windows):
 | Signer (server) | `0x…` **not deployed yet / 尚未部署** | readable on chain via `signer()` |
 
 Once deployed, the addresses live in exactly one place the site reads — [`web/config.arc.js`](web/config.arc.js) —
-and must match `BNBBANG_CONTRACT` in the server's env: the mint signature binds the contract address, so a
+and must match `ARCBANG_CONTRACT` in the server's env: the mint signature binds the contract address, so a
 mismatch fails on chain rather than silently minting into the wrong place.
 
 部署之后，地址只有一个真相来源：[`web/config.arc.js`](web/config.arc.js)，并且必须和服务端 env 里的
-`BNBBANG_CONTRACT` 一致 —— 签名把合约地址绑死了，两边不一致时链上直接拒绝，不会悄悄铸错地方。
+`ARCBANG_CONTRACT` 一致 —— 签名把合约地址绑死了，两边不一致时链上直接拒绝，不会悄悄铸错地方。
 
 No proxy, no upgrade path, no `selfdestruct`, no `delegatecall`, no pause switch. `MINT_CAP = 1387` is
 `constant`: **a supply cap you can change is not a supply cap.**
@@ -144,17 +144,17 @@ Measured cost on Arc mainnet: **0.088 USDC** for `ArcUniverse` (4,377,954 gas at
 
 **Site.** [`web/nginx-arcbang.xyz.conf`](web/nginx-arcbang.xyz.conf) is the server config;
 [`web/deploy-site-arc.sh`](web/deploy-site-arc.sh) ships `web/dist-arc/` to it
-(set `BNBBANG_HOST=root@your-server` — the default in the script is a placeholder).
+(set `ARCBANG_HOST=root@your-server` — the default in the script is a placeholder).
 
 **API.** `server/` is a plain Node HTTP service (no framework) that computes the card, signs the mint and
-renders the art. Copy [`server/api.env.arc.example`](server/api.env.arc.example), fill it in, `chmod 600`,
-and install [`server/bnbbang-api-arc.service`](server/bnbbang-api-arc.service). The signing key lives in
-its own `600` file outside the repository and is read via `BNBBANG_SIGNER_KEY_FILE` — never from the env
+renders the art. Copy [`server/api.env.example`](server/api.env.example), fill it in, `chmod 600`,
+and install [`server/arcbang-api.service`](server/arcbang-api.service). The signing key lives in
+its own `600` file outside the repository and is read via `ARCBANG_SIGNER_KEY_FILE` — never from the env
 file, never from the code.
 
 **服务端**：`server/` 是一个不用框架的 Node HTTP 服务：算卡、签名、出图。
-拷 `server/api.env.arc.example` 填好、`chmod 600`，再装那个 systemd unit。
-签名私钥单独放一个 600 权限的文件，在仓库之外，靠 `BNBBANG_SIGNER_KEY_FILE` 读进来 —— 不写 env，不写代码。
+拷 `server/api.env.example` 填好、`chmod 600`，再装那个 systemd unit。
+签名私钥单独放一个 600 权限的文件，在仓库之外，靠 `ARCBANG_SIGNER_KEY_FILE` 读进来 —— 不写 env，不写代码。
 
 ---
 

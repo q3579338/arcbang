@@ -99,7 +99,7 @@
      现在客户端**根本不算这段距离** —— 它只记「推了谁、往哪、第几格」，
      新参数、新结局和费用统统由服务端算完发回来。 */
 
-  /* 哈希派生固定用"模块全关"的 20 个基础参数（engine/bnbhash.js 的 MODULES_OFF）。
+  /* 哈希派生固定用"模块全关"的 20 个基础参数（engine/archash.js 的 MODULES_OFF）。
      不能让 Params.normalizeModules 走默认值：stringGas 默认是开的，一开 dimS 就变成派生量，
      参数表当场从 20 个变成 22 个，和玩家手里那个哈希对不上。 */
   var MODULES_OFF = { stringGas: false, slowRoll: false, landscape: false, altBiochem: false };
@@ -115,7 +115,7 @@
      于是这个文件里两件事按站分叉：① 一切写着「烧 BANG」的文案换成「付 USDC」；
      ② ERC-20 那套（余额 / 授权 / approve 一笔）在 arc 上整段跳过 —— 原生币不需要授权。
      config.js 在注入层里排在本文件之前，所以顶层就读得到。 */
-  var ARC = ((root.BNBBANG_CONFIG && root.BNBBANG_CONFIG.site) || root.BNBBANG_SITE) === 'arc';
+  var ARC = ((root.ARCBANG_CONFIG && root.ARCBANG_CONFIG.site) || root.ARCBANG_SITE) === 'arc';
   /** 费用的单位名：arc 是 USDC，其余站是 BANG。只用在**已经分叉过**的整句里，
       不要拿它去拼 T() 的 key —— 拼出来的 key 词典里没有。 */
   function T(s) { var I = root && root.MirrorI18n; return (I && I.t) ? I.t(s, 'tools') : s; }
@@ -132,7 +132,7 @@
   /** 一串名字连起来。中文用「、」，英文的顿号得换成逗号 */
   function TL(list) { return list.map(function (s) { return T(s); }).join(T('、')); }
 
-  /* 宇宙的**主编号一律是区块号**，不是 tokenId。全站口径见 web/bnb-ui.js 顶部：
+  /* 宇宙的**主编号一律是区块号**，不是 tokenId。全站口径见 web/arc-ui.js 顶部：
        「宇宙 #<区块号>」= 身份　　「NFT #<tokenId>」= 铸造顺序
      两个 # 前面永远有一个词说清是哪一种；市场卡、个人中心、状态页都按这个显示，
      拯救这一格以前回归成了 tokenId（页面上是 #2，市场上是 #8642956），对不上。
@@ -211,7 +211,7 @@
      解出来的东西是「把哪个参数挪到 unit 空间的哪个位置」。用到的只有
      engine/params.js 的 toUnit/fromUnit 和 engine/engine.js 的模拟 ——
      这两个模块本来就必须发到浏览器里跑，不是秘密。
-     生存半径表（engine/bnbhash.js 的 RADIUS）没有打进站点包，这个求解器也不需要它：
+     生存半径表（engine/archash.js 的 RADIUS）没有打进站点包，这个求解器也不需要它：
      弦气那三个参数**压根不在半径表上**（server/intervene.js 的 radiusOf 对它们走 FALLBACK，
      计价走的是固定的每 unit 单价，整条路上没有半径这个量）。
      「这段位移等于几格」由服务端回的参数现场标定（见 sandbox.solveDimension），
@@ -2916,7 +2916,7 @@
     return CRAFT_SEL_FALLBACK;
   }
 
-  /* ABI 编码的三个最小件，与 web/bnb-chain.js 的 padHex / encUint / encBytes 同形
+  /* ABI 编码的三个最小件，与 web/arc-chain.js 的 padHex / encUint / encBytes 同形
      （那边没导出，抄接口不抄状态）。地址和 bytes32 都是左填零到 32 字节。 */
   function craftPad(h) { return String(h).replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
   function craftUint(v) { return craftPad(BigInt(v).toString(16)); }
@@ -2958,7 +2958,7 @@
   }
 
   /** 钱包 provider：优先 wallet.js（EIP-6963）选中的那个，退回 window.ethereum ——
-      与 web/bnb-chain.js 的 eth() 同一条规矩（它没导出，抄规矩不抄引用）。 */
+      与 web/arc-chain.js 的 eth() 同一条规矩（它没导出，抄规矩不抄引用）。 */
   function craftEth() {
     var W = root.MirrorWallet;
     return (W && typeof W.provider === 'function' && W.provider()) || root.ethereum;
@@ -2986,7 +2986,7 @@
 
   /* 「广播」链接的委托（specs/share-referral-v1.md §五）：铸成那行话术由 render()
      每帧按 S.craftMsg 重写 innerHTML，元素上的监听器活不过一帧，所以挂在 doc 上认 id。
-     广播现场（S.craftShare）在铸成那一刻存好，浮层本体在 web/bnb-ui.js（BnbShare）。 */
+     广播现场（S.craftShare）在铸成那一刻存好，浮层本体在 web/arc-ui.js（BnbShare）。 */
   if (doc && doc.addEventListener) {
     doc.addEventListener('click', function (ev) {
       var a = ev.target && ev.target.closest ? ev.target.closest('#miCraftShare') : null;
@@ -3005,7 +3005,7 @@
   function renderCraft() {
     var el = $('miCraft'), btn = $('miCraftBtn'), p = $('miCraftP');
     if (!el || !btn || !p || !S.box) return;
-    var CFG = root.BNBBANG_CONFIG || {};
+    var CFG = root.ARCBANG_CONFIG || {};
     var box = S.box, n = box.steps();
     if (!CFG.crafted || n === 0) { el.hidden = true; if (!S.craftBusy) S.craftMsg = null; return; }
     el.hidden = false;
@@ -3042,7 +3042,7 @@
   function craftMint() {
     var btn = $('miCraftBtn');
     if (!btn || btn.disabled || S.craftBusy || !S.box) return;
-    var CFG = root.BNBBANG_CONFIG || {};
+    var CFG = root.ARCBANG_CONFIG || {};
     var crafted = CFG.crafted, bangAddr = CFG.bangToken;
     var C = root.MirrorChain, api = root.MirrorBnbApi;
     var hash = S.meta && S.meta.hash;
@@ -3227,7 +3227,7 @@
                       原来那枚一个字节都不动。
 
      为什么现在才有：合约、服务端（/api/intervene 的非 preview 分支）、自测一直都在，
-     **前端一处都没调用** —— web/bnb-api.js 里只有 intervenePreview。
+     **前端一处都没调用** —— web/arc-api.js 里只有 intervenePreview。
      于是「烧 BANG 救活自己的 NFT」这个动作在网站上根本执行不了，
      用户手上原生 NFT 的 burnedOn 永远是 0，他一直以为是功能坏了。
 
@@ -3261,7 +3261,7 @@
      同一次复核里 transfer(0xa9059cbb) / approve(0x095ea7b3) / allowance(0xdd62ed3e) /
      balanceOf(0x70a08231) 四个众所周知的选择器逐一对上，keccak 本身没跑偏。 */
   var MU_SIG = 'intervene(uint256,bytes32,uint8,uint8,uint256,uint64,bytes,bytes)';
-  /* 铸造的函数签名。与 web/bnb-chain.js 的 bangSigned() 逐字相同 —— 那边不带显式 gas
+  /* 铸造的函数签名。与 web/arc-chain.js 的 bangSigned() 逐字相同 —— 那边不带显式 gas
      也拿不到 calldata 做模拟，所以这条路自己拼（同一份编码，见 mintCalldata 的逐槽注释）。
      keccak256('bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bytes,bool)')
        .slice(0,10) === '0x2a0ca83a'（用同一份 keccak-lite 复核过） */
@@ -3294,7 +3294,7 @@
     return MU_MINTED_TOPIC;
   }
   var ZERO32 = '0x' + new Array(65).join('0');
-  /* 市场页是站点里的独立 HTML，与沙盒同目录（web/bnb-ui.js 里也是这一个常数）。
+  /* 市场页是站点里的独立 HTML，与沙盒同目录（web/arc-ui.js 里也是这一个常数）。
      「铸造成了、拯救没成」的时候要给用户一条去看那枚 NFT 的路。 */
   var MARKET_URL = 'market.html';
 
@@ -3381,7 +3381,7 @@
      失效点只有两个：换宇宙（key 变了）、拯救成功之后（rescueGo 里手动置 null 重查）。
      全程走公开 RPC（C.rpc），一次都不动钱包：账户用 eth_accounts 读，不会弹连接框。 */
   function rescueProbe() {
-    var CFG = root.BNBBANG_CONFIG || {}, C = root.MirrorChain;
+    var CFG = root.ARCBANG_CONFIG || {}, C = root.MirrorChain;
     var hash = S.meta && S.meta.hash;
     if (!CFG.contract || !C || !C.rpc || !hash || S.ownBusy) return;
     var key = String(hash).toLowerCase();
@@ -3487,7 +3487,7 @@
       S.rescueMode = null;
       return;
     }
-    var CFG = root.BNBBANG_CONFIG || {};
+    var CFG = root.ARCBANG_CONFIG || {};
     var box = S.box, n = box.steps();
     if (!CFG.contract || n === 0) {
       el.hidden = true;
@@ -3642,7 +3642,7 @@
    * 两条入口的成功话术各写各的。
    */
   function rescueTail(ctx) {
-    var CFG = root.BNBBANG_CONFIG || {};
+    var CFG = root.ARCBANG_CONFIG || {};
     var mu = CFG.contract, bangAddr = CFG.bangToken;
     var C = root.MirrorChain, api = root.MirrorBnbApi;
     var from = ctx.from, tokenId = ctx.tokenId;
@@ -3769,7 +3769,7 @@
   function rescueGo() {
     var btn = $('miRescueBtn');
     if (!btn || btn.hidden || btn.disabled || S.rescueBusy || !S.box) return;
-    var CFG = root.BNBBANG_CONFIG || {};
+    var CFG = root.ARCBANG_CONFIG || {};
     var mu = CFG.contract, bangAddr = CFG.bangToken;
     var C = root.MirrorChain, api = root.MirrorBnbApi;
     var hash = S.meta && S.meta.hash;
@@ -3861,7 +3861,7 @@
 
   /**
    * bangSigned 的 calldata。**八个头槽 + 一段动态 bytes（sig）**，
-   * 编码与 web/bnb-chain.js 的 bangSigned() 逐字段相同（那边发交易不带显式 gas、
+   * 编码与 web/arc-chain.js 的 bangSigned() 逐字段相同（那边发交易不带显式 gas、
    * 也不给出 calldata 做模拟，所以这里自己拼一份）：
    *   槽 0  blockHash    bytes32   区块哈希（发给 /api/bang 的那个，服务端签的也是它）
    *   槽 1  blockNumber  uint64    服务端查链得到的区块号（d.card.blockNumber）
@@ -3870,7 +3870,7 @@
    *   槽 4  cardHash     bytes32   参数指纹（d.cardHash）。它同时是第 2 步的 oldCardHash
    *   槽 5  deadline     uint64    签名有效期，Unix 秒
    *   槽 6  offset(sig)  uint256   = 8 × 32 = 256
-   *   槽 7  payWithBang  bool      false —— 站点上这条路一律付 BNB（与 web/bnb-ui.js 一致）
+   *   槽 7  payWithBang  bool      false —— 站点上这条路一律付 BNB（与 web/arc-ui.js 一致）
    *   尾部  len(65) ‖ r‖s‖v，右填充到 96 字节
    * 八个字段全部签进了摘要，自己另算任何一个都是 BadSig，而链上报错看不出是哪一项。
    */
@@ -3925,7 +3925,7 @@
   function mintRescueGo() {
     var btn = $('miRescueBtn');
     if (!btn || btn.hidden || btn.disabled || S.rescueBusy || !S.box) return;
-    var CFG = root.BNBBANG_CONFIG || {};
+    var CFG = root.ARCBANG_CONFIG || {};
     var mu = CFG.contract, bangAddr = CFG.bangToken;
     var C = root.MirrorChain, api = root.MirrorBnbApi;
     var hash = S.meta && S.meta.hash;

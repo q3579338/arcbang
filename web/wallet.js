@@ -654,15 +654,15 @@
   }
   /** 深链要带 defaultChainId：从站点配置读，读不到按 BSC 主网 56（深链只是入口，链最终由页面 ensureChain 把关） */
   function currentChainId() {
-    var c = root.BNBBANG_CONFIG;
+    var c = root.ARCBANG_CONFIG;
     return (c && c.chain && c.chain.id != null) ? Number(c.chain.id) : 56;
   }
 
   /* ============================================================ 切链 / 加链（EIP-3326 + EIP-3085）
      （2026-09-17 加，为 ARCBANG 上 Arc 链而做，但对三个站是同一套代码：
-       链参数全部由调用方从 BNBBANG_CONFIG.chain + rpc 现读传进来，这里**一个链号都不写死**。）
+       链参数全部由调用方从 ARCBANG_CONFIG.chain + rpc 现读传进来，这里**一个链号都不写死**。）
 
-     流程与从前逐字相同，只是把「两份抄在 bnb-chain.js 和 market.html 里的实现」收成一份：
+     流程与从前逐字相同，只是把「两份抄在 arc-chain.js 和 market.html 里的实现」收成一份：
        1. eth_chainId 已经对了 → 直接过；
        2. wallet_switchEthereumChain；
        3. 报「没有这条链」→ wallet_addEthereumChain，加完再核一次 chainId。

@@ -317,7 +317,7 @@ var NETS = {
           explorer: 'https://explorer.testnet.arc.io', rpc: ['https://rpc.testnet.arc.io'] }
 };
 (function mergeCfg() {
-  var c = window.BNBBANG_CONFIG;
+  var c = window.ARCBANG_CONFIG;
   if (!c || !c.chain || c.chain.id == null) return;
   var id = Number(c.chain.id), k;
   for (k in NETS) {
@@ -961,7 +961,7 @@ function renderOut() {
   ln("  contract: '" + S.uni + "',");
   ln("  market: '" + S.mkt + "',");
   cm('');
-  cm('# server/api.env.arc（线上 /etc/bnbbang/api.arc.env，键名照 api.env.arc.example）');
+  cm('# server/api.env.arc（线上 /etc/bnbbang/api.arc.env，键名照 api.env.example）');
   ln('BNBBANG_CONTRACT=' + S.uni);
   ln('BNBBANG_MARKET=' + S.mkt);
   if (S.uniBlock != null) ln('BNBBANG_INDEX_FROM=' + S.uniBlock);

@@ -10,7 +10,7 @@
  * ---- 边界，缺一条它就是别人的免费公共节点 ----
  *   · 只收 JSON-RPC 的**只读**方法（下面 METHODS 白名单），写链永远走钱包；
  *   · eth_call / eth_getCode / eth_getLogs 的目标地址只认**本站自己的合约**
- *     （env 里配的那几个 + BNBBANG_RELAY_TO 补充的），别的地址一律 -32602；
+ *     （env 里配的那几个 + ARCBANG_RELAY_TO 补充的），别的地址一律 -32602；
  *   · eth_getLogs 跨度封顶（默认 5000 块），与索引器同量级；
  *   · 按 IP 限流（默认每分钟 300 条，批量里每一条都算）；
  *   · 体积 64 KB 封顶，批量 40 条封顶；
@@ -35,10 +35,10 @@ const METHODS = {
   eth_getTransactionReceipt: 1, eth_getTransactionByHash: 1
 };
 const MAX_BODY = 64 * 1024;
-const MAX_BATCH = envInt(process.env.BNBBANG_RELAY_BATCH, 40, 1, 200);
-const PER_MIN = envInt(process.env.BNBBANG_RELAY_PER_MIN, 300, 10, 100000);
-const LOG_RANGE = envInt(process.env.BNBBANG_RELAY_LOG_RANGE, 5000, 10, 50000);
-const UPSTREAM_MS = envInt(process.env.BNBBANG_RELAY_UPSTREAM_MS, 10000, 1000, 60000);
+const MAX_BATCH = envInt(process.env.ARCBANG_RELAY_BATCH, 40, 1, 200);
+const PER_MIN = envInt(process.env.ARCBANG_RELAY_PER_MIN, 300, 10, 100000);
+const LOG_RANGE = envInt(process.env.ARCBANG_RELAY_LOG_RANGE, 5000, 10, 50000);
+const UPSTREAM_MS = envInt(process.env.ARCBANG_RELAY_UPSTREAM_MS, 10000, 1000, 60000);
 const MAX_DATA_HEX = 8192;          // eth_call 的 data：4 KB 的 calldata 足够任何 getter
 
 const HEX = /^0x[0-9a-fA-F]*$/;
@@ -52,9 +52,9 @@ function allowedTo() {
   if (allowCache) return allowCache;
   const set = new Set();
   const put = (v) => { const s = String(v || '').trim().toLowerCase(); if (ADDR_RE.test(s)) set.add(s); };
-  ['BNBBANG_CONTRACT', 'BNBBANG_MARKET', 'BNBBANG_NAMES', 'BNBBANG_NAMES2', 'BNBBANG_CRAFTED', 'BNBBANG_REFERRAL_VAULT']
+  ['ARCBANG_CONTRACT', 'ARCBANG_MARKET', 'ARCBANG_NAMES', 'ARCBANG_NAMES2', 'ARCBANG_CRAFTED', 'ARCBANG_REFERRAL_VAULT']
     .forEach((k) => put(process.env[k]));
-  String(process.env.BNBBANG_RELAY_TO || '').split(/[,\s]+/).forEach(put);
+  String(process.env.ARCBANG_RELAY_TO || '').split(/[,\s]+/).forEach(put);
   allowCache = set;
   return set;
 }

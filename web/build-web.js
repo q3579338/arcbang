@@ -89,8 +89,8 @@ const LAYER = [
   // 多钱包发现要排在 arc-chain 之前：后者的 eth() 会问它选了哪个
   'web/wallet.js',
   'web/keccak-lite.js',
-  'web/bnb-api.js',
-  'web/bnb-chain.js',
+  'web/arc-api.js',
+  'web/arc-chain.js',
   // 顺序有讲究：gauges / hint 只挂全局不依赖别人；intervene 运行时才用它们；
   // arc-ui 最后，它要调 intervene，而且 mount 时 MirrorApp 必须已就位
   'web/gauges.js',
@@ -99,7 +99,7 @@ const LAYER = [
   // 排在 onboard 之前：onboard.show() 会把「第一次进来」这件事让给它（有它就走 coach-mark，没有就退回三步弹窗）
   'web/tour.js',           // 可选：盖在真实界面上的分步引导（specs/sim-ui-v1.md）
   'web/onboard.js',        // 可选：术语人话表 + 新手模式 + WebGPU 教程
-  'web/bnb-ui.js'
+  'web/arc-ui.js'
 ];
 
 // 缺席时只跳过不中断——并行开发时某个模块还没交付，构建也得能跑
@@ -128,17 +128,17 @@ const layer = LAYER.map((rel) => {
 }).filter(Boolean).join('\n');
 
 /* 防呆：别拿已经注入过的站点版再当输入（会叠两层）。
-   **哨兵不能用产品名**：BNBBANG 现在是可翻译文本（词典里就有「← 回到 BNBBANG」），
+   **哨兵不能用产品名**：ARCBANG 是可翻译文本（词典里就有「← 回到 ARCBANG」），
    词典打进离线包之后，纯净的底稿里也会出现这个词，于是好好的构建被自己拦住。
    踩过一次。改用一个只有注入过程才会写下的标记，它不可能出现在任何文案里。 */
-var STAMP = '<!-- bnbbang-layer -->';
+var STAMP = '<!-- arcbang-layer -->';
 if (html.indexOf(STAMP) >= 0) {
-  console.error('这个输入里已经有 BNBBANG 层了——别拿站点版当输入');
+  console.error('这个输入里已经有站点层了——别拿站点版当输入');
   process.exit(1);
 }
 
 /* 站点标识那一行：nav.js 的品牌名靠它（它在多数页面里比 config.js 先加载，见 nav.js siteOf）。 */
-const SITE_STAMP = '<script>window.BNBBANG_SITE="' + ST.stamp + '"</script>\n';
+const SITE_STAMP = '<script>window.ARCBANG_SITE="' + ST.stamp + '"</script>\n';
 
 html = html.replace('<title>镜像宇宙模拟器</title>', '<title>' + ST.title + '</title>');
 /* 社交预览图：web/assets/og/home-arc.png */
@@ -183,7 +183,7 @@ if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
    Cloudflare 默认给 .js/.css 缓 4 小时，站点改版后旧 nav.js 还在边缘节点上活着，
    「模拟器」页签就指着旧地址把人弹回首页。指纹进 URL 之后任何一层缓存都不可能命中旧的。 */
 const FP = {};
-['nav.js', 'tokens.css', 'doc.css', 'wallet.js', 'bnb-chain.js', 'i18n.js', 'i18n-planets.js',
+['nav.js', 'tokens.css', 'doc.css', 'wallet.js', 'arc-chain.js', 'i18n.js', 'i18n-planets.js',
  'i18n-app.js', 'i18n-mirror.js', 'i18n-tools.js', 'i18n-site.js', 'i18n-market.js',
  'i18n-arc.js', 'i18n-arc-site.js', 'arc-doc.css', 'keccak-lite.js']
   .forEach((f) => {
@@ -210,8 +210,8 @@ fs.writeFileSync(out, html);
 
 /* 独立页的站内改写：
      1. <head> 里 <title> / <meta> / <link> 的旧域名 → 本站，旧站名 → ARCBANG
-        （只碰这三种标签的属性与标题文本，脚本里的 BNBBANG_CONFIG 之类一个字不动）；
-     2. <meta charset> 之后打 window.BNBBANG_SITE="arc" 那一行（已有就不重复）；
+        （只碰这三种标签的属性与标题文本，脚本里的 ARCBANG_CONFIG 之类一个字不动）；
+     2. <meta charset> 之后打 window.ARCBANG_SITE="arc" 那一行（已有就不重复）；
      3. 最后一个 i18n-*.js 之后插 i18n-arc.js（页面没有 i18n 就不插；已有就不重复）。 */
 function siteify(h) {
   const headAt = h.indexOf('<head');
@@ -224,7 +224,7 @@ function siteify(h) {
   head = head.replace(/<title>[^<]*<\/title>|<(?:meta|link)\b[^>]*>/g, (tag) =>
     tag.replace(/https:\/\/bnbbang\.com\//g, ST.base + '/').replace(/BNBBANG(?![_A-Za-z0-9])/g, ST.name)
        .replace(/\/assets\/og\/home\.jpg/g, OG_IMG));
-  if (head.indexOf('BNBBANG_SITE=') < 0) {
+  if (head.indexOf('ARCBANG_SITE=') < 0) {
     const cs = head.match(/<meta charset="[^"]*">/);
     if (cs) head = head.replace(cs[0], cs[0] + '\n' + SITE_STAMP.replace(/\n$/, ''));
     else head = head.replace(/<head[^>]*>/, (m) => m + '\n' + SITE_STAMP.replace(/\n$/, ''));
@@ -277,7 +277,7 @@ ST.pages.forEach(([srcF, dstF]) => {
     console.log('  + ' + srcF + ' → ' + ST.dist + '/' + dstF + '（英文版）');
   });
 }
-['doc.css', 'market.js', 'bnb-chain.js', 'config.js', 'i18n.js', 'wallet.js', 'tokens.css', 'nav.js', 'i18n-planets.js', 'i18n-app.js', 'i18n-mirror.js', 'i18n-tools.js', 'i18n-site.js', 'i18n-market.js'].concat(ST.extraAssets).forEach((f) => {
+['doc.css', 'market.js', 'arc-chain.js', 'config.js', 'i18n.js', 'wallet.js', 'tokens.css', 'nav.js', 'i18n-planets.js', 'i18n-app.js', 'i18n-mirror.js', 'i18n-tools.js', 'i18n-site.js', 'i18n-market.js'].concat(ST.extraAssets).forEach((f) => {
   /* config.js：落盘的是 config.arc.js 的内容（名字仍叫 config.js —— 各页引的就是它） */
   const extra = path.join(__dirname, f === 'config.js' ? ST.config : f);
   if (!fs.existsSync(extra)) return;

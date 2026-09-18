@@ -12,7 +12,7 @@
  * 测试网（5042002，水龙头 https://faucet.circle.com/ 免费领）的那一份在文件末尾注释里，
  * 要联调铸造流程时整块替换 chain + rpc。
  */
-window.BNBBANG_CONFIG = {
+window.ARCBANG_CONFIG = {
   /* 服务端 API 前缀。引爆的计算和出图都在那边（specs/server-side.md）。
      同域部署时保持 '/api'；本地联调改成 'http://127.0.0.1:8801/api'。 */
   apiBase: '/api',
@@ -23,7 +23,7 @@ window.BNBBANG_CONFIG = {
   site: 'arc',
 
   /* ArcUniverse（宇宙 NFT，contracts/src/ArcUniverse.sol）。
-     部署后填这里，并且**服务端 /etc/bnbbang/api.env 的 BNBBANG_CONTRACT 必须同步改**——
+     部署后填这里，并且**服务端 /etc/bnbbang/api.env 的 ARCBANG_CONTRACT 必须同步改**——
      签名把合约地址绑死了，两边不一致时签出来的名在链上一律 BadSig。 */
   contract: '',
   /* 市场（ArcMarket，contracts/src/ArcMarket.sol）。**部署后填这里** ——

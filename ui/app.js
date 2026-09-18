@@ -425,7 +425,7 @@
     var foot = document.createElement('li');
     foot.className = 'dd-foot'; foot.setAttribute('aria-hidden', 'true');
     foot.innerHTML = '<span class="dd-foot-in">' + T('共 ') + rows.length + T(' 条 · ') +
-      ((window.BNBBANG_SITE === 'arc') ? '' : '<button type="button" class="link" id="ddManage">' + esc(T('管理目录')) + '</button>') +
+      ((window.ARCBANG_SITE === 'arc') ? '' : '<button type="button" class="link" id="ddManage">' + esc(T('管理目录')) + '</button>') +
       '<span class="dd-foot-tip">' + esc(T('每行右端 ✕ 可直接删除；键盘 Delete 删除高亮行')) + '</span></span>';
     ddList.appendChild(foot);
     var mg = foot.querySelector('#ddManage');
@@ -541,7 +541,7 @@
     var ms = A.getModules();
     return { id: 'random', label: '#' + String(A.catalog.nextId()).padStart(4, '0'), name: '随机', params: A.randomParams(ms), modules: ms, preset: false, ours: false, temp: true };
   }
-  /* 宇宙来源钩子。站点版（web/bnb-ui.js）把它换成"从 BNB 链上取真区块"，
+  /* 宇宙来源钩子。站点版（web/arc-ui.js）把它换成"从 BNB 链上取真区块"，
      于是**分析面板底部的"随机引爆"和右键菜单里的同名项也只能来自 BNB 区块**——
      以前 lockToBlocks() 只收了起爆页的入口，这两条路是漏的，
      等于站点上仍有办法引爆一个不属于任何区块的宇宙。
@@ -919,7 +919,7 @@
   $('btnSearch').addEventListener('click', openSearch);
   /* ARCBANG：宇宙只从区块哈希来，没有「自定义宇宙」可存，也就没有目录可管
      （2026-09-17 用户：「管理目录删除……因为这是用区块引爆，所以不支持自定义」）。三处入口一起收。 */
-  var NO_CATALOG = (window.BNBBANG_SITE === 'arc');
+  var NO_CATALOG = (window.ARCBANG_SITE === 'arc');
   $('btnCatalog').addEventListener('click', openCatalog);
   if (NO_CATALOG) $('btnCatalog').hidden = true;
 
@@ -2278,7 +2278,7 @@
     setPressed('hudProj', !!on);
   }
 
-  /* 右上角那张宇宙卡（#bnbMintHud，bnb-ui.js 画的）高度会变：工具条从它下面开始排，
+  /* 右上角那张宇宙卡（#bnbMintHud，arc-ui.js 画的）高度会变：工具条从它下面开始排，
      两边都别去抢右上角。量一次写进 --rail-top，状态行同步时顺手对一次就够。 */
   function railTop() {
     var a = $('app'); if (!a || !a.style) return;
@@ -3503,7 +3503,7 @@
       run: function () { selectEntry(randomEntry()); setState('confirm'); } },
     CTX_SEP,
     /* —— 通用 —— */
-    { id: 'catalog', label: '管理目录', when: function () { return window.BNBBANG_SITE !== 'arc'; }, run: openCatalog },
+    { id: 'catalog', label: '管理目录', when: function () { return window.ARCBANG_SITE !== 'arc'; }, run: openCatalog },
     /* 参数编辑器 = 手调非区块参数，站点版收掉（页面上的 btnEditor/actEdit 早被
        lockToBlocks 藏了，这条菜单是当年漏的最后一个入口） */
     { id: 'editor', label: '参数编辑器', when: function () { return !window.MIRROR_LOCK_TO_BLOCKS; },
@@ -3511,7 +3511,7 @@
       why: function () { return '参数编辑器只属于起爆界面：先退回起爆界面（Esc）再打开'; },
       run: function () { openEditor(true); } },
     /* 站点版把这条收掉：每个候选都要打一次被限流的 /api/card，
-       搜索上限 5000 次在那道闸下根本走不完（见 web/bnb-ui.js 的 lockToBlocks）。
+       搜索上限 5000 次在那道闸下根本走不完（见 web/arc-ui.js 的 lockToBlocks）。
        离线版没有这个限制，照常可用。 */
     { id: 'search', label: '连续随机引爆', when: function () { return !window.MIRROR_LOCK_TO_BLOCKS; }, run: openSearch },
     { id: 'about', label: '关于与来源', when: function () { return true; }, run: openAbout },
@@ -4034,7 +4034,7 @@
   }
   function wdSentKey(snap) { return 'sent:' + (snap && snap.stallMs) + '|' + (snap && snap.at); }
   function wdSend(snap, done) {
-    var CFG = window.BNBBANG_CONFIG || {};
+    var CFG = window.ARCBANG_CONFIG || {};
     var base = CFG.apiBase || '/api';
     var key = wdSentKey(snap);
     try { if (localStorage.getItem(WD.KEY + '.sent') === key) { done(true); return; } } catch (e) { /* ignore */ }
@@ -4318,13 +4318,13 @@
 
   /* ---------- 市场 / 经济模型：只在这两页真的存在时才摆出来 ----------
      站点版（web/dist/index.html）里 market.html 与 economy.html 就在同一个目录，
-     web/config.js 也是那一层注入的，所以 window.BNBBANG_CONFIG 正好是判据。
+     web/config.js 也是那一层注入的，所以 window.ARCBANG_CONFIG 正好是判据。
      离线单文件（dist/mirror.html）里那两页根本不存在 —— 死链接比没有链接更糟，
      整条页面切换收起来，顶栏只剩「选宇宙」和设置，仍然有用。
      config.js 在 app.js 之后才执行（构建把整层追加在 </script> 前），所以要等一拍。 */
   function syncNavPages() {
     var n = $('pageNav');
-    if (n) n.hidden = !window.BNBBANG_CONFIG;
+    if (n) n.hidden = !window.ARCBANG_CONFIG;
   }
   syncNavPages();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncNavPages);

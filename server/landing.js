@@ -22,9 +22,9 @@ const ALPHA_INV_0 = 137.035999084;
 
 /* 页脚「Open source engine」指向哪个仓库。
    默认是 BNBBANG / BTCBANG 两站一直在用的那个（不配这个变量时输出逐字节不变）；
-   ARCBANG 是独立仓库（2026-09-17 用户拍板），在它那一份 env 里写 BNBBANG_REPO_URL 覆盖。
+   ARCBANG 是独立仓库（2026-09-17 用户拍板），在它那一份 env 里写 ARCBANG_REPO_URL 覆盖。
    分享页是服务端渲染的，站点包里的改写表（web/arc-patch.js）够不到这里。 */
-const REPO_URL = process.env.BNBBANG_REPO_URL || 'https://github.com/q3579338/arcbang/tree/main/engine';
+const REPO_URL = process.env.ARCBANG_REPO_URL || 'https://github.com/q3579338/arcbang/tree/main/engine';
 
 /* 站名与链名，同一个道理。站名出现在 watermark、<title> 后缀、og:site_name、ld+json 的 creator.name；
    链名出现在 H1「Universe from BNB block #n」、描述「Every BNB block hash…」、常数表「BNB block」那一行。
@@ -33,8 +33,8 @@ const REPO_URL = process.env.BNBBANG_REPO_URL || 'https://github.com/q3579338/ar
    只管**非 btc** 那一支：比特币宇宙的变体按 Host / 注册表判，和 bnb 共用同一个进程，
    站名 BTCBANG / 链名 Bitcoin 不跟 env 走。不配这两个变量时输出逐字节不变。
    在调用时读（不在模块加载时读）：selftest 要在同一个进程里换着 env 验三种站。 */
-const brandOf = () => String(process.env.BNBBANG_BRAND || '').trim() || 'BNBBANG';
-const chainWordOf = () => String(process.env.BNBBANG_CHAIN_WORD || '').trim() || 'BNB';
+const brandOf = () => String(process.env.ARCBANG_BRAND || '').trim() || 'BNBBANG';
+const chainWordOf = () => String(process.env.ARCBANG_CHAIN_WORD || '').trim() || 'BNB';
 
 /**
  * 十二个结局各一段物理解释（按 card.outcome.index 索引，顺序与合约 outcomeName() 一致）。
@@ -201,7 +201,7 @@ function landingHTML(o) {
     if (N >= 1) nav += '<a href="/s/' + (N - 1) + '" rel="prev">← Block #' + grp(N - 1) + '</a>';
     nav += '<a href="/s/' + (N + 1) + '" rel="next">Block #' + grp(N + 1) + ' →</a>';
   }
-  /* 「回首页」那一行写的是本站域名（BNBBANG_PUBLIC_BASE）。没传 base 时退回字面量。 */
+  /* 「回首页」那一行写的是本站域名（ARCBANG_PUBLIC_BASE）。没传 base 时退回字面量。 */
   nav += '<a href="/">Back to '
     + esc(String(o.base || 'https://bnbbang.com').replace(/^https?:\/\//, '').replace(/\/+$/, '')) + '</a>';
 

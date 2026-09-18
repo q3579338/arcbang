@@ -31,11 +31,11 @@ const { envInt } = require('./envint.js');
      · 每 IP 每分钟的突发上限（挡随手写的循环脚本，人手点不到）；
      · 全站每分钟总上限（保护 CPU：一张卡是一次完整的引擎模拟）。
    不再有「一天的额度」这种东西；签名换来的只是更高的每分钟突发值。
-   老的环境变量名保留兼容但语义变了：BNBBANG_ANON_LIMIT = 每分钟。 */
+   老的环境变量名保留兼容但语义变了：ARCBANG_ANON_LIMIT = 每分钟。 */
 /** 匿名：每 IP 每分钟多少个**新**哈希。NaN 会让 `count >= limit` 恒为 false = 限流被关掉。 */
-const ANON_PER_HOUR = envInt(process.env.BNBBANG_ANON_PER_MIN || process.env.BNBBANG_ANON_LIMIT, 12, 1, 10000);
+const ANON_PER_HOUR = envInt(process.env.ARCBANG_ANON_PER_MIN || process.env.ARCBANG_ANON_LIMIT, 12, 1, 10000);
 /** 已验证地址：每分钟多少个（签一次名换 24 小时令牌，不花 gas） */
-const ADDR_PER_DAY = envInt(process.env.BNBBANG_ADDR_PER_MIN || process.env.BNBBANG_ADDR_LIMIT, 30, 1, 10000);
+const ADDR_PER_DAY = envInt(process.env.ARCBANG_ADDR_PER_MIN || process.env.ARCBANG_ADDR_LIMIT, 30, 1, 10000);
 /** 全站每分钟总上限（所有人共用一个桶） */
 /* 2026-09-17：算卡搬进 worker 线程池（server/cardpool.js）之后从 3,000 提到 10,000。
    原来的 3,000 是按**单线程**定的：一张卡本机实测 8 ms、VPS（E3-1230）单核 15–20 ms，
@@ -44,11 +44,11 @@ const ADDR_PER_DAY = envInt(process.env.BNBBANG_ADDR_PER_MIN || process.env.BNBB
    10,000 是用户拍板的固定值（不随线程数变：线程数是本机的事，
    而这根丝要挡的是「有人拿一万个哈希扫全链」，两者不该绑在一起）。
    仍然是保险丝不是目标：每 IP 12/分钟，要 800 多人同时以最快手速点才碰得到；
-   真要调就设 BNBBANG_GLOBAL_PER_MIN。 */
-const GLOBAL_PER_MIN = envInt(process.env.BNBBANG_GLOBAL_PER_MIN, 10000, 1, 100000);
+   真要调就设 ARCBANG_GLOBAL_PER_MIN。 */
+const GLOBAL_PER_MIN = envInt(process.env.ARCBANG_GLOBAL_PER_MIN, 10000, 1, 100000);
 const MINUTE = 60 * 1000;
 /** /limit/challenge 每 IP 每小时多少次。这条路原来不限流，刷 nonce 能把内存撑爆 */
-const CHALLENGE_PER_HOUR = envInt(process.env.BNBBANG_CHALLENGE_LIMIT, 30, 1, 10000);
+const CHALLENGE_PER_HOUR = envInt(process.env.ARCBANG_CHALLENGE_LIMIT, 30, 1, 10000);
 /** 令牌有效期 */
 const TOKEN_TTL_MS = 24 * 3600 * 1000;
 /** 挑战有效期：短一点，防止有人囤一堆待签的挑战 */

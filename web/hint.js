@@ -71,7 +71,7 @@
   var KEYS = null;
   function keys() {
     deps();
-    // 20 个基础参数，顺序与 MirrorBnbHash.PARAM_KEYS 相同；直接读 Params 是为了不依赖 bnbhash.js
+    // 20 个基础参数，顺序与 MirrorBnbHash.PARAM_KEYS 相同；直接读 Params 是为了不依赖 archash.js
     if (!KEYS) KEYS = P.BASE.map(function (d) { return d.key; });
     return KEYS;
   }

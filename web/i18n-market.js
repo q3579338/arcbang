@@ -1,11 +1,11 @@
 /*
- * web/i18n-market.js —— web/market.html, web/bnb-ui.js 的中英词条
+ * web/i18n-market.js —— web/market.html, web/arc-ui.js 的中英词条
  * ------------------------------------------------------------
  * 只放**界面上真会出现**的句子；注释、日志、开发用文字不进这里。
  * key 是中文原文，逐字相等才命中；漏翻的自动退回中文，不会出现裸 key。
  * 机制与约定见 web/i18n.js 顶部。
  *
- * 这一轮收的是 web/market.html（市场页）。**bnb-ui.js 的词条还没收**，
+ * 这一轮收的是 web/market.html（市场页）。**arc-ui.js 的词条还没收**，
  * 那是后一轮的事 —— 没收的部分照旧显示中文，不影响这一页。
  *
  * 三条自己给自己定的规矩：
@@ -370,14 +370,14 @@
     '微博': 'Weibo',
     '复制链接': 'Copy link',
     /* ---- 广播 v2（specs/broadcast-v2.md §三/§四）：复制带图、微信二维码。
-       市场页与 web/bnb-ui.js 的广播浮层共用这几条 —— 本分册的抬头就说了它管两处。 */
+       市场页与 web/arc-ui.js 的广播浮层共用这几条 —— 本分册的抬头就说了它管两处。 */
     '复制文案和图片': 'Copy text and image',
     '正在准备图片…': 'Preparing the image…',
     '复制中…': 'Copying…',
     /* 剪贴板装不下图片时**必须明说**，否则用户以为图丢了。整句进词典 */
     '图片没能复制（这个浏览器不支持），文案已经进剪贴板了 —— 图片可以在卡片上右键另存。':
       'The image could not be copied (this browser does not support it). The text is on the clipboard — you can right-click the card image and save it.',
-    /* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页与 web/bnb-ui.js
+    /* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页与 web/arc-ui.js
        的广播浮层共用这三条（app 页另有一条「实况截图」小签在 app 分册）。 */
     '广播附图': 'Broadcast image',
     '点开看大图': 'Click to view it full size',

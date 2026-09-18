@@ -26,9 +26,9 @@ const sel = (sig) => keccakId(sig).slice(0, 10);
    为什么从 env 直接读，而不是像 CONTRACT 那样由 index.js 传进来：
    readToken 的调用方只有 index.js 那一处，加一个参数就要动那边；而这一层是
    纯附加的，不该逼着上游改签名。给 readToken 留了第三个可选参数，测试用它注入。 */
-const NAMES = (process.env.BNBBANG_NAMES || '').toLowerCase();
+const NAMES = (process.env.ARCBANG_NAMES || '').toLowerCase();
 /* 造物系列的名册（BangNames2）。没配就不打那一笔，metadata 其余部分一个字不变。 */
-const NAMES2 = (process.env.BNBBANG_NAMES2 || '').toLowerCase();
+const NAMES2 = (process.env.ARCBANG_NAMES2 || '').toLowerCase();
 
 /* 链上返回的 string → JS 字符串。**每一步都验长度**：这份数据来自一个可以配错的
    外部合约地址，不是我们自己的结构体。偏移或长度是垃圾时返回 null，不要抛 ——
@@ -51,7 +51,7 @@ function asString(raw) {
 }
 
 /* 名字的**独立复核**。合约那边已经把规则钉死了（ASCII、1..32、首尾不能是连字符），
-   这里再验一遍不是不信任它，是因为 BNBBANG_NAMES 指向哪个合约由配置决定：
+   这里再验一遍不是不信任它，是因为 ARCBANG_NAMES 指向哪个合约由配置决定：
    指错一个地址，返回的就可能是任意字节，而这段字符串会被原样送进 NFT metadata，
    出现在市场、钱包、扫块器上。
 
@@ -114,7 +114,7 @@ async function readToken(contract, tokenId, namesAddr) {
      eth_call 不 revert，就是干干净净回一个空的 0x。
      这是**配置错**，不是"链上没有这枚 NFT" —— 原来两者一起掉进下面那个 isZero 里
      （空数据 → word 给 null → isZero(null) 为真 → return null → 404），
-     于是 BNBBANG_CONTRACT 填错一个字符、或者服务端连的链和合约不在一条链上时，
+     于是 ARCBANG_CONTRACT 填错一个字符、或者服务端连的链和合约不在一条链上时，
      每一枚 NFT 都报「链上没有这枚 NFT」。人看到这句话会去查铸造记录、查扫块器，
      唯独不会去看配置 —— 和当年 /etc/bnbbang 权限 700 却报"没有私钥"是同一种坑。
      三类错必须报三种话：503 节点打不通 / 502 合约地址不对 / 404 这个 id 没铸过。 */
@@ -137,7 +137,7 @@ async function readToken(contract, tokenId, namesAddr) {
     blockNumber: asNum(word(uRaw, 1)),
     mintedAt: asNum(word(uRaw, 2)),
     minter: asAddr(word(uRaw, 3)),
-    /* 这是**铸造者填进 bang() 的声称值**，合约不核对（web/bnb-chain.js 的 universeAt
+    /* 这是**铸造者填进 bang() 的声称值**，合约不核对（web/arc-chain.js 的 universeAt
        标了同一件事）。只有走 bangSigned 盖过章的才是服务端签出来的。
        所以下面 metadata 里要把"这个结局是谁说的"单列一条，不能让两者看起来一样可信。 */
     outcome: asNum(word(uRaw, 4)),
