@@ -711,12 +711,17 @@
       return shareText({ kind: 'native', outcome: outc, no: o.no, oid: o.oid, hash: o.hash || '' }, link);
     }
     // 结局既收现成的名字（o.outcome），也收引擎 id（o.oid，切语言时现翻）
-    var oc = o.outcome || (o.oid && T(OUTCOME_CN[o.oid] || o.oid)) || '?';
+    var oc = o.outcome || (o.oid && OUTCOME_CN[o.oid] && T(OUTCOME_CN[o.oid])) || '';
+    var who = uniNo(o.no, null) || o.hash.slice(0, 10);
     /* 主口号（2026-09-19 用户拍板）：「每个 Arc 区块哈希，都是一个宇宙」。
        供应量一律用那句标准话「1,387 枚，永不增发」，不再在分享文里铺价格细则 ——
-       一条推里塞免费额度和单价，读的人一个都记不住。 */
+       一条推里塞免费额度和单价，读的人一个都记不住。
+       结局拿不到（引擎 id 不在表里、或广播时没带结局）就省掉那半句，不写问号。 */
+    if (!oc) {
+      return TX('我在 ARCBANG 引爆了宇宙 {0}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {1}', who, link).replace(/\s+$/, '');
+    }
     return TX('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {2}',
-              uniNo(o.no, null) || o.hash.slice(0, 10), oc, link).replace(/\s+$/, '');
+              who, oc, link).replace(/\s+$/, '');
   }
 
   /* 广播浮层：复制文案和图片 / 微信二维码 / X / Telegram / 微博 / Facebook / Reddit / WhatsApp / 复制链接。
@@ -998,7 +1003,11 @@
       var b = ev.target && ev.target.closest ? ev.target.closest('[data-bnbshare]') : null;
       if (!b) return;
       var h = b.getAttribute('data-bnbshare');
-      openShare(SHARED[h] || { kind: 'native', hash: h });
+      /* 没存过现场（引爆后直接广播、还没铸）：从当前宇宙状态补区块号与结局，别让文案里出现问号 */
+      var cur = (!SHARED[h] && S.hash && String(S.hash).toLowerCase() === String(h).toLowerCase())
+        ? { kind: 'native', hash: h, no: S.blockNumber, oid: (S.derived && S.derived.outcome && S.derived.outcome.id) || null }
+        : null;
+      openShare(SHARED[h] || cur || { kind: 'native', hash: h });
     });
   }
   // 干预沙盒（web/intervene.js）铸成造物后也要广播，把入口交出去。

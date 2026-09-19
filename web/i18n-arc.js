@@ -40,6 +40,8 @@
     '正在从 Arc 链上取一个区块…': 'Fetching a block from Arc…',
     'ARC宇宙 · ARCBANG': 'ARCBANG · Detonate',
     '确认交易：免费期，只花 gas': 'Confirm the transaction: free period, gas only',
+    '我在 ARCBANG 引爆了宇宙 {0}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {1}':
+      'I detonated universe {0} on ARCBANG. Every Arc block hash is a universe. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc {1}',
     '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {2}':
       'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a universe. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc {2}',
     /* 原来这里有两条「我把一个死宇宙救成了…」的广播文案。拯救系统在 ARCBANG 上
