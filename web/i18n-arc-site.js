@@ -321,7 +321,7 @@
     '公开展示 TOP 100。免费名额自积分榜 TOP 100 产生。':
       'The TOP 100 are shown publicly. Free mints are allocated from the TOP 100 of this leaderboard.',
     '名次': 'Rank', '积分': 'Points',
-    '在榜人数': 'On the board', '免费上限': 'Free cap', '已放出': 'Issued',
+    '在榜人数': 'On the board', '免费上限': 'Free cap', '免费剩余': 'Free remaining',
     '还没有人上榜 —— 第一个登记的就是第一名。': 'Empty so far. First to sign up takes first place.',
     '你': 'You', '榜首': 'Top',
     '展开全部': 'Show all',

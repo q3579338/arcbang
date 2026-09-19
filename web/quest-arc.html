@@ -657,7 +657,7 @@ button,input{font-family:inherit}
       <div class="ab-kv" style="max-width:760px">
         <div><b class="ab-kv-v" id="kvApplied">—</b><span class="ab-kv-k">在榜人数</span></div>
         <div><b class="ab-kv-v" id="kvCap">387</b><span class="ab-kv-k">免费上限</span></div>
-        <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">已放出</span></div>
+        <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">免费剩余</span></div>
       </div>
     </div>
 
@@ -942,7 +942,9 @@ button,input{font-family:inherit}
 
     $('kvApplied').textContent = st.boardSize == null ? '—' : String(st.boardSize);
     $('kvCap').textContent = st.cap == null ? '387' : String(st.cap);
-    $('kvFree').textContent = st.freeLeft == null ? '—' : String(st.freeLeft);
+    /* 免费剩余：合约开铸前一枚没放，剩余就等于上限；开铸后由服务端按链上 freeMinted 算 */
+    $('kvFree').textContent = st.freeLeft != null ? String(st.freeLeft)
+      : (st.phase === 'warmup' ? String(st.cap == null ? 387 : st.cap) : '—');
 
     /* 分值全部来自服务端（env 可调），页面上一个分值都不写死 */
     var P = st.pts || {};
