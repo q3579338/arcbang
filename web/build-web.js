@@ -190,7 +190,7 @@ const SITE_STAMP = '<script>window.ARCBANG_SITE="' + ST.stamp + '"</script>\n';
 html = html.replace('<title>镜像宇宙模拟器</title>', '<title>' + ST.title + '</title>');
 /* 首屏那一行也是底稿（镜像宇宙）的身份，站点版换成本站的：
    标题里不能留旧项目名，副标题里的常数个数要跟文档页（23）对上。 */
-html = html.replace('<h1 class="hero-title">镜像宇宙模拟器</h1>', '<h1 class="hero-title">' + ST.name + ' 宇宙模拟器</h1>');
+html = html.replace('<h1 class="hero-title">镜像宇宙模拟器</h1>', '<h1 class="hero-title">' + ST.name + ' · 引爆任意 Arc 区块</h1>');
 html = html.replace('<p class="hero-sub">用 20 个物理学界公认的参数，真算一个宇宙的一生</p>', '<p class="hero-sub">用 23 个物理常数，完整推演一个宇宙的一生</p>');
 /* 社交预览图：web/assets/og/home-arc.png */
 const OG_IMG = ST.og;
