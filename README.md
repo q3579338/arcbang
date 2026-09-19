@@ -120,9 +120,9 @@ Last full run of this tree (2026-09-17, Node 24, Windows):
 
 | | Address | |
 |---|---|---|
-| `ArcUniverse` (ERC-721 + ERC-2981) | `0x…` **not deployed yet / 尚未部署** | [src/ArcUniverse.sol](contracts/src/ArcUniverse.sol) |
-| `ArcMarket` | `0x…` **not deployed yet / 尚未部署** | [src/ArcMarket.sol](contracts/src/ArcMarket.sol) |
-| Signer (server) | `0x…` **not deployed yet / 尚未部署** | readable on chain via `signer()` |
+| `ArcUniverse` (ERC-721 + ERC-2981) | [`0x88d6eb4d62634fcb02ecb566c3018c61f6e5fa57`](https://explorer.arc.io/address/0x88d6eb4d62634fcb02ecb566c3018c61f6e5fa57) | [src/ArcUniverse.sol](contracts/src/ArcUniverse.sol) |
+| `ArcMarket` | [`0x1a33c27c587b7ffb068dead2574774c0e5db81fc`](https://explorer.arc.io/address/0x1a33c27c587b7ffb068dead2574774c0e5db81fc) | [src/ArcMarket.sol](contracts/src/ArcMarket.sol) |
+| Signer (server) | `0x6B39aCf02dD717Ab27102914cce6B233fEDfB829` | readable on chain via `signer()` |
 
 Once deployed, the addresses live in exactly one place the site reads — [`web/config.arc.js`](web/config.arc.js) —
 and must match `ARCBANG_CONTRACT` in the server's env: the mint signature binds the contract address, so a

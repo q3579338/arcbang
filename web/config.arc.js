@@ -38,14 +38,14 @@ window.ARCBANG_CONFIG = {
      签名把合约地址绑死了，两边不一致时签出来的名在链上一律 BadSig。 */
   /* 2026-09-18 的第一次主网部署（0xd5b4…61ea / 0x73cc…85a8）已作废：上线 20 分钟被脚本薅走 5 枚免费额度，
      改做白名单预热后重新部署。重部署前留空 = 站点显示「合约未部署」，铸造不可用。 */
-  contract: '',
+  contract: '0x88d6eb4d62634fcb02ecb566c3018c61f6e5fa57',
   /* 市场（ArcMarket，contracts/src/ArcMarket.sol）。**部署后填这里** ——
      地址从 contracts/tools/deploy-arc.mjs 的输出里抄。空着 = 市场页显示「未部署」。
 
      只有一种计价：native，在 Arc 上就是 USDC，挂单价是 wei（1 USDC = 1e18）。
      成交时先按 ERC-2981 付版税（ArcUniverse 默认 5%，市场侧截断在 10%），
      市场不收手续费（feeBps 默认 0），其余全部给卖家；合约不留钱。 */
-  market: '',
+  market: '0x1a33c27c587b7ffb068dead2574774c0e5db81fc',
   /* 造物与命名两套在 v1 不上（它们的定价原本全建在 BANG 上，要重设计）。 */
   crafted: '',
   craftedNames: '',
