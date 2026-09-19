@@ -129,6 +129,19 @@ const LAYER = [
 // 缺席时只跳过不中断——并行开发时某个模块还没交付，构建也得能跑
 const OPTIONAL = ['web/tour.js', 'web/onboard.js', 'web/i18n-arc.js'];
 
+/* --testnet 时把 config 的链切到 Arc 测试网（5042002）。源文件不动，只改落盘那一份。
+   **两处都要过这一道**：独立的 config.js，和 app.html 里内联的那一份 ——
+   2026-09-19 踩过：只改了独立文件，app.html 内联的还是主网，排练站的模拟器取的是主网区块，
+   引爆计分回链核验（测试网）自然查不到。合约地址由 --contract= / --market= 给。 */
+function testnetify(c) {
+  if (!TESTNET) return c;
+  c = c.replace("'https://rpc.mainnet.arc.io'", "'https://rpc.testnet.arc.io'")
+    .replace('id: 5042,', 'id: 5042002,').replace("name: 'Arc 主网'", "name: 'Arc 测试网'").replace("nameEn: 'Arc Mainnet'", "nameEn: 'Arc Testnet'")
+    .replace("explorer: 'https://explorer.arc.io'", "explorer: 'https://explorer.testnet.arc.io'").replace('isTestnet: false', 'isTestnet: true');
+  if (TN_CONTRACT) c = c.replace(/contract: '[^']*'/, "contract: '" + TN_CONTRACT + "'");
+  if (TN_MARKET) c = c.replace(/market: '[^']*'/, "market: '" + TN_MARKET + "'");
+  return c;
+}
 function read(rel) {
   const p = path.join(ROOT, rel);
   if (!fs.existsSync(p)) {
@@ -136,7 +149,8 @@ function read(rel) {
     console.error('缺文件：' + rel);
     process.exit(1);
   }
-  return fs.readFileSync(p, 'utf8');
+  const s = fs.readFileSync(p, 'utf8');
+  return rel === 'web/' + ST.config ? testnetify(s) : s;
 }
 function kb(s) { return (Buffer.byteLength(s, 'utf8') / 1024).toFixed(1) + ' KB'; }
 // </script> 出现在字符串里会提前闭合标签
@@ -309,12 +323,7 @@ ST.pages.forEach(([srcF, dstF]) => {
   if (f === 'config.js' && TESTNET) {
     /* --testnet：本地/测试网联调用，把 config 里的链切到 Arc 测试网（5042002）。源文件不动，只改落盘那一份。
        合约地址由 --contract= / --market= 给（测试网部署完填），不给就沿用源文件里的。 */
-    let c = fs.readFileSync(extra, 'utf8')
-      .replace("'https://rpc.mainnet.arc.io'", "'https://rpc.testnet.arc.io'")
-      .replace('id: 5042,', 'id: 5042002,').replace("name: 'Arc 主网'", "name: 'Arc 测试网'").replace("nameEn: 'Arc Mainnet'", "nameEn: 'Arc Testnet'")
-      .replace("explorer: 'https://explorer.arc.io'", "explorer: 'https://explorer.testnet.arc.io'").replace('isTestnet: false', 'isTestnet: true');
-    if (TN_CONTRACT) c = c.replace(/contract: '[^']*'/, "contract: '" + TN_CONTRACT + "'");
-    if (TN_MARKET) c = c.replace(/market: '[^']*'/, "market: '" + TN_MARKET + "'");
+    const c = testnetify(fs.readFileSync(extra, 'utf8'));
     fs.writeFileSync(path.join(outDir, f), c);
     console.log('  + ' + ST.config + ' → ' + ST.dist + '/config.js（--testnet：链 5042002' + (TN_CONTRACT ? '，合约 ' + TN_CONTRACT.slice(0, 10) + '…' : '') + '）');
     return;
