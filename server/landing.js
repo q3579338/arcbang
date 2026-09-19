@@ -84,6 +84,7 @@ const shortAddr = a => (a && /^0x[0-9a-fA-F]{40}$/.test(a)) ? a.slice(0, 6) + '�
  * @param {object} o.mint              marketindex.mintStatusOf 的三态 {minted, tokenId, owner}
  * @param {boolean} o.indexable        进不进索引（决定 meta robots）
  * @param {string} o.appUrl            "Open in the simulator" 的目标（已拼好 query）
+ * @param {string} o.questUrl          "Earn points" 的目标（带上分享链接里的 ?ref=<登记码>）
  * @param {string} o.canonical         这张页自己的完整 URL
  * @param {string} o.ogImage           1200×630 的 og 图完整 URL
  * @param {string} o.cardImage         页面正文里那张方卡的完整 URL
@@ -245,6 +246,7 @@ function landingHTML(o) {
     + 'code{font:13px ui-monospace,Menlo,Consolas,monospace;color:#9fd4ff;word-break:break-all}'
     + '.mint{color:#9df0cd}'
     + '.btn{display:inline-block;background:#ffd08c;color:#03050c;font-weight:600;padding:12px 22px;border-radius:6px;text-decoration:none;margin:6px 0 16px}'
+    + '.btn2{display:inline-block;background:transparent;color:#ffd08c;font-weight:600;padding:12px 22px;border:1px solid #ffd08c;border-radius:6px;text-decoration:none;margin:6px 0 16px}'
     + 'nav a{display:inline-block;margin:0 18px 8px 0;font-size:14px}'
     + 'footer{margin-top:28px;font-size:13px;color:#6f7f9c;border-top:1px solid #1a2233;padding-top:14px}'
     + 'small{color:#6f7f9c;font-size:12px}'
@@ -258,7 +260,9 @@ function landingHTML(o) {
     + table
     + '<p class="mint">' + mint + '</p>'
     + btcNote
-    + '<p><a class="btn" href="' + esc(o.appUrl) + '">Open in the simulator</a></p>'
+    + '<p><a class="btn" href="' + esc(o.appUrl) + '">Open in the simulator</a>'
+    + (o.questUrl ? ' <a class="btn2" href="' + esc(o.questUrl) + '">Earn points</a>' : '')
+    + '</p>'
     + '<nav>' + nav + '</nav>'
     + '<footer>Free to detonate. Each hash can be minted once. '
     + '<a href="' + esc(REPO_URL) + '" rel="noopener">Open source engine</a>.</footer>'

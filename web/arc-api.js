@@ -226,6 +226,23 @@
       });
     },
 
+    /**
+     * 引爆计分：真引爆出一张卡就打一发，每次 +1 分（每日与预热期各有上限，服务端夹）。
+     * 和 allowlistShare 用的是同一把会话签名，不弹钱包。
+     * 服务端会**回头找链核这个哈希**，所以调用方不必也不能自己判真假。
+     */
+    allowlistBang: function (address, sig, hash) {
+      return req('/allowlist/bang', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          address: String(address).toLowerCase(),
+          sig: sig,
+          hash: String(hash).toLowerCase()
+        })
+      });
+    },
+
     /** NFT 图的地址。图也在服务端出，浏览器不画 */
     artUrl: function (hash, withParams) {
       return BASE + withVer('/art/' + String(hash).toLowerCase() + '.svg' + (withParams ? '?p=1' : ''));

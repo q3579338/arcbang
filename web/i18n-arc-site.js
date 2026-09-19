@@ -36,8 +36,7 @@
       'Detonate it. The hash gives you 23 constants: how strong gravity is, how fast light travels, how many dimensions space has. The engine takes them and runs the universe from its first second to heat death, to see whether it grows stars, planets, life.',
     /* {0} = config.arc.js 的 chain 块给的链名（中文态 name、英文态 nameEn）。
        **整句进词典**：英文语序和中文对不上，在外面拼 T('当前在') + 链名 会拼错。 */
-    '当前在 {0} · 前 387 枚每地址免费 1 次，之后 1 USDC、每地址最多 3 枚':
-      'On {0} · first 387 free, one per address, then 1 USDC, up to 3 per address',
+    '当前在 {0} · 1,387 枚，永不增发': 'On {0} · 1,387 pieces. No further issuance, ever.',
 
     /* ---- 首屏活仪表盘 ----
        原来还有第三格「已销毁 USDC」（totalBurned）。拯救系统下线之后那个数永远是 0，
@@ -45,10 +44,10 @@
     'Arc 区块高度': 'Arc block height',
     '已铸宇宙': 'Universes minted',
     '分享 ARCBANG ↗': 'Share ARCBANG ↗',
-    '每个 Arc 区块哈希都是一套物理定律。免费引爆一个，看它能不能长出恒星、行星和生命。喜欢再铸，全网 1,387 枚。@arcbang_xyz @arc':
-      'Every Arc block hash is a set of physical laws. Detonate one for free and watch whether it grows stars, planets and life. Mint it if you like it — 1,387 in all. @arcbang_xyz @arc',
-    '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz @arc':
-      'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a set of physical laws — go detonate your own. First 387 are free (1 per address), 1 USDC after that. @arcbang_xyz @arc',
+    '每个 Arc 区块哈希，都是一个宇宙。免费引爆，喜欢再铸。1,387 枚，永不增发。@arcbang_xyz @arc':
+      'Every Arc block hash is a universe. Free to detonate, mint the ones you like. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc',
+    '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc':
+      'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a universe. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc',
 
     /* ---- 1,387 ---- */
     '全网只有这么多。一枚宇宙算一千万年，铸满正好 137.87 亿年，就是这个宇宙的岁数。':
@@ -146,8 +145,8 @@
     '一个哈希，一枚': 'One hash, one universe',
     'Arc 每 0.5 秒出一个块，一天十七万个。引爆它们不要钱，想炸多少炸多少。':
       'Arc closes a block every 0.5 seconds, about 170,000 a day. Detonating them is free, as often as you like.',
-    '铸造只有一次机会。一个区块哈希只能长出一个宇宙，谁先铸走就是谁的，全网一共 1,387 枚。你挑中的那个被别人先铸了，它就永远不是你的了。':
-      'Minting is the part you get one shot at. One block hash grows exactly one universe, it belongs to whoever mints it first, and there are 1,387 in all. If someone mints the one you picked, it is never going to be yours.',
+    '铸造只有一次机会。一个区块哈希只能长出一个宇宙，谁先铸走就是谁的。1,387 枚，永不增发。你挑中的那个被别人先铸了，它就永远不是你的了。':
+      'Minting is the part you get one shot at. One block hash grows exactly one universe and it belongs to whoever mints it first. 1,387 pieces. No further issuance, ever. If someone mints the one you picked, it is never going to be yours.',
     'ARCBANG 没有代币，没有预售，没有空投，也没有解锁表。你拿到的就是一枚 NFT，价格就是价格。':
       'ARCBANG has no token, no presale, no airdrop and no unlock schedule. What you get is an NFT, and the price is just the price.',
     /* 表头两列（数量 / 说明）走 i18n-site.js 的全局词条，这里不重收 */
@@ -226,8 +225,8 @@
     /* 四个阶段名首字母大写：它们既进表格第一列，也进句子（「{0} opens in」）。
        表格里小写看着像没写完。 */
     '预热期': 'Warm-up',
-    '保底期': 'Guaranteed round',
-    '先到先得期': 'First-come round',
+    '白名单': 'Whitelist',
+    '先到先得': 'First-come, first-served',
     '公售': 'Public sale',
 
     /* ---- 首屏 ---- */
@@ -301,9 +300,10 @@
     '邀请链接': 'Invite link',
     '复制': 'Copy',
     '已复制': 'Copied',
-    '你在保底那一档。榜定格前多攒一点更稳。':
-      'You are in the guaranteed band. A few more points before the board freezes is safer.',
-    '你在免费那一档。再 {0} 分够到保底。': 'You are in the free band. {0} more points reaches guaranteed.',
+    '该地址在白名单优先层。榜单定格前继续累积更稳妥。':
+      'This address is in the whitelist priority band. More points before the freeze is safer.',
+    '该地址在免费层。再 {0} 分进入白名单优先层。':
+      'This address is in the free band. {0} more points reaches the whitelist priority band.',
     '还没进免费那一档。再 {0} 分就进去。': 'Not in the free band yet. {0} more points gets you in.',
     '下一步：关注。': 'Next: follow.',
     '下一步：转发并回复你的码。': 'Next: repost and reply with your code.',
@@ -318,8 +318,8 @@
 
     /* ---- 榜 ---- */
     '积分榜': 'Leaderboard',
-    '公开展示前 100 名。免费名额自积分榜前列产生。':
-      'The top 100 are shown. Free mints come from the front of this leaderboard.',
+    '公开展示 TOP 100。免费名额自积分榜 TOP 100 产生。':
+      'The TOP 100 are shown publicly. Free mints are allocated from the TOP 100 of this leaderboard.',
     '名次': 'Rank', '积分': 'Points',
     '在榜人数': 'On the board', '免费上限': 'Free cap', '已放出': 'Issued',
     '还没有人上榜 —— 第一个登记的就是第一名。': 'Empty so far. First to sign up takes first place.',
@@ -328,27 +328,30 @@
     '展开全部 {0} 名': 'Show all {0}',
     '收起': 'Collapse',
     '距上一名差 {0} 分': '{0} behind the next rank',
-    '共 {0} 人在榜，榜只公布前 {1} 名 · 名额数量在定格时公布':
-      '{0} on the board, top {1} shown · slot counts announced at the freeze',
-    '共 {0} 人在榜，榜只公布前 {1} 名 · 名单已定格':
-      '{0} on the board, top {1} shown · list frozen',
+    '共 {0} 人在榜，公开展示 TOP {1} · 名额数量在定格时公布':
+      '{0} on the leaderboard, TOP {1} shown · slot counts announced at the freeze',
+    '共 {0} 人在榜，公开展示 TOP {1} · 名单已定格':
+      '{0} on the leaderboard, TOP {1} shown · list frozen',
     '关注': 'Follow', '转发': 'Repost', '点赞': 'Like', '邀请': 'Invites', '广播': 'Broadcast',
 
     /* ---- 开放时间与规则 ---- */
     '开放时间': 'Schedule',
     '待定': 'TBA',
-    '积分榜前列优先铸造': 'Top of the leaderboard mints first',
-    '先到先得': 'First-come round',
+    '白名单地址优先铸造': 'Whitelisted addresses mint first',
+
     '名单内地址领取剩余免费名额': 'Listed addresses claim the remaining free mints',
     '向所有地址开放': 'Open to every address',
-    '保底期开启时积分榜定格。': 'The leaderboard freezes when the guaranteed round opens.',
+    '白名单阶段开启时积分榜定格。': 'The leaderboard freezes when the whitelist round opens.',
     '规则': 'Rules',
     '总量': 'Supply',
-    '1,387 枚，不增发': '1,387. No more, ever.',
+    '1,387 枚，永不增发': '1,387 pieces. No further issuance, ever.',
     '免费': 'Free',
     '每地址 1 枚，名额自积分榜前列产生，数量于榜单定格时公布':
       'One per address. Allocated from the front of the leaderboard; the count is announced at the freeze.',
-    '1 USDC / 枚，每地址上限 3 枚': '1 USDC each, up to 3 per address',
+    '价格另行公布，每地址上限 3 枚': 'Price to be announced. Up to 3 per address.',
+    '价格另行公布': 'Price to be announced',
+    '看完再决定收不收。1,387 枚，永不增发。前 387 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后价格另行公布，每个地址最多 3 枚。':
+      'Look first, then decide. 1,387 pieces. No further issuance, ever. The first 387 are free, one per address, costing about 0.003 USDC in gas. The price after that will be announced separately, and any address can take at most 3.',
     '唯一': 'One of one',
     '每个区块仅可铸造一次': 'Each block can be minted once',
     '没有代币': 'No token',
@@ -399,9 +402,9 @@
     '完成关注、转发、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。':
       'Complete the follow, repost, invite and detonate quests to earn points. Free mints are allocated by rank; a portion is reserved for early supporters and partners.',
     '总积分': 'Points', '连接钱包后显示': 'Connect a wallet to view',
-    '已完成任务': 'Quests completed', '共 7 项': 'of 7',
+    '已完成任务': 'Quests completed', '共 8 项': 'of 8',
     '有效邀请': 'Valid invites', '每位 +20 分': '+20 each', '每位 +{0} 分': '+{0} each',
-    '前 100': 'Top 100', '按积分排名': 'by points',
+    'TOP 100': 'TOP 100', '按积分排名': 'by points',
     '剩余天数': 'Days remaining',
     '积分为实时统计结果，预热结束后经复核确定最终名单。':
       'Points update in real time. The final list is confirmed after review at the end of the warm-up.',
@@ -423,12 +426,34 @@
       'Publish a post that mentions @arcbang_xyz and includes #ARCBANG. Content is up to you.',
     '连接钱包后显示任务记录。': 'Connect a wallet to view your quest record.',
     '每日引爆': 'Daily detonation',
+    /* ---- 引爆计分（2026-09-19）---- */
+    '引爆宇宙': 'Detonate a universe',
+    '未获资格': 'Not eligible',
+    '白名单：TOP 100 优先铸造。': 'Whitelist: the TOP 100 mint first.',
+    '先到先得：白名单阶段之后按顺序领取剩余免费名额。':
+      'First-come, first-served: claim the remaining free mints in order after the whitelist phase.',
+    '未获资格：完成任一任务即可进入先到先得。':
+      'Not eligible: complete any quest to enter first-come, first-served.',
+    '层级': 'Tier',
+    '在模拟器中引爆任意 Arc 区块，每次计 1 分。':
+      'Detonate any Arc block in the simulator for 1 point each.',
+    '+{0} / 次': '+{0} each', '+1 / 次': '+1 each',
+    '在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次。':
+      'Detonate any Arc block in the simulator for {0} point each. Each block counts once.',
+    '每日最多 {0} 分，预热期最多 {1} 分':
+      'Up to {0} points a day, {1} during the warm-up',
+    '今日 {0} / {1} 分 · 累计 {2} / {3} 分':
+      '{0} of {1} points today · {2} of {3} in total',
+    '引爆计分': 'Detonation points',
+    '今日 {0} 分 · 累计 {1} 分 · 共 {2} 个区块':
+      '{0} points today · {1} in total · {2} blocks',
     '+{0} / 人': '+{0} each', '+{0} / 条': '+{0} each', '+{0} / 天': '+{0} a day',
-    '登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4}':
-      'registration {0} · X {1} · invites {2} · posts {3} · daily {4}',
-    '已进入': 'Yes', '位于前 100 名': 'inside the top 100',
+    '登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4} · 引爆 {5}':
+      'registration {0} · X {1} · invites {2} · posts {3} · daily {4} · detonations {5}',
+    '已进入': 'Yes', '已进 TOP 100': 'inside the TOP 100',
     '{0} / {1} 天': '{0} of {1} days',
-    '距前 100 名所需积分': 'points needed to reach the top 100',
+    '距 TOP 100 所需积分': 'points needed to reach the TOP 100',
+    '距 TOP 100 还差 {0} 分': '{0} points to the TOP 100',
     '已通过 {0} · 未通过 {1}': '{0} verified · {1} not verified',
     '已通过 {0} · 未通过 {1} · 每周上限 {2} 条':
       '{0} verified · {1} not verified · limit {2} per week',
@@ -508,14 +533,14 @@
     /* ---- FAQ ---- */
     '常见问题': 'FAQ',
     'ARCBANG 是什么？': 'What is ARCBANG?',
-    'ARCBANG 将 Arc 区块哈希解析为一套物理常数，并据此推演出一个完整宇宙。结果可铸造为 NFT，全网 1,387 枚，不发行代币。':
-      'ARCBANG reads an Arc block hash as a set of physical constants and simulates a complete universe from it. The result can be minted as an NFT. Supply is 1,387 and there is no token.',
+    'ARCBANG 将 Arc 区块哈希解析为一套物理常数，并据此推演出一个完整宇宙。结果可铸造为 NFT：1,387 枚，永不增发。不发行代币。':
+      'ARCBANG reads an Arc block hash as a set of physical constants and simulates a complete universe from it. The result can be minted as an NFT: 1,387 pieces, no further issuance, ever. There is no token.',
     '积分怎么算？': 'How are points calculated?',
     '登记 10 分，关注 10 分，点赞 10 分，转发并回复登记码 30 分。每位有效邀请 20 分，累计 3 / 5 / 10 位另有奖励。创作推文每条 20 分。每日引爆并广播一次 5 分。':
       'Registration 10 points, follow 10, like 10, repost with your registration code 30. Each valid invite is 20 points, with milestone bonuses at 3, 5 and 10. Each original post is 20 points. Detonating and broadcasting once a day is 5 points.',
     '什么时候开铸？': 'When does minting open?',
-    '预热期共 14 天，结束后依次进入保底期、先到先得期与公售期。具体时间以页面顶部倒计时为准。':
-      'The warm-up runs for 14 days, followed by the guaranteed round, the first-come round and the public sale. The countdown at the top of the page is authoritative.',
+    '预热期共 14 天，结束后依次进入白名单、先到先得与公售三个阶段。具体时间以页面顶部倒计时为准。':
+      'The warm-up runs for 14 days, followed by the whitelist, first-come and public sale phases. The countdown at the top of the page is authoritative.',
     '免费名额怎么来？': 'How are free mints allocated?',
     '免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 387 枚。':
       'Most free mints are allocated from the leaderboard; a portion is reserved for early supporters and partners. The exact count is announced when the leaderboard freezes and never exceeds the 387 allowed by the contract.',

@@ -1,9 +1,9 @@
 # ARCBANG
 
 **Every Arc block hash is a universe. Detonate it, mint it.**
-**每一个 Arc 区块哈希都是一个宇宙。免费引爆，喜欢再铸。**
+**每个 Arc 区块哈希，都是一个宇宙。免费引爆，喜欢再铸。1,387 枚，永不增发。**
 
-[arcbang.xyz](https://arcbang.xyz) · Arc L1 (chainId 5042, gas is paid in USDC) · 1,387 universes · no token, ever
+[arcbang.xyz](https://arcbang.xyz) · Arc L1 (chainId 5042, gas is paid in USDC) · 1,387 pieces, no further issuance, ever · no token
 
 > **Status (2026-09-18): pre-launch.** The site shows a holding page while the mint is reworked into an
 > allowlisted warm-up. A first mainnet deployment (`0xd5b4…61ea` / `0x73cc…85a8`) was retired after a script
@@ -23,9 +23,9 @@ of spatial dimensions — and a physics engine runs that universe from its singu
 Most universes die: no stable orbits, no atoms, no chemistry, no stars. About 1.5% can grow observers.
 
 Detonating is free, needs no wallet, and happens in your browser. If you want to keep one, mint it as an
-NFT on Arc, where gas is USDC. **1,387 universes in total** (13.787 billion years of cosmic age, one NFT
-per ten million years); the first 387 are free, one per address; 1 USDC after that. Hard-coded cap, no
-function can raise it.
+NFT on Arc, where gas is USDC. **1,387 pieces. No further issuance, ever.** (13.787 billion years of
+cosmic age, one NFT per ten million years.) The first 387 are free, one per address. The price after that will be announced separately.
+The cap is hard-coded and no function can raise it.
 
 The derivation is integer-only (keccak256 + modular arithmetic), so the same hash produces a
 byte-identical universe on every machine. That is the whole point: you never have to trust the site.
@@ -48,7 +48,7 @@ things on chain are the NFT (`ArcUniverse`) and an optional marketplace (`ArcMar
 从奇点推演到热寂。绝大多数宇宙是死的：没有稳定轨道、没有原子、没有化学、没有恒星。约 1.5% 能长出观察者。
 
 引爆免费、不用钱包、全在浏览器里算完。想留下哪一个，就在 Arc 上把它铸成 NFT —— Arc 的 gas 就是 USDC。
-**总量 1,387 枚**（宇宙年龄 137.87 亿年，一枚一千万年）；前 387 枚免费，每个地址一枚；之后 1 USDC 一枚。
+**1,387 枚，永不增发**（宇宙年龄 137.87 亿年，一枚一千万年）；前 387 枚免费，每个地址一枚；之后的价格另行公布。
 上限写死在合约里，没有任何函数能改。
 
 推导全程纯整数（keccak256 + 取模），所以同一个哈希在任何机器上算出来逐字节相同 ——

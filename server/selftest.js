@@ -2698,7 +2698,11 @@ function call(method, url, body, headers) {
       ok('默认分值：登记 10 / 转发 30 / 邀请 20（上限 20 人）/ 分享 5（上限 5 天）',
         P0.register === 10 && P0.repost === 30 && P0.invite === 20 && P0.inviteMax === 20
         && P0.share === 5 && P0.shareMaxDays === 5, JSON.stringify(P0));
-      ok('默认名额：前 100 保底、前 387 免费', ALX.tops().gtd === 100 && ALX.tops().free === 387);
+      /* 2026-09-19 改口径：先到先得不再看名次（FREE_TOP 默认 0 = 不限），
+         只看「除登记外至少完成一项任务」。白名单那道线还在。 */
+      ok('默认名额线：TOP 100 进白名单；先到先得不限名次（看有没有做任务）',
+        ALX.tops().gtd === 100 && ALX.tops().free === Infinity && ALX.tops().freeLimited === false,
+        JSON.stringify(ALX.tops()));
       process.env.ARCBANG_PTS_REGISTER = 'abc';
       process.env.ARCBANG_PTS_REPOST = '-5';
       ok('配歪的分值退回默认，不是静默变成 0（0 分会让整套排名塌掉）',
@@ -2870,10 +2874,12 @@ function call(method, url, body, headers) {
         && AL.tierOf(rows[2].addr) === null);
       ok('counts 按名额算（不是按登记人数）',
         AL.counts().gtd === 1 && AL.counts().fcfs === 1 && AL.counts().total === 2);
-      /* publicCounts 是对外那一份：定格之前一个数字都不给（不承诺名额）。 */
-      ok('定格之前 publicCounts 全是 null，counts（管理员那一份）照旧有数',
-        AL.publicCounts().gtd === null && AL.publicCounts().total === null
-        && AL.counts().gtd === 1);
+      /* publicCounts 是对外那一份。2026-09-19 改口径：**人数实时给**（状态实时可查），
+         但**名额上限仍然不公布** —— 人数是事实，上限是承诺，两件事。 */
+      ok('定格之前 publicCounts 给人数、不给名额上限',
+        AL.publicCounts().gtd === 1 && AL.publicCounts().total === 2
+        && AL.publicCounts().gtdTop === null && AL.publicCounts().freeTop === null
+        && AL.counts().gtd === 1, JSON.stringify(AL.publicCounts()));
       /* 实时：给第 3 名加分，它应该立刻挤上来 */
       const third = rows[2].addr;
       const wasTier = AL.tierOf(third);
@@ -2948,11 +2954,12 @@ function call(method, url, body, headers) {
     /* ---- CSV 导出：人工比对 X 评论要用 ---- */
     {
       const csv = AL.appliedCsv().trim().split('\n');
-      ok('CSV 表头带 rank / points / 三连三列 / valid_invites / share_days',
-        /(^|,)rank(,|$)/.test(csv[0]) && /(^|,)points(,|$)/.test(csv[0])
-        && /(^|,)follow(,|$)/.test(csv[0]) && /(^|,)repost(,|$)/.test(csv[0])
-        && /(^|,)like(,|$)/.test(csv[0]) && /(^|,)valid_invites(,|$)/.test(csv[0])
-        && /(^|,)share_days(,|$)/.test(csv[0]), csv[0]);
+      /* 2026-09-19 重做导出：中文表头、按名次、各项积分分列、UTF-8 BOM。 */
+      ok('CSV 表头：名次 / 层级 / 总积分 + 各项积分分列 + 三连分列',
+        csv[0].indexOf('名次') >= 0 && csv[0].indexOf('层级') >= 0 && csv[0].indexOf('总积分') >= 0
+        && csv[0].indexOf('引爆分') >= 0 && csv[0].indexOf('里程碑分') >= 0
+        && csv[0].indexOf('关注') >= 0 && csv[0].indexOf('转发') >= 0 && csv[0].indexOf('点赞') >= 0
+        && csv[0].indexOf('有效邀请') >= 0 && csv[0].indexOf('打卡天数') >= 0, csv[0].slice(0, 70));
       ok('CSV 按积分从高到低排（审核时一眼看得出谁在前面）',
         Number(csv[1].split(',')[4]) >= Number(csv[2].split(',')[4]));
     }
@@ -3033,8 +3040,8 @@ function call(method, url, body, headers) {
       ok('status 带上分值表（页面上一个分值都不写死）', st.pts.register === 10);
       /* **不承诺名额**（2026-09-18 用户拍板）：定格之前人数与名额上限一律 null，
          不然 ARCBANG_GTD_TOP 会从「前 100 名是保底」这句话里被反推出来。 */
-      ok('定格之前 status 的人数与名额全是 null，只给合约那个 387 硬上限',
-        st.counts.frozen === false && st.counts.gtd === null && st.counts.total === null
+      ok('定格之前 status 给两档人数、不给名额上限；合约那个 387 硬上限照给',
+        st.counts.frozen === false && typeof st.counts.gtd === 'number'
         && st.counts.gtdTop === null && st.counts.freeTop === null && st.cap === 387,
         JSON.stringify(st.counts));
       ok('status 带上要签的那句话（客户端原样签，不自己拼）',
@@ -3049,10 +3056,12 @@ function call(method, url, body, headers) {
         bv.rows.length === 3
         && Object.keys(bv.rows[0]).sort().join(',') === 'addr,points,tier'
         && bv.rows[0].addr.indexOf('…') > 0);
-      /* 定格之前 tier 也不出门：某一行是 gtd 还是 fcfs 等于把名额分界线画在榜上。 */
-      ok('定格之前榜上不带 tier（画出分界线就等于公布名额）',
-        AL.isFrozen() === false && bv.rows.every((r) => r.tier === null)
-        && bv.gtdTop === null && bv.freeTop === null);
+      /* 2026-09-19 改口径：**榜上每行都带层级**（状态实时可查）。
+         名额上限还是不出门 —— 标签说的是「这个地址现在在哪一层」，不是「一共发多少个」。 */
+      ok('榜上每行带层级标签，但名额上限仍然不出门',
+        AL.isFrozen() === false && bv.rows.some((r) => r.tier === 'gtd')
+        && bv.gtdTop === null && bv.freeTop === null,
+        JSON.stringify(bv.rows.map((r) => r.tier)));
       /* **榜只公布前 100 名**：要 1000 也只给 100（上限在服务端夹死，前端改不了）。 */
       ok('board 的 top 参数被夹在 100 以内', AL.topRows(1000).length <= 100
         && ALX.BOARD_PUBLIC_MAX === 100 && AL.boardView(1000).publicMax === 100);
@@ -3159,9 +3168,12 @@ function call(method, url, body, headers) {
         && AL.pinnedTweetId() === '1999888777666');
       const csv = AL.appliedCsv().trim().split('\n');
       ok('CSV 把三连拆成三列（合成一列就没法只补其中一项）',
-        /(^|,)follow(,|$)/.test(csv[0]) && /(^|,)repost(,|$)/.test(csv[0]) && /(^|,)like(,|$)/.test(csv[0]), csv[0]);
+        csv[0].indexOf('关注') >= 0 && csv[0].indexOf('转发') >= 0 && csv[0].indexOf('点赞') >= 0, csv[0].slice(0, 70));
       const line = csv.find((l) => l.indexOf(w) >= 0);
-      ok('CSV 那一行里三连分别是 1/1/0', line && line.split(',').slice(5, 8).join('') === '110', line && line.split(',').slice(5, 8).join(''));
+      const col = (name) => csv[0].split(',').indexOf(name);
+      ok('CSV 那一行里三连分别是 1/1/0（按表头找列，不按下标猜）',
+        line && [line.split(',')[col('关注')], line.split(',')[col('点赞')], line.split(',')[col('转发')]].join('') === '101',
+        line && [line.split(',')[col('关注')], line.split(',')[col('点赞')], line.split(',')[col('转发')]].join(''));
       if (save === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = save;
     }
 
@@ -3825,6 +3837,259 @@ function call(method, url, body, headers) {
       ok('管理员页有 X 登录设置与自动核账单两块',
         a.indexOf('/admin/xauth') > 0 && a.indexOf('/admin/xverify') > 0 && a.indexOf('xvCost') > 0);
       ok('管理员页把手填与 X 登录两种来源分开显示', a.indexOf("r.xSource === 'oauth'") > 0);
+    }
+  }
+
+  {
+    /* ==================================================================
+       [S6] 引爆计分 / 层级实时化 / 短分享链接 / 后台钱包登录（2026-09-19）
+       ================================================================== */
+    console.log('\n[S6] 引爆计分 / 层级 / 短链接 / 后台钱包登录');
+    const ALX6 = require('./allowlist.js');
+
+    /* ---- 引爆计分：去重、日上限、总上限、频率、假哈希 ---- */
+    {
+      const bdir = path.join(TMP, 'bang6'); fs.mkdirSync(bdir, { recursive: true });
+      /* take 自己实现一份：限流的窗口逻辑不是这一节要测的，这里只要它能数数。 */
+      const hits = new Map();
+      const take = (key, limit) => {
+        const n = (hits.get(key) || 0) + 1;
+        hits.set(key, n);
+        return n <= limit ? { ok: true } : { ok: false, resetAt: Date.now() + 60000 };
+      };
+      const AL6 = ALX6.create({ storeDir: bdir, take });
+      const W = new Wallet('0x' + '6a'.repeat(32));
+      const sig = W.signMessageSync(ALX6.registerMessage(W.address));
+      AL6.register({ address: W.address, xHandle: 'bang_guy', sig }, '4.4.4.4');
+      const a = W.address.toLowerCase();
+      const H = (n) => '0x' + String(n).padStart(64, '0');
+      /* 假的读链：只认 0x…01 到 0x…99 那些，别的都当不存在。 */
+      const readBlock = async (h) => (/^0x0{62}[0-9][0-9]$/.test(h) && h !== H(0)) ? { hash: h } : null;
+      const base = AL6.scoreOf(a).total;
+
+      let r = await AL6.bang({ address: a, hash: H(1), sig }, '4.4.4.4', Date.now(), readBlock);
+      ok('引爆一个真实区块 → +1 分', r.status === 200 && r.body.counted === true
+        && AL6.scoreOf(a).total === base + 1, JSON.stringify(r.body));
+
+      r = await AL6.bang({ address: a, hash: H(1), sig }, '4.4.4.4', Date.now(), readBlock);
+      ok('**同一个区块再引爆不重复计分**（不然对着一个块点一百下就是一百分）',
+        r.body.already === true && AL6.scoreOf(a).total === base + 1);
+
+      r = await AL6.bang({ address: a, hash: '0x' + 'ab'.repeat(32), sig }, '4.4.4.4', Date.now(), readBlock);
+      ok('链上查不到的哈希 → 拒绝计分（自己编一个 64 位十六进制串是最省事的刷法）',
+        r.status === 400 && AL6.scoreOf(a).total === base + 1, JSON.stringify(r.body));
+
+      r = await AL6.bang({ address: a, hash: 'not-a-hash', sig }, '4.4.4.4', Date.now(), readBlock);
+      ok('形状就不对的哈希 → 400', r.status === 400);
+
+      /* 频率闸：每地址每分钟 3 次。上面已经用掉 1 次（重复那次没到闸就返回了）。 */
+      hits.clear();
+      const t0 = Date.now();
+      const outs = [];
+      for (let k = 2; k <= 6; k++) {
+        outs.push(await AL6.bang({ address: a, hash: H(k), sig }, '4.4.4.4', t0, readBlock));
+      }
+      ok('每地址每分钟最多入账 3 次，第 4 次起 429（拦的是写盘频率，不是分数）',
+        outs.filter((x) => x.status === 200).length === 3 && outs.filter((x) => x.status === 429).length === 2,
+        outs.map((x) => x.status).join(','));
+
+      /* 日上限：把每日上限调到 5，今天再怎么炸也只有 5 分。 */
+      const sv = {
+        d: process.env.ARCBANG_PTS_BANG_PER_DAY,
+        m: process.env.ARCBANG_PTS_BANG_MAX
+      };
+      process.env.ARCBANG_PTS_BANG_PER_DAY = '5';
+      process.env.ARCBANG_PTS_BANG_MAX = '8';
+      hits.clear();
+      const bdir2 = path.join(TMP, 'bang6b'); fs.mkdirSync(bdir2, { recursive: true });
+      const AL7 = ALX6.create({ storeDir: bdir2, take: () => ({ ok: true }) });
+      const W2 = new Wallet('0x' + '6b'.repeat(32));
+      const sig2 = W2.signMessageSync(ALX6.registerMessage(W2.address));
+      AL7.register({ address: W2.address, xHandle: 'bang_two', sig: sig2 }, '4.4.4.5');
+      const a2 = W2.address.toLowerCase();
+      const DAY1 = Date.parse('2026-09-19T10:00:00Z');
+      for (let k = 1; k <= 9; k++) {
+        await AL7.bang({ address: a2, hash: H(k), sig: sig2 }, '4.4.4.5', DAY1, readBlock);
+      }
+      ok('每日上限按**分**封顶：一天炸九个也只拿 5 分',
+        AL7.bangsOf(a2, DAY1).points === 5, String(AL7.bangsOf(a2, DAY1).points));
+      const capped = await AL7.bang({ address: a2, hash: H(20), sig: sig2 }, '4.4.4.5', DAY1, readBlock);
+      ok('到顶之后回 200 + capped:"day"（对用户这不是错误，页面照常显示进度）',
+        capped.status === 200 && capped.body.capped === 'day');
+
+      /* 隔一天接着拿，但总上限 8 分把它按住 */
+      const DAY2 = DAY1 + 26 * 3600 * 1000;
+      for (let k = 30; k <= 38; k++) {
+        await AL7.bang({ address: a2, hash: H(k), sig: sig2 }, '4.4.4.5', DAY2, readBlock);
+      }
+      ok('第二天能接着拿，但预热期总上限把总分按在 8',
+        AL7.bangsOf(a2, DAY2).points === 8, String(AL7.bangsOf(a2, DAY2).points));
+      const capped2 = await AL7.bang({ address: a2, hash: H(50), sig: sig2 }, '4.4.4.5', DAY2, readBlock);
+      ok('总量到顶 → capped:"total"，且不再往盘上写',
+        capped2.body.capped === 'total');
+      const st6 = await AL7.status(a2, DAY2);
+      ok('status 带出引爆进度（今日分 / 累计分 / 算过几个区块）',
+        st6.bangPts === 8 && st6.breakdown.bang === 8 && st6.bangs === 8,
+        JSON.stringify([st6.bangPts, st6.bangToday, st6.bangs]));
+
+      if (sv.d === undefined) delete process.env.ARCBANG_PTS_BANG_PER_DAY; else process.env.ARCBANG_PTS_BANG_PER_DAY = sv.d;
+      if (sv.m === undefined) delete process.env.ARCBANG_PTS_BANG_MAX; else process.env.ARCBANG_PTS_BANG_MAX = sv.m;
+
+      /* 没登记的地址不给记分 */
+      const W3 = new Wallet('0x' + '6c'.repeat(32));
+      const sig3 = W3.signMessageSync(ALX6.registerMessage(W3.address));
+      const r3 = await AL6.bang({ address: W3.address, hash: H(1), sig: sig3 }, '4.4.4.6', Date.now(), readBlock);
+      ok('没登记的地址计分直接 403', r3.status === 403);
+    }
+
+    /* ---- 层级实时化：TOP 100 / 做过任务 / 只登记 ---- */
+    {
+      const tdir = path.join(TMP, 'tier6'); fs.mkdirSync(tdir, { recursive: true });
+      const svTop = process.env.ARCBANG_GTD_TOP;
+      const svFree = process.env.ARCBANG_FREE_TOP;
+      process.env.ARCBANG_GTD_TOP = '2';         // 只留两个名额，好把三种情况都摆出来
+      delete process.env.ARCBANG_FREE_TOP;       // 先到先得不再看名次
+      const AL8 = ALX6.create({ storeDir: tdir, take: () => ({ ok: true }) });
+      const mk = (h, tasks) => {
+        const w = new Wallet('0x' + h.repeat(32));
+        const sg = w.signMessageSync(ALX6.registerMessage(w.address));
+        AL8.register({ address: w.address, xHandle: 'u' + h, sig: sg }, '3.3.3.3');
+        const a = w.address.toLowerCase();
+        /* checksOf 收的是**对象**（{repost:true}），传字符串会被当成「没指定」而三个全打。 */
+        if (tasks > 0) AL8.verify(a, { repost: true });   // 30 分
+        if (tasks > 1) AL8.verify(a, { follow: true });   // 再 10 分
+        return a;
+      };
+      const top1 = mk('71', 2);       // 40 分
+      const top2 = mk('72', 1);       // 30 分
+      const did = mk('73', 1);        // 30 分，但排在第三
+      const idle = mk('74', 0);       // 只登记
+
+      ok('名次 ≤ GTD_TOP → 白名单（gtd）',
+        AL8.tierOf(top1) === 'gtd' && AL8.tierOf(top2) === 'gtd');
+      ok('TOP 之外、除登记外做过至少一项 → 先到先得（fcfs）',
+        AL8.tierOf(did) === 'fcfs', String(AL8.tierOf(did)));
+      ok('只登记、一项任务都没做 → 未获资格（null）',
+        AL8.tierOf(idle) === null && AL8.tasksDone(idle) === 0);
+      const c8 = AL8.counts();
+      ok('两档人数实时算得出来（预热期就显示，不等定格）',
+        c8.gtd === 2 && c8.fcfs === 1 && c8.frozen === false, JSON.stringify(c8));
+      const pc8 = AL8.publicCounts();
+      ok('对外的那一份也给人数，但**名额上限仍然不公布**（人数是事实，上限是承诺）',
+        pc8.gtd === 2 && pc8.fcfs === 1 && pc8.gtdTop === null && pc8.freeTop === null,
+        JSON.stringify(pc8));
+      const stT = await AL8.status(did);
+      ok('status 实时给层级与「做成了几件事」', stT.tier === 'fcfs' && stT.tasksDone === 1);
+      const bd = AL8.boardView(10);
+      ok('榜上每一行都带层级标签（预热期也带）',
+        bd.rows.length >= 4 && bd.rows[0].tier === 'gtd' && bd.rows[bd.rows.length - 1].tier === null,
+        JSON.stringify(bd.rows.map((r) => r.tier)));
+
+      /* 做完一项就从「未获资格」变成「先到先得」—— 这是给用户看的那条路径 */
+      AL8.verify(idle, { like: true });
+      ok('完成任一任务 → 立刻从未获资格进入先到先得', AL8.tierOf(idle) === 'fcfs');
+
+      if (svTop === undefined) delete process.env.ARCBANG_GTD_TOP; else process.env.ARCBANG_GTD_TOP = svTop;
+      if (svFree === undefined) delete process.env.ARCBANG_FREE_TOP; else process.env.ARCBANG_FREE_TOP = svFree;
+    }
+
+    /* ---- 排练数据：seed / unseed ---- */
+    {
+      const sdir = path.join(TMP, 'seed6'); fs.mkdirSync(sdir, { recursive: true });
+      const AL9 = ALX6.create({ storeDir: sdir, take: () => ({ ok: true }) });
+      const r1 = AL9.seed(30, 12345);
+      const n1 = AL9.board().rows.length;
+      ok('seed 造出一批模拟登记（连带下线，所以榜比 n 长）', r1.added === 30 && n1 >= 30, String(n1));
+      const tiers = { gtd: 0, fcfs: 0, none: 0 };
+      AL9.board().rows.forEach((r) => { tiers[AL9.tierOf(r.addr) || 'none']++; });
+      ok('三种层级都造得出来（排练站要看得到「未获资格」那一档）',
+        tiers.gtd > 0 && tiers.fcfs > 0 && tiers.none > 0, JSON.stringify(tiers));
+
+      /* 确定性：同一个种子再造一遍，地址一个不差 */
+      const sdir2 = path.join(TMP, 'seed6b'); fs.mkdirSync(sdir2, { recursive: true });
+      const AL10 = ALX6.create({ storeDir: sdir2, take: () => ({ ok: true }) });
+      AL10.seed(30, 12345);
+      const l1 = AL9.board().rows.map((r) => r.addr).join(',');
+      const l2 = AL10.board().rows.map((r) => r.addr).join(',');
+      ok('**确定性**：同一个种子造出来的榜逐字相同（排练站重来一遍还是同一张榜）', l1 === l2);
+
+      /* 真实登记不能被 unseed 带走 */
+      const W = new Wallet('0x' + '7f'.repeat(32));
+      const sg = W.signMessageSync(ALX6.registerMessage(W.address));
+      AL9.register({ address: W.address, xHandle: 'real_one', sig: sg }, '1.2.3.4');
+      const real = W.address.toLowerCase();
+      const r2 = AL9.unseed();
+      ok('unseed 只删模拟登记，真实用户一条不动',
+        r2.removed > 0 && r2.kept === 1 && AL9.appliedOf(real) != null && AL9.board().rows.length === 1,
+        JSON.stringify(r2));
+    }
+
+    /* ---- 导出 CSV：按名次、各项分列、带 BOM ---- */
+    {
+      const cdir = path.join(TMP, 'csv6'); fs.mkdirSync(cdir, { recursive: true });
+      const AL11 = ALX6.create({ storeDir: cdir, take: () => ({ ok: true }) });
+      AL11.seed(12, 999);
+      const csv = AL11.appliedCsv();
+      const lines = csv.split('\n');
+      ok('CSV 开头是 UTF-8 BOM（Excel 直接开中文不乱码）', csv.charCodeAt(0) === 0xFEFF);
+      ok('表头按名次 + 层级 + 各项积分分列',
+        lines[0].indexOf('名次') === 1 && lines[0].indexOf('层级') > 0
+        && lines[0].indexOf('引爆分') > 0 && lines[0].indexOf('模拟数据') > 0, lines[0].slice(0, 60));
+      const first = lines[1].split(',');
+      ok('第一行就是第 1 名', first[0] === '1');
+      ok('?top=N 只导前 N 名', AL11.appliedCsv(3).split('\n').filter((x) => x.trim()).length === 4);
+    }
+
+    /* ---- 短分享链接 ---- */
+    {
+      const ui = fs.readFileSync(path.join(__dirname, '..', 'web', 'arc-ui.js'), 'utf8');
+      ok('shareUrl 有区块号就用区块号（/s/<高度>），没有才退回 64 位哈希',
+        /var token = \(no != null && isFinite\(no\)\) \? String\(no\) : String\(\(o && o\.hash\) \|\| ''\);/.test(ui));
+      ok('拿不到登记码就**不带 ref**（不再退回 42 位地址）',
+        ui.indexOf("return { my: my, ref: code || null };") > 0);
+      const idx = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
+      ok('/s/ 落地页把 ?ref=<6 位码> 透传到任务页',
+        idx.indexOf("const questUrl = '/quest.html'") > 0 && /\[A-Z0-9\]\{6\}/.test(idx));
+      const land = fs.readFileSync(path.join(__dirname, 'landing.js'), 'utf8');
+      ok('落地页上那颗「Earn points」按钮带着 ref 走', land.indexOf('o.questUrl') > 0);
+    }
+
+    /* ---- 后台钱包登录 ---- */
+    {
+      const idx = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
+      ok('nonce 一次性：不管签名对不对，先从表里删掉（防重放）',
+        /ADMIN_NONCES\.delete\(nonce\);/.test(idx)
+        && idx.indexOf('ADMIN_NONCES.delete(nonce);') < idx.indexOf('verifyMessage(q.value.message'));
+      ok('nonce 有 5 分钟有效期', idx.indexOf('ADMIN_NONCE_MS = 5 * 60 * 1000') > 0);
+      ok('只认 ARCBANG_ADMIN_ADDRS 里的地址，别的回 403',
+        /adminAddrs\(\)\.indexOf\(addr\) < 0/.test(idx) && idx.indexOf("error: '这个地址不在管理员名单里'") > 0);
+      ok('签发的令牌走**和口令同一条通道**（后台每个接口只判 adminTokenOk 一处）',
+        idx.indexOf('if (adminSessionOk(got)) return true;') > 0);
+      ok('会话 24 小时到期', idx.indexOf('ADMIN_SESSION_MS = 24 * 3600 * 1000') > 0);
+      ok('配了钱包地址也算后台开着（两条路一条都没配才回 404）',
+        /adminTokenConfigured[\s\S]{0,220}adminWalletConfigured\(\)/.test(idx));
+      const adm = fs.readFileSync(path.join(__dirname, '..', 'web', 'admin-arc.html'), 'utf8');
+      ok('管理员页有「用钱包登录」，口令那条路保留',
+        adm.indexOf('btnWallet') > 0 && adm.indexOf('btnLogin') > 0 && adm.indexOf('/admin/nonce') > 0);
+      ok('管理员页有「导出 TOP 100」', adm.indexOf('btnCsvTop') > 0 && adm.indexOf("downloadCsv(100)") > 0);
+    }
+
+    /* ---- 文案口径：阶段名 / 供应量 / 价格 / TOP 100 ---- */
+    {
+      const q = fs.readFileSync(path.join(__dirname, '..', 'web', 'quest-arc.html'), 'utf8');
+      const dict = fs.readFileSync(path.join(__dirname, '..', 'web', 'i18n-arc-site.js'), 'utf8');
+      ok('阶段显示名：gtd 叫「白名单」、fcfs 叫「先到先得」（内部 key 不动）',
+        q.indexOf("gtd: '白名单', fcfs: '先到先得'") > 0 && q.indexOf("'gtd'") > 0);
+      ok('供应量一律那句标准话「1,387 枚，永不增发」',
+        q.indexOf('1,387 枚，永不增发') > 0 && dict.indexOf("'1,387 枚，永不增发': '1,387 pieces. No further issuance, ever.'") > 0);
+      ok('公售价不公布：页面写「价格另行公布」，不写数字',
+        q.indexOf('价格另行公布') > 0 && q.indexOf('1 USDC / 枚') < 0);
+      ok('TOP 100 统一写成 TOP 100', q.indexOf('TOP 100') > 0 && q.indexOf('前 100 名。免费名额') < 0);
+      const ui = fs.readFileSync(path.join(__dirname, '..', 'web', 'arc-ui.js'), 'utf8');
+      ok('铸造页不公布价格时不标价（showPrice 开关，默认关）',
+        ui.indexOf('function showPrice()') > 0 && ui.indexOf('if (!showPrice()) return null;') > 0);
+      ok('分享文案换成主口号，且不再带价格细则',
+        ui.indexOf('每个 Arc 区块哈希，都是一个宇宙。') > 0 && ui.indexOf('前 387 枚每地址 1 次免费') < 0);
     }
   }
 

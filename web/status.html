@@ -356,7 +356,7 @@ footer a:hover{text-decoration:underline}
   <details class="fold" data-fold="mint" open>
     <summary><h2>铸造进度</h2><span class="fsum" id="fsMint">—</span></summary>
     <div class="fbody">
-    <p class="why">宇宙限量 1,387 枚 —— 宇宙 137.87 亿岁，一枚 NFT 就是一千万年。铸满即止。</p>
+    <p class="why">1,387 枚，永不增发。宇宙 137.87 亿岁，一枚 NFT 就是一千万年。铸满即止。</p>
     <div class="kline"><span>宇宙 NFT · ArcUniverse</span>
       <span><span class="num" id="muSupply">—</span> <span class="dimtx">/ 1,387</span></span></div>
     <div class="bar"><i class="seg-mint" id="muBar" style="width:0"></i></div>
@@ -367,7 +367,7 @@ footer a:hover{text-decoration:underline}
   </details>
 
   <!-- ============================================ 放号阶段（默认展开）
-       2026-09-18：铸造分四段（预热 / 保底 / 先到先得 / 公售），由服务端的
+       2026-09-18：铸造分四段（预热 / 白名单 / 先到先得 / 公售），由服务端的
        ARCBANG_PHASE 与三个开放时间决定。**这一段读的是 /api/health**，不是链上 ——
        阶段与名单本来就不在链上，链上只有 bangSigned 那个 bool free 的边界。
        名单由**积分榜**生成（server/allowlist.js），榜是公开的，所以这里给前 10 名 ——
@@ -375,13 +375,13 @@ footer a:hover{text-decoration:underline}
   <details class="fold" data-fold="phase" open>
     <summary><h2>放号阶段</h2><span class="fsum" id="fsPhase">—</span></summary>
     <div class="fbody">
-    <p class="why">预热期不签发任何铸造签名；保底期与先到先得期仅对白名单地址开放；公售期向所有地址开放。
+    <p class="why">预热期不签发任何铸造签名；白名单与先到先得两个阶段仅对白名单地址开放；公售阶段向所有地址开放。
        白名单依据积分榜排名产生，名额数量于榜单定格时公布，上限不超过合约中的 387 枚。
        免费额度为每地址 1 枚，额度用尽后，名单内地址同样按公售价铸造。</p>
     <div class="kline"><span>当前阶段</span><span class="num" id="phNow">—</span></div>
     <div class="kline"><span>下一段开放</span><span id="phNext">—</span></div>
     <div class="kline"><span>名单</span><span id="phFrozen">—</span></div>
-    <div class="kline"><span>白名单 · 保底层</span><span class="num" id="phGtd">—</span></div>
+    <div class="kline"><span>白名单 · 优先层</span><span class="num" id="phGtd">—</span></div>
     <div class="kline"><span>白名单 · 先到先得层</span><span class="num" id="phFcfs">—</span></div>
     <div class="kline"><span>在榜人数</span><span class="num" id="phApplied">—</span></div>
     <div class="kline"><span>分值</span><span id="phPts">—</span></div>
@@ -858,7 +858,8 @@ footer a:hover{text-decoration:underline}
      **绝不猜一个阶段出来**：猜错的后果是页面告诉人「公售开了」而服务端一张签名都不签。 */
   function loadPhase() {
     var base = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
-    var NAME = { warmup: '预热期', gtd: '保底期', fcfs: '先到先得期', public: '公售' };
+    /* 显示名（2026-09-19 拍板）：内部 key 不变，只改人看的那一面。 */
+    var NAME = { warmup: '预热期', gtd: '白名单', fcfs: '先到先得', public: '公售' };
     fetch(base + '/health').then(function (r) { return r.json(); }).then(function (h) {
       var p = h.phase || null;
       var c = h.allowlist || {};
@@ -892,7 +893,7 @@ footer a:hover{text-decoration:underline}
              P.register, P.repost, P.invite, P.inviteMax, P.share, P.shareMaxDays);
       /* 榜前 10。空榜就写一句，别留个空框。 */
       var top = h.allowlistTop || [];
-      var TIER = { gtd: '保底', fcfs: '免费' };
+      var TIER = { gtd: '优先', fcfs: '免费' };
       $('phTop').innerHTML = !top.length
         ? '<div class="row"><span class="k">' + T('还没有人上榜') + '</span><span class="dimtx">—</span></div>'
         : top.map(function (r) {

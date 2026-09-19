@@ -348,6 +348,23 @@ button,input{font-family:inherit}
 .ab-board tr.me td:first-child{box-shadow:inset 3px 0 0 var(--ab-signal)}
 .ab-board .tag{font-family:var(--ab-face);font-size:var(--t-xs);color:var(--ab-graphite);font-weight:400}
 .ab-boardfoot{margin-top:14px;font-size:var(--t-xs);color:var(--ab-graphite)}
+/* ---- 层级标签（白名单 / 先到先得 / 未获资格）----
+   榜上每行一个，本人卡片上一个。三种颜色和状态胶囊同一套语义：
+   绿=已到手、蓝=有资格、灰=还没有。 */
+.ab-tag{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;
+  font-size:11px;font-weight:600;white-space:nowrap;border:1px solid currentColor}
+.ab-tag.gtd{color:var(--ab-ok)}
+.ab-tag.fcfs{color:var(--ab-signal)}
+.ab-tag.none{color:var(--ab-graphite)}
+/* 层级紧跟着地址：右对齐会把它甩到积分旁边，中间空出一大片。 */
+.ab-board .c-addr{width:42%}
+.ab-board .c-tier{width:auto;text-align:left}
+@media (max-width:560px){ .ab-board .c-tier{width:auto} }
+/* 本人层级说明：榜和统计格之间那一句话 */
+.ab-tierbox{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  margin-top:14px;padding:12px 16px;border-radius:var(--r);
+  background:#fff;border:1px solid var(--ab-hair)}
+.ab-tierbox p{margin:0;font-size:var(--t-xs);line-height:1.6;color:var(--ab-graphite)}
 .ab-empty{padding:34px 0;text-align:center;color:var(--ab-graphite);font-size:var(--t-s)}
 .ab-empty svg{display:block;margin:0 auto 14px;width:64px;height:64px;opacity:.45}
 .ab-meline{position:sticky;bottom:0;z-index:3;padding:14px 12px;
@@ -437,7 +454,7 @@ button,input{font-family:inherit}
       <div class="ab-stat">
         <b class="ab-stat-v" id="stDone">—</b>
         <span class="ab-stat-k">已完成任务</span>
-        <span class="ab-stat-s" id="stDoneSub">共 7 项</span>
+        <span class="ab-stat-s" id="stDoneSub">共 8 项</span>
       </div>
       <div class="ab-stat">
         <b class="ab-stat-v" id="stInv">—</b>
@@ -446,7 +463,7 @@ button,input{font-family:inherit}
       </div>
       <div class="ab-stat">
         <b class="ab-stat-v" id="stTop">—</b>
-        <span class="ab-stat-k">前 100</span>
+        <span class="ab-stat-k">TOP 100</span>
         <span class="ab-stat-s" id="stTopSub">按积分排名</span>
       </div>
       <div class="ab-stat">
@@ -454,6 +471,12 @@ button,input{font-family:inherit}
         <span class="ab-stat-k">剩余天数</span>
         <span class="ab-stat-s" id="stLeftSub">预热期</span>
       </div>
+    </div>
+
+    <!-- 本人当前层级：预热期就实时显示（用户 2026-09-19：状态实时可查）。 -->
+    <div class="ab-tierbox" id="tierBox" hidden>
+      <span class="ab-tag none" id="tierTag">未获资格</span>
+      <p id="tierWhy"></p>
     </div>
 
     <p class="ab-notice">积分为实时统计结果，预热结束后经复核确定最终名单。</p>
@@ -587,7 +610,18 @@ button,input{font-family:inherit}
 
       <h3 class="ab-group">每日</h3>
       <div class="ab-rows">
-        <article class="ab-qr wide" data-task="share">
+        <article class="ab-qr" data-task="bang">
+          <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg></span>
+          <div class="ab-qr-mid">
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙</h4><span class="ab-qr-p" data-pts>+1 / 次</span></div>
+            <p class="ab-qr-d" id="bangHow">在模拟器中引爆任意 Arc 区块，每次计 1 分。</p>
+            <div class="ab-dots" id="bangDots"></div>
+          </div>
+          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
+            <a class="ab-btn3" href="app.html" data-act>前往引爆</a></div>
+        </article>
+
+        <article class="ab-qr" data-task="share">
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙并广播</h4><span class="ab-qr-p" data-pts>+5</span></div>
@@ -612,10 +646,10 @@ button,input{font-family:inherit}
 
     <!-- ================= 积分榜 ================= -->
     <div class="ab-panel" data-panel="board" hidden>
-      <p class="ab-say" style="margin-top:0">公开展示前 100 名。免费名额自积分榜前列产生。</p>
+      <p class="ab-say" style="margin-top:0">公开展示 TOP 100。免费名额自积分榜 TOP 100 产生。</p>
       <table class="ab-board">
-        <thead><tr><th class="c-addr">地址</th><th class="c-pts">积分</th></tr></thead>
-        <tbody id="boardBody"><tr><td colspan="2" class="tag">读取中…</td></tr></tbody>
+        <thead><tr><th class="c-addr">地址</th><th class="c-tier">层级</th><th class="c-pts">积分</th></tr></thead>
+        <tbody id="boardBody"><tr><td colspan="3" class="tag">读取中…</td></tr></tbody>
       </table>
       <div class="ab-meline" id="meLine" hidden></div>
       <div class="ab-row"><button class="ab-btn3" type="button" id="btnMore" hidden>展开全部</button></div>
@@ -692,11 +726,11 @@ button,input{font-family:inherit}
   <div class="ab-wrap">
     <h2 class="ab-h2">开放时间</h2>
     <table class="ab-tbl">
-      <tr><th>保底期</th><td id="tGtd">待定<span class="sub">积分榜前列优先铸造</span></td></tr>
+      <tr><th>白名单</th><td id="tGtd">待定<span class="sub">白名单地址优先铸造</span></td></tr>
       <tr><th>先到先得</th><td id="tFcfs">待定<span class="sub">名单内地址领取剩余免费名额</span></td></tr>
       <tr><th>公售</th><td id="tPublic">待定<span class="sub">向所有地址开放</span></td></tr>
     </table>
-    <p class="ab-say">保底期开启时积分榜定格。</p>
+    <p class="ab-say">白名单阶段开启时积分榜定格。</p>
   </div>
 </section>
 
@@ -704,9 +738,9 @@ button,input{font-family:inherit}
   <div class="ab-wrap">
     <h2 class="ab-h2">规则</h2>
     <table class="ab-tbl">
-      <tr><th>总量</th><td>1,387 枚，不增发</td></tr>
+      <tr><th>总量</th><td>1,387 枚，永不增发</td></tr>
       <tr><th>免费</th><td>每地址 1 枚，名额自积分榜前列产生，数量于榜单定格时公布</td></tr>
-      <tr><th>公售</th><td>1 USDC / 枚，每地址上限 3 枚</td></tr>
+      <tr><th>公售</th><td>价格另行公布，每地址上限 3 枚</td></tr>
       <tr><th>唯一</th><td>每个区块仅可铸造一次</td></tr>
       <tr><th>没有代币</th><td>不发行代币，不进行预售</td></tr>
     </table>
@@ -731,7 +765,7 @@ button,input{font-family:inherit}
     <div class="ab-faq">
       <details>
         <summary>ARCBANG 是什么？</summary>
-        <p>ARCBANG 将 Arc 区块哈希解析为一套物理常数，并据此推演出一个完整宇宙。结果可铸造为 NFT，全网 1,387 枚，不发行代币。</p>
+        <p>ARCBANG 将 Arc 区块哈希解析为一套物理常数，并据此推演出一个完整宇宙。结果可铸造为 NFT：1,387 枚，永不增发。不发行代币。</p>
       </details>
       <details>
         <summary>积分怎么算？</summary>
@@ -739,7 +773,7 @@ button,input{font-family:inherit}
       </details>
       <details>
         <summary>什么时候开铸？</summary>
-        <p>预热期共 14 天，结束后依次进入保底期、先到先得期与公售期。具体时间以页面顶部倒计时为准。</p>
+        <p>预热期共 14 天，结束后依次进入白名单、先到先得与公售三个阶段。具体时间以页面顶部倒计时为准。</p>
       </details>
       <details>
         <summary>免费名额怎么来？</summary>
@@ -842,7 +876,9 @@ button,input{font-family:inherit}
   var BD = null;          // 最近一次 /api/allowlist/board
   var ADDR = null;
   var expanded = false;
-  var PHASE_CN = { warmup: '预热期', gtd: '保底期', fcfs: '先到先得期', public: '公售' };
+  /* 阶段的显示名（2026-09-19 用户拍板）。**内部 key 不动**：
+     服务端、合约、状态文件里一律还是 warmup / gtd / fcfs / public。 */
+  var PHASE_CN = { warmup: '预热期', gtd: '白名单', fcfs: '先到先得', public: '公售' };
 
   /* ---------------- 时间与倒计时 ---------------- */
   function fmtWhen(iso) {
@@ -922,6 +958,7 @@ button,input{font-family:inherit}
     if (P.invite != null) setPts('invite', TF('+{0} / 人', P.invite));
     if (P.post != null) setPts('post', TF('+{0} / 条', P.post));
     if (P.share != null) setPts('share', TF('+{0} / 天', P.share));
+    if (P.bang != null) setPts('bang', TF('+{0} / 次', P.bang));
 
     /* 转发置顶推的一键链接：正文预填登记码，url 带上置顶推本身。
        env 没配 ARCBANG_PINNED_POST_URL 就是 null —— 转发那张卡的按钮跟着消失，
@@ -932,6 +969,7 @@ button,input{font-family:inherit}
       : null;
 
     renderStats(st);
+    renderTier(st);
     renderTasks(st, intent);
     renderForm(st);
     renderMine(st);
@@ -1142,15 +1180,17 @@ button,input{font-family:inherit}
     var connected = !!(ADDR && st.registered);
     setNum('stPoints', connected ? (st.points || 0) : null);
     $('stPointsSub').textContent = connected
-      ? TF('登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4}',
+      ? TF('登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4} · 引爆 {5}',
         (st.breakdown && st.breakdown.register) || 0,
         ((st.breakdown && st.breakdown.follow) || 0) + ((st.breakdown && st.breakdown.repost) || 0) + ((st.breakdown && st.breakdown.like) || 0),
         ((st.breakdown && st.breakdown.invite) || 0) + ((st.breakdown && st.breakdown.milestone) || 0),
         (st.breakdown && st.breakdown.post) || 0,
-        (st.breakdown && st.breakdown.share) || 0)
+        (st.breakdown && st.breakdown.share) || 0,
+        (st.breakdown && st.breakdown.bang) || 0)
       : T('连接钱包后显示');
 
     var done = 0;
+    if ((st.bangPts || 0) > 0) done++;
     if (st.registered) done++;
     if (st.followed) done++;
     if (st.reposted) done++;
@@ -1158,7 +1198,7 @@ button,input{font-family:inherit}
     if ((st.validInvites || 0) > 0) done++;
     if ((st.okPosts || 0) > 0) done++;
     if ((st.shareDays || 0) > 0) done++;
-    $('stDone').textContent = connected ? (done + ' / 7') : '—';
+    $('stDone').textContent = connected ? (done + ' / 8') : '—';
 
     $('stInv').textContent = connected ? ((st.validInvites || 0) + ' / ' + (P.inviteMax || 20)) : '—';
     $('stInvSub').textContent = TF('每位 +{0} 分', P.invite || 20);
@@ -1166,7 +1206,7 @@ button,input{font-family:inherit}
     var inTop = !!st.inTop100;
     $('stTop').textContent = connected ? (inTop ? T('已进入') : ('+' + (st.gapToTop100 == null ? '—' : st.gapToTop100))) : '—';
     $('stTop').parentNode.classList.toggle('in', connected && inTop);
-    $('stTopSub').textContent = connected ? (inTop ? T('位于前 100 名') : T('距前 100 名所需积分')) : T('按积分排名');
+    $('stTopSub').textContent = connected ? (inTop ? T('已进 TOP 100') : T('距 TOP 100 所需积分')) : T('按积分排名');
 
     /* 剩余天数：预热结束时间来自服务端（ARCBANG_WARMUP_START + 天数）。 */
     var end = (st.warmup && st.warmup.end) || (st.opens && st.opens.gtd) || (st.next && st.next.at);
@@ -1199,7 +1239,9 @@ button,input{font-family:inherit}
       [T('点赞'), st.liked ? T('已完成') : T('未完成')],
       [T('有效邀请'), (st.validInvites || 0) + ' / ' + (st.invites || 0)],
       [T('创作推文'), TF('已通过 {0} · 未通过 {1}', st.okPosts || 0, st.badPosts || 0)],
-      [T('每日引爆'), TF('已完成 {0} 天', st.shareDays || 0)]
+      [T('每日引爆'), TF('已完成 {0} 天', st.shareDays || 0)],
+      [T('引爆计分'), TF('今日 {0} 分 · 累计 {1} 分 · 共 {2} 个区块',
+        st.bangTodayPts || 0, st.bangPts || 0, st.bangs || 0)]
     ];
     var html = rows.map(function (r) {
       return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>';
@@ -1308,12 +1350,21 @@ button,input{font-family:inherit}
         done: (st.shareDays || 0) >= (P.shareMaxDays || 5),
         state: (st.shareDays || 0) > 0 ? 'ok' : 'todo',
         act: { text: '前往引爆', href: 'app.html' }
+      },
+      /* 引爆计分：两道上限（每日 / 预热期）都到顶才算「已完成」。
+         只到今天的顶不算完成 —— 明天还能接着拿。 */
+      bang: {
+        done: (st.bangPts || 0) >= (P.bangMax || 50),
+        state: (st.bangPts || 0) > 0 ? 'ok' : 'todo',
+        act: { text: '前往引爆', href: 'app.html' }
       }
     };
     var progress = {
       invite: reg ? TF('{0} 位', st.validInvites || 0) : '',
       post: reg ? TF('已通过 {0} · 未通过 {1}', st.okPosts || 0, st.badPosts || 0) : '',
-      share: reg ? TF('{0} / {1} 天', st.shareDays || 0, P.shareMaxDays || 5) : ''
+      share: reg ? TF('{0} / {1} 天', st.shareDays || 0, P.shareMaxDays || 5) : '',
+      bang: reg ? TF('今日 {0} / {1} 分 · 累计 {2} / {3} 分',
+        st.bangTodayPts || 0, P.bangPerDay || 10, st.bangPts || 0, P.bangMax || 50) : ''
     };
     var LABEL = { todo: '未完成', wait: '核验中', ok: '已完成', bad: '未通过' };
     /* 「审核中」那句话要写清楚**等多久、上次什么时候查的** ——
@@ -1457,6 +1508,16 @@ button,input{font-family:inherit}
     for (var j = 0; j < smax; j++) sdots += '<i class="' + (j < sd ? 'on' : '') + '"></i>';
     $('shareDots').innerHTML = sdots + '<span>' + esc(TF('已完成 {0} / {1} 天', sd, smax)) + '</span>';
 
+    /* 引爆计分：今天的进度用点表示（一点一分），后面跟累计。
+       点数按每日上限画 —— 上限可配，写死 10 个在调小上限时会多出几个永远不亮的点。 */
+    var bMaxDay = P.bangPerDay || 10, bToday = st.bangTodayPts || 0;
+    var bdots = '';
+    for (var k2 = 0; k2 < bMaxDay; k2++) bdots += '<i class="' + (k2 < bToday ? 'on' : '') + '"></i>';
+    $('bangDots').innerHTML = bdots + '<span>' + esc(reg
+      ? TF('今日 {0} / {1} 分 · 累计 {2} / {3} 分', bToday, bMaxDay, st.bangPts || 0, P.bangMax || 50)
+      : TF('每日最多 {0} 分，预热期最多 {1} 分', bMaxDay, P.bangMax || 50)) + '</span>';
+    $('bangHow').textContent = TF('在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次。', P.bang || 1);
+
     /* 主 CTA：登记过了就叫「继续」 */
     $('mainCta').textContent = reg ? T('继续任务') : T('开始任务');
   }
@@ -1490,13 +1551,35 @@ button,input{font-family:inherit}
     if (go) go.hidden = !(ADDR && st && st.registered);
   }
 
+  /** 层级标签。三种：白名单 / 先到先得 / 未获资格。 */
+  var TIER_CN = { gtd: '白名单', fcfs: '先到先得' };
+  function tierTag(t) {
+    var k = (t === 'gtd' || t === 'fcfs') ? t : 'none';
+    return '<span class="ab-tag ' + k + '">' + esc(T(TIER_CN[t] || '未获资格')) + '</span>';
+  }
+  /** 本人那一条：标签 + 一句话说清这一层是什么、下一步怎么走。 */
+  function renderTier(st) {
+    var box = $('tierBox');
+    if (!box) return;
+    if (!ADDR || !st || !st.registered) { box.hidden = true; return; }
+    box.hidden = false;
+    var t = st.tier;
+    var k = (t === 'gtd' || t === 'fcfs') ? t : 'none';
+    var tag = $('tierTag');
+    tag.className = 'ab-tag ' + k;
+    tag.textContent = T(TIER_CN[t] || '未获资格');
+    $('tierWhy').textContent = t === 'gtd' ? T('白名单：TOP 100 优先铸造。')
+      : t === 'fcfs' ? T('先到先得：白名单阶段之后按顺序领取剩余免费名额。')
+        : T('未获资格：完成任一任务即可进入先到先得。');
+  }
+
   /* ---------------- 积分榜（只公布前 100 名） ---------------- */
   function renderBoard(bd) {
     if (bd) BD = bd;
     var rows = (BD && BD.rows) || [];
     var body = $('boardBody');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="2"><div class="ab-empty">'
+      body.innerHTML = '<tr><td colspan="3"><div class="ab-empty">'
         + '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2"/>'
         + '<circle cx="32" cy="32" r="15" fill="none" stroke="currentColor" stroke-width="2"/>'
         + '<circle cx="32" cy="32" r="4" fill="currentColor"/></svg>'
@@ -1515,6 +1598,7 @@ button,input{font-family:inherit}
       var me = myShort && r.addr === myShort;
       return '<tr class="' + (me ? 'me' : '') + '">'
         + '<td class="c-addr">' + avatar(r.addr) + esc(r.addr) + '</td>'
+        + '<td class="c-tier">' + tierTag(r.tier) + '</td>'
         + '<td class="c-pts">' + r.points + '</td></tr>';
     }).join('');
 
@@ -1529,15 +1613,16 @@ button,input{font-family:inherit}
       ml.innerHTML = (myShort ? avatar(ST.code || myShort) : '')
         + '<span>' + esc(T('你')) + '</span>'
         + '<b>' + (ST.points || 0) + '</b><span class="lag">' + esc(T('分')) + '</span>'
-        + '<span class="lag">' + esc(ST.inTop100 ? T('在前 100 内')
-          : TF('再 {0} 分进前 100', ST.gapToTop100 == null ? '—' : ST.gapToTop100)) + '</span>';
+        + tierTag(ST.tier)
+        + '<span class="lag">' + esc(ST.inTop100 ? T('已进 TOP 100')
+          : TF('距 TOP 100 还差 {0} 分', ST.gapToTop100 == null ? '—' : ST.gapToTop100)) + '</span>';
     } else {
       ml.hidden = true;
     }
 
     $('boardFoot').textContent = BD.frozen
-      ? TF('共 {0} 人在榜，榜只公布前 {1} 名 · 名单已定格', BD.total, BD.publicMax)
-      : TF('共 {0} 人在榜，榜只公布前 {1} 名 · 名额数量在定格时公布', BD.total, BD.publicMax);
+      ? TF('共 {0} 人在榜，公开展示 TOP {1} · 名单已定格', BD.total, BD.publicMax)
+      : TF('共 {0} 人在榜，公开展示 TOP {1} · 名额数量在定格时公布', BD.total, BD.publicMax);
   }
   $('btnMore').addEventListener('click', function () { expanded = !expanded; renderBoard(null); });
 

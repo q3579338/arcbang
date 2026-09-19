@@ -22,6 +22,11 @@ window.ARCBANG_CONFIG = {
      不走 btc-source 那条 REST 路。 */
   site: 'arc',
 
+  /* 公售价公不公布（2026-09-19 用户拍板：公售开始前一个价格数字都不出现）。
+     false = 铸造页按钮与价格行都不标价，哪怕链上读得到 price()。
+     公售开始那天改成 true 重新构建即可；合约常量与 setPrice 不受它影响。 */
+  showPrice: false,
+
   /* ArcUniverse（宇宙 NFT，contracts/src/ArcUniverse.sol）。
      部署后填这里，并且**服务端 /etc/bnbbang/api.env 的 ARCBANG_CONTRACT 必须同步改**——
      签名把合约地址绑死了，两边不一致时签出来的名在链上一律 BadSig。 */

@@ -132,6 +132,9 @@ const CODE_LEN = 6;
 const CODE_RE = /^[A-Z0-9]{6}$/;
 /** 登记接口每 IP 每天多少次。防的是「一个人灌两万条」，不是防薅 —— 薅由名单本身挡。 */
 const REGISTER_PER_IP_DAY = 20;
+/** 引爆计分每地址每分钟多少次。上限本身由 bangsOf 那两道顶管，这一道管的是**写盘频率**：
+    一个脚本一秒能发几百个请求，分数拦得住，磁盘拦不住。 */
+const BANG_PER_MIN = 3;
 const DAY = 24 * 3600 * 1000;
 /** 登记流水的硬顶：超过就不再收，免得磁盘被人灌满。 */
 const MAX_APPLIED = 200000;
@@ -163,6 +166,12 @@ function pointsTable() {
     inviteMax: envInt('ARCBANG_PTS_INVITE_MAX', 20),
     share: envInt('ARCBANG_PTS_SHARE', 5),
     shareMaxDays: envInt('ARCBANG_PTS_SHARE_MAX_DAYS', 5),
+    /* 引爆计分：每引爆一个真实 Arc 区块 +1，每天封顶、整个预热期再封一次顶。
+       两道顶都是**分**不是次数：改了单次分值，两个上限的含义不用跟着改。
+       这一项比别的都便宜，因为它零成本 —— 不封顶的话一个脚本能把榜刷穿。 */
+    bang: envInt('ARCBANG_PTS_BANG', 1),
+    bangPerDay: envInt('ARCBANG_PTS_BANG_PER_DAY', 10),
+    bangMax: envInt('ARCBANG_PTS_BANG_MAX', 50),
     /* 创作推文：自己发一条提到本站并带 #ARCBANG 的推，过了就计分。
        限每周 2 条、预热期共 5 条 —— 不限的话这一项会变成刷帖机。 */
     post: envInt('ARCBANG_PTS_POST', 20),
@@ -185,10 +194,18 @@ function inviteMilestones() {
   return out.length ? out : [{ at: 3, pts: 30 }, { at: 5, pts: 50 }, { at: 10, pts: 100 }];
 }
 /** 两档名额。gtdTop 必须 ≤ freeTop，配反了就把 gtd 夹到 freeTop（不是报错崩掉）。 */
+/**
+ * 两道名次线。
+ *   gtd  = 名次 ≤ ARCBANG_GTD_TOP（默认 100）→ 「白名单」，优先铸造。
+ *   free = 「先到先得」那一层的**可选上限**。2026-09-19 用户改了规则：
+ *          先到先得不再看名次，而是看「除登记外至少完成一项任务」，
+ *          所以这里默认 0 = **不限**。想再压一道名次线时把它配成正数即可。
+ */
 function tops() {
-  const free = envInt('ARCBANG_FREE_TOP', 387);
+  const rawFree = envInt('ARCBANG_FREE_TOP', 0);
+  const free = rawFree > 0 ? rawFree : Infinity;
   const gtd = Math.min(envInt('ARCBANG_GTD_TOP', 100), free);
-  return { gtd, free };
+  return { gtd, free, freeLimited: rawFree > 0 };
 }
 
 function rank(p) { const i = PHASES.indexOf(p); return i < 0 ? 0 : i; }
@@ -460,6 +477,9 @@ function create(opts) {
             inviter: normAddr(j.inviter),
             ip: j.ip || null,
             at: j.at || null,
+            /* 排练用的模拟登记。**必须读回来**：unseed 按它删，
+               seed 造邀请关系时也要认得出哪些是自己造的。 */
+            seed: j.seed === true,
             code: codeOf(a)
           };
           applied.set(a, rec);
@@ -503,6 +523,10 @@ function create(opts) {
     mtimeMs: -1, size: -1,
     follow: new Map(), repost: new Map(), like: new Map(),
     shares: new Map(), xfix: new Map(), proof: new Map(), posts: new Map(),
+    /* 引爆记账：addr → { h: [算过分的区块哈希…], d: { 'YYYY-MM-DD': 次数 } }
+       哈希列表是**去重的依据**（同一个区块引爆一百次也只算一次），
+       它的长度被总上限夹着，不会无限长。 */
+    bangs: new Map(),
     /* 「我关注了」那一下的**去向**（键是 '<地址>|<任务>'）：
        接了 X API 之后，用户自称不再直接算数 —— 它只是让这一项进「审核中」，
        等下一轮 API 去 X 上查。查到了才打勾，查不到就 'failed'，他可以再点一次。 */
@@ -564,6 +588,17 @@ function create(opts) {
           tries: Number(x.tries) || 0, nextAt: x.nextAt || null, via: x.via || null
         })));
       }
+      for (const k in (j && j.bangs) || {}) {
+        const a = normAddr(k);
+        const v = j.bangs[k];
+        if (!a || !v) continue;
+        const hs = Array.isArray(v.h) ? v.h.filter((x) => HASH_RE.test(String(x))).map((x) => String(x).toLowerCase()) : [];
+        const ds = {};
+        for (const d in (v.d || {})) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(d) && Number(v.d[d]) > 0) ds[d] = Math.floor(Number(v.d[d]));
+        }
+        if (hs.length || Object.keys(ds).length) next.bangs.set(a, { h: Array.from(new Set(hs)), d: ds });
+      }
       for (const k in (j && j.claims) || {}) {
         const v = j.claims[k];
         const i = String(k).indexOf('|');
@@ -604,6 +639,8 @@ function create(opts) {
     for (const [k, v] of (s.proof || new Map())) out.proof[k] = v;
     out.posts = {};
     for (const [k, v] of (s.posts || new Map())) out.posts[k] = v;
+    out.bangs = {};
+    for (const [k, v] of (s.bangs || new Map())) out.bangs[k] = v;
     out.claims = {};
     for (const [k, v] of (s.claims || new Map())) out.claims[k] = v;
     out.distrust = {};
@@ -618,7 +655,8 @@ function create(opts) {
   function mutState(fn) {
     const s = state();
     const next = { shares: new Map(s.shares), xfix: new Map(s.xfix), proof: new Map(s.proof),
-      posts: new Map(s.posts), claims: new Map(s.claims), distrust: new Map(s.distrust), phase: s.phase || null };
+      posts: new Map(s.posts), bangs: new Map(s.bangs), claims: new Map(s.claims),
+      distrust: new Map(s.distrust), phase: s.phase || null };
     for (const key of CHECKS) next[key] = new Map(s[key]);
     fn(next);
     saveState(next);
@@ -1175,6 +1213,36 @@ function create(opts) {
   /** 「核过了吗」在别处（榜上那个「未核」标、有效邀请的判据）一律指**转发**那一项 ——
       三项里只有它要在评论里回登记码，是唯一能人工对得上人的。 */
   function isVerified(addr) { return hasCheck(addr, 'repost'); }
+  /**
+   * 引爆记账。
+   * @returns {{hashes:string[], days:object, today:number, count:number,
+   *            todayPts:number, points:number, full:boolean, dayFull:boolean}}
+   *
+   * 两道上限都按**分**算（P.bangPerDay / P.bangMax）：
+   *   · 当天分 = min(当天次数 × 单次分, 每日上限)
+   *   · 总分   = min(各天分之和, 总上限)
+   * 这样改单次分值时，两个上限的含义不用跟着改。
+   */
+  function bangsOf(addr, now) {
+    const a = normAddr(addr);
+    const P = pointsTable();
+    const rec = (a && state().bangs.get(a)) || null;
+    const days = (rec && rec.d) || {};
+    const hashes = (rec && rec.h) || [];
+    const day = dayOf(now);
+    const today = Number(days[day]) || 0;
+    const per = (n) => Math.min(n * P.bang, P.bangPerDay);
+    let sum = 0;
+    for (const d in days) sum += per(Number(days[d]) || 0);
+    const points = Math.min(sum, P.bangMax);
+    return {
+      hashes, days, day,
+      today, count: hashes.length,
+      todayPts: per(today), points,
+      dayFull: per(today) >= P.bangPerDay,
+      full: points >= P.bangMax
+    };
+  }
   function shareDaysOf(addr) { const a = normAddr(addr); const d = a ? state().shares.get(a) : null; return d ? d.length : 0; }
   /** 这个地址算数的 X 用户名：管理员修正过就用修正的，否则用登记时那一份。 */
   function xOf(addr) {
@@ -1228,7 +1296,7 @@ function create(opts) {
    * 一个地址的积分明细。没登记过的一律 0 分、不上榜 ——
    * 登记是入场券，不登记就没有「你」这个条目。
    */
-  function scoreOf(addrRaw) {
+  function scoreOf(addrRaw, now) {
     const a = normAddr(addrRaw);
     const P = pointsTable();
     const zero = {
@@ -1236,7 +1304,9 @@ function create(opts) {
       invites: 0, validInvites: 0, countedInvites: 0, shareDays: 0, countedShareDays: 0,
       milestones: P.milestones.map((m) => ({ at: m.at, pts: m.pts, hit: false })),
       posts: 0, okPosts: 0, countedPosts: 0, badPosts: 0,
-      pts: { register: 0, follow: 0, repost: 0, like: 0, invite: 0, milestone: 0, post: 0, share: 0 }, total: 0
+      bangs: 0, bangToday: 0, bangTodayPts: 0,
+      pts: { register: 0, follow: 0, repost: 0, like: 0, invite: 0, milestone: 0, post: 0, share: 0, bang: 0 },
+      total: 0
     };
     if (!a || !loadApplied().has(a)) return zero;
     /* X 三连各记各的：只做了关注就只拿关注那 10 分。 */
@@ -1254,6 +1324,7 @@ function create(opts) {
     const posts = postsOf(a);
     const okPosts = posts.filter((x) => x.status === 'ok').length;
     const countedPosts = Math.min(okPosts, P.postMax);
+    const bg = bangsOf(a, now);
     const pts = {
       register: P.register,
       follow: followed ? P.follow : 0,
@@ -1262,7 +1333,8 @@ function create(opts) {
       invite: countedInv * P.invite,
       milestone: msPts,
       post: countedPosts * P.post,
-      share: countedDays * P.share
+      share: countedDays * P.share,
+      bang: bg.points
     };
     return {
       registered: true, verified: reposted, followed, reposted, liked,
@@ -1271,8 +1343,9 @@ function create(opts) {
       posts: posts.length, okPosts, countedPosts,
       badPosts: posts.filter((x) => x.status !== 'ok' && x.status !== 'retry' && x.status !== 'new').length,
       shareDays: days, countedShareDays: countedDays,
+      bangs: bg.count, bangToday: bg.today, bangTodayPts: bg.todayPts,
       pts, total: pts.register + pts.follow + pts.repost + pts.like
-        + pts.invite + pts.milestone + pts.post + pts.share
+        + pts.invite + pts.milestone + pts.post + pts.share + pts.bang
     };
   }
 
@@ -1316,7 +1389,9 @@ function create(opts) {
     const frozen = isFrozen();
     return board().rows.slice(0, lim).map((r) => ({
       addr: r.short, points: r.points,
-      tier: frozen ? (r.rank <= T.gtd ? 'gtd' : r.rank <= T.free ? 'fcfs' : null) : null
+      /* 每一行都带层级标签。**预热期也带** —— 状态实时可查是产品规则的一部分：
+         看榜的人要能一眼看出自己和别人现在在哪一层。 */
+      tier: tierOf(r.addr)
     }));
   }
 
@@ -1326,7 +1401,17 @@ function create(opts) {
    *   · 已定格 → 只认那个文件；
    *   · 没定格 → 按当下的榜实时算。
    */
-  function tierOf(addr) {
+  /**
+   * 这个地址现在在哪一层。**预热期就是实时的**（2026-09-19 用户拍板：状态实时可查）：
+   *   · 名次 ≤ GTD_TOP        → 'gtd'  「白名单」，优先铸造
+   *   · 其余、且除登记外至少完成一项任务 → 'fcfs' 「先到先得」
+   *   · 只登记、一项任务都没做 → null  「未获资格」
+   * 定格（freeze）之后以定格结果为准：那时 list() 里有人工写下的一份，直接照它回。
+   *
+   * 为什么先到先得要挂一个「至少做一件事」的门槛：只登记不做任务是零成本的，
+   * 不设门槛的话，一个脚本批量登记就能把免费名额全占上。
+   */
+  function tierOf(addr, now) {
     const a = normAddr(addr);
     if (!a) return null;
     const L = list();
@@ -1336,7 +1421,27 @@ function create(opts) {
     const r = board().byAddr.get(a);
     if (!r) return null;
     const T = tops();
-    return r.rank <= T.gtd ? 'gtd' : r.rank <= T.free ? 'fcfs' : null;
+    if (r.rank <= T.gtd) return 'gtd';
+    if (T.freeLimited && r.rank > T.free) return null;
+    return tasksDone(a, now) >= 1 ? 'fcfs' : null;
+  }
+  /**
+   * 除登记之外做成了几件事。层级判据用它，页面上那个「已完成任务 x / 8」也用它。
+   * 「做成」的口径与任务卡上的胶囊一致：核过的勾、拿到分的邀请 / 创作 / 引爆 / 打卡。
+   */
+  function tasksDone(addr, now) {
+    const a = normAddr(addr);
+    if (!a) return 0;
+    const s = scoreOf(a, now);
+    let n = 0;
+    if (s.followed) n++;
+    if (s.reposted) n++;
+    if (s.liked) n++;
+    if ((s.validInvites || 0) > 0) n++;
+    if ((s.okPosts || 0) > 0) n++;
+    if ((s.shareDays || 0) > 0) n++;
+    if ((s.pts && s.pts.bang > 0)) n++;
+    return n;
   }
   /** 两档人数。定格后数文件，没定格就按榜和名额算（人工覆盖并进来去重）。
       **这是给管理员和命令行看的那一份**，带 gtdTop / freeTop。
@@ -1347,15 +1452,23 @@ function create(opts) {
     const seen = new Map();
     for (const [a, row] of L.map) seen.set(a, row.tier);
     if (!L.frozen) {
+      /* 实时两档人数：名次进线的算白名单，其余做过任务的算先到先得。
+         这一份**预热期就对外显示**（用户 2026-09-19：状态实时可查）。 */
       const rows = board().rows;
-      for (let i = 0; i < rows.length && i < T.free; i++) {
-        if (seen.has(rows[i].addr)) continue;
-        seen.set(rows[i].addr, i < T.gtd ? 'gtd' : 'fcfs');
+      for (let i = 0; i < rows.length; i++) {
+        const a = rows[i].addr;
+        if (seen.has(a)) continue;
+        if (i < T.gtd) { seen.set(a, 'gtd'); continue; }
+        if (T.freeLimited && i >= T.free) break;
+        if (tasksDone(a) >= 1) seen.set(a, 'fcfs');
       }
     }
     let gtd = 0, fcfs = 0;
     for (const v of seen.values()) { if (v === 'gtd') gtd++; else fcfs++; }
-    return { gtd, fcfs, total: gtd + fcfs, frozen: L.frozen, gtdTop: T.gtd, freeTop: T.free };
+    return {
+      gtd, fcfs, total: gtd + fcfs, frozen: L.frozen,
+      gtdTop: T.gtd, freeTop: T.freeLimited ? T.free : null
+    };
   }
 
   /**
@@ -1368,7 +1481,12 @@ function create(opts) {
    */
   function publicCounts() {
     const c = counts();
-    if (!c.frozen) return { frozen: false, gtd: null, fcfs: null, total: null, gtdTop: null, freeTop: null };
+    /* 2026-09-19 用户改口径：**两档人数实时显示**（状态实时可查）。
+       但**名额上限仍然不公布** —— gtdTop / freeTop 在定格之前一律 null。
+       人数是事实（现在有多少人站在这一层），上限是承诺（我们要发多少个），两件事。 */
+    if (!c.frozen) {
+      return { frozen: false, gtd: c.gtd, fcfs: c.fcfs, total: c.total, gtdTop: null, freeTop: null };
+    }
     return { frozen: true, gtd: c.gtd, fcfs: c.fcfs, total: c.total, gtdTop: c.gtdTop, freeTop: c.freeTop };
   }
 
@@ -1677,6 +1795,265 @@ function create(opts) {
     return { status: 200, body: { ok: true, day, shareDays: days.length, points: scoreOf(addr).total } };
   }
 
+  /**
+   * POST /api/allowlist/bang {address, hash, sig}
+   * 在模拟器里真引爆一次就 +1 分。sig 还是登记时那一次签名（不弹钱包）。
+   *
+   * 五道闸，缺一不可：
+   *   1. **地址得先登记**。没登记的人计分没有意义，榜上也没有他。
+   *   2. **hash 得是真的 Arc 区块**。调用方自己编一个 64 位十六进制串是最省事的刷法，
+   *      所以这里回头找链要一次（index.js 注入 readBlock，命中卡缓存时不额外打 RPC）。
+   *      读不到链**拒绝计分**而不是放行 —— 放行等于把这道闸交给网络抖动。
+   *   3. **同地址同区块只算一次**。不然对着同一个块点一百下就是一百分。
+   *   4. 每日上限 + 总上限（见 bangsOf）。
+   *   5. 每地址每分钟最多 3 次入账。上面四道都是「算不算分」，这一道是「让不让写盘」——
+   *      一个脚本一秒钟能发几百个请求，前四道拦得住分数，拦不住盘。
+   *
+   * @param readBlock 可选：async (hash) => 区块对象或 null。不给就不做第 2 道校验
+   *                  （自检里用假的；线上 index.js 一定会给）。
+   */
+  async function bang(input, ip, now, readBlock) {
+    const b = input && typeof input === 'object' ? input : {};
+    const addr = normAddr(b.address);
+    if (!addr) return { status: 400, body: { error: '地址不对' } };
+    const hash = String(b.hash == null ? '' : b.hash).trim().toLowerCase();
+    if (!HASH_RE.test(hash)) return { status: 400, body: { error: '要给引爆的那个区块哈希' } };
+    const sig = String(b.sig == null ? '' : b.sig).trim();
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
+    let who = null;
+    try { who = verifyMessage(registerMessage(addr), sig); }
+    catch (e) { return { status: 400, body: { error: '签名验不过' } }; }
+    if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
+    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，请先完成登记' } };
+
+    const P = pointsTable();
+    const cur = bangsOf(addr, now);
+    /* 已经算过的区块、当天到顶、总量到顶：都回 200 并说明原因 ——
+       这三件事对用户都不是错误，页面照常显示进度，不该弹红字。 */
+    if (cur.hashes.indexOf(hash) >= 0) {
+      return { status: 200, body: { ok: true, already: true, bangs: cur.count, today: cur.today,
+        todayPts: cur.todayPts, points: scoreOf(addr, now).total } };
+    }
+    if (cur.full) {
+      return { status: 200, body: { ok: true, capped: 'total', bangs: cur.count, today: cur.today,
+        todayPts: cur.todayPts, points: scoreOf(addr, now).total } };
+    }
+    if (cur.dayFull) {
+      return { status: 200, body: { ok: true, capped: 'day', bangs: cur.count, today: cur.today,
+        todayPts: cur.todayPts, points: scoreOf(addr, now).total } };
+    }
+    /* 频率闸放在「确定要写盘」之前、链上校验之前：读链是要花时间的，
+       别让一个刷子把我们的 RPC 也一起拖下水。 */
+    if (typeof take === 'function') {
+      const r = take('albang:' + addr, BANG_PER_MIN, 60 * 1000);
+      if (r && r.ok === false) {
+        return { status: 429, body: { error: '引爆记分太频繁，稍后再试', resetAt: r.resetAt } };
+      }
+    }
+    if (typeof readBlock === 'function') {
+      let blk = null;
+      try { blk = await readBlock(hash); }
+      catch (e) {
+        console.error('[allowlist] 引爆计分读链失败：' + (e && e.message));
+        return { status: 503, body: { error: '链上节点暂时打不通，稍后再试' } };
+      }
+      if (!blk) return { status: 400, body: { error: '这个哈希在链上查不到，不是一个真实区块' } };
+    }
+
+    const day = cur.day;
+    const nextRec = { h: cur.hashes.concat([hash]), d: Object.assign({}, cur.days) };
+    nextRec.d[day] = (Number(nextRec.d[day]) || 0) + 1;
+    try { mutState((n) => { n.bangs.set(addr, nextRec); }); }
+    catch (e) {
+      console.error('[allowlist] 引爆记分写不下去：' + (e && e.message));
+      return { status: 500, body: { error: '暂时存不下，稍后再试' } };
+    }
+    const after = bangsOf(addr, now);
+    return {
+      status: 200,
+      body: {
+        ok: true, counted: true, hash,
+        bangs: after.count, today: after.today, todayPts: after.todayPts,
+        bangPts: after.points, points: scoreOf(addr, now).total
+      }
+    };
+  }
+
+  /* ================================================================ 排练数据
+     只给排练站用：造一批模拟登记，让榜、统计、层级标签、管理员页都有东西可看。
+     **确定性伪随机**：同一个 base 造出来的地址、X 名、完成度逐字相同，
+     排练站重来一遍还是同一张榜 —— 截图和 bug 报告才对得上。
+     每条都带 seed:true，unseed 按它删，真实登记一条不动。 */
+
+  /** xorshift32。不用 Math.random：那个给不出「同一个种子同一张榜」。 */
+  function rngOf(seed) {
+    let x = (Number(seed) || 1) >>> 0 || 1;
+    return function () {
+      x ^= x << 13; x >>>= 0;
+      x ^= x >> 17;
+      x ^= x << 5; x >>>= 0;
+      return x / 4294967296;
+    };
+  }
+  function seedAddr(base, i) {
+    /* 从 (base, i) 算一个 20 字节地址。走 keccak 是为了拿到看着像真地址的分布，
+       而不是 0x0000…0001 那种一眼假的东西。 */
+    const h = crypto.createHash('sha256').update('arcbang-seed:' + base + ':' + i).digest('hex');
+    return '0x' + h.slice(0, 40);
+  }
+
+  /**
+   * @param n    造几条
+   * @param base 随机种子（同一个 base 结果完全一样）
+   * @returns {{added:number, skipped:number}}
+   */
+  function seed(n, base) {
+    const N = Math.max(1, Math.min(5000, Math.floor(Number(n) || 0)));
+    const B = Math.floor(Number(base) || 20260919);
+    const now = Date.now();
+    const seen = loadApplied();
+    const P = pointsTable();
+    let added = 0, skipped = 0;
+    const lines = [];
+    /* 状态改动攒到最后一次写：mutState 每次都是整份重写，一百二十个人就是一百二十次。 */
+    const todo = [];
+    for (let i = 0; i < N; i++) {
+      const addr = seedAddr(B, i);
+      if (seen.has(addr)) { skipped++; continue; }
+      const rnd = rngOf(B + i * 7919);
+      /* 登记时间铺在最近 7 天里：榜的同分排序按登记时间，全挤在同一毫秒就看不出排序效果。 */
+      const at = new Date(now - Math.floor(rnd() * 7 * 24 * 3600 * 1000)).toISOString();
+      const rec = {
+        addr,
+        x: 'arc_user_' + String(i + 1).padStart(3, '0'),
+        xId: null, xSource: 'typed',
+        ref: null, inviter: null, ip: '203.0.113',      // TEST-NET-3，不是真网段
+        at, seed: true
+      };
+      lines.push(JSON.stringify(rec));
+      /* 完成度随机：三连各自掷一次，邀请 / 创作 / 引爆 / 打卡各掷一个数。
+         **有意让一部分人一件事都不做** —— 那一档正是「未获资格」，排练时要看得到。 */
+      const idle = rnd() < 0.18;
+      todo.push({
+        addr, at,
+        follow: !idle && rnd() < 0.72,
+        like: !idle && rnd() < 0.62,
+        repost: !idle && rnd() < 0.45,
+        invites: idle ? 0 : Math.floor(Math.pow(rnd(), 2.4) * 12),
+        posts: idle ? 0 : Math.floor(Math.pow(rnd(), 3) * 4),
+        bangs: idle ? 0 : Math.floor(Math.pow(rnd(), 1.6) * (P.bangMax + 6)),
+        shareDays: idle ? 0 : Math.floor(Math.pow(rnd(), 1.8) * (P.shareMaxDays + 1))
+      });
+      added++;
+    }
+    if (!lines.length) return { added: 0, skipped };
+    fs.mkdirSync(path.dirname(appliedFile), { recursive: true });
+    fs.appendFileSync(appliedFile, lines.join('\n') + '\n');
+    applied = null; byCode = null; byXid = null;         // 逼下次重读流水
+    loadApplied();
+
+    mutState((st) => {
+      for (const t of todo) {
+        if (t.follow) st.follow.set(t.addr, { at: t.at, by: 'seed' });
+        if (t.like) st.like.set(t.addr, { at: t.at, by: 'seed' });
+        if (t.repost) st.repost.set(t.addr, { at: t.at, by: 'seed' });
+        if (t.shareDays > 0) {
+          const days = [];
+          for (let d = 0; d < t.shareDays; d++) days.push(dayOf(now - d * DAY));
+          st.shares.set(t.addr, Array.from(new Set(days)).sort());
+        }
+        if (t.posts > 0) {
+          const arr = [];
+          for (let k = 0; k < t.posts; k++) {
+            arr.push({ url: 'https://x.com/' + 'arc_seed' + '/status/' + (100000000000 + k), at: t.at, status: 'ok', by: 'seed' });
+          }
+          st.posts.set(t.addr, arr);
+        }
+        if (t.bangs > 0) {
+          const days = {};
+          const hs = [];
+          for (let k = 0; k < t.bangs; k++) {
+            const d = dayOf(now - (k % 5) * DAY);
+            days[d] = (days[d] || 0) + 1;
+            hs.push('0x' + crypto.createHash('sha256').update(t.addr + ':' + k).digest('hex'));
+          }
+          st.bangs.set(t.addr, { h: hs, d: days });
+        }
+      }
+    });
+    /* 邀请关系单独一轮：被邀请人要先在流水里存在，inviter 才指得上。
+       这里直接改流水里那一份的 inviter 字段代价太大（要重写整个文件），
+       所以模拟数据的邀请数用**追加一条带 inviter 的流水**实现 —— 见下。 */
+    seedInvites(todo, B);
+    boardCache = null;
+    return { added, skipped };
+  }
+
+  /** 给模拟用户造邀请关系：每个人的 invites 个「下线」也是模拟登记，inviter 指向他。 */
+  function seedInvites(todo, base) {
+    const lines = [];
+    let k = 0;
+    for (const t of todo) {
+      if (!t.invites) continue;
+      for (let i = 0; i < t.invites; i++) {
+        const addr = seedAddr(base + 900000, k++);
+        if (loadApplied().has(addr)) continue;
+        lines.push(JSON.stringify({
+          addr, x: 'arc_ref_' + String(k).padStart(4, '0'),
+          xId: null, xSource: 'typed',
+          ref: codeOf(t.addr), inviter: t.addr, ip: '203.0.113',
+          at: t.at, seed: true
+        }));
+      }
+    }
+    if (!lines.length) return;
+    fs.appendFileSync(appliedFile, lines.join('\n') + '\n');
+    applied = null; byCode = null; byXid = null;
+    loadApplied();
+    /* 有效邀请要求被邀请人**转发核过**，所以给这些下线都打上转发勾 —— 不然邀请分是 0，
+       排练时那一列全是空的，看不出里程碑轨道的效果。 */
+    const invited = [];
+    for (const [a, r] of loadApplied()) if (r.seed && r.inviter) invited.push({ addr: a, at: r.at });
+    if (!invited.length) return;
+    mutState((st) => {
+      for (const v of invited) st.repost.set(v.addr, { at: v.at, by: 'seed' });
+    });
+  }
+
+  /** 只删模拟登记：流水按 seed 标记重写一遍，状态里对应的条目一并清掉。 */
+  function unseed() {
+    let kept = 0, removed = 0;
+    const keepLines = [];
+    const gone = new Set();
+    let raw = '';
+    try { raw = fs.readFileSync(appliedFile, 'utf8'); } catch (e) { return { removed: 0, kept: 0 }; }
+    for (const line of raw.split('\n')) {
+      const t = line.trim();
+      if (!t) continue;
+      let j = null;
+      try { j = JSON.parse(t); } catch (e) { keepLines.push(t); kept++; continue; }
+      if (j && j.seed === true) { removed++; const a = normAddr(j.addr); if (a) gone.add(a); continue; }
+      keepLines.push(t); kept++;
+    }
+    if (!removed) return { removed: 0, kept };
+    writeAtomic(appliedFile, keepLines.length ? keepLines.join('\n') + '\n' : '');
+    applied = null; byCode = null; byXid = null;
+    mutState((st) => {
+      for (const a of gone) {
+        for (const k of CHECKS) st[k].delete(a);
+        st.shares.delete(a);
+        st.posts.delete(a);
+        st.bangs.delete(a);
+        st.proof.delete(a);
+        st.xfix.delete(a);
+        st.distrust.delete(a);
+        for (const k of CHECKS) st.claims.delete(a + '|' + k);
+      }
+    });
+    boardCache = null;
+    return { removed, kept };
+  }
+
   /* ---------------------------------------------------------------- 导出（管理员） */
   function appliedRows() {
     return Array.from(loadApplied().values()).map((r) => {
@@ -1688,6 +2065,8 @@ function create(opts) {
         invites: s.invites,
         validInvites: s.validInvites,
         shareDays: s.shareDays,
+        bangs: s.bangs,
+        score: s,                             // CSV 要各项分值，别让它再算一遍
         points: s.total,
         rank: rankOf(r.addr),
         tier: tierOf(r.addr)
@@ -1695,16 +2074,48 @@ function create(opts) {
     });
   }
   /** 每个字段都受正则约束，里面不会出现逗号。 */
-  function appliedCsv() {
-    const rows = appliedRows().sort((a, b) => (b.points - a.points) || (String(a.at) < String(b.at) ? -1 : 1));
-    /* X 三连三列分开 —— 人工核的时候本来就是三件事，合成一列就没法只补其中一项。 */
-    const head = 'rank,address,code,x,points,follow,repost,like,ref,inviter,invites,valid_invites,share_days,tier,ip_prefix,at\n';
-    return head + rows.map((r) => [
-      r.rank == null ? '' : r.rank, r.addr, r.code, r.x || '', r.points,
-      r.followed ? '1' : '0', r.reposted ? '1' : '0', r.liked ? '1' : '0',
-      r.ref || '', r.inviter || '', r.invites, r.validInvites, r.shareDays,
-      r.tier || '', r.ip || '', r.at || ''
-    ].join(',')).join('\n') + (rows.length ? '\n' : '');
+  /**
+   * 导出 CSV。**按名次排序**，各项积分分开成列 —— 导出的第一用途是「拿去排个序、
+   * 筛一批人出来」，所有能筛的维度都得是自己一列。
+   *
+   * @param top 只要前多少名（不传 = 全部）
+   *
+   * 两个格式上的讲究：
+   *   · 开头写 UTF-8 BOM。不写的话 Excel 会按系统 ANSI 猜，中文列名直接乱码。
+   *   · 每个字段都过 q()：X 名、时间里出现逗号或引号时不会把列冲散。
+   */
+  function appliedCsv(top) {
+    let rows = appliedRows().sort((a, b) => (b.points - a.points) || (String(a.at) < String(b.at) ? -1 : 1));
+    const n = Math.floor(Number(top) || 0);
+    if (n > 0) rows = rows.slice(0, n);
+    const q = (v) => {
+      const t = String(v == null ? '' : v);
+      return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    };
+    const head = [
+      '名次', '层级', '总积分',
+      '登记分', '关注分', '点赞分', '转发分', '邀请分', '里程碑分', '创作分', '引爆分', '打卡分',
+      '地址', 'X 名', 'X 来源', '登记码', '邀请人码', '有效邀请', '邀请总数',
+      '关注', '点赞', '转发', '创作通过', '引爆区块数', '打卡天数',
+      '登记时间', 'IP 前缀', '模拟数据'
+    ].join(',');
+    const body = rows.map((r) => {
+      const sc = r.score || scoreOf(r.addr);
+      const pts = sc.pts || {};
+      const rec = appliedOf(r.addr) || {};
+      return [
+        r.rank == null ? '' : r.rank, r.tier || '未获资格', r.points,
+        pts.register || 0, pts.follow || 0, pts.like || 0, pts.repost || 0,
+        pts.invite || 0, pts.milestone || 0, pts.post || 0, pts.bang || 0, pts.share || 0,
+        r.addr, r.x || '', rec.xSource || 'typed', r.code, r.ref || '',
+        r.validInvites, r.invites,
+        r.followed ? '1' : '0', sc.liked ? '1' : '0', r.reposted ? '1' : '0',
+        sc.okPosts || 0, sc.bangs || 0, r.shareDays,
+        r.at || '', r.ip || '', rec.seed ? '1' : '0'
+      ].map(q).join(',');
+    }).join('\n');
+    /* \uFEFF = UTF-8 BOM：Excel 认它才不把中文列名读成乱码。 */
+    return '\uFEFF' + head + '\n' + body + (rows.length ? '\n' : '');
   }
 
   /* ---------------------------------------------------------------- 状态 */
@@ -1715,7 +2126,9 @@ function create(opts) {
   async function status(addrRaw, now) {
     const p = phaseNow(now);
     const addr = normAddr(addrRaw);
-    const s = scoreOf(addr);
+    /* **把 now 传下去**：引爆计分按 UTC 日算「今天」，不传的话自检里那种
+       「把时间拨到明天」的场景会拿到今天的数。 */
+    const s = scoreOf(addr, now);
     const T = tops();
     const API = apiInfo();
     let freeLeft = null;
@@ -1725,7 +2138,9 @@ function create(opts) {
     }
     return {
       phase: p,
-      tier: addr ? tierOf(addr) : null,            // 'gtd' / 'fcfs' / null
+      /* 层级实时给（不再等定格）：'gtd' 白名单 / 'fcfs' 先到先得 / null 未获资格。 */
+      tier: addr ? tierOf(addr, now) : null,
+      tasksDone: addr ? tasksDone(addr, now) : 0,
       listed: addr ? !!tierOf(addr) : false,
       freeLeft,                                    // 链上还剩几枚免费额度；null = 这一刻读不到
       opens: opensIso(),
@@ -1775,6 +2190,12 @@ function create(opts) {
       countedInvites: s.countedInvites,
       shareDays: s.shareDays,
       countedShareDays: s.countedShareDays,
+      /* 引爆计分的进度：今天拿了几分、一共拿了几分。两道上限在 pts 里（bangPerDay / bangMax），
+         页面上「今日 x / 10 分 · 累计 y / 50 分」读的就是这几个数。 */
+      bangs: s.bangs,
+      bangToday: s.bangToday,
+      bangTodayPts: s.bangTodayPts,
+      bangPts: s.pts.bang,
       /* **不回具体名次**（用户拍板）：只说在不在公开榜里，以及还差几分进去。
          名次数字只有管理员页看得到（adminList 那一份）。 */
       inTop100: addr ? (rankOf(addr) != null && rankOf(addr) <= BOARD_PUBLIC_MAX) : false,
@@ -1935,10 +2356,11 @@ function create(opts) {
     pointsTable, tops, inviteCount, validInviteCount, shareDaysOf, isVerified, hasCheck,
     xHandle, followUrl, likeUrl, CHECKS,
     // 名单
-    tierOf, counts, publicCounts, isFrozen, freeze, unfreeze,
+    tierOf, tasksDone, counts, publicCounts, isFrozen, freeze, unfreeze,
     addAddresses, removeAddresses, setTier, listFile, appliedFile, stateFile,
     // 登记 / 核验 / 分享
-    register, share, verify, unverify, setX, xOf, registerMessage, codeOf, addrOfCode, addrOfXid, appliedOf,
+    register, share, bang, bangsOf,
+    verify, unverify, setX, xOf, registerMessage, codeOf, addrOfCode, addrOfXid, appliedOf,
     shortAddr,
     // 自动核 / 信任
     submitProof, proofOf, checkProof, fetchTweet, runProofQueue, rejectProof,
@@ -1948,7 +2370,7 @@ function create(opts) {
     setApiProbe, apiInfo, apiOn,
     // 后台切段
     setPhase, phaseBase, phaseNow, nextOpenNow,
-    appliedCount, appliedRows, appliedCsv, domain,
+    appliedCount, appliedRows, appliedCsv, domain, seed, unseed,
     // 接口
     status, gate, denyReason, adminList,
     // 自检要用的：改完盘上的文件强制重读

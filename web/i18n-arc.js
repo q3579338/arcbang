@@ -27,8 +27,8 @@
     'ARC宇宙': 'ARCBANG',
     '宇宙 NFT · ArcUniverse': 'Universe NFT · ArcUniverse',
     '市场 · ArcMarket': 'Market · ArcMarket',
-    '每个 Arc 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命':
-      'Every Arc block hash is a set of physical laws: detonate it and see whether such a universe can grow life'
+    '每个 Arc 区块哈希，都是一个宇宙：引爆它，看它能否长出生命':
+      'Every Arc block hash is a universe: detonate it and see whether it can grow life'
   });
 
   /* ---- web/arc-ui.js，ARC 模式（命名空间 'app'） ---- */
@@ -36,8 +36,8 @@
     '正在从 Arc 链上取一个区块…': 'Fetching a block from Arc…',
     'ARC宇宙 · ARCBANG': 'ARCBANG · Simulator',
     '确认交易：免费期，只花 gas': 'Confirm the transaction: free period, gas only',
-    '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}':
-      'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a set of physical laws — come detonate your own. First 387 mints free, 1 per address, then 1 USDC. @arcbang_xyz {2}',
+    '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {2}':
+      'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a universe. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc {2}',
     /* 原来这里有两条「我把一个死宇宙救成了…」的广播文案。拯救系统在 ARCBANG 上
        整套下线，那两句连同它们的代码分支一起删掉了，没有改写成含糊话。 */
     '链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。':
@@ -80,8 +80,8 @@
   I.add({
     /* 拯救系统下线：市场页上「拯救」按钮与「已烧 / 全网已销毁」那几格连同它们的
        词条一起删掉了。 */
-    '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}':
-      'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a set of physical laws — come detonate your own. First 387 mints free, 1 per address, then 1 USDC. @arcbang_xyz {2}',
+    '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {2}':
+      'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a universe. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc {2}',
     '链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。':
       'The link is this universe: whoever opens it sees the same physical constants. ARCBANG has no token, no mint reward and no referral rebate — detonating is always free, and you only mint if you want to keep one.',
     /* ArcMarket 比 MirrorMarket 多两个动作：卖家改价、任何人清掉一条已失效的挂单。 */
@@ -96,7 +96,8 @@
      进全局表（不带 ns）：状态页的 T() 走 'status' 分册，查不到会落回全局。
      这几个词在中文里短得像标签，英文里也必须短 —— 它们出现在表格的一格里。 */
   I.add({
-    '保底': 'Guaranteed',
+    '白名单': 'Whitelist',
+    '先到先得': 'First-come, first-served',
     '免费': 'Free',
     '未核': 'unchecked',
     '已定格（不再随积分变）': 'frozen (no longer follows the board)',
@@ -117,16 +118,16 @@
      app.html 的注入层（build-web.js 的 LAYER）里没有它 ——
      收错地方的表现是英文站上这几句仍然是中文，而且一个错都不报。踩过一次。
 
-     口径：**不点名谁是保底层**（名单构成不公开），只说段名。
+     口径：**不点名谁在优先层**（名单构成不公开），只说段名。
      命名空间 'app'：arc-ui.js 的 T()/TF()/TX() 查的就是它（查不到会落回全局表）。 */
   I.add({
     '时间待定': 'to be announced',
     '看开放时间 · 登记白名单': 'See the opening times · join the allowlist',
     '铸造还没开：{0} 开放白名单铸造。现在可以先去登记白名单；引爆和模拟器随时都能玩。':
       'Minting has not opened: the allowlist round starts {0}. You can sign up for the allowlist now; detonating and the simulator are open regardless.',
-    '现在是保底期，还没轮到你。先到先得期 {0} 开。':
+    '当前为白名单阶段，尚未轮到该地址。先到先得阶段 {0} 开放。':
       'The guaranteed round is running and it is not your turn yet. The first-come round starts {0}.',
-    '你不在白名单里。先到先得期 {0} 开，公售 {1} 开。':
+    '该地址不在白名单内。先到先得阶段 {0} 开放，公售 {1} 开放。':
       'You are not on the allowlist. The first-come round starts {0} and the public sale {1}.',
     '你不在白名单里，公售 {0} 开，到时候人人都能铸。':
       'You are not on the allowlist. The public sale starts {0}, and then anyone can mint.',
@@ -142,8 +143,8 @@
       'Addresses, liveness and key parameters of the two contracts. Click through to the explorer.',
     '成交费 ': 'Sale fee ',
     '宇宙 {0} / 1,387': 'Universes {0} / 1,387',
-    '宇宙限量 1,387 枚 —— 宇宙 137.87 亿岁，一枚 NFT 就是一千万年。铸满即止。':
-      'Hard cap 1,387 universes — the universe is 13.787 billion years old, so one NFT stands for ten million years. Minting stops at the cap.'
+    '1,387 枚，永不增发。宇宙 137.87 亿岁，一枚 NFT 就是一千万年。铸满即止。':
+      '1,387 pieces. No further issuance, ever. The universe is 13.787 billion years old, so one NFT stands for ten million years.'
   }, 'status');
 
   /* ---- web/profile.html 的 arc 改写 ----

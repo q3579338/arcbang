@@ -17,6 +17,8 @@ const { renderSVG } = require('./art.js');
 const { blockByHash, CHAIN_ID, CHAIN_NAME, probeChainId, liveChainId,
   probeLogRpc, liveLogRpcOk, chainConfigErrors } = require('./chain.js');
 const { makeSigner, TTL_SEC, minterFromBody } = require('./sign.js');
+/* 后台的钱包登录要验一条 personal_sign —— 和 allowlist 用的是同一套恢复。 */
+const { verifyMessage } = require('ethers');
 const { evaluate, interveneDigest, opsHashOf, suggestNext, MAX_OPS } = require('./intervene.js');
 const { readToken, buildMetadata } = require('./token.js');
 const RL = require('./ratelimit.js');
@@ -290,15 +292,62 @@ function clientIpOf(req) { return RL.ipOf(req); }
    两边先各哈希一遍再比 —— timingSafeEqual 长度不等会直接抛，而长度本身也是一位信息。 */
 const nodeCrypto = require('crypto');
 function adminTokenConfigured() {
-  return String(process.env.ARCBANG_ADMIN_TOKEN || '').length >= 8;
+  /* 两条路任配一条，后台就算开着：口令，或者管理员钱包地址。
+     **一条都没配时所有后台接口回 404** —— 功能没开就该不存在。 */
+  return String(process.env.ARCBANG_ADMIN_TOKEN || '').length >= 8 || adminWalletConfigured();
 }
 function adminTokenOk(req) {
+  const got = String((req.headers && req.headers['x-admin-token']) || '');
+  if (!got) return false;
+  /* 钱包登录签发的那一枚也走这条通道：后台每个接口只判这一处，不给自己留第二道门。 */
+  if (adminSessionOk(got)) return true;
   const want = String(process.env.ARCBANG_ADMIN_TOKEN || '');
   if (want.length < 8) return false;
-  const got = String((req.headers && req.headers['x-admin-token']) || '');
   const h = (s) => nodeCrypto.createHash('sha256').update(s, 'utf8').digest();
   try { return nodeCrypto.timingSafeEqual(h(got), h(want)); } catch (e) { return false; }
 }
+/* ---------------------------------------------------------------- 钱包登录后台
+   口令之外的第二条路：用**管理员钱包签一句话**进后台。
+   口令留着 —— 手机上没钱包扩展的时候还得靠它。
+
+   为什么不直接「签一句固定的话」：那条签名一旦泄露就是永久钥匙。
+   所以走 nonce：服务端发一次性随机串，5 分钟内有效，用掉即焚。
+
+   签发的令牌走**和口令同一条校验通道**（X-Admin-Token 头），
+   后台每个接口的判断只有 adminTokenOk 一处，不给自己留第二道门。 */
+const ADMIN_NONCES = new Map();          // nonce → 发出的时间
+const ADMIN_SESSIONS = new Map();        // token → { addr, exp }
+const ADMIN_NONCE_MS = 5 * 60 * 1000;
+const ADMIN_SESSION_MS = 24 * 3600 * 1000;
+
+/** env 里配的管理员地址（逗号分隔，小写比较）。没配就等于这条路没开。 */
+function adminAddrs() {
+  return String(process.env.ARCBANG_ADMIN_ADDRS || '')
+    .split(',').map((x) => x.trim().toLowerCase()).filter((x) => /^0x[0-9a-f]{40}$/.test(x));
+}
+function adminWalletConfigured() { return adminAddrs().length > 0; }
+function sweepAdmin(now) {
+  const t = now || Date.now();
+  for (const [k, at] of ADMIN_NONCES) if (t - at > ADMIN_NONCE_MS) ADMIN_NONCES.delete(k);
+  for (const [k, v] of ADMIN_SESSIONS) if (t > v.exp) ADMIN_SESSIONS.delete(k);
+  /* 两张表都只活几小时，但别赌没人狂刷：超了就从最旧的开始扔。 */
+  while (ADMIN_NONCES.size > 500) ADMIN_NONCES.delete(ADMIN_NONCES.keys().next().value);
+  while (ADMIN_SESSIONS.size > 200) ADMIN_SESSIONS.delete(ADMIN_SESSIONS.keys().next().value);
+}
+/** 要签的那句话。**域名和时间戳都写进去** —— 别的站拿不去复用，人也看得懂自己在签什么。 */
+function adminLoginMessage(nonce, host) {
+  return 'ARCBANG admin sign-in\n'
+    + 'domain: ' + (host || 'arcbang.xyz') + '\n'
+    + 'nonce: ' + nonce + '\n'
+    + 'issued: ' + new Date().toISOString().slice(0, 19) + 'Z';
+}
+/** 钱包签发的令牌在不在有效期内。 */
+function adminSessionOk(token) {
+  sweepAdmin();
+  const v = ADMIN_SESSIONS.get(String(token || ''));
+  return !!(v && Date.now() <= v.exp);
+}
+
 function adminAllowed(ip) {
   const allow = String(process.env.ARCBANG_ADMIN_IPS || '')
     .split(',').map(s => s.trim().replace(/^::ffff:/i, '')).filter(Boolean);
@@ -836,6 +885,50 @@ async function handle(req, res, u) {
     return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
   }
 
+  /* 钱包登录后台：拿一次性 nonce → 用管理员钱包签 → 换一枚 24 小时的令牌。
+     这两条**不校验口令**（它们本来就是拿来换口令的），但 nonce 是一次性的，
+     签名必须由 ARCBANG_ADMIN_ADDRS 里的地址签出来。 */
+  if (p === '/admin/nonce' && (req.method === 'GET' || req.method === 'HEAD')) {
+    if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+    if (!adminWalletConfigured()) return json(res, 404, { error: '没开钱包登录' }, { 'cache-control': 'no-store' });
+    sweepAdmin();
+    const nonce = nodeCrypto.randomBytes(16).toString('hex');
+    ADMIN_NONCES.set(nonce, Date.now());
+    const host = String((req.headers && req.headers.host) || '').split(':')[0] || 'arcbang.xyz';
+    return json(res, 200, { nonce, message: adminLoginMessage(nonce, host) }, { 'cache-control': 'no-store' });
+  }
+  if (p === '/admin/login' && req.method === 'POST') {
+    if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
+    if (!adminWalletConfigured()) return json(res, 404, { error: '没开钱包登录' }, { 'cache-control': 'no-store' });
+    const rb = await bodyOf(req, res);
+    if (rb === null) return;
+    const q = parseJsonObject(rb);
+    if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
+    sweepAdmin();
+    const nonce = String(q.value.nonce || '');
+    const at = ADMIN_NONCES.get(nonce);
+    /* **用掉即焚**：无论签名对不对都先删。留着的话，一条被抓包的签名可以重放。 */
+    ADMIN_NONCES.delete(nonce);
+    if (!at) return json(res, 401, { error: '这次登录已过期，请重新发起' }, { 'cache-control': 'no-store' });
+    if (Date.now() - at > ADMIN_NONCE_MS) return json(res, 401, { error: '这次登录已过期，请重新发起' }, { 'cache-control': 'no-store' });
+    const host = String((req.headers && req.headers.host) || '').split(':')[0] || 'arcbang.xyz';
+    let who = null;
+    try { who = verifyMessage(q.value.message || adminLoginMessage(nonce, host), String(q.value.sig || '')); }
+    catch (e) { return json(res, 401, { error: '签名验不过' }, { 'cache-control': 'no-store' }); }
+    const addr = String(who || '').toLowerCase();
+    if (!addr || addr !== String(q.value.address || '').toLowerCase()) {
+      return json(res, 401, { error: '签名和地址对不上' }, { 'cache-control': 'no-store' });
+    }
+    if (adminAddrs().indexOf(addr) < 0) {
+      console.warn('[admin] 不在名单里的地址想进后台：' + addr);
+      return json(res, 403, { error: '这个地址不在管理员名单里' }, { 'cache-control': 'no-store' });
+    }
+    const token = nodeCrypto.randomBytes(32).toString('hex');
+    ADMIN_SESSIONS.set(token, { addr, exp: Date.now() + ADMIN_SESSION_MS });
+    console.log('[admin] 钱包登录：' + addr.slice(0, 6) + '…' + addr.slice(-4));
+    return json(res, 200, { ok: true, token, addr, expiresIn: ADMIN_SESSION_MS / 1000 }, { 'cache-control': 'no-store' });
+  }
+
   /* 自动核的状态与账单。POST {run:true} 立刻拉一轮（管理员想马上看结果时用），
      POST {run:true, full:true} 强制翻到底 —— 那一次读得最多，也最花钱。 */
   if (p === '/admin/xverify') {
@@ -902,6 +995,19 @@ async function handle(req, res, u) {
     const parsedSh = parseJsonObject(rb);
     if (parsedSh.error) return json(res, 400, { error: parsedSh.error }, { 'cache-control': 'no-store' });
     const r = AL.share(parsedSh.value, RL.ipOf(req));
+    return json(res, r.status, r.body, { 'cache-control': 'no-store' });
+  }
+
+  /* POST /api/allowlist/bang {address, hash, sig}
+     在模拟器里真引爆一次就 +1 分（每日与预热期各有上限，见 server/allowlist.js）。
+     **区块哈希回头找链验一次** —— 自己编一个 64 位十六进制串是最省事的刷法。
+     blockByHash 命中它自己的缓存时不额外打 RPC，正常引爆刚查过，这一下基本白拿。 */
+  if (p === '/allowlist/bang' && req.method === 'POST') {
+    const rb = await bodyOf(req, res);
+    if (rb === null) return;
+    const parsedBg = parseJsonObject(rb);
+    if (parsedBg.error) return json(res, 400, { error: parsedBg.error }, { 'cache-control': 'no-store' });
+    const r = await AL.bang(parsedBg.value, RL.ipOf(req), Date.now(), blockByHash);
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
   }
 
@@ -988,10 +1094,13 @@ async function handle(req, res, u) {
     if (p === '/allowlist/admin/freeze' && req.method === 'POST') {
       return json(res, 200, AL.freeze(), NOSTORE);
     }
+    /* ?top=100 只导前 100 名（管理员页那颗「导出 TOP 100」）。不带就是全量。 */
     if (p === '/allowlist/admin/csv' && (req.method === 'GET' || req.method === 'HEAD')) {
-      return send(res, 200, AL.appliedCsv(), {
+      const topN = Math.max(0, Math.min(100000, Number(u.searchParams.get('top')) || 0));
+      return send(res, 200, AL.appliedCsv(topN), {
         'content-type': 'text/csv; charset=utf-8',
-        'content-disposition': 'attachment; filename="arcbang-allowlist.csv"',
+        'content-disposition': 'attachment; filename="arcbang-allowlist'
+          + (topN ? '-top' + topN : '') + '.csv"',
         'cache-control': 'no-store'
       });
     }
@@ -1540,6 +1649,12 @@ async function handle(req, res, u) {
     const ver = DERIVATION_VERSION + '-' + SHAPE;
     const bang = hash && !isHash ? String(blockNumber) : (hash || String(blockNumber));
     const appUrl = '/app.html?bang=' + encodeURIComponent(bang) + (carry ? '&' + carry : '');
+    /* 落地页上那颗「去任务页」：**把 ?ref= 原样带过去**。
+       分享链接现在带的是 6 位登记码，任务页的登记表单认得它（?ref=<码> 预填邀请码）。
+       带不过去的话，通过分享链接进来的人等于白邀请一场。 */
+    const refCode = /^[A-Z0-9]{6}$/i.test(String(u.searchParams.get('ref') || ''))
+      ? String(u.searchParams.get('ref')).toUpperCase() : '';
+    const questUrl = '/quest.html' + (refCode ? '?ref=' + encodeURIComponent(refCode) : '');
     const base = PUBLIC_BASE;
     const canonical = base + '/s/' + token;
     /* og:image 用 1200×630 的变体（右栏印高度，所以带 n）；正文里那张仍是方卡本体。
@@ -1553,7 +1668,7 @@ async function handle(req, res, u) {
       indexable = SEO.inIndexSet(blockNumber, mint.minted === true);
     } catch (e) { indexable = false; }
 
-    const opts = { blockNumber, hash, card, mint, indexable, appUrl, canonical, ogImage, cardImage, base };
+    const opts = { blockNumber, hash, card, mint, indexable, appUrl, questUrl, canonical, ogImage, cardImage, base };
     let html;
     try { html = LANDING.landingHTML(opts); }
     catch (e) {

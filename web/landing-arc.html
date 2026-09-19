@@ -844,7 +844,7 @@ a.cardc:hover code{color:var(--ab-signal)}
       </div>
       <div class="ab-act">
         <h3><span class="n" data-nolang>2</span>铸造</h3>
-        <p>看完再决定收不收。全网 <span class="mono">1,387</span> 枚，前 387 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后一枚 1 USDC，每个地址最多 3 枚。</p>
+        <p>看完再决定收不收。1,387 枚，永不增发。前 387 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后价格另行公布，每个地址最多 3 枚。</p>
         <a class="ab-more" href="how-it-works.html">看它怎么运作 →</a>
       </div>
       <div class="ab-act">
@@ -886,7 +886,7 @@ a.cardc:hover code{color:var(--ab-signal)}
     <div class="ab-split">
       <div>
         <p>Arc 每 0.5 秒出一个块，一天十七万个。引爆它们不要钱，想炸多少炸多少。</p>
-        <p>铸造只有一次机会。一个区块哈希只能长出一个宇宙，谁先铸走就是谁的，全网一共 1,387 枚。你挑中的那个被别人先铸了，它就永远不是你的了。</p>
+        <p>铸造只有一次机会。一个区块哈希只能长出一个宇宙，谁先铸走就是谁的。1,387 枚，永不增发。你挑中的那个被别人先铸了，它就永远不是你的了。</p>
         <p>ARCBANG 没有代币，没有预售，没有空投，也没有解锁表。你拿到的就是一枚 NFT，价格就是价格。</p>
       </div>
       <div><table class="ab-tbl">
@@ -894,7 +894,7 @@ a.cardc:hover code{color:var(--ab-signal)}
         <tbody>
           <tr><td class="k">全网总量</td><td><span class="mono">1,387</span></td><td>宇宙 137.87 亿岁，一枚 NFT 一千万年；写死在合约里</td></tr>
           <tr><td class="k">免费期</td><td><span class="mono">前 387 枚</span></td><td>每地址 1 次，只花 gas（约 0.003 USDC）</td></tr>
-          <tr><td class="k">之后</td><td><span class="mono">1 USDC</span></td><td>每地址最多 3 枚；合约把价格夹在 0.1 – 20 USDC 之间</td></tr>
+          <tr><td class="k">之后</td><td>价格另行公布</td><td>每地址最多 3 枚；合约把价格夹在 0.1 – 20 USDC 之间</td></tr>
           <tr><td class="k">二级版税</td><td><span class="mono">5%</span></td><td>OpenSea 这类市场直接读得到</td></tr>
         </tbody>
       </table></div>
@@ -1312,7 +1312,9 @@ a.cardc:hover code{color:var(--ab-signal)}
      chain.isTestnet 为假时页脚那条整条不渲染 —— 主网上摆一句「测试资产无价值」比不摆更糟。 */
   function renderChainText() {
     var pill = $('chainPill');
-    if (pill) pill.textContent = T('当前在 {0} · 前 387 枚每地址免费 1 次，之后 1 USDC、每地址最多 3 枚').split('{0}').join(chainName());
+    /* 这颗小标签只说两件事：在哪条链、总量多少。价格细则在下面的规则表与 FAQ 里，
+       首屏塞进去没人读得完（2026-09-19 用户拍板）。 */
+    if (pill) pill.textContent = T('当前在 {0} · 1,387 枚，永不增发').split('{0}').join(chainName());
     var legal = $('chainLegal');
     if (legal) {
       legal.hidden = !CH.isTestnet;
@@ -1336,7 +1338,7 @@ a.cardc:hover code{color:var(--ab-signal)}
   function wireShare() {
     var a = $('shareX');
     if (a) {
-      a.href = xIntent(T('每个 Arc 区块哈希都是一套物理定律。免费引爆一个，看它能不能长出恒星、行星和生命。喜欢再铸，全网 1,387 枚。@arcbang_xyz @arc') + ' ' + siteUrl());
+      a.href = xIntent(T('每个 Arc 区块哈希，都是一个宇宙。免费引爆，喜欢再铸。1,387 枚，永不增发。@arcbang_xyz @arc') + ' ' + siteUrl());
     }
     /* 实况条每张一条：分享的是**那个宇宙**，链接直达 app.html?bang=<哈希>，
        别人点开引爆同一个哈希，看到的就是条上这一张。克隆件没有 rc-cap 类，选不中。 */
@@ -1345,7 +1347,7 @@ a.cardc:hover code{color:var(--ab-signal)}
       if (!link) return;
       var h = cap.getAttribute('data-hash') || '', oc = cap.getAttribute('data-oc') || '';
       var url = siteUrl().replace(/\/$/, '') + '/app.html?bang=' + h;
-      var txt = T('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz @arc')
+      var txt = T('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc')
         .split('{0}').join(h.slice(0, 10) + '…').split('{1}').join(T(oc));
       link.href = xIntent(txt + ' ' + url);
     });

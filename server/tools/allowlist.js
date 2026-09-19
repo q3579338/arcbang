@@ -23,6 +23,8 @@
  *   node server/tools/allowlist.js import <文件.csv> [--tier=]  ← 第一列当地址
  *   node server/tools/allowlist.js list [--tier=gtd]
  *   node server/tools/allowlist.js code <地址>                  ← 从地址现算登记码
+ *   node server/tools/allowlist.js seed 120 [--seed=20260919]  ← 造模拟登记（排练站用，确定性）
+ *   node server/tools/allowlist.js unseed                      ← 只删模拟登记，真实用户不动
  *
  * 名单目录跟服务端同一份：ARCBANG_STORE（默认 server/.store）。
  * **登记码是从地址 + ARCBANG_ALLOWLIST_SALT 算出来的**，所以跑这个工具时
@@ -218,6 +220,33 @@ function main() {
         console.log(padL('#' + r.rank, 6) + '  ' + pad(AL.tierOf(r.addr), 6) + r.addr + '  ' + AL.codeOf(r.addr) + padL(r.points, 6) + ' 分');
       }
       console.log('— 共 ' + rows.length + ' 个' + (AL.isFrozen() ? '（已定格）' : '（实时按榜）') + ' —');
+      break;
+    }
+    /* ------------------------------------------------------------------ 排练数据
+       seed <n> [--seed=<整数>]   造 n 条模拟登记，让排练站的榜 / 统计 / 管理员页有东西看。
+       unseed                     只删掉这些模拟记录，真实用户一条不动。
+
+       三条规矩：
+         1. **确定性**。同一个 --seed 造出来的地址、X 名、完成度逐字相同 ——
+            排练站重来一遍还是同一张榜，截图和 bug 报告才对得上。
+         2. **打标**。每条流水和状态都带 seed:true，unseed 按它删。
+            没有这个标记，清理就只能靠「删整个 .store」，真实登记会被一起端掉。
+         3. **走正门**。写的是和真实数据同一套结构（流水 + 状态），
+            所以榜、积分、层级、管理员页一行代码都不用改就能看到它们。 */
+    case 'seed': {
+      const n = Math.max(1, Math.min(5000, Number(args[0]) || 0));
+      if (!n) die('要给个数量，例如 seed 120');
+      const base = Number(flags.seed) || 20260919;
+      const r = AL.seed(n, base);
+      console.log('✓ 造了 ' + r.added + ' 条模拟登记（跳过已存在的 ' + r.skipped + ' 条）');
+      const c = AL.counts();
+      console.log('  现在在榜 ' + AL.board().rows.length + ' 人 · 白名单 ' + c.gtd + ' · 先到先得 ' + c.fcfs);
+      console.log('  清掉它们：node tools/allowlist.js unseed');
+      break;
+    }
+    case 'unseed': {
+      const r = AL.unseed();
+      console.log('✓ 删掉 ' + r.removed + ' 条模拟登记，真实登记 ' + r.kept + ' 条原样保留');
       break;
     }
     case 'code': {

@@ -263,6 +263,13 @@
       老形式的链接**仍然有效** —— 落地页 /s/ 两种 token 都认，?ref= 两种格式也都认，
       所以这里只管把新发出去的链接缩短，已经发出去的一条都不会失效。
       不用 URL()：这段要在老一点的 WebView 里也能跑，字符串拼起来就够了。 */
+  /**
+    * 分享链接。两条都是为了**短**（2026-09-19 用户：链接太长）：
+    *   · 有区块号就一律用区块号（/s/119969013），只有沙盒宇宙那种确实没有号的才退回
+    *     64 位哈希。服务端的 /s/ 两种都认。
+    *   · ref 只放 6 位登记码。**没有码就不带 ref** —— 老的 ?ref=<42 位地址> 还读得进来
+    *     （server 那边兼容），但不再生成：一个 42 位地址就把链接撑长了一倍。
+    */
   function shareUrl(o, ref) {
     var no = o && o.no;
     var token = (no != null && isFinite(no)) ? String(no) : String((o && o.hash) || '');
@@ -702,8 +709,10 @@
     }
     // 结局既收现成的名字（o.outcome），也收引擎 id（o.oid，切语言时现翻）
     var oc = o.outcome || (o.oid && T(OUTCOME_CN[o.oid] || o.oid)) || '?';
-    // 价格与免费额度按 specs/arcbang-v1.md（1,387 枚 · 前 387 枚免费 · 1 USDC）
-    return TX('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希都是一套物理定律——来引爆你自己的，前 387 枚每地址 1 次免费，之后 1 USDC。@arcbang_xyz {2}',
+    /* 主口号（2026-09-19 用户拍板）：「每个 Arc 区块哈希，都是一个宇宙」。
+       供应量一律用那句标准话「1,387 枚，永不增发」，不再在分享文里铺价格细则 ——
+       一条推里塞免费额度和单价，读的人一个都记不住。 */
+    return TX('我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {2}',
               uniNo(o.no, null) || o.hash.slice(0, 10), oc, link).replace(/\s+$/, '');
   }
 
@@ -793,7 +802,9 @@
       var my = acct ? String(acct).toLowerCase() : null;
       /* 短码要问一次服务端。**问不到不拦浮层** —— myRefCode 自带 4 秒上限，
          到点就当没有，链接退回 ?ref=<地址>（长一点，但一样能用）。 */
-      return myRefCode(my).then(function (code) { return { my: my, ref: code || my }; });
+      /* 拿不到码就**不带 ref**（而不是退回地址）：没登记的人本来也没有推广留痕可言，
+         为此把链接撑长一倍不值。 */
+      return myRefCode(my).then(function (code) { return { my: my, ref: code || null }; });
     }).then(function (who) {
       if (gen !== SHARE_GEN) return;   // 等短码的空当里浮层被关掉/换成别的宇宙了：这条链作废
       var my = who.my;
@@ -1707,7 +1718,7 @@
 
     // 一句话说清「这是什么」——首屏的文字预算就这一行，剩下的交给那个大按钮
     var sub = doc.querySelector('#pageSelect .hero-sub');
-    if (sub) sub.textContent = '每个 Arc 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命';
+    if (sub) sub.textContent = '每个 Arc 区块哈希，都是一个宇宙：引爆它，看它能否长出生命';
 
     // 编辑器里的"随机"按钮同理（编辑器抽屉本身已经进不去了，防个万一）
     var edRandom = $('edRandom');
@@ -1940,7 +1951,7 @@
   }
 
   /* ---------------------------------------------------------- 放号阶段（白名单）
-     2026-09-18 起铸造分四段：warmup（不开）/ gtd（保底层）/ fcfs（名单先到先得）/ public。
+     2026-09-18 起铸造分四段：warmup（不开）/ gtd（白名单优先）/ fcfs（名单先到先得）/ public。
      判断在服务端（server/allowlist.js），**这里只是提前把话说清楚** ——
      没有这一层的话，预热期点「铸造」会先弹钱包、再拿回一个 403，
      用户已经在钱包里确认过一次了才被告知「还没开」。
@@ -1979,6 +1990,22 @@
       return /^0x[0-9a-fA-F]{130}$/.test(String(j.sig)) ? j.sig : null;
     } catch (e) { return null; }      // 隐私模式下 localStorage 会抛，不能让它带走整条链
   }
+  /**
+   * 引爆计分。**绝不让它影响引爆本身** —— 成败都不报错、不拦界面。
+   * 打点在 reveal()：卡拿到了、3D 也进去了，那才叫真引爆过一次。
+   * 没连钱包 / 没登记（拿不到会话签名）就静默跳过，一次钱包都不弹。
+   * 每日与预热期两道上限、同区块去重、频率闸全在服务端，这里不预判。
+   */
+  function alBangTick(addr, hash) {
+    var sig = alSigFor(addr);
+    if (!sig || !API || !API.allowlistBang || !hash) return;
+    try {
+      API.allowlistBang(addr, sig, hash).then(function (r) {
+        /* 真加上分了才去刷榜：到顶 / 重复的那些回的也是 200，刷了也白刷。 */
+        if (r && r.counted) phaseLoad();
+      }, function () { /* 没登记 / 频率闸 / 网络不通：都不该打断引爆 */ });
+    } catch (e) { /* 同上 */ }
+  }
   /** 分享打卡。**绝不让它影响分享本身** —— 成败都不报错、不拦浮层。 */
   function alShareTick(addr, hash) {
     var sig = alSigFor(addr);
@@ -1997,9 +2024,10 @@
     if (isNaN(d.getTime())) return T('时间待定');
     try { return d.toLocaleString(); } catch (e) { return iso; }
   }
-  /** 段名的人话。**不点名谁是保底层**（用户拍板：名单构成不公开）。 */
+  /** 段名的人话。**不点名谁在优先层**（用户拍板：名单构成不公开）。
+      内部 key 一律还是 gtd / fcfs，改的只是显示名。 */
   function phaseWord(p) {
-    return p === 'gtd' ? T('保底期') : p === 'fcfs' ? T('先到先得期') : p === 'public' ? T('公售') : T('预热');
+    return p === 'gtd' ? T('白名单') : p === 'fcfs' ? T('先到先得') : p === 'public' ? T('公售') : T('预热');
   }
   /**
    * 现在这个地址能不能点铸造。能就回 null，不能就回一句给人看的话。
@@ -2015,8 +2043,8 @@
     if (!W.addr) return null;                   // 没连钱包就不知道在不在名单，别提前拦
     if (PH.phase === 'gtd' && PH.tier !== 'gtd') {
       return PH.listed
-        ? TF('现在是保底期，还没轮到你。先到先得期 {0} 开。', fmtWhen(o.fcfs))
-        : TF('你不在白名单里。先到先得期 {0} 开，公售 {1} 开。', fmtWhen(o.fcfs), fmtWhen(o.public));
+        ? TF('当前为白名单阶段，尚未轮到该地址。先到先得阶段 {0} 开放。', fmtWhen(o.fcfs))
+        : TF('该地址不在白名单内。先到先得阶段 {0} 开放，公售 {1} 开放。', fmtWhen(o.fcfs), fmtWhen(o.public));
     }
     if (PH.phase === 'fcfs' && !PH.listed) {
       return TF('你不在白名单里，公售 {0} 开，到时候人人都能铸。', fmtWhen(o.public));
@@ -2610,6 +2638,9 @@
   function reveal() {
     if (S.revealed) return;
     S.revealed = true;
+    /* 引爆计分就记在这一刻：卡拿到了、宇宙也真进去了。
+       记在 setHash 那里会把「贴了个哈希看看参数」也算成一次引爆。 */
+    alBangTick(W.addr, S.hash);
     showMint();
   }
 
@@ -2975,7 +3006,15 @@
      一口价（price()，不按稀有度分档），所以能在点之前就给出确数：「1 USDC 铸造」。
      价格现读链上（owner 能调 price，写死早晚说谎），没读到就返回 null，调用方保持原文案。
      还有免费次数（或还不知道）时也返回 null —— 免费口的按钮不标价。 */
+  /** 公售价现在公不公布（服务端 ARCBANG_SHOW_PRICE，默认 0=不公布）。
+      2026-09-19 用户拍板：公售开始前页面上**一个价格数字都不出现**，
+      哪怕链上读得到。读不到配置时按「不公布」办 —— 少说一个数，比说错一个数强。 */
+  function showPrice() {
+    var c = root.ARCBANG_CONFIG || {};
+    return c.showPrice === true || c.showPrice === 1 || c.showPrice === '1';
+  }
   function paidMintLabel() {
+    if (!showPrice()) return null;             // 不公布价格：按钮保持「铸造成 NFT」那句原文案
     var exhausted =
       (PH.got && W.addr && !PH.listed) ||                                    // 不在白名单：免费额度跟你无关（09-18）
       (W.free != null && W.free <= 0n) ||                                    // 免费期整个发完了
@@ -3005,8 +3044,9 @@
        点下去钱包却要 1 USDC —— 展示和真报价打架，比不显示糟得多。
        状态还没问到（PH.got=false）时照旧按链上读数说话，不因为一次网络抖动改口径。 */
     if (PH.got && W.addr && !PH.listed) {
-      return (W.price != null ? TX('{0} {1} 铸造（免费额度只给白名单）', C.fmtBNB(W.price), chainCur())
-        : T('免费额度只给白名单，你这边按固定价铸造'));
+      return (showPrice() && W.price != null
+        ? TX('{0} {1} 铸造（免费额度只给白名单）', C.fmtBNB(W.price), chainCur())
+        : T('免费额度只给白名单，公售价格另行公布'));
     }
     if (W.free != null && W.free > 0n) {
       /* 未连钱包：按地址的计数根本没得问，给一句中性的 —— 连上才知道你还剩几次 */

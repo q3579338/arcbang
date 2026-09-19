@@ -89,11 +89,19 @@ tr.dis td{background:#FBF1F1}
 
   <!-- 没登录时只有这一块 -->
   <div class="card" id="login">
-    <h2>口令</h2>
-    <p class="dim">服务端 <span class="mono">ARCBANG_ADMIN_TOKEN</span> 里那一串。存在这台机器的浏览器里。</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+    <h2>登录</h2>
+    <p class="dim">两条路任选一条。会话存在这台机器的浏览器里。</p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
+      <button class="btn pri" type="button" id="btnWallet">用钱包登录</button>
+      <span class="dim">管理员地址签一条带一次性随机串的消息，换一枚 24 小时的会话。不花 gas。</span>
+    </div>
+    <p class="msg" id="walletMsg"></p>
+
+    <p class="dim" style="margin-top:18px">或者用口令（服务端 <span class="mono">ARCBANG_ADMIN_TOKEN</span> 里那一串）：</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
       <input class="in mono" id="tok" type="password" autocomplete="off" placeholder="口令" style="flex:1 1 260px">
-      <button class="btn pri" type="button" id="btnLogin">进去</button>
+      <button class="btn" type="button" id="btnLogin">进去</button>
     </div>
     <p class="msg" id="loginMsg"></p>
   </div>
@@ -106,17 +114,18 @@ tr.dis td{background:#FBF1F1}
         <select class="in" id="phase">
           <option value="">（跟 env 走）</option>
           <option value="warmup">warmup 预热</option>
-          <option value="gtd">gtd 保底期</option>
+          <option value="gtd">gtd 白名单</option>
           <option value="fcfs">fcfs 先到先得</option>
           <option value="public">public 公售</option>
         </select>
         <button class="btn" type="button" id="btnPhase">切阶段</button>
         <button class="btn danger" type="button" id="btnFreeze">定格榜单</button>
         <a class="btn" id="btnCsv" href="#">导出 CSV</a>
+        <a class="btn" id="btnCsvTop" href="#">导出 TOP 100</a>
         <button class="btn" type="button" id="btnReload">刷新</button>
         <button class="btn" type="button" id="btnOut">退出</button>
       </div>
-      <p class="dim" style="margin-top:10px">定格之后名单不再随积分变。进保底期之前必须定格一次。</p>
+      <p class="dim" style="margin-top:10px">定格之后名单不再随积分变。进入白名单阶段之前必须定格一次。</p>
       <p class="msg" id="opMsg"></p>
     </div>
 
@@ -304,6 +313,49 @@ tr.dis td{background:#FBF1F1}
     });
   }
 
+  /* ---------------- 用钱包登录 ----------------
+     流程：拿一次性 nonce → personal_sign → 换令牌。
+     换来的令牌和口令走同一条通道（X-Admin-Token 头），后面每个接口的判断只有一处。
+     **签之前先把要签的内容摆出来**：消息里有域名和随机串，用户看得懂自己在签什么。 */
+  function prov() {
+    return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum || null;
+  }
+  $('btnWallet').addEventListener('click', function () {
+    var btn = this;
+    var p = prov();
+    if (!p || !p.request) { msg('walletMsg', '未检测到钱包扩展。', 'err'); return; }
+    btn.disabled = true;
+    msg('walletMsg', '正在获取待签名内容');
+    var addr = null;
+    p.request({ method: 'eth_requestAccounts' }).then(function (a) {
+      addr = (a && a[0]) ? String(a[0]).toLowerCase() : null;
+      if (!addr) throw new Error('没拿到地址');
+      return fetch(BASE + '/admin/nonce').then(function (r) {
+        if (r.status === 404) throw new Error('服务端没开钱包登录（ARCBANG_ADMIN_ADDRS 没配）');
+        return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
+      });
+    }).then(function (j) {
+      msg('walletMsg', '请在钱包中完成签名（不产生费用）');
+      return p.request({ method: 'personal_sign', params: [j.message, addr] }).then(function (sig) {
+        return fetch(BASE + '/admin/login', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ address: addr, sig: sig, nonce: j.nonce, message: j.message })
+        });
+      });
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      });
+    }).then(function (j) {
+      setTok(j.token);
+      msg('walletMsg', '已登录：' + j.addr.slice(0, 6) + '…' + j.addr.slice(-4), 'ok');
+      return load();
+    }).catch(function (e) {
+      msg('walletMsg', (e && e.code === 4001) ? '已在钱包中取消' : ((e && e.message) || String(e)), 'err');
+    }).then(function () { btn.disabled = false; });
+  });
+
   $('btnLogin').addEventListener('click', function () {
     setTok($('tok').value.trim());
     msg('loginMsg', '');
@@ -434,23 +486,25 @@ tr.dis td{background:#FBF1F1}
   $('btnFreeze').addEventListener('click', function () {
     if (!confirm('把当前榜单定格成名单？之后名单不再随积分变。')) return;
     api('/allowlist/admin/freeze', { method: 'POST' }).then(function (r) {
-      msg('opMsg', '已定格：保底 ' + r.gtd + ' · 先到先得 ' + r.fcfs + ' · 合计 ' + r.total, 'ok');
+      msg('opMsg', '已定格：白名单 ' + r.gtd + ' · 先到先得 ' + r.fcfs + ' · 合计 ' + r.total, 'ok');
       return load();
     }, function (e) { msg('opMsg', e.message, 'err'); });
   });
-  /* CSV 要带口令头，<a href> 带不了 —— 取回来在内存里做个 blob 再存。 */
-  $('btnCsv').addEventListener('click', function (ev) {
-    ev.preventDefault();
-    fetch(BASE + '/allowlist/admin/csv', { headers: { 'x-admin-token': tok() } })
+  /* CSV 要带口令头，<a href> 带不了 —— 取回来在内存里做个 blob 再存。
+     导出的是**按名次排好的**全量表：各项积分分开成列，UTF-8 带 BOM（Excel 直接开不乱码）。 */
+  function downloadCsv(topN) {
+    fetch(BASE + '/allowlist/admin/csv' + (topN ? '?top=' + topN : ''), { headers: { 'x-admin-token': tok() } })
       .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)); })
       .then(function (t) {
         var a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([t], { type: 'text/csv;charset=utf-8' }));
-        a.download = 'arcbang-allowlist.csv';
+        a.download = 'arcbang-allowlist' + (topN ? '-top' + topN : '') + '.csv';
         a.click();
         setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
       }, function (e) { msg('opMsg', e.message, 'err'); });
-  });
+  }
+  $('btnCsv').addEventListener('click', function (ev) { ev.preventDefault(); downloadCsv(0); });
+  $('btnCsvTop').addEventListener('click', function (ev) { ev.preventDefault(); downloadCsv(100); });
 
   if (tok()) load(); else $('login').hidden = false;
 })();
