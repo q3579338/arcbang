@@ -142,7 +142,7 @@ tr.dis td{background:#FBF1F1}
         <label>预热开始<input class="in" type="datetime-local" id="phWs"></label>
         <label>预热天数<input class="in" type="number" min="1" max="3650" id="phWd" placeholder="14"></label>
       </div>
-      <p class="dim" style="margin-top:8px">留空的那一格按服务端配置走。开放时间到了会把阶段自动往后推，不会往回拉。</p>
+      <p class="dim" style="margin-top:8px" id="phTz"></p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
         <button class="btn pri" type="button" id="btnPhSave">保存开放时间</button>
         <button class="btn" type="button" id="btnPhAuto">改回按服务端配置</button>
@@ -665,11 +665,23 @@ tr.dis td{background:#FBF1F1}
     var d = new Date(t);                  // datetime-local 按本地时区解析
     return isNaN(d.getTime()) ? '' : d.toISOString();
   }
+  /** 本机时区的人话标签，例如 UTC+8 / UTC-5:30。
+      **每个时间都要带它**：后台上写的是本机时间、服务端存的是 UTC，
+      两者差 8 小时而页面上一个字都不说的话，放号时间迟早会被填错一整天。 */
+  function tzLabel() {
+    var off = -new Date().getTimezoneOffset();      // 分钟，东为正
+    var sign = off < 0 ? '-' : '+';
+    var a = Math.abs(off), h = Math.floor(a / 60), mm = a % 60;
+    return 'UTC' + sign + h + (mm ? ':' + (mm < 10 ? '0' : '') + mm : '');
+  }
   function whenText(iso) {
     if (!iso) return '时间待定';
     var d = new Date(iso);
-    return isNaN(d.getTime()) ? iso : d.toLocaleString();
+    return isNaN(d.getTime()) ? iso : (d.toLocaleString() + ' ' + tzLabel());
   }
+
+  $('phTz').textContent = '时间按本机时区填写（当前 ' + tzLabel() + '），服务端按 UTC 保存。'
+    + '留空的那一格按服务端配置走。开放时间到了会把阶段自动往后推，不会往回拉。';
 
   var PH = null;                          // 上一次拉到的 /admin/phase
   function renderPhase(d) {

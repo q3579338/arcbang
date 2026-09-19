@@ -27,8 +27,10 @@
  *                     和一个钱包地址对上 —— 所以它值三倍，别调平。
  *     点赞置顶推      ARCBANG_PTS_LIKE            10 分
  *     ---- 站内 ----
- *     有效邀请        ARCBANG_PTS_INVITE          20 分/人
- *                     ARCBANG_PTS_INVITE_MAX      最多算 20 人
+ *     有效邀请        ARCBANG_PTS_INVITE          10 分/人
+ *                     ARCBANG_PTS_INVITE_MAX      最多算 10 人
+ *                     2026-09-19 用户拍板砍半：邀请原来是 20 分 × 20 人 + 里程碑 180，
+ *                     一项就能顶过其余全部之和，榜变成了「谁拉人多」而不是「谁参与多」。
  *                     「有效」= **被邀请人的转发那一项已经核过**（光登记不算）
  *     引爆并分享      ARCBANG_PTS_SHARE            5 分/天
  *                     ARCBANG_PTS_SHARE_MAX_DAYS  最多算 5 天
@@ -180,8 +182,8 @@ function pointsTable() {
        导出和后台仍然读得到；UI 上不再单列。别删这两行。 */
     repost: envInt('ARCBANG_PTS_REPOST', 30),
     like: envInt('ARCBANG_PTS_LIKE', 10),
-    invite: envInt('ARCBANG_PTS_INVITE', 20),
-    inviteMax: envInt('ARCBANG_PTS_INVITE_MAX', 20),
+    invite: envInt('ARCBANG_PTS_INVITE', 10),
+    inviteMax: envInt('ARCBANG_PTS_INVITE_MAX', 10),
     /* 引爆并广播：2026-09-19 用户拍板从「一天一次、共五天」改成
        **每日最多 3 次、累计 15 次**，每次 5 分。同一个区块只计一次。
        shareMaxDays 还留着，值等于累计次数上限 —— 老页面读它画进度条，别让它变成 undefined。 */
@@ -200,25 +202,28 @@ function pointsTable() {
     bangMax: envInt('ARCBANG_PTS_BANG_MAX', 50),
     bangIntervalMin: envInt('ARCBANG_BANG_INTERVAL_MIN', 3),
     /* 创作推文：自己发一条提到本站并带 #ARCBANG 的推，过了就计分。
-       限每周 2 条、预热期共 5 条 —— 不限的话这一项会变成刷帖机。 */
+       限每周 2 条、预热期共 4 条 —— 不限的话这一项会变成刷帖机。
+       **4 而不是 5**（2026-09-19 用户指出）：预热期 14 天，每周 2 条最多也就发得出 4 条，
+       写 5 等于在卡上摆一个永远点不亮的点。两个数要对得上。 */
     post: envInt('ARCBANG_PTS_POST', 20),
     postPerWeek: envInt('ARCBANG_PTS_POST_PER_WEEK', 2),
-    postMax: envInt('ARCBANG_PTS_POST_MAX', 5),
+    postMax: envInt('ARCBANG_PTS_POST_MAX', 4),
     milestones: inviteMilestones()
   };
 }
 /**
- * 邀请里程碑："3:30,5:50,10:100" = 攒到 3 个有效邀请再奖 30，5 个再奖 50，10 个再奖 100。
- * 这是**在每人 20 分之外**另加的，按人数一档档累加（到 5 人时 3 人那档也还在）。
+ * 邀请里程碑："3:10,5:20,10:30" = 攒到 3 个有效邀请再奖 10，5 个再奖 20，10 个再奖 30。
+ * 这是**在每人 10 分之外**另加的，按人数一档档累加（到 5 人时 3 人那档也还在）。
+ * 所以邀请这一项满打满算 10×10 + 60 = 160 分（2026-09-19 用户拍板，原来是 400+180）。
  * 配歪了退默认，不是变成空 —— 空表等于悄悄把一整项奖励关掉。
  */
 function inviteMilestones() {
-  const raw = String(process.env.ARCBANG_PTS_INVITE_MILESTONES || '').trim() || '3:30,5:50,10:100';
+  const raw = String(process.env.ARCBANG_PTS_INVITE_MILESTONES || '').trim() || '3:10,5:20,10:30';
   const out = raw.split(',').map((s) => {
     const m = /^\s*(\d{1,4}):(\d{1,6})\s*$/.exec(s);
     return m ? { at: Number(m[1]), pts: Number(m[2]) } : null;
   }).filter(Boolean).sort((a, b) => a.at - b.at);
-  return out.length ? out : [{ at: 3, pts: 30 }, { at: 5, pts: 50 }, { at: 10, pts: 100 }];
+  return out.length ? out : [{ at: 3, pts: 10 }, { at: 5, pts: 20 }, { at: 10, pts: 30 }];
 }
 /** 两档名额。gtdTop 必须 ≤ freeTop，配反了就把 gtd 夹到 freeTop（不是报错崩掉）。 */
 /**
@@ -1354,7 +1359,7 @@ function create(opts) {
      用户自己发一条**提到本站、带 #ARCBANG** 的推（内容随意：宇宙截图、感想都行），
      把链接贴回来，服务端自动核：作者对得上、正文里两样都在、而且不是转发。
      过了 +ARCBANG_PTS_POST 分一条，限每周 ARCBANG_PTS_POST_PER_WEEK 条、
-     预热期共 ARCBANG_PTS_POST_MAX 条 —— 不限的话这一项就是个刷帖机。
+     预热期共 ARCBANG_PTS_POST_MAX 条（默认 4）—— 不限的话这一项就是个刷帖机。
 
      跟「转发置顶推」那一项分开存：那一项一个地址只有一条，这一项是一串。 */
   const HASHTAG = '#ARCBANG';

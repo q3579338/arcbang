@@ -30,7 +30,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/quest.html">
 <meta property="og:title" content="ARCBANG 任务 · 积分榜与白名单">
-<meta property="og:description" content="白名单按积分榜排。登记 10 分、转发置顶推 30 分、每个有效邀请 20 分、引爆并分享 5 分/天。免费名额从榜的前列产生，数量定格时公布。">
+<meta property="og:description" content="白名单按积分榜排。登记 10 分、关注 10 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 5 分/次。免费名额从榜的前列产生，数量定格时公布。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -38,7 +38,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ARCBANG 任务 · 积分榜与白名单">
-<meta name="twitter:description" content="白名单按积分榜排。登记 10 分、转发置顶推 30 分、每个有效邀请 20 分、引爆并分享 5 分/天。免费名额从榜的前列产生，数量定格时公布。">
+<meta name="twitter:description" content="白名单按积分榜排。登记 10 分、关注 10 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 5 分/次。免费名额从榜的前列产生，数量定格时公布。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -563,7 +563,7 @@ button,input{font-family:inherit}
       <section class="ab-invc" data-task="invite">
         <div class="ab-invc-hd">
           <h4 class="ab-invc-t">邀请</h4>
-          <span class="ab-qr-p" data-pts>+20</span>
+          <span class="ab-qr-p" data-pts>+10 / 人</span>
           <span class="ab-st todo" data-st>未完成</span>
         </div>
         <div class="ab-invc-body">
@@ -600,6 +600,8 @@ button,input{font-family:inherit}
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">创作推文</h4><span class="ab-qr-p" data-pts>+20</span></div>
             <p class="ab-qr-d">发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。发布后提交链接。</p>
+            <!-- 额度写成独立一行（和广播卡的 shareHow 对称）：两个上限是这张卡最常被问到的事。 -->
+            <p class="ab-qr-d" id="postHow">每周最多 2 条，共 4 条，每条 20 分。</p>
             <div class="ab-xline" id="xWhoPost" hidden></div>
             <button class="ab-chip" type="button" data-copy="#ARCBANG">#ARCBANG</button>
             <div class="ab-dots" id="postDots"></div>
@@ -781,7 +783,7 @@ button,input{font-family:inherit}
       </details>
       <details>
         <summary>积分怎么算？</summary>
-        <p>登记 10 分，关注 10 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 20 分，累计 3 / 5 / 10 位另有奖励。创作推文每条 20 分。引爆并广播每次 5 分（每日 3 次，累计 15 次），引爆每次 1 分。</p>
+        <p>登记 10 分，关注 10 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 10 分（上限 10 位），累计 3 / 5 / 10 位另奖 10 / 20 / 30 分。创作推文每条 20 分，每周最多 2 条、共 4 条。引爆并广播每次 5 分（每日 3 次，累计 15 次），引爆每次 1 分。</p>
       </details>
       <details>
         <summary>什么时候开铸？</summary>
@@ -847,10 +849,12 @@ button,input{font-family:inherit}
   var AL_SIG_KEY = 'arcbang.al.sig';
   /** 榜默认只铺前 20 行，点「展开全部」才铺到服务端给的上限（100）。 */
   var FOLD_ROWS = 20;
-  /** 贴回来的那条链接长什么样。**写成变量不写成行内字面量**：
-      行内正则里的斜杠在这份文件被多次改写的过程中被吞过一次，
-      表现是整块脚本语法错、页面一点反应都没有。 */
-  var PROOF_RE = new RegExp('^https://(x|twitter)\.com/[A-Za-z0-9_]{1,15}/status/\d{5,25}');
+  /** 贴回来的那条链接长什么样。**必须是正则字面量**：
+      写成 new RegExp('…\\d{5,25}') 时，那个 \\d 在字符串里就被吃成了一个字母 d，
+      实际匹配的是 /status/d{5,25} —— 任何真链接都过不了，而且一个错都不报，
+      表现是用户贴对了链接却一直被顶回「请填写一条推文链接」。踩过一次（2026-09-19）。
+      **不锚定结尾**：X 分享出来的链接常带 ?s=20 之类的查询串，那是正常的。 */
+  var PROOF_RE = /^https:\/\/(x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/status\/\d{5,25}/;
   function $(id) { return document.getElementById(id); }
   function T(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh) : zh; }
   function TF(zh) {
@@ -962,8 +966,12 @@ button,input{font-family:inherit}
     var P = st.pts || {};
     /* 分值全部来自服务端（env 可调），页面上一个分值都不写死。 */
     var setPts = function (k, txt) {
-      var c = document.querySelector('.ab-qr[data-task="' + k + '"]');
-      if (c) c.querySelector('[data-pts]').textContent = txt;
+      /* **不要写 .ab-qr[data-task=…]**：邀请是一张独立的宽卡（.ab-invc），
+         带类名找的话它永远匹配不上，那颗 +N 胶囊就一直停在模板里写死的数字上，
+         而且 if (c) 会把这件事悄悄吞掉。状态胶囊那一套用的就是下面这个选择器。 */
+      var c = document.querySelector('[data-task="' + k + '"]');
+      var p = c && c.querySelector('[data-pts]');
+      if (p) p.textContent = txt;
     };
     if (P.register != null) setPts('register', '+' + P.register);
     if (P.follow != null) setPts('follow', '+' + P.follow);
@@ -1323,7 +1331,7 @@ button,input{font-family:inherit}
     if ((st.shares || 0) > 0) done++;
     $('stDone').textContent = connected ? (done + ' / 7') : '—';
 
-    $('stInv').textContent = connected ? ((st.validInvites || 0) + ' / ' + (P.inviteMax || 20)) : '—';
+    $('stInv').textContent = connected ? ((st.validInvites || 0) + ' / ' + (P.inviteMax || 10)) : '—';
     $('stInvSub').textContent = TF('每位 +{0} 分', P.invite || 20);
 
     var inTop = !!st.inTop100;
@@ -1463,12 +1471,12 @@ button,input{font-family:inherit}
       /* 点赞 / 转发 / 评论不在这里了：它们合成了「推文互动」那一组卡，
          一条推文一张，由 renderEngage 按服务端给的清单现画。 */
       invite: {
-        done: (st.validInvites || 0) >= (P.inviteMax || 20),
+        done: (st.validInvites || 0) >= (P.inviteMax || 10),
         state: (st.validInvites || 0) > 0 ? 'ok' : 'todo',
         act: null                                    // 这张卡自己带着链接和两颗按钮
       },
       post: {
-        done: (st.okPosts || 0) >= (P.postMax || 5),
+        done: (st.okPosts || 0) >= (P.postMax || 4),
         state: (st.okPosts || 0) > 0 ? 'ok' : ((st.badPosts || 0) > 0 ? 'bad' : 'todo'),
         act: reg ? null : { text: '请先登记', href: '#join' }
       },
@@ -1626,21 +1634,24 @@ button,input{font-family:inherit}
           link, st.xHandle || 'arcbang_xyz'));
     } else { inv.hidden = true; }
     $('invN').textContent = String(st.validInvites || 0);
-    $('invMax').textContent = '/ ' + (P.inviteMax || 20);
+    $('invMax').textContent = '/ ' + (P.inviteMax || 10);
     $('inviteHint2').textContent = reg
-      ? TF('每位有效邀请 +{0} 分，上限 {1} 位。', P.invite || 20, P.inviteMax || 20)
+      ? TF('每位有效邀请 +{0} 分，上限 {1} 位。', P.invite || 10, P.inviteMax || 10)
       : T('完成登记后生成邀请链接。');
 
-    /* 创作推文：五个点 + 提交框 */
-    var pmax = P.postMax || 5;
+    /* 创作推文：点数按**总上限**画 + 提交框。
+       上限现读服务端（预热 14 天 × 每周 2 条 = 4 条），写死 5 会多一个永远点不亮的点。 */
+    var pmax = P.postMax || 4;
     var okN = st.okPosts || 0, badN = st.badPosts || 0;
     var dots = '';
     for (var i = 0; i < pmax; i++) {
       dots += '<i class="' + (i < okN ? 'on' : (i < okN + badN ? 'bad' : '')) + '"></i>';
     }
     $('postDots').innerHTML = dots + '<span>' + esc(reg
-      ? TF('已通过 {0} · 未通过 {1} · 每周上限 {2} 条', okN, badN, P.postPerWeek || 2)
-      : TF('每周上限 {0} 条，预热期共 {1} 条', P.postPerWeek || 2, pmax)) + '</span>';
+      ? TF('已通过 {0} · 未通过 {1} · 共 {2} 条', okN, badN, pmax)
+      : TF('每周最多 {0} 条，共 {1} 条', P.postPerWeek || 2, pmax)) + '</span>';
+    $('postHow').textContent = TF('每周最多 {0} 条，共 {1} 条，每条 {2} 分。',
+      P.postPerWeek || 2, pmax, P.post || 20);
     $('postBox').hidden = !reg || okN >= pmax;
 
     /* 引爆并广播：点数按**累计次数**上限画，后面跟今日与累计两个数。 */

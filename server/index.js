@@ -1065,7 +1065,7 @@ async function handle(req, res, u) {
 
   /* POST /api/allowlist/post {address, url, sig}
      自己发的那条「提到本站 + #ARCBANG」的推。服务端自动核（作者 / 提及 / 标签 / 不是转发），
-     过了就按条计分。限每周 2 条、预热期共 5 条。 */
+     过了就按条计分。限每周 2 条、预热期共 4 条。 */
   if (p === '/allowlist/post' && req.method === 'POST') {
     const rb = await bodyOf(req, res);
     if (rb === null) return;

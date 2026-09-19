@@ -2618,7 +2618,7 @@ function call(method, url, body, headers) {
        修法有三层，每一层都要在这里当场红：
          1. free 进摘要（合约 bangSigned 的 bool free）→ 免费与否服务端说了算；
          2. 服务端按**积分榜**算名单，IP 不再参与任何铸造判断；
-         3. 积分里最值钱的两项（转发 30、有效邀请 20/人）都要**人工核过**才计 ——
+         3. 积分里要人工核过才计的那几项（转发 30、有效邀请 10/人）——
             不然造一百个地址登记一遍就能把榜刷穿，而登记是不花钱的。
        ================================================================== */
     console.log('\n[S4] 积分榜 / 名单生成 / 分期 / 登记');
@@ -2695,9 +2695,17 @@ function call(method, url, body, headers) {
       for (const k of keys) save[k] = process.env[k];
       for (const k of keys) delete process.env[k];
       const P0 = ALX.pointsTable();
-      ok('默认分值：登记 10 / 关注 10 / 互动置顶推 50 / 其他官方推 20 / 邀请 20（上限 20 人）',
+      ok('默认分值：登记 10 / 关注 10 / 互动置顶推 50 / 其他官方推 20 / 邀请 10（上限 10 位）',
         P0.register === 10 && P0.follow === 10 && P0.engage === 50 && P0.engagePost === 20
-        && P0.invite === 20 && P0.inviteMax === 20, JSON.stringify(P0));
+        && P0.invite === 10 && P0.inviteMax === 10, JSON.stringify(P0));
+      /* 预热 14 天 × 每周 2 条 = 4 条。这两个数必须对得上 ——
+         对不上的表现是卡上多一个永远点不亮的点（2026-09-19 用户指出）。 */
+      ok('创作推文每周 2 条、共 4 条：总上限不超过预热期发得出来的条数',
+        P0.postPerWeek === 2 && P0.postMax === 4
+        && P0.postMax <= Math.ceil(14 / 7) * P0.postPerWeek, JSON.stringify([P0.postPerWeek, P0.postMax]));
+      ok('邀请这一项满打满算 160 分（10 分 × 10 位 + 里程碑 10/20/30）——**不再是最值钱的那一项**',
+        P0.invite * P0.inviteMax + P0.milestones.reduce((s, m) => s + m.pts, 0) === 160,
+        String(P0.invite * P0.inviteMax + P0.milestones.reduce((s, m) => s + m.pts, 0)));
       ok('引爆并广播：每次 5 分，每日 3 次，累计 15 次（2026-09-19 改口径）',
         P0.share === 5 && P0.sharePerDay === 3 && P0.shareMax === 15, JSON.stringify(P0));
       ok('引爆计分：每次 1 分，每日 5 分封顶，两次之间至少隔 3 分钟',
@@ -2806,9 +2814,9 @@ function call(method, url, body, headers) {
       ok('被邀请人还没核转发：邀请数 1，有效邀请 0，邀请分 0',
         AL.inviteCount(a1) === 1 && AL.validInviteCount(a1) === 0 && AL.scoreOf(a1).pts.invite === 0);
       AL.verify(AL.codeOf(a2));
-      ok('被邀请人核过之后才算有效邀请 → 邀请人 +20 分',
-        AL.validInviteCount(a1) === 1 && AL.scoreOf(a1).pts.invite === 20
-        && AL.scoreOf(a1).total === AL.scoreOf(a1).pts.register + AL.scoreOf(a1).pts.engage + 20);
+      ok('被邀请人核过之后才算有效邀请 → 邀请人 +10 分',
+        AL.validInviteCount(a1) === 1 && AL.scoreOf(a1).pts.invite === 10
+        && AL.scoreOf(a1).total === AL.scoreOf(a1).pts.register + AL.scoreOf(a1).pts.engage + 10);
       /* 上限：把 inviteMax 调成 1，再拉一个人进来也不再加分 */
       const savedMax = process.env.ARCBANG_PTS_INVITE_MAX;
       process.env.ARCBANG_PTS_INVITE_MAX = '1';
@@ -2816,10 +2824,10 @@ function call(method, url, body, headers) {
       AL.verify(AL.codeOf(a3));
       ok('有效邀请到上限就封顶：第 2 个不再加分（原始数照记）',
         AL.validInviteCount(a1) === 2 && AL.scoreOf(a1).countedInvites === 1
-        && AL.scoreOf(a1).pts.invite === 20);
+        && AL.scoreOf(a1).pts.invite === 10);
       if (savedMax === undefined) delete process.env.ARCBANG_PTS_INVITE_MAX; else process.env.ARCBANG_PTS_INVITE_MAX = savedMax;
       ok('上限放开之后两个都算（分值表是现读的，不是加载时定的）',
-        AL.scoreOf(a1).countedInvites === 2 && AL.scoreOf(a1).pts.invite === 40);
+        AL.scoreOf(a1).countedInvites === 2 && AL.scoreOf(a1).pts.invite === 20);
     }
 
     /* ---- 分享：签名要对、同一天只记一次、到顶不再涨 ---- */
@@ -3356,9 +3364,9 @@ function call(method, url, body, headers) {
       const json = (j) => async () => ({ ok: true, text: async () => JSON.stringify(j) });
       const dead = async () => null;
 
-      /* 里程碑：每人 20 分之外，攒到 3/5/10 人再各奖一笔，一档档累加。 */
-      ok('里程碑默认是 3:30 / 5:50 / 10:100',
-        JSON.stringify(ALX.pointsTable().milestones) === '[{"at":3,"pts":30},{"at":5,"pts":50},{"at":10,"pts":100}]');
+      /* 里程碑：每人 10 分之外，攒到 3/5/10 人再各奖一笔，一档档累加。 */
+      ok('里程碑默认是 3:10 / 5:20 / 10:30（2026-09-19 从 30/50/100 砍下来）',
+        JSON.stringify(ALX.pointsTable().milestones) === '[{"at":3,"pts":10},{"at":5,"pts":20},{"at":10,"pts":30}]');
       {
         const savedMs = process.env.ARCBANG_PTS_INVITE_MILESTONES;
         process.env.ARCBANG_PTS_INVITE_MILESTONES = '2:7';
@@ -3381,8 +3389,8 @@ function call(method, url, body, headers) {
           AL.verify(g.address.toLowerCase(), { repost: true });
         }
         const s = AL.scoreOf(h);
-        ok('3 个有效邀请：3×20 的人头分 + 第一档里程碑 30',
-          s.validInvites === 3 && s.pts.invite === 60 && s.pts.milestone === 30, JSON.stringify(s.pts));
+        ok('3 个有效邀请：3×10 的人头分 + 第一档里程碑 10',
+          s.validInvites === 3 && s.pts.invite === 30 && s.pts.milestone === 10, JSON.stringify(s.pts));
         ok('里程碑进度回给页面（哪几档到了）',
           s.milestones.length === 3 && s.milestones[0].hit === true && s.milestones[1].hit === false);
       }
@@ -3539,6 +3547,36 @@ function call(method, url, body, headers) {
       ok('带对口令拿得到阶段现状',
         g2.status === 200 && typeof JSON.parse(g2.body).phase === 'string', String(g2.status));
       if (saved === undefined) delete process.env.ARCBANG_ADMIN_TOKEN; else process.env.ARCBANG_ADMIN_TOKEN = saved;
+    }
+    /* ---- 任务页：写死在模板里的分值不能和服务端的默认值打架 ----
+       邀请那张卡是独立的宽卡（.ab-invc），setPts 原来按 .ab-qr 找，找不到就静默跳过，
+       于是它那颗 +N 一直停在模板里的旧数字上。改分值时这一处最容易漏。 */
+    {
+      const qsrc0 = fs.readFileSync(path.join(__dirname, '..', 'web', 'quest-arc.html'), 'utf8');
+      ok('setPts 按 [data-task] 找卡，不带 .ab-qr 类名（邀请卡不是 .ab-qr）',
+        qsrc0.indexOf(".ab-qr[data-task=\"' + k + '\"]") < 0);
+      ok('模板里写死的邀请分值和服务端默认值对得上（都是 10 / 人）',
+        /<span class="ab-qr-p" data-pts>\+10 \/ 人<\/span>/.test(qsrc0));
+    }
+    /* ---- 任务页那条「推文链接」正则 ----
+       原来写成 new RegExp('…\\d{5,25}')，字符串里的 \\d 被吃成字母 d，
+       于是实际匹配的是 /status/d{5,25} —— 真链接一条都过不了，而且一个错都不报。
+       这里把页面上那一行原样取出来跑，正是为了不让它再退回字符串写法。 */
+    {
+      const qsrc = fs.readFileSync(path.join(__dirname, '..', 'web', 'quest-arc.html'), 'utf8');
+      const mm = /var PROOF_RE = (.+);/.exec(qsrc);
+      ok('任务页的推文链接正则写成字面量，不是 new RegExp 字符串',
+        !!mm && mm[1].indexOf('new RegExp') < 0 && mm[1][0] === '/', mm && mm[1]);
+      const RE = mm ? eval(mm[1]) : /$^/;
+      ok('真链接过得了，带 ?s=20 的也过得了（正则不锚定结尾）',
+        RE.test('https://x.com/eth61675/status/2101238556220125353')
+        && RE.test('https://x.com/eth61675/status/2101238556220125353?s=20'));
+      ok('status 后面必须是数字：/status/d12345 这种过不了',
+        RE.test('https://x.com/eth61675/status/d12345') === false);
+      ok('别的域名、明文 http 都过不了',
+        RE.test('https://example.com/a/status/12345') === false
+        && RE.test('http://x.com/a/status/12345') === false
+        && RE.test('https://xacom/a/status/12345') === false);
     }
     /* ---- 管理员口令：缺 / 错 → 401；没配 → 404 ---- */
     {
