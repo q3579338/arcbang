@@ -1206,37 +1206,46 @@ img.uthumb[data-view]{cursor:zoom-in}
         }
       }
 
-      if (!r[0]) { S.meta[id] = m; return m; }
-      var uri = decString(r[0]), pre = 'data:application/json;base64,';
+      /* 自家 API 优先：合约里的 baseURI 可能指向别的域名（正式域名维护中、或排练站的合约
+         填的是正式域名），同一份元数据本站 /api/token/<id> 也出得来。取不到再按 tokenURI 走。 */
+      function fromUri() {
+        if (!r[0]) { S.meta[id] = m; return m; }
+        var uri = decString(r[0]), pre = 'data:application/json;base64,';
 
-      if (uri.indexOf(pre) === 0) {
-        // 老合约把整份元数据内联在 tokenURI 里
-        try { absorb(JSON.parse(atob(uri.slice(pre.length)))); }
-        catch (e) { /* 元数据坏了不影响别的：图就空着 */ }
+        if (uri.indexOf(pre) === 0) {
+          // 老合约把整份元数据内联在 tokenURI 里
+          try { absorb(JSON.parse(atob(uri.slice(pre.length)))); }
+          catch (e) { /* 元数据坏了不影响别的：图就空着 */ }
+          S.meta[id] = m;
+          return m;
+        }
+
+        /* baseURI 非空时 tokenURI 返回的是一个 **http 地址**，要去取。
+           这里原来只认 data: URI，于是 baseURI 一设，每张卡的缩略图都成了
+           「图还没读到」—— 页面照着旧合约写的，没跟上。 */
+        if (/^https?:\/\//i.test(uri)) {
+          return fetch(uri).then(function (resp) {
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return resp.json();
+          }).then(function (j) {
+            absorb(j);
+            S.meta[id] = m;
+            return m;
+          }).catch(function () {
+            // 取不到就让缩略图空着，别把整张卡连同链上数据一起废掉
+            S.meta[id] = m;
+            return m;
+          });
+        }
+
         S.meta[id] = m;
         return m;
       }
-
-      /* baseURI 非空时 tokenURI 返回的是一个 **http 地址**，要去取。
-         这里原来只认 data: URI，于是 baseURI 一设，每张卡的缩略图都成了
-         「图还没读到」—— 页面照着旧合约写的，没跟上。 */
-      if (/^https?:\/\//i.test(uri)) {
-        return fetch(uri).then(function (resp) {
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          return resp.json();
-        }).then(function (j) {
-          absorb(j);
-          S.meta[id] = m;
-          return m;
-        }).catch(function () {
-          // 取不到就让缩略图空着，别把整张卡连同链上数据一起废掉
-          S.meta[id] = m;
-          return m;
-        });
-      }
-
-      S.meta[id] = m;
-      return m;
+      var own = (CFG.apiBase || '/api') + '/token/' + id;
+      return fetch(own, { headers: { accept: 'application/json' } })
+        .then(function (resp) { if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.json(); })
+        .then(function (j) { absorb(j); S.meta[id] = m; return m; })
+        .catch(function () { return fromUri(); });
     });
   }
 
