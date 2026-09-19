@@ -9,7 +9,7 @@
 
      两条硬口径，改文案时别破：
        1. **不承诺具体名额**。免费名额从榜的前列产生，数量在预热结束、榜单定格时才公布；
-          只有合约里那个 387 的硬上限可以说（它公开可查，不是我们的承诺）。
+          只有合约里那个 887 的硬上限可以说（它公开可查，不是我们的承诺）。
           服务端也配合：定格之前 /api/allowlist 的人数与名额字段一律回 null。
        2. **榜只公布前 100 名**。第 101 名往后不在榜上出现，但他自己的名次、积分、
           离两档各差几分照常在本人卡片里显示。
@@ -21,7 +21,7 @@
      **文案里带换行的整段必须写成一行**：i18n 的词条 key 是「trim 之后逐字相等」，
      源码里换行加缩进会把文本节点里塞进 \n 和一串空格，词典就再也命中不了。踩过一次。 -->
 <title>ARCBANG 任务 · 积分榜与白名单</title>
-<meta name="description" content="ARCBANG 全网 1,387 枚宇宙 NFT。白名单按积分榜排：免费名额从榜的前列产生，数量在预热结束定格榜单时公布，上限不超过合约的 387 枚。登记、转发、邀请、引爆分享都算分；引爆和模拟器随时免费玩。">
+<meta name="description" content="ARCBANG 全网 1,387 枚宇宙 NFT。白名单按积分榜排：免费名额从榜的前列产生，数量在预热结束定格榜单时公布，上限不超过合约的 887 枚。登记、转发、邀请、引爆分享都算分；引爆和模拟器随时免费玩。">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/quest.html">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/quest.html">
 <link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/quest.html">
@@ -435,7 +435,7 @@ button,input{font-family:inherit}
     <div class="ab-cta">
       <a class="ab-btn" href="#join">开始任务</a>
       <a class="ab-btn2" href="#board">查看积分榜</a>
-      <a class="ab-btn2" href="app.html">进入模拟器</a>
+      <a class="ab-btn2" href="app.html">前往引爆</a>
       <a class="ab-btn2" href="check.html">资格查询</a>
     </div>
   </div>
@@ -626,7 +626,7 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙</h4><span class="ab-qr-p" data-pts>+1 / 次</span></div>
-            <p class="ab-qr-d" id="bangHow">在模拟器中引爆任意 Arc 区块，每次计 1 分。同一区块只计一次，每日 5 次。</p>
+            <p class="ab-qr-d" id="bangHow">在模拟器中引爆任意 Arc 区块，每次 1 分。同一区块只计一次，每日最多 5 次，累计 50 次。</p>
             <div class="ab-dots" id="bangDots"></div>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
@@ -636,8 +636,8 @@ button,input{font-family:inherit}
         <article class="ab-qr" data-task="share">
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
           <div class="ab-qr-mid">
-            <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙并广播</h4><span class="ab-qr-p" data-pts>+5</span></div>
-            <p class="ab-qr-d" id="shareHow">每日最多 3 次，累计 15 次，每次 3 分。</p>
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙并广播</h4><span class="ab-qr-p" data-pts>+3 / 次</span></div>
+            <p class="ab-qr-d" id="shareHow">引爆后广播到 X，每次 3 分。每日最多 3 次，累计 15 次。</p>
             <div class="ab-dots" id="shareDots"></div>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
@@ -668,7 +668,7 @@ button,input{font-family:inherit}
       <p class="ab-boardfoot" id="boardFoot"></p>
       <div class="ab-kv" style="max-width:760px">
         <div><b class="ab-kv-v" id="kvApplied">—</b><span class="ab-kv-k">在榜人数</span></div>
-        <div><b class="ab-kv-v" id="kvCap">387</b><span class="ab-kv-k">免费上限</span></div>
+        <div><b class="ab-kv-v" id="kvCap">887</b><span class="ab-kv-k">免费上限</span></div>
         <div><b class="ab-kv-v" id="kvFree">—</b><span class="ab-kv-k">免费剩余</span></div>
       </div>
     </div>
@@ -764,10 +764,10 @@ button,input{font-family:inherit}
 
 <section class="ab-sec">
   <div class="ab-wrap">
-    <h2 class="ab-h2">模拟器</h2>
+    <h2 class="ab-h2">引爆</h2>
     <p class="ab-say">选择任意 Arc 区块生成宇宙。引爆并广播每次 3 分，每日最多 3 次。</p>
     <div class="ab-cta">
-      <a class="ab-btn" href="app.html">进入模拟器</a>
+      <a class="ab-btn" href="app.html">前往引爆</a>
     </div>
   </div>
 </section>
@@ -792,7 +792,7 @@ button,input{font-family:inherit}
       </details>
       <details>
         <summary>免费名额怎么来？</summary>
-        <p>免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 387 枚。</p>
+        <p>免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 887 枚。</p>
       </details>
       <details>
         <summary>为什么在 Arc 上？</summary>
@@ -821,7 +821,7 @@ button,input{font-family:inherit}
     <div class="ab-foot-top">
       <div class="ab-brand">ARC宇宙</div>
       <nav class="ab-foot-lnk" aria-label="页脚">
-        <a href="app.html">模拟器</a>
+        <a href="app.html">引爆</a>
         <a href="check.html">资格查询</a>
         <a href="how-it-works.html">怎么运作</a>
         <a href="verify.html">自己验证</a>
@@ -839,7 +839,7 @@ button,input{font-family:inherit}
  * 一个链上读数都没有 —— 免费余量也是服务端从它自己的缓存里给的，
  * 这一页不该因为公开 RPC 抖一下就变成半张白纸。
  *
- * **不承诺名额**：页面上一处都不写「前 100 名」「前 387 名」这种数字。
+ * **不承诺名额**：页面上一处都不写「前 100 名」「前 887 名」这种数字。
  * 服务端在定格之前也不回这些字段（counts 全是 null），两边一起守。
  * ========================================================================== */
 (function () {
@@ -974,10 +974,10 @@ button,input{font-family:inherit}
     }
 
     $('kvApplied').textContent = st.boardSize == null ? '—' : String(st.boardSize);
-    $('kvCap').textContent = st.cap == null ? '387' : String(st.cap);
+    $('kvCap').textContent = st.cap == null ? '887' : String(st.cap);
     /* 免费剩余：合约开铸前一枚没放，剩余就等于上限；开铸后由服务端按链上 freeMinted 算 */
     $('kvFree').textContent = st.freeLeft != null ? String(st.freeLeft)
-      : (st.phase === 'warmup' ? String(st.cap == null ? 387 : st.cap) : '—');
+      : (st.phase === 'warmup' ? String(st.cap == null ? 887 : st.cap) : '—');
 
     /* 分值全部来自服务端（env 可调），页面上一个分值都不写死 */
     var P = st.pts || {};
@@ -1513,10 +1513,10 @@ button,input{font-family:inherit}
     var progress = {
       invite: reg ? TF('{0} 位', st.validInvites || 0) : '',
       post: reg ? TF('已通过 {0} · 未通过 {1}', st.okPosts || 0, st.badPosts || 0) : '',
-      share: reg ? TF('今日 {0} / {1} · 累计 {2} / {3}',
-        st.sharesToday || 0, P.sharePerDay || 3, st.shares || 0, P.shareMax || 15) : '',
-      bang: reg ? TF('今日 {0} / {1} 分 · 累计 {2} / {3} 分',
-        st.bangTodayPts || 0, P.bangPerDay || 5, st.bangPts || 0, P.bangMax || 50) : ''
+      /* 两张「每日」卡的胶囊：**一次都没做过就只写「未完成」**，做过了写
+         「已完成 · 今日 x / N」。没做过还挂一串 0 的进度，看着像出了错。 */
+      share: (reg && (st.shares || 0) > 0) ? TF('今日 {0} / {1}', st.sharesToday || 0, P.sharePerDay || 3) : '',
+      bang: (reg && (st.bangPts || 0) > 0) ? TF('今日 {0} / {1}', st.bangTodayPts || 0, P.bangPerDay || 5) : ''
     };
     var LABEL = { todo: '未完成', wait: '核验中', ok: '已完成', bad: '未通过' };
     /* 「审核中」那句话要写清楚**等多久、上次什么时候查的** ——
@@ -1679,20 +1679,26 @@ button,input{font-family:inherit}
     $('shareDots').innerHTML = sdots + '<span>' + esc(reg
       ? TF('今日 {0} / {1} · 累计 {2} / {3}', sToday, sPerDay, sn, smax)
       : TF('每日最多 {0} 次，累计 {1} 次', sPerDay, smax)) + '</span>';
-    $('shareHow').textContent = TF('每日最多 {0} 次，累计 {1} 次，每次 {2} 分。', sPerDay, smax, P.share || 5);
+    /* 两张「每日」卡的说明写成同一个句式：做什么 + 每次几分 + 每日几次 + 累计几次。
+       上一版一张写「每次计 N 分…每日 N 次」、另一张写「每日 N 次，累计 N 次，每次 N 分」，
+       同一组里两句话的语序都不一样（2026-09-19 用户截图指出）。 */
+    $('shareHow').textContent = TF('引爆后广播到 X，每次 {0} 分。每日最多 {1} 次，累计 {2} 次。',
+      P.share || 3, sPerDay, smax);
 
     /* 引爆计分：今天的进度用点表示（一点一分），后面跟累计。
        点数按每日上限画 —— 上限可配，写死 10 个在调小上限时会多出几个永远不亮的点。 */
     var bMaxDay = P.bangPerDay || 5, bToday = st.bangTodayPts || 0;
     var bdots = '';
     for (var k2 = 0; k2 < bMaxDay; k2++) bdots += '<i class="' + (k2 < bToday ? 'on' : '') + '"></i>';
+    /* 进度行跟广播那张卡对齐：同一个句式、数字按**次**（引爆 1 分/次，两者相等）。
+       写「分」的那一版让同一组里的两张卡看起来在数不同的东西。 */
     $('bangDots').innerHTML = bdots + '<span>' + esc(reg
-      ? TF('今日 {0} / {1} 分 · 累计 {2} / {3} 分', bToday, bMaxDay, st.bangPts || 0, P.bangMax || 50)
-      : TF('每日最多 {0} 分，预热期最多 {1} 分', bMaxDay, P.bangMax || 50)) + '</span>';
+      ? TF('今日 {0} / {1} · 累计 {2} / {3}', bToday, bMaxDay, st.bangPts || 0, P.bangMax || 50)
+      : TF('每日最多 {0} 次，累计 {1} 次', bMaxDay, P.bangMax || 50)) + '</span>';
     /* 两次计分之间还有一道最短间隔（服务端的 ARCBANG_BANG_INTERVAL_MIN），
         **故意不写在这句话里**：写出来等于教人踩着点刷，而正常玩的人碰不到它。 */
-    $('bangHow').textContent = TF('在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次，每日 {1} 次。',
-      P.bang || 1, bMaxDay);
+    $('bangHow').textContent = TF('在模拟器中引爆任意 Arc 区块，每次 {0} 分。同一区块只计一次，每日最多 {1} 次，累计 {2} 次。',
+      P.bang || 1, bMaxDay, P.bangMax || 50);
 
     /* 主 CTA：登记过了就叫「继续」 */
     $('mainCta').textContent = reg ? T('继续任务') : T('开始任务');

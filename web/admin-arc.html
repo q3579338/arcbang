@@ -136,7 +136,11 @@ tr.dis td{background:#FBF1F1}
         <label>公售开放<input class="in" type="datetime-local" id="phPub"></label>
         <label>预热开始<input class="in" type="datetime-local" id="phWs"></label>
         <label>预热天数<input class="in" type="number" min="1" max="3650" id="phWd" placeholder="14"></label>
+        <!-- 保底名额：白名单那一层放多少个人。先到先得的枚数不单独填 ——
+             它等于免费总量减掉保底，页面实时算给人看。榜定格之后服务端会拒绝改它。 -->
+        <label>保底名额<input class="in" type="number" min="1" max="887" id="phGtdTop" placeholder="387"></label>
       </div>
+      <p class="dim" style="margin-top:6px" id="phQuota"></p>
       <p class="dim" style="margin-top:8px" id="phTz"></p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
         <button class="btn pri" type="button" id="btnPhSave">保存开放时间</button>
@@ -712,6 +716,16 @@ tr.dis td{background:#FBF1F1}
     $('phPub').value = toLocalInput(d.opens.public);
     $('phWs').value = toLocalInput(d.warmup.start);
     $('phWd').value = d.warmup.days || '';
+    /* 保底名额：显示实际生效的那个数（后台没设时就是服务端配置的默认值）。
+       定格之后这一格锁死 —— 服务端也会拒绝，这里先把手停住，省得白填一遍。 */
+    var fc = d.freeCap || 887, gt = d.gtdTop || 0;
+    $('phGtdTop').value = gt || '';
+    $('phGtdTop').max = fc;
+    $('phGtdTop').disabled = !!d.frozen;
+    $('phQuota').textContent = '免费总量 ' + fc + ' 枚 · 保底 ' + gt + ' · 先到先得 ' + (d.fcfsTop == null ? fc - gt : d.fcfsTop)
+      + '（先到先得 = 免费总量 − 保底，自动算）'
+      + (d.tops && d.tops.gtdSource === 'env' ? ' · 保底名额目前来自服务端配置，还没在后台改过。' : '')
+      + (d.frozen ? ' 名单已定格，保底名额改不了 —— 要改请先「解除定格」。' : '');
     $('phList').textContent = '名单' + (d.frozen ? '已定格（' + whenText(d.frozenAt) + '）' : '仍在随积分榜实时变动')
       + ' · 白名单 ' + d.counts.gtd + ' 个 · 先到先得 ' + d.counts.fcfs + ' 个'
       + ' · 在榜 ' + d.boardSize + ' 人 · 登记 ' + d.applied + ' 条。';
@@ -751,7 +765,9 @@ tr.dis td{background:#FBF1F1}
       fcfsOpenAt: fromLocalInput($('phFcfs').value),
       publicOpenAt: fromLocalInput($('phPub').value),
       warmupStart: fromLocalInput($('phWs').value),
-      warmupDays: String($('phWd').value || '').trim()
+      warmupDays: String($('phWd').value || '').trim(),
+      /* 定格之后不把 gtdTop 往上送：送了服务端会 400，连带把只想改时间的那次保存一起打回。 */
+      gtdTop: (PH && PH.frozen) ? undefined : String($('phGtdTop').value || '').trim()
     };
   }
   $('phSteps').addEventListener('click', function (ev) {
@@ -765,13 +781,15 @@ tr.dis td{background:#FBF1F1}
     savePhase(body, '已切换到{0}。');
   });
   $('btnPhSave').addEventListener('click', function () {
-    if (!confirm('保存开放时间？\n\n保存后立即生效：时间一到，服务端会自动进入对应阶段。')) return;
+    if (!confirm('保存开放时间与保底名额？\n\n保存后立即生效：时间一到，服务端会自动进入对应阶段；'
+      + '保底名额改完下一张签名就按新数算。')) return;
     savePhase(timeBody(), '已保存，当前为{0}。');
   });
   $('btnPhAuto').addEventListener('click', function () {
     if (!confirm('改回按服务端配置？\n\n后台设定的阶段与开放时间会被清除，重新按服务端配置文件生效。')) return;
     savePhase({
-      phase: 'auto', gtdOpenAt: '', fcfsOpenAt: '', publicOpenAt: '', warmupStart: '', warmupDays: ''
+      phase: 'auto', gtdOpenAt: '', fcfsOpenAt: '', publicOpenAt: '', warmupStart: '', warmupDays: '',
+      gtdTop: ''
     }, '已改回服务端配置，当前为{0}。');
   });
   $('btnFreeze').addEventListener('click', function () {

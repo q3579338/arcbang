@@ -1192,11 +1192,14 @@ async function handle(req, res, u) {
     /* ---- 阶段控制台 ----
        GET  现在哪一段、从哪儿来的（后台落盘 / env）、各段开放时间、榜定没定格、
             名单人数、最近 10 条变更。后台那张「阶段控制」卡整张照它画。
-       POST { phase?, gtdOpenAt?, fcfsOpenAt?, publicOpenAt?, warmupStart?, warmupDays? }
+       POST { phase?, gtdOpenAt?, fcfsOpenAt?, publicOpenAt?, warmupStart?, warmupDays?, gtdTop? }
             **改完立刻生效，不用重启** —— 服务端下一张铸造签名就按新阶段签。
             不给 phase 就只改时间；给 'auto' 是清掉后台那一份重新跟 env 走。
             切到 gtd 时榜还没定格只回 warning，**不拦** —— 后台按钮不替人做决定，
-            但也不能让这件事悄无声息地过去。 */
+            但也不能让这件事悄无声息地过去。
+            gtdTop = 保底名额（白名单人数），改完立刻生效、不用重启；先到先得的枚数
+            = 免费总量 − 保底，自动算出来。**榜定格之后改它会被 400 拒掉**（见 setPhase）。
+            GET 里 gtdTop / fcfsTop / freeCap 三个数直接给后台那张卡用。 */
     if (p === '/allowlist/admin/phase' && (req.method === 'GET' || req.method === 'HEAD')) {
       return json(res, 200, AL.phaseInfo(), { 'cache-control': 'no-store' });
     }
@@ -1208,7 +1211,7 @@ async function handle(req, res, u) {
       const opt = { by: adminWho(req) };
       /* **只把请求里真出现过的键往下传**：没出现 = 保持原样，出现但是空串 = 清掉。
          全部无脑传下去的话，只改一个公售时间会把另外三个一起抹成 null。 */
-      for (const k of ['gtdOpenAt', 'fcfsOpenAt', 'publicOpenAt', 'warmupStart', 'warmupDays']) {
+      for (const k of ['gtdOpenAt', 'fcfsOpenAt', 'publicOpenAt', 'warmupStart', 'warmupDays', 'gtdTop']) {
         if (Object.prototype.hasOwnProperty.call(q.value, k)) opt[k] = q.value[k];
       }
       const r = AL.setPhase(Object.prototype.hasOwnProperty.call(q.value, 'phase') ? q.value.phase : null, opt);
@@ -1994,7 +1997,8 @@ function start() {
         + (AL.phase() === 'warmup' ? '（预热：不签任何铸造签名）' : '')
         + (nx ? '   下一段 ' + nx.phase + ' ' + (nx.at || '（时间待定）') : '   已是最后一段'));
       console.log('  名单      保底 ' + c.gtd + ' · 先到先得 ' + c.fcfs
-        + '（榜前 ' + T.gtd + ' / ' + T.free + ' 名）· 登记 ' + AL.appliedCount() + ' 条'
+        + '（榜前 ' + T.gtd + ' / ' + T.free + ' 名；免费 ' + T.freeCap + ' 枚 = 保底 ' + T.gtd
+        + ' + 先到先得 ' + T.fcfs + '，保底来自' + (T.gtdSource === 'file' ? '后台' : 'env') + '）· 登记 ' + AL.appliedCount() + ' 条'
         + (c.frozen ? ' · **已定格**' : ' · 实时按积分榜算'));
       /* 不在预热期却还没定格是真实故障：名单会随积分变，有人可能铸到一半被挤出去。
          这句必须在启动日志第一屏喊出来，而不是等谁发现。 */

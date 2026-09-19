@@ -34,7 +34,7 @@
   /* ---- web/arc-ui.js，ARC 模式（命名空间 'app'） ---- */
   I.add({
     '正在从 Arc 链上取一个区块…': 'Fetching a block from Arc…',
-    'ARC宇宙 · ARCBANG': 'ARCBANG · Simulator',
+    'ARC宇宙 · ARCBANG': 'ARCBANG · Detonate',
     '确认交易：免费期，只花 gas': 'Confirm the transaction: free period, gas only',
     '我在 ARCBANG 引爆了宇宙 {0}：{1}。每个 Arc 区块哈希，都是一个宇宙。1,387 枚，永不增发。@arcbang_xyz @arc {2}':
       'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a universe. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc {2}',
@@ -149,7 +149,7 @@
 '免费额度已用完，付费铸造将在公售阶段开放（{0}）。':
       'Your free allocation is used up. Paid minting opens in the public sale ({0}).',
     /* 免费额度是白名单的：名单外的人看到的必须是价格，不能是「首批免费」——
-       展示和真报价打架比不显示糟得多（钱包弹出来要 1 USDC）。 */
+       展示和真报价打架比不显示糟得多（钱包弹出来要按 price() 付钱）。 */
     '{0} {1} 铸造（免费额度只给白名单）': 'Mint for {0} {1} (the free tier is allowlist only)',
     '免费额度只给白名单，你这边按固定价铸造': 'The free tier is allowlist only; you mint at the flat price'
   }, 'app');

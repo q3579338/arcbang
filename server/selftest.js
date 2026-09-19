@@ -2762,8 +2762,8 @@ function call(method, url, body, headers) {
         JSON.stringify(P0));
       /* 2026-09-19 改口径：先到先得不再看名次（FREE_TOP 默认 0 = 不限），
          只看「除登记外至少完成一项任务」。白名单那道线还在。 */
-      ok('默认名额线：TOP 100 进白名单；先到先得不限名次（看有没有做任务）',
-        ALX.tops().gtd === 100 && ALX.tops().free === Infinity && ALX.tops().freeLimited === false,
+      ok('默认名额线：TOP 387 进白名单；先到先得不限名次（看有没有做任务）',
+        ALX.tops().gtd === 387 && ALX.tops().free === Infinity && ALX.tops().freeLimited === false,
         JSON.stringify(ALX.tops()));
       process.env.ARCBANG_PTS_REGISTER = 'abc';
       process.env.ARCBANG_PTS_REPOST = '-5';
@@ -2772,6 +2772,18 @@ function call(method, url, body, headers) {
       process.env.ARCBANG_GTD_TOP = '900';
       process.env.ARCBANG_FREE_TOP = '387';
       ok('保底名额配得比免费名额还多 → 夹到免费名额（不是抛错崩掉）', ALX.tops().gtd === 387);
+      /* 保底名额来自后台落盘时压过 env；超出免费总量（887）一律夹住 —— 免费只有这么多枚，
+         保底配到 9999 的话「先到先得」会被算成负数。 */
+      delete process.env.ARCBANG_FREE_TOP;
+      process.env.ARCBANG_GTD_TOP = '100';
+      ok('落盘的保底名额压过 env（后台改完不用重启）',
+        ALX.tops(250).gtd === 250 && ALX.tops(250).gtdSource === 'file'
+        && ALX.tops().gtd === 100 && ALX.tops().gtdSource === 'env',
+        JSON.stringify([ALX.tops(250), ALX.tops()]));
+      ok('保底名额超过免费总量 → 夹到 887，先到先得算出来是 0（不会变成负数）',
+        ALX.tops(9999).gtd === 887 && ALX.tops(9999).fcfs === 0 && ALX.tops(9999).freeCap === 887,
+        JSON.stringify(ALX.tops(9999)));
+      ok('先到先得的枚数 = 免费总量 − 保底，不单独配', ALX.tops(387).fcfs === 500);
       for (const k of keys) { if (save[k] === undefined) delete process.env[k]; else process.env[k] = save[k]; }
     }
 
@@ -3100,7 +3112,7 @@ function call(method, url, body, headers) {
 
       process.env.ARCBANG_PHASE = 'public';
       const g7 = await AL.gate(stranger, yes);
-      ok('public：名单外的人也能签，但一律 free=false（387 枚是留给名单的）',
+      ok('public：名单外的人也能签，但一律 free=false（887 枚是留给名单的）',
         g7.ok === true && g7.free === false);
       ok('public：名单里还没用掉免费额度的仍然 free=true',
         (await AL.gate(fcfsAddr, yes)).free === true);
@@ -3129,10 +3141,10 @@ function call(method, url, body, headers) {
       process.env.ARCBANG_PHASE = 'warmup';
       st = await AL.status(a1);
       /* **不承诺名额**（2026-09-18 用户拍板）：定格之前人数与名额上限一律 null，
-         不然 ARCBANG_GTD_TOP 会从「前 100 名是保底」这句话里被反推出来。 */
-      ok('定格之前 status 给两档人数、不给名额上限；合约那个 387 硬上限照给',
+         不然保底名额会从「前多少名是保底」这句话里被反推出来。 */
+      ok('定格之前 status 给两档人数、不给名额上限；合约那个 887 硬上限照给',
         st.counts.frozen === false && typeof st.counts.gtd === 'number'
-        && st.counts.gtdTop === null && st.counts.freeTop === null && st.cap === 387,
+        && st.counts.gtdTop === null && st.counts.freeTop === null && st.cap === 887,
         JSON.stringify(st.counts));
       ok('status 带上要签的那句话（客户端原样签，不自己拼）',
         typeof st.message === 'string' && st.message.indexOf(a1) > 0 && st.message.indexOf('domain:') > 0);
@@ -3568,6 +3580,33 @@ function call(method, url, body, headers) {
 
       ok('认不出的阶段名拒掉，不是静默接受', ALP.setPhase('nonsense').ok === false);
       ok('看不懂的时间拒掉，不是静默当成没配', ALP.setPhase(null, { gtdOpenAt: '昨天下午' }).ok === false);
+
+      /* ---- 保底名额也走这一份落盘（2026-09-19 用户：「到时候后台可以改」）---- */
+      const svG = process.env.ARCBANG_GTD_TOP;
+      process.env.ARCBANG_GTD_TOP = '387';
+      const rq1 = ALP.setPhase(null, { gtdTop: 250 });
+      ok('后台改保底名额：落盘、立刻生效、先到先得自动跟着变',
+        rq1.ok === true && ALP.phaseInfo().gtdTop === 250 && ALP.phaseInfo().fcfsTop === 637
+        && ALP.phaseInfo().freeCap === 887, JSON.stringify(ALP.phaseInfo().tops));
+      ok('盘上存的就是那个数（另起实例 = 重启，读回来还是它）',
+        ALX.create({ storeDir: pdir }).phaseInfo().gtdTop === 250);
+      ok('只改时间不带 gtdTop → 保底名额原样不动（一次保存不该把它抹回 env）',
+        ALP.setPhase(null, { publicOpenAt: '2026-12-01T00:00:00Z' }).ok === true
+        && ALP.phaseInfo().gtdTop === 250);
+      ok('超出免费总量 / 小于 1 的保底名额直接拒掉，不静默夹住再落盘',
+        ALP.setPhase(null, { gtdTop: 9999 }).ok === false && ALP.setPhase(null, { gtdTop: 0 }).ok === false
+        && ALP.phaseInfo().gtdTop === 250);
+      /* 定格之后拒改：定格那一刻谁在名单里已经算死并发出去了。 */
+      ALP.freeze();
+      const rqF = ALP.setPhase(null, { gtdTop: 100 });
+      ok('榜单已定格 → 改保底名额被拒（不是给个 warning 就放过去）',
+        rqF.ok === false && /定格/.test(rqF.error) && ALP.phaseInfo().gtdTop === 250, JSON.stringify(rqF));
+      ok('定格之后只改时间照样能保存（拒的只有保底名额这一项）',
+        ALP.setPhase(null, { publicOpenAt: '2026-12-02T00:00:00Z' }).ok === true);
+      ALP.unfreeze();
+      ok('清空保底名额 = 退回 env 那个默认值',
+        ALP.setPhase(null, { gtdTop: '' }).ok === true && ALP.phaseInfo().gtdTop === 387);
+      if (svG === undefined) delete process.env.ARCBANG_GTD_TOP; else process.env.ARCBANG_GTD_TOP = svG;
 
       ALP.setPhase('auto');
       ok('auto 清掉后台那一份，重新跟 env 走',

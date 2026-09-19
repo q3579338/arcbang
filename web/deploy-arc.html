@@ -205,10 +205,10 @@ textarea{min-height:88px;resize:vertical;word-break:break-all;line-height:1.5}
     <tr><th>回读项</th><th>链上</th><th>应为</th></tr>
     <tr><td class="lbl">地址</td><td id="v3addr" colspan="2">—</td></tr>
     <tr><td class="lbl">MINT_CAP()</td><td id="v3cap">—</td><td>1387</td></tr>
-    <tr><td class="lbl">freeCap()</td><td id="v3free">—</td><td>387</td></tr>
+    <tr><td class="lbl">freeCap()</td><td id="v3free">—</td><td>887</td></tr>
     <tr><td class="lbl">freePerAddr()</td><td id="v3per">—</td><td>1</td></tr>
     <tr><td class="lbl">paidPerAddr()</td><td id="v3paid">—</td><td>3</td></tr>
-    <tr><td class="lbl">price()</td><td id="v3price">—</td><td>1e18（1 USDC）</td></tr>
+    <tr><td class="lbl">price()</td><td id="v3price">—</td><td>6e18（6 USDC，不对外公布）</td></tr>
     <tr><td class="lbl">owner()</td><td id="v3owner">—</td><td>当前地址</td></tr>
   </table>
   <div class="dw-msg" id="msg3"></div>
@@ -722,10 +722,10 @@ function verifyUniverse(addr, fresh) {
     $('tbl3').hidden = false;
     $('v3addr').textContent = addr;
     put('v3cap', r[0].toString(), '1387', 'MINT_CAP() 应为 1387，', true);
-    put('v3free', r[1].toString(), '387', 'freeCap() 应为 387，', !!fresh);
+    put('v3free', r[1].toString(), '887', 'freeCap() 应为 887，', !!fresh);
     put('v3per', r[2].toString(), '1', 'freePerAddr() 应为 1，', !!fresh);
     put('v3paid', r[5].toString(), '3', 'paidPerAddr() 应为 3，', !!fresh);
-    put('v3price', r[3].toString(), '1000000000000000000', 'price() 应为 1e18，', !!fresh);
+    put('v3price', r[3].toString(), '6000000000000000000', 'price() 应为 6e18（6 USDC），', !!fresh);
     $('v3owner').textContent = r[4];
     if (sameAddr(r[4], S.acct)) { $('v3owner').className = 'good'; }
     else { $('v3owner').className = 'bad'; hard.push('owner() 是 ' + r[4] + '，不是当前地址 ' + S.acct); }

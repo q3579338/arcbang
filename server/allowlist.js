@@ -42,11 +42,12 @@
  *
  *   排名：积分降序，同分按登记时间升序（先登记的在前）；再同就按地址排，保证稳定。
  *
- *   名次 ≤ ARCBANG_GTD_TOP（默认 100）  → tier='gtd'（保底）
- *   名次 ≤ ARCBANG_FREE_TOP（默认 387） → tier='fcfs'（先到先得）
+ *   名次 ≤ 保底名额（后台 .store/phase.json 的 gtdTop，没配才读 ARCBANG_GTD_TOP，默认 387）
+ *                                       → tier='gtd'（保底）
+ *   名次 ≤ ARCBANG_FREE_TOP（默认不限）  → tier='fcfs'（先到先得）
  *   其余不在名单。
  *
- *   **预热期这个名单是实时的**：榜每次现算（30 秒缓存），今天第 101 名明天可能进前 100。
+ *   **预热期这个名单是实时的**：榜每次现算（30 秒缓存），今天第 388 名明天可能进前 387。
  *   进入 gtd 段之前必须跑一次 `freeze`，把当时的榜定格写进 allowlist.json ——
  *   之后名单不再随积分变（否则有人铸到一半被挤出名单，那是不可解释的）。
  *
@@ -59,12 +60,12 @@
  *   warmup    预热。**一张铸造签名都不签**，页面只有倒计时、积分榜和登记入口。
  *   gtd       保底期。只有 tier='gtd' 的地址能铸，且走免费额度。
  *   fcfs      先到先得期。gtd 与 fcfs 两层都能铸，都走免费额度，
- *             抢到合约的 freeCap（387 枚）用完为止 —— 之后名单里的人也只能付费。
- *   public    公售。谁都能铸，默认付费（1 USDC，每地址最多 3 枚）。
+ *             抢到合约的 freeCap（887 枚）用完为止 —— 之后名单里的人也只能付费。
+ *   public    公售。谁都能铸，默认付费（价格以链上 price() 为准，不对外公布；每地址最多 3 枚）。
  *             名单里还没用掉免费额度的人仍然签 free=true，直到 freeCap 用完。
  *
  *   积分榜和名次是**公开**的（榜上只给地址缩写）；「谁是 gtd」不单独播报 ——
- *   看榜的人自己数得出来前 100 是谁，这没关系，那本来就是公开的规则。
+ *   看榜的人自己数得出来前 387 是谁，这没关系，那本来就是公开的规则。
  *
  * 到点自动切段：ARCBANG_GTD_OPEN_AT / ARCBANG_FCFS_OPEN_AT / ARCBANG_PUBLIC_OPEN_AT
  *   （ISO 时间，可选）。规则是**只前进不后退** —— 时间到了就往后推一段，
@@ -143,9 +144,14 @@ const MAX_APPLIED = 200000;
 /** 榜的缓存窗口。榜是 O(登记数) 的全量重算，预热页会被很多人同时刷。 */
 const BOARD_TTL_MS = 30 * 1000;
 /** **公开的榜只到前 100 名**（2026-09-18 用户拍板）。
-    第 101 名往后不在榜上出现 —— 但他自己的名次、积分、离第 100/387 名差几分
+    第 101 名往后不在榜上出现 —— 但他自己的名次、积分、离保底名额差几分
     照常在 status 里回给**他本人**。这道上限在服务端夹死，前端改不了。 */
 const BOARD_PUBLIC_MAX = 100;
+
+/** 合约里那个免费额度硬上限（ArcUniverse.freeCap 的部署默认值）。
+    2026-09-19 用户拍板：总量 1,387 = 免费 887 + 付费 500。
+    它写在合约里、链上公开可查，所以对外说它**不算承诺名额**。 */
+const NFT_FREE_CAP = 887;
 
 /** 非负整数环境变量。NaN / 负数 / 空一律退默认 —— 配歪一个字就把分值变成 0 太危险。 */
 function envInt(name, def) {
@@ -228,16 +234,29 @@ function inviteMilestones() {
 /** 两档名额。gtdTop 必须 ≤ freeTop，配反了就把 gtd 夹到 freeTop（不是报错崩掉）。 */
 /**
  * 两道名次线。
- *   gtd  = 名次 ≤ ARCBANG_GTD_TOP（默认 100）→ 「白名单」，优先铸造。
+ *   gtd  = 名次 ≤ 保底名额 → 「白名单」，优先铸造。保底名额**后台可改、不用重启**：
+ *          先读 .store/phase.json 的 gtdTop（setPhase 落的那一份），没有才退回
+ *          ARCBANG_GTD_TOP（默认 387）。一律夹进 [1, NFT_FREE_CAP]。
+ *          先到先得那一层的枚数 = NFT_FREE_CAP − gtd，自动算出来，不单独配。
  *   free = 「先到先得」那一层的**可选上限**。2026-09-19 用户改了规则：
  *          先到先得不再看名次，而是看「除登记外至少完成一项任务」，
  *          所以这里默认 0 = **不限**。想再压一道名次线时把它配成正数即可。
  */
-function tops() {
+function tops(ovGtd) {
   const rawFree = envInt('ARCBANG_FREE_TOP', 0);
   const free = rawFree > 0 ? rawFree : Infinity;
-  const gtd = Math.min(envInt('ARCBANG_GTD_TOP', 100), free);
-  return { gtd, free, freeLimited: rawFree > 0 };
+  /* 后台落盘的那一份优先。null / 认不出的数当「没配」退回 env —— 手改坏一个字
+     不该让保底名额悄悄变成 0（那等于把白名单整层关掉）。 */
+  const ovN = Math.floor(Number(ovGtd));
+  const raw = Number.isFinite(ovN) && ovN > 0 ? ovN : envInt('ARCBANG_GTD_TOP', 387);
+  const gtd = Math.min(Math.max(1, Math.min(raw, NFT_FREE_CAP)), free);
+  return {
+    gtd, free, freeLimited: rawFree > 0,
+    freeCap: NFT_FREE_CAP,
+    /* 先到先得的枚数不单独配：免费总量减掉保底，剩下多少就是多少。 */
+    fcfs: Math.max(0, NFT_FREE_CAP - gtd),
+    gtdSource: Number.isFinite(ovN) && ovN > 0 ? 'file' : 'env'
+  };
 }
 
 function rank(p) { const i = PHASES.indexOf(p); return i < 0 ? 0 : i; }
@@ -961,6 +980,9 @@ function create(opts) {
           gtdOpenAt: isoOrNull(j.gtdOpenAt), fcfsOpenAt: isoOrNull(j.fcfsOpenAt),
           publicOpenAt: isoOrNull(j.publicOpenAt), warmupStart: isoOrNull(j.warmupStart),
           warmupDays: Number(j.warmupDays) > 0 ? Math.floor(Number(j.warmupDays)) : null,
+          /* 保底名额。null = 「跟 env 走」。夹进 [1, NFT_FREE_CAP]：手改成 9999 的话
+             实际能免费的也只有 887 枚，让它在读的时候就变成真数字，别在别处再夹一次。 */
+          gtdTop: Number(j.gtdTop) > 0 ? Math.min(Math.floor(Number(j.gtdTop)), NFT_FREE_CAP) : null,
           updatedAt: j.updatedAt || null, by: j.by || null
         };
       }
@@ -986,6 +1008,9 @@ function create(opts) {
     return PHASES.indexOf(b) >= 0 ? b : null;
   }
   function phaseNow(now) { return phaseAt(now, phaseBase(), phaseOverride()); }
+  /** 两档名额的**认后台那一份**版本。create 里一律用它，别直接调模块级的 tops()
+      —— 那个只认 env，用错了的表现是「后台改了保底名额没反应」。 */
+  function topsNow() { const r = phaseRec(); return tops(r ? r.gtdTop : null); }
   function nextOpenNow(now) { return nextOpen(now, phaseBase(), phaseOverride()); }
   function opensNow() { return opensIso(phaseOverride()); }
   function warmupNow() { return warmupWindow(phaseOverride()); }
@@ -1035,6 +1060,7 @@ function create(opts) {
     const rec = {
       phase: base,
       gtdOpenAt: null, fcfsOpenAt: null, publicOpenAt: null, warmupStart: null, warmupDays: null,
+      gtdTop: null,
       updatedAt: new Date().toISOString(),
       by: String(q.by == null ? '' : q.by).trim().slice(0, 64) || 'admin'
     };
@@ -1052,6 +1078,26 @@ function create(opts) {
       const d = Math.floor(Number(q.warmupDays));
       if (!Number.isFinite(d) || d <= 0 || d > 3650) return { ok: false, error: '预热天数要是 1 到 3650 之间的整数' };
       rec.warmupDays = d;
+    }
+    /* 保底名额（白名单人数）。**先到先得的枚数不单独配** —— 它等于免费总量减保底。 */
+    if (!Object.prototype.hasOwnProperty.call(q, 'gtdTop')) rec.gtdTop = cur ? cur.gtdTop : null;
+    else if (q.gtdTop == null || String(q.gtdTop).trim() === '') rec.gtdTop = null;   // 清掉 = 退回 env
+    else {
+      const g = Math.floor(Number(q.gtdTop));
+      if (!Number.isFinite(g) || g < 1 || g > NFT_FREE_CAP) {
+        return { ok: false, error: '保底名额要是 1 到 ' + NFT_FREE_CAP + ' 之间的整数（免费总量就这么多）' };
+      }
+      rec.gtdTop = g;
+    }
+    /* 定格之后**拒绝**改保底名额，不是给个 warning 就放过去：
+       定格那一刻「谁在名单里」已经算死并发出去了，这时候把线往前挪等于把已经
+       在名单里的人踢出去，往后挪等于凭空多出一批没被定格算过的人。要改就先解除定格。 */
+    if (rec.gtdTop !== (cur ? cur.gtdTop : null) && isFrozen()) {
+      return {
+        ok: false,
+        error: '榜单已定格，保底名额不能再改 —— 定格那一刻谁在名单里已经算死了。'
+          + '真要改：先「解除定格」，改完再重新定格。'
+      };
     }
 
     fs.mkdirSync(path.dirname(phaseFile), { recursive: true });
@@ -1082,6 +1128,7 @@ function create(opts) {
       at: rec.updatedAt, from, to, base, by: rec.by,
       rollback: rank(to) < rank(from),
       times: { gtd: op.gtd, fcfs: op.fcfs, public: op.public, warmupStart: rec.warmupStart, warmupDays: rec.warmupDays },
+      gtdTop: rec.gtdTop,
       frozen: isFrozen(),
       warnings
     });
@@ -1111,7 +1158,12 @@ function create(opts) {
       frozen: isFrozen(),
       frozenAt: L.frozenAt || null,
       counts: { gtd: c.gtd, fcfs: c.fcfs, total: c.total },
-      tops: tops(),
+      tops: topsNow(),
+      /* 后台那张卡直接读这三个：保底多少人、先到先得多少枚、免费总量多少。
+         fcfsTop 是算出来的（免费总量 − 保底），后台不给它单独的输入框。 */
+      gtdTop: topsNow().gtd,
+      fcfsTop: topsNow().fcfs,
+      freeCap: NFT_FREE_CAP,
       boardSize: board(now).rows.length,
       applied: appliedCount(),
       phases: PHASES.slice(),
@@ -1945,7 +1997,7 @@ function create(opts) {
    */
   function topRows(n) {
     const lim = Math.max(1, Math.min(Math.floor(Number(n)) || 50, BOARD_PUBLIC_MAX));
-    const T = tops();
+    const T = topsNow();
     const frozen = isFrozen();
     return board().rows.slice(0, lim).map((r) => ({
       addr: r.short, points: r.points,
@@ -1980,7 +2032,7 @@ function create(opts) {
     if (L.frozen) return null;                 // 定格之后榜不再决定名单
     const r = board().byAddr.get(a);
     if (!r) return null;
-    const T = tops();
+    const T = topsNow();
     if (r.rank <= T.gtd) return 'gtd';
     if (T.freeLimited && r.rank > T.free) return null;
     return tasksDone(a, now) >= 1 ? 'fcfs' : null;
@@ -2007,7 +2059,7 @@ function create(opts) {
       对外要走 publicCounts()：名额数量在定格公布之前不出门。 */
   function counts() {
     const L = list();
-    const T = tops();
+    const T = topsNow();
     const seen = new Map();
     for (const [a, row] of L.map) seen.set(a, row.tier);
     if (!L.frozen) {
@@ -2033,10 +2085,10 @@ function create(opts) {
   /**
    * 对外的那一份人数。2026-09-18 用户拍板：**不承诺具体名额**。
    *   定格之前 —— 名额数量一个都不给（gtd / fcfs / total / 上限全是 null）。
-   *     不这么做的话：ARCBANG_GTD_TOP 会从「前 100 名是保底」这句话里被反推出来，
+   *     不这么做的话：保底名额会从「前多少名是保底」这句话里被反推出来，
    *     而那正是我们还没答应下来的东西。榜大于名额时人数本身就是名额。
    *   定格之后 —— 数字已经公布了，照实给。
-   * 合约那个 387 是硬上限，它写在合约里、公开可查，所以它不算「承诺」，可以说。
+   * 合约那个 887 是硬上限，它写在合约里、公开可查，所以它不算「承诺」，可以说。
    */
   function publicCounts() {
     const c = counts();
@@ -2153,7 +2205,7 @@ function create(opts) {
    */
   function freeze(now) {
     const L = list();
-    const T = tops();
+    const T = topsNow();
     const map = new Map(L.map);                 // 人工覆盖先占位
     const rows = board(now).rows;
     for (let i = 0; i < rows.length && i < T.free; i++) {
@@ -2723,7 +2775,7 @@ function create(opts) {
     /* **把 now 传下去**：引爆计分按 UTC 日算「今天」，不传的话自检里那种
        「把时间拨到明天」的场景会拿到今天的数。 */
     const s = scoreOf(addr, now);
-    const T = tops();
+    const T = topsNow();
     const API = apiInfo();
     let freeLeft = null;
     if (readFreeLeft) {
@@ -2741,7 +2793,7 @@ function create(opts) {
       next: nextOpenNow(now),
       /* **不承诺名额**：定格之前这里的数字全是 null（见 publicCounts 的说明）。 */
       counts: publicCounts(),
-      cap: 387,                                    // 合约的硬上限，公开可查，说它不算承诺
+      cap: NFT_FREE_CAP,                           // 合约的硬上限，公开可查，说它不算承诺
       applied: appliedCount(),
       boardSize: board(now).rows.length,
       boardPublicMax: BOARD_PUBLIC_MAX,            // 榜只公布前这么多名
@@ -2898,7 +2950,7 @@ function create(opts) {
     const c = publicCounts();
     return {
       phase: phaseNow(), frozen: c.frozen,
-      gtdTop: c.gtdTop, freeTop: c.freeTop, cap: 387, publicMax: BOARD_PUBLIC_MAX,
+      gtdTop: c.gtdTop, freeTop: c.freeTop, cap: NFT_FREE_CAP, publicMax: BOARD_PUBLIC_MAX,
       total: board().rows.length, pts: pointsTable(), rows: topRows(top)
     };
   }
@@ -2956,7 +3008,7 @@ function create(opts) {
       } catch (e) { console.error('[allowlist] 自动定格失败：' + (e && e.message)); }
     }
     const tier = tierOf(minter);
-    /* public 段的路人：一律付费，**根本不必问链** —— 那 387 枚免费额度是留给名单的，
+    /* public 段的路人：一律付费，**根本不必问链** —— 那 887 枚免费额度是留给名单的，
        不该被公售的人先抢走，所以这里连「还剩几枚」都不需要知道。 */
     if (p === 'public' && !tier) return { ok: true, free: false, phase: p };
     return freeOrPaid(p, readChainFree, p === 'public');
@@ -2997,7 +3049,7 @@ function create(opts) {
     phase: phaseNow, nextOpen: nextOpenNow, opens: opensNow, pinnedPost, PHASES, TIERS,
     // 积分与榜
     scoreOf, board, rankOf, topRows, boardView, gapTo, gapToPrev, nextStep,
-    pointsTable, tops, inviteCount, validInviteCount, shareDaysOf, sharesOf, isVerified, hasCheck,
+    pointsTable, tops: topsNow, inviteCount, validInviteCount, shareDaysOf, sharesOf, isVerified, hasCheck,
     xHandle, followUrl, likeUrl, CHECKS,
     // 名单
     tierOf, tasksDone, counts, publicCounts, isFrozen, freeze, unfreeze,

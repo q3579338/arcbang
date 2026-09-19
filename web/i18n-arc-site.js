@@ -52,7 +52,7 @@
     /* ---- 1,387 ---- */
     '全网只有这么多。一枚宇宙算一千万年，铸满正好 137.87 亿年，就是这个宇宙的岁数。':
       'That is all there will ever be. One universe stands for ten million years, so the full set comes to 13.787 billion — the age of this universe.',
-    '前 387 枚免费 · 每地址限 1 次': 'First 387 free · 1 per address',
+    '前 887 枚免费 · 每地址限 1 次': 'First 887 free · 1 per address',
     '免费期之后的固定价 · 一次铸造 gas 约 0.003 USDC':
       'The flat price after the free tier · about 0.003 USDC of gas per mint',
 
@@ -132,8 +132,8 @@
       'Pick an Arc block. The hash expands on the spot into a full set of physical constants and the engine runs that universe’s whole life. Arc closes a block every 0.5 seconds and nobody has detonated any of them yet. ',
     '引擎开源，可以自己复算一遍': 'The engine is open source — recompute it yourself',
     '看完再决定收不收。全网': 'You decide after you have seen it. There are',
-    '枚，前 387 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后一枚 1 USDC，每个地址最多 3 枚。':
-      'universes in all. The first 387 are free: 1 per address, about 0.003 USDC of gas. After that, 1 USDC each, up to 3 per address.',
+    '枚，前 887 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后 500 枚价格另行公布，每个地址最多 3 枚。':
+      'universes in all. The first 887 are free: 1 per address, about 0.003 USDC of gas. The remaining 500 are paid, price to be announced, up to 3 per address.',
     '转手': 'Resell',
     '铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。':
       'What you mint is a standard NFT. List it on the built-in market, or on OpenSea.',
@@ -154,7 +154,7 @@
     '免费期': 'Free tier',
     '之后': 'After that',
     '二级版税': 'Secondary royalty',
-    '前 387 枚': 'first 387',
+    '前 887 枚': 'first 887',
     '宇宙 137.87 亿岁，一枚 NFT 一千万年；写死在合约里':
       'The universe is 13.787 Gyr old and one NFT is ten million years; hard-coded in the contract',
     '每地址 1 次，只花 gas（约 0.003 USDC）': '1 per address, gas only (about 0.003 USDC)',
@@ -216,7 +216,7 @@
            不做反问，不用破折号串解释。
          · 只写「规则是什么、现在做什么」，不解释实现，不解释合约。
          · 不承诺具体名额。一句英文里都不许出现 "top 100 free" 这种。
-           只说「名额自积分榜前列产生，数量于定格时公布，不超过 387」。
+           只说「名额自积分榜前列产生，数量于定格时公布，不超过 887」。
            「榜只公布前 100 名」说的是页面行为，不是名额，可以讲。
          · 英文同样克制：Get started / View leaderboard / Submit for verification，
            不逐字直译中文。 */
@@ -392,6 +392,11 @@
     '不发行代币，不进行预售': 'No token, no presale',
 
     /* ---- 引爆那一节 ---- */
+    /* 2026-09-19 用户拍板：站内这个产品统一叫「引爆」/ Detonate。
+       '模拟器' / '进入模拟器' / '打开模拟器' 三条**留着不删** —— 别处（市场页、
+       文档页）还在用它们做功能名，删了那边会掉回中文。 */
+    '引爆': 'Detonate',
+    '前往引爆 →': 'Detonate →',
     '模拟器': 'Simulator',
     '选择任意 Arc 区块生成宇宙。每日引爆并广播一次，计 5 分。':
       'Pick any Arc block to generate a universe. Detonate and broadcast once a day for 5 points.',
@@ -466,6 +471,18 @@
       'Detonate any Arc block in the simulator: 1 point each. One point per block, up to 5 a day.',
     '在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次，每日 {1} 次。':
       'Detonate any Arc block in the simulator: {0} point(s) each. One point per block, up to {1} a day.',
+    /* ---- 两张「每日」卡的说明统一成同一句式（2026-09-19 用户截图指出不对称）---- */
+    '在模拟器中引爆任意 Arc 区块，每次 1 分。同一区块只计一次，每日最多 5 次，累计 50 次。':
+      'Detonate any Arc block in the simulator, 1 point each. Each block counts once, up to 5 a day and 50 in total.',
+    '在模拟器中引爆任意 Arc 区块，每次 {0} 分。同一区块只计一次，每日最多 {1} 次，累计 {2} 次。':
+      'Detonate any Arc block in the simulator, {0} point(s) each. Each block counts once, up to {1} a day and {2} in total.',
+    '引爆后广播到 X，每次 3 分。每日最多 3 次，累计 15 次。':
+      'Broadcast a detonation to X, 3 points each. Up to 3 a day and 15 in total.',
+    '引爆后广播到 X，每次 {0} 分。每日最多 {1} 次，累计 {2} 次。':
+      'Broadcast a detonation to X, {0} points each. Up to {1} a day and {2} in total.',
+    /* 胶囊里的那半句：一次都没做过时整句不出现，做过了才跟在「已完成」后面。 */
+    '今日 {0} / {1}': 'Today {0} / {1}',
+    '+3 / 次': '+3 each',
     '连接钱包后显示任务记录。': 'Connect a wallet to view your quest record.',
     '每日引爆': 'Daily detonation',
     /* ---- 引爆计分（2026-09-19）---- */
@@ -589,8 +606,8 @@
     '预热期共 14 天，结束后依次进入白名单、先到先得与公售三个阶段。具体时间以页面顶部倒计时为准。':
       'The warm-up runs for 14 days, followed by the whitelist, first-come and public sale phases. The countdown at the top of the page is authoritative.',
     '免费名额怎么来？': 'How are free mints allocated?',
-    '免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 387 枚。':
-      'Most free mints are allocated from the leaderboard; a portion is reserved for early supporters and partners. The exact count is announced when the leaderboard freezes and never exceeds the 387 allowed by the contract.',
+    '免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 887 枚。':
+      'Most free mints are allocated from the leaderboard; a portion is reserved for early supporters and partners. The exact count is announced when the leaderboard freezes and never exceeds the 887 allowed by the contract.',
     '为什么在 Arc 上？': 'Why Arc?',
     'Arc 以 USDC 作为 gas，单次铸造约 0.003 USDC，无需先行持有其他代币。':
       'Arc uses USDC for gas, about 0.003 USDC per mint, so no other token is required beforehand.',

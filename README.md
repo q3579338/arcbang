@@ -24,7 +24,7 @@ Most universes die: no stable orbits, no atoms, no chemistry, no stars. About 1.
 
 Detonating is free, needs no wallet, and happens in your browser. If you want to keep one, mint it as an
 NFT on Arc, where gas is USDC. **1,387 pieces. No further issuance, ever.** (13.787 billion years of
-cosmic age, one NFT per ten million years.) The first 387 are free, one per address. The price after that will be announced separately.
+cosmic age, one NFT per ten million years.) The first 887 are free, one per address; the remaining 500 are paid, with the price announced separately.
 The cap is hard-coded and no function can raise it.
 
 The derivation is integer-only (keccak256 + modular arithmetic), so the same hash produces a

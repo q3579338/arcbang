@@ -23,6 +23,7 @@ const USER2 = '0x' + 'c0'.repeat(20);
 const SINK = '0x000000000000000000000000000000000000dead';
 const DL = 9999999999n;
 const ONE = 10n ** 18n;
+const PRICE = 6n * ONE;        // 合约默认价（2026-09-19 拍板 6 USDC，不对外公布）
 const big = (h) => BigInt(h === '0x' ? 0 : h);
 
 /* 结局与稀有度的记号，和引擎顺序一致 */
@@ -101,10 +102,10 @@ async function main() {
   {
     const c = await fresh();
     eq(big(await c.view('MINT_CAP()')), 1387n, 'MINT_CAP = 1,387（宇宙年龄 137.87 亿年）');
-    eq(big(await c.view('price()')), ONE, '默认价 1 USDC');
+    eq(big(await c.view('price()')), PRICE, '默认价 6 USDC');
     eq(big(await c.view('MIN_PRICE()')), ONE / 10n, '价格下限 0.1 USDC');
     eq(big(await c.view('MAX_PRICE()')), 20n * ONE, '价格上限 20 USDC');
-    eq(big(await c.view('freeCap()')), 387n, '免费额度 387 枚（其后 1,000 枚付费）');
+    eq(big(await c.view('freeCap()')), 887n, '免费额度 887 枚（其后 500 枚付费）');
     eq(big(await c.view('freePerAddr()')), 1n, '每地址免费 1 次');
     eq(big(await c.view('paidPerAddr()')), 3n, '每地址付费最多 3 枚');
   }
@@ -116,8 +117,8 @@ async function main() {
     eq(big(await c.view('totalSupply()')), 1n, '第一枚免费铸造成功');
     eq(big(await c.view('freeMintCount(address)', addrWord(USER))), 1n, '免费次数记到 1');
     await expectRevert(() => c.mint('free-2', USER, OBS, R.B, 0), null, '第 2 次再想白嫖：revert');
-    await c.mint('paid-2', USER, OBS, R.B, ONE);
-    eq(big(await c.view('totalSupply()')), 2n, '同一地址付 1 USDC 就能继续铸');
+    await c.mint('paid-2', USER, OBS, R.B, PRICE);
+    eq(big(await c.view('totalSupply()')), 2n, '同一地址付 6 USDC 就能继续铸');
     // 另一个地址的免费额度是独立的
     await c.mint('free-other', USER2, OBS, R.B, 0);
     eq(big(await c.view('freeMintCount(address)', addrWord(USER2))), 1n, '免费次数按地址各记各的');
@@ -127,15 +128,15 @@ async function main() {
   {
     const c = await fresh();
     await c.h.call(c.uni, OWNER, sel('setFreeCap(uint256)') + word(0n), 0);   // 关掉免费期
-    await expectRevert(() => c.mint('under', USER, OBS, R.S, ONE / 2n), null, '少付 0.5 USDC：revert');
-    await expectRevert(() => c.mint('over', USER, OBS, R.S, 2n * ONE), null, '多付 1 USDC：revert');
-    await c.mint('exact', USER, OBS, R.S, ONE);
-    eq(await c.h.balance(c.uni), ONE, '铸造款留在合约里（等 owner 提走）');
-    await c.mint('paid-2', USER, OBS, R.S, ONE);
-    await c.mint('paid-3', USER, OBS, R.S, ONE);
+    await expectRevert(() => c.mint('under', USER, OBS, R.S, PRICE - ONE / 2n), null, '少付 0.5 USDC：revert');
+    await expectRevert(() => c.mint('over', USER, OBS, R.S, PRICE + ONE), null, '多付 1 USDC：revert');
+    await c.mint('exact', USER, OBS, R.S, PRICE);
+    eq(await c.h.balance(c.uni), PRICE, '铸造款留在合约里（等 owner 提走）');
+    await c.mint('paid-2', USER, OBS, R.S, PRICE);
+    await c.mint('paid-3', USER, OBS, R.S, PRICE);
     eq(big(await c.view('paidMintCount(address)', addrWord(USER))), 3n, '付费次数记到 3');
-    await expectRevert(() => c.mint('paid-4', USER, OBS, R.S, ONE), null, '同一地址第 4 枚付费：revert（每地址 3 枚）');
-    await c.mint('paid-other', USER2, OBS, R.S, ONE);
+    await expectRevert(() => c.mint('paid-4', USER, OBS, R.S, PRICE), null, '同一地址第 4 枚付费：revert（每地址 3 枚）');
+    await c.mint('paid-other', USER2, OBS, R.S, PRICE);
     eq(big(await c.view('totalSupply()')), 4n, '换个地址照常能铸');
   }
 
@@ -185,7 +186,7 @@ async function main() {
     // b. 反过来：签的是免费，改成付费同样不行
     const freeSig = signMint(c.uni, bh, 0, OBS, R.S, ch, DL, USER, true);
     await expectRevert(
-      () => c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, freeSig, false), ONE),
+      () => c.h.call(c.uni, USER, mintData(bh, 0, OBS, R.S, ch, DL, freeSig, false), PRICE),
       null, '拿免费签名把 free 改成 false：revert（摘要对不上）');
     // c. 签的是免费，却带着钱来：msg.value 必须正好 0
     await expectRevert(
@@ -210,23 +211,23 @@ async function main() {
     await expectRevert(() => c2.mint('cap-2', USER2, OBS, R.B, 0, true),
       null, '免费额度用完后换个地址再来：revert（freeCap 是链上守的）');
     // c. 免费额度用完，付费口照常
-    await c2.mint('cap-3', USER2, OBS, R.B, ONE, false);
+    await c2.mint('cap-3', USER2, OBS, R.B, PRICE, false);
     eq(big(await c2.view('totalSupply()')), 2n, '免费额度满了之后付费照铸');
   }
 
   console.log('\n— free=false：免费额度还没用完也能主动买 —');
   {
-    /* 白名单之外的人在公售段就是这条路：全局免费额度还剩 387 枚，
-       但他签回来的是 free=false，必须付 1 USDC —— 上一版合约在这里会
+    /* 白名单之外的人在公售段就是这条路：全局免费额度还剩 887 枚，
+       但他签回来的是 free=false，必须付 6 USDC —— 上一版合约在这里会
        「看你还在免费期就免费给你」，那正是被薅的那个洞。 */
     const c = await fresh();
     await expectRevert(() => c.mint('nofree-0', USER, OBS, R.B, 0, false),
       null, 'free=false 却不给钱：revert（不再自动转免费）');
-    await c.mint('nofree-1', USER, OBS, R.B, ONE, false);
-    eq(big(await c.view('totalSupply()')), 1n, 'free=false 付 1 USDC：铸成');
+    await c.mint('nofree-1', USER, OBS, R.B, PRICE, false);
+    eq(big(await c.view('totalSupply()')), 1n, 'free=false 付 6 USDC：铸成');
     eq(big(await c.view('freeMintCount(address)', addrWord(USER))), 0n, '付费那一枚不占免费额度');
     eq(big(await c.view('paidMintCount(address)', addrWord(USER))), 1n, '记进付费次数');
-    eq(big(await c.view('freeLeft()')), 386n, '免费余量没被动过');
+    eq(big(await c.view('freeLeft()')), 886n, '免费余量没被动过');
   }
 
   console.log('\n— owner 的手被夹死 —');
@@ -262,11 +263,11 @@ async function main() {
   {
     const c = await fresh();
     await c.h.call(c.uni, OWNER, sel('setFreeCap(uint256)') + word(0n), 0);
-    await c.mint('w1', USER, OBS, R.B, ONE);
-    await c.mint('w2', USER2, OBS, R.B, ONE);
+    await c.mint('w1', USER, OBS, R.B, PRICE);
+    await c.mint('w2', USER2, OBS, R.B, PRICE);
     const to = '0x' + 'ee'.repeat(20);
     await c.h.call(c.uni, OWNER, sel('withdraw(address)') + addrWord(to), 0);
-    eq(await c.h.balance(to), 2n * ONE, 'owner 提走了 2 USDC');
+    eq(await c.h.balance(to), 2n * PRICE, 'owner 提走了 12 USDC');
     eq(await c.h.balance(c.uni), 0n, '合约清空');
   }
 

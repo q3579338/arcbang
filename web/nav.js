@@ -228,7 +228,7 @@
      那条链接上的词永远是同一个，不会出现「顶上写市场、链接写交易」这种漂移。
      brandTag：见文件头「站名口径」。渲染一致，只是文档结构各取所需。 */
   var PAGES = [
-    { key: 'simulator', href: '/app.html',     id: 'navSim',     label: '模拟器', brandTag: 'span' },
+    { key: 'simulator', href: '/app.html',     id: 'navSim',     label: '引爆', brandTag: 'span' },
     /* 任务页（积分榜 / 白名单）：**只有 ARCBANG 有**，别站的导航里不出现。
        位置排在模拟器之后 —— 先是产品，再是这一季的活动。 */
     { key: 'quest',     href: '/quest.html',   id: 'navQuest',   label: '任务',   brandTag: 'h1', arcOnly: true },

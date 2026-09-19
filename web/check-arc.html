@@ -13,7 +13,7 @@
           把别人的名次和分数摆在这里等于把整张榜按地址开放查询。层级、登记与否、
           阶段与开放时间是公开规则，可以说；名次和分数属于那个地址自己，去任务页看。
        2. **不承诺名额**。免费余量给的是链上读回来的实际剩余（服务端那一份缓存），
-          合约里 387 这个硬上限公开可查，可以写；「前 100 名」「还剩几个白名单」一律不写。
+          合约里 887 这个硬上限公开可查，可以写；「前 100 名」「还剩几个白名单」一律不写。
        3. **只读，不签名**。「使用当前钱包」只调 eth_requestAccounts 取地址填进输入框，
           一次签名都不要 —— 查一下资格不该弹出签名窗。
 
@@ -235,7 +235,7 @@ button,input{font-family:inherit}
     <div class="ab-foot-top">
       <div class="ab-brand">ARC宇宙</div>
       <nav class="ab-foot-lnk" aria-label="页脚">
-        <a href="app.html">模拟器</a>
+        <a href="app.html">引爆</a>
         <a href="quest.html">任务</a>
         <a href="how-it-works.html">怎么运作</a>
         <a href="verify.html">自己验证</a>
@@ -315,8 +315,8 @@ button,input{font-family:inherit}
     if (el.firstChild && el.firstChild.nodeType === 3) el.firstChild.nodeValue = T(PHASE_CN[mine]);
     $('rOpenSub').textContent = TF('开放时间：{0}', fmtWhen(opens[mine]));
 
-    /* 免费余量：链上还剩几枚。387 是合约里的硬上限，公开可查，写它不算承诺名额。 */
-    $('rFree').textContent = (st.freeLeft == null ? '—' : st.freeLeft) + ' / 387';
+    /* 免费余量：链上还剩几枚。887 是合约里的硬上限，公开可查，写它不算承诺名额。 */
+    $('rFree').textContent = (st.freeLeft == null ? '—' : st.freeLeft) + ' / 887';
 
     $('rSay').textContent = t === 'gtd'
       ? T('该地址为白名单，可在白名单阶段免费铸造 1 枚。')

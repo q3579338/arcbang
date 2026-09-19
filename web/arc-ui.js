@@ -2854,7 +2854,7 @@
          这里本来就是铸造信息面板，价格该跟铸造按钮站在一起。
          内容是异步到的（freeLeft / price / freeStatus），walletSync() 会按 id 直接补写。 */
       '<div id="bnbHudPrice" class="hud-msg">' + esc(priceLine()) + '</div>' +
-      /* 免费次数用完时按钮直接标价（「1 USDC 铸造」）：
+      /* 免费次数用完时按钮直接按链上 price() 标价（公售公布价格之后才显示数字）：
          点之前就知道这一下要花多少，而不是钱包弹出来才发现要收钱。 */
       (idx < 0 ? '<div class="hud-msg bnb-err">' + esc(T('这个结局算不出来，铸不了')) + '</div>'
                : '<button type="button" id="bnbHudMint" class="hud-btn">' + esc(paidMintLabel() || T('把这个宇宙收下')) + '</button>') +
@@ -3055,7 +3055,7 @@
   }
 
   /* 免费次数用完（或免费期整个结束）之后铸造按钮该写什么。
-     一口价（price()，不按稀有度分档），所以能在点之前就给出确数：「1 USDC 铸造」。
+     一口价（price()，不按稀有度分档），所以能在点之前就给出确数：「N USDC 铸造」。
      价格现读链上（owner 能调 price，写死早晚说谎），没读到就返回 null，调用方保持原文案。
      还有免费次数（或还不知道）时也返回 null —— 免费口的按钮不标价。 */
   /** 公售价现在公不公布（服务端 ARCBANG_SHOW_PRICE，默认 0=不公布）。
@@ -3091,9 +3091,9 @@
      无顶栏的退路（浮空 #bnbWallet）里也还是它。 */
   function priceLine() {
     var paid = paidMintLabel();
-    /* 免费额度是**白名单的**（2026-09-18）：链上还剩 387 枚不等于你能免费领。
+    /* 免费额度是**白名单的**（2026-09-18）：链上还剩 887 枚不等于你能免费领。
        不先判这一条的话，公售段一个名单外的路人会看到「首批免费，只花 gas」，
-       点下去钱包却要 1 USDC —— 展示和真报价打架，比不显示糟得多。
+       点下去钱包却要付钱 —— 展示和真报价打架，比不显示糟得多。
        状态还没问到（PH.got=false）时照旧按链上读数说话，不因为一次网络抖动改口径。 */
     if (PH.got && W.addr && !PH.listed) {
       return (showPrice() && W.price != null

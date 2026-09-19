@@ -73,10 +73,11 @@ contract ArcUniverse {
        写死，没有任何函数能改它：**可调的总量上限不是总量上限。** */
     uint256 public constant MINT_CAP = 1_387;
 
-    /* 付费期价格：**固定 1 USDC**（Arc 的 native 就是 USDC，18 位小数）。
+    /* 付费期价格：**固定 6 USDC**（Arc 的 native 就是 USDC，18 位小数）。
        2026-09-16 链上实测：Arc 上在铸的集合价位是 0 ~ 1.5 USDC，
-       一次 mint 的 gas 只要 0.003 USDC（baseFee 固定 20 gwei）。我们有玩法、有画面，站在那个区间的上沿。 */
-    uint256 public price = 1 ether;
+       一次 mint 的 gas 只要 0.003 USDC（baseFee 固定 20 gwei）。我们有玩法、有画面，付费段只剩 500 枚，所以定在那个区间之上。
+       2026-09-19 用户拍板 6 USDC；**价格不对外公布**（前端 showPrice=false），到付款那一步由链上 price() 现读。 */
+    uint256 public price = 6 ether;
     /* owner 能调价，但只能在这个区间里。上下限写死：
        没有下限，价格可以调到 0，付费期就成了第二个免费期；
        没有上限，调到天价等于单方面停售。 */
@@ -116,7 +117,7 @@ contract ArcUniverse {
        换句话说：**防线从"发币经济学"换成了"必须先玩"**，后者硬得多。
 
        剩下的唯一风险是女巫把 1,387 枚里的免费额度抢光，
-       所以免费期只给 387 枚（2026-09-17 用户拍板：387 免费、1,000 收费），每地址 1 次。
+       所以免费期只给 887 枚（2026-09-19 用户拍板：887 免费、500 收费），每地址 1 次。
 
        两个开关都**只能收紧不能放松**：调大等于事后给自己开免费额度。
        也就是说部署那一刻填的就是终身上限，改不回来。
@@ -125,16 +126,16 @@ contract ArcUniverse {
        上一版把「这一枚该不该免费」交给合约按 totalSupply / freeMintCount 现判，
        于是一个 IP 换 5 个新地址就薅走 5 枚 —— 每个新地址在合约眼里都是干净的。
        现在 free 是 bangSigned 的入参且签进摘要，合约只核对边界，不再替谁决定。 */
-    /* specs/arcbang-v1.md §3.2：前 387 枚免费，每地址 1 次；其后 1,000 枚 1 USDC。
+    /* specs/arcbang-v1.md §3.2：前 887 枚免费，每地址 1 次；其后 500 枚按 price 付费。
        早先那种每地址 10 次不能照搬 —— 那是配着 100 万枚免费额度的，
        放在 1,387 枚的总量下会被几十个地址刷穿。
        两个开关都**只能收紧不能放松**：调大等于事后给自己开免费额度。 */
-    uint256 public freeCap = 387;
+    uint256 public freeCap = 887;
     uint16 public freePerAddr = 1;
     mapping(address => uint16) public freeMintCount;
 
     /* 付费期每地址上限（2026-09-17 用户拍板：「1 个地址限量付费 3 个」）。
-       不是防撸——付费撸走是收入——是让 1,000 枚付费额度分到更多人手里。
+       不是防撸——付费撸走是收入——是让 500 枚付费额度分到更多人手里。
        同 freePerAddr：只能收紧，不能放松；调到 0 等于关掉付费口。 */
     uint16 public paidPerAddr = 3;
     mapping(address => uint16) public paidMintCount;
@@ -274,12 +275,12 @@ contract ArcUniverse {
      * @param free 服务端在摘要里签死的那个标志。合约**不再自己猜**这一枚该不该免费：
      *             猜的那一版等于「谁拿得到签名谁就有一次免费额度」，换地址即可无限复制。
      *             合约仍然守住三条硬边界（全局额度、每地址次数、金额），
-     *             所以就算服务端签错了，也变不出第 388 枚免费。
+     *             所以就算服务端签错了，也变不出第 888 枚免费。
      */
     function _settle(bool free) internal returns (bool wasFree) {
         if (free) {
             /* totalSupply 在 _bang 里已经自增过，所以这里的 `<= freeCap`
-               对应「这一枚之前的 totalSupply < freeCap」：第 387 枚是最后一枚免费的。 */
+               对应「这一枚之前的 totalSupply < freeCap」：第 887 枚是最后一枚免费的。 */
             if (totalSupply > freeCap) revert FreeCapReached();
             if (freeMintCount[msg.sender] >= freePerAddr) revert FreeCapReached();
             if (msg.value != 0) revert WrongPrice();      // 免费口一分钱都不能带

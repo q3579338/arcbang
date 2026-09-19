@@ -33,7 +33,7 @@ const ST = {
   name: 'ARCBANG',
   config: 'config.arc.js',
   stamp: 'arc',
-  title: '镜像宇宙模拟器 · 引爆任意 Arc 区块 · ARCBANG',
+  title: '引爆任意 Arc 区块 · ARCBANG',
   desc: '在线宇宙模拟器：把任意 Arc 区块哈希读成 23 个物理常数，从奇点算到热寂，看它能不能长出原子、恒星、行星和观察者。免费引爆，喜欢再铸成 NFT。',
   landing: 'landing-arc.html',
   /* 任务页（web/quest-arc.html → dist-arc/quest.html + en/quest.html）。
@@ -52,7 +52,7 @@ const ST = {
   warmupTitle: 'ARCBANG 任务 · 积分榜与白名单',
   warmupEn: {
     title: 'ARCBANG quests — leaderboard and allowlist',
-    desc: 'The allowlist is ranked by points: the top 100 get a guaranteed slot and the top 387 mint free, one per address; everyone else buys at 1 USDC, up to 3 per address, and a block hash can only be minted once. Signing up scores, and so do reposts, invites and detonations you broadcast. Detonating and the simulator are free and open right now.'
+    desc: 'The allowlist is ranked by points: the leaders get a guaranteed slot and 887 of the 1,387 mint free, one per address; the remaining 500 are paid, price to be announced, up to 3 per address, and a block hash can only be minted once. Signing up scores, and so do reposts, invites and detonations you broadcast. Detonating and the simulator are free and open right now.'
   },
   /* 资格查询页（web/check-arc.html → dist-arc/check.html + en/check.html）。
      任务页那一块层级提示只在「自己连上钱包并登记之后」才出现；这一页是给任意地址用的
@@ -94,7 +94,7 @@ const ST = {
   enDicts: ['i18n-arc.js', 'i18n-arc-site.js'],
   en: {
     title: 'ARCBANG — Every Arc block is a universe. Free to detonate, mint one.',
-    desc: 'Read an Arc mainnet block hash as 23 physical constants and run that universe to heat death. Detonating is free and needs no wallet; keep one by minting it on Arc, where gas is USDC. 1,387 universes in total, the first 387 free (one per address), 1 USDC after that. No token, ever. Open source engine.'
+    desc: 'Read an Arc mainnet block hash as 23 physical constants and run that universe to heat death. Detonating is free and needs no wallet; keep one by minting it on Arc, where gas is USDC. 1,387 universes in total: the first 887 are free (one per address) and the remaining 500 are paid, price to be announced. No token, ever. Open source engine.'
   }
 };
 const srcName = min ? 'dist/mirror.min.html' : 'dist/mirror.html';
