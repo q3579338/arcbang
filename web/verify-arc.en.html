@@ -119,7 +119,7 @@ node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b
 <thead><tr><th>Contract</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td class="k">ArcUniverse</td><td>The universes. Mint price and free allowance, 5% royalties, and the on-chain SVG fallback for <code>tokenURI</code>.</td></tr>
-<tr><td class="k">MirrorMarket</td><td>Listing, buying and cancelling on the site. The fee ceiling is written into the contract.</td></tr>
+<tr><td class="k">ArcMarket</td><td>Listing, buying and cancelling on the site. No marketplace fee; a sale pays the 5% ERC-2981 royalty.</td></tr>
 </tbody></table></div>
 <p>The deployed addresses are published on this page and in <code>config.js</code> on the day v1 lands. The site reads them from that one file, so the contract shown on the page and the contract your wallet talks to cannot drift apart.</p>
 </section>
@@ -149,13 +149,13 @@ node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b
       <div class="ab-brand">ARCBANG</div>
       <nav class="ab-foot-lnk" aria-label="Footer">
         <a href="/en/">Home</a>
-        <a href="app.html">Simulator</a>
+        <a href="app.html">Detonate</a>
         <a href="/en/how-it-works.html">What this is</a>
         <a href="/en/faq.html">Questions</a>
       </nav>
       <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
     </div>
-    <p class="ab-foot-tag">Universes made from block hashes. Free to detonate, mint the one you want to keep.</p>
+    <p class="ab-foot-tag">Universes generated from block hashes. Detonation is free; minting is optional.</p>
     <div class="ab-legal">
       <span>© 2026 ARCBANG</span>
       <span>A collectible and an experiment, not an investment product.</span>

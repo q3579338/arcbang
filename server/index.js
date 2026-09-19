@@ -808,7 +808,7 @@ async function handle(req, res, u) {
     }
     if (!blk) {
       // C3：查不到就拒绝，不回退常量
-      return json(res, 400, { error: '这个哈希不是 BNB 链上的区块，不给引爆' });
+      return json(res, 400, { error: '这个哈希不是 Arc 链上的区块，无法引爆' });
     }
 
     /* 算卡进 worker 线程池（server/cardpool.js）：缓存命中不进池，未命中才算。

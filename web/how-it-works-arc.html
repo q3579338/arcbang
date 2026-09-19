@@ -9,7 +9,7 @@
      域名只存在于 SITES 表那一处，换域那天不用回来改这些文件。
      **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
 <title>每个 Arc 区块哈希，都是一个宇宙 —— ARCBANG 是怎么回事</title>
-<meta name="description" content="Arc 每半秒出一个块。ARCBANG 把块哈希的 32 个字节当成一个宇宙的物理常数，让它从头跑到底。多半长不出任何东西，偶尔有一个能长出恒星和行星。免费玩，喜欢再铸，全网 1,387 枚。">
+<meta name="description" content="Arc 每半秒产出一个区块。ARCBANG 把区块哈希的 32 个字节当作一个宇宙的物理常数，从头完整推演一遍。多数推演不会形成结构，少数能长出恒星与行星。引爆免费，全网 1,387 枚。">
 <link rel="canonical" href="https://arcbang.xyz/how-it-works.html">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/how-it-works.html">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/how-it-works.html">
@@ -18,7 +18,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/how-it-works.html">
 <meta property="og:title" content="每个 Arc 区块哈希，都是一个宇宙">
-<meta property="og:description" content="把 Arc 区块哈希当成一个宇宙的出厂参数，跑一遍看它能长出什么。九成多什么也长不出来。">
+<meta property="og:description" content="把 Arc 区块哈希当作一个宇宙的初始参数，完整推演一遍，看它能形成什么。九成以上不会形成任何结构。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -26,7 +26,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="每个 Arc 区块哈希，都是一个宇宙">
-<meta name="twitter:description" content="把 Arc 区块哈希当成一个宇宙的出厂参数，跑一遍看它能长出什么。九成多什么也长不出来。">
+<meta name="twitter:description" content="把 Arc 区块哈希当作一个宇宙的初始参数，完整推演一遍，看它能形成什么。九成以上不会形成任何结构。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -88,7 +88,7 @@
     <li><a href="#idea"><span>哪来的宇宙</span></a></li>
     <li><a href="#dead"><span>多数无法成形</span></a></li>
     <li><a href="#alive"><span>少数能够成形</span></a></li>
-    <li><a href="#play"><span>怎么玩</span></a></li>
+    <li><a href="#play"><span>如何使用</span></a></li>
     <li><a href="#supply"><span>1,387 枚</span></a></li>
     <li><a href="#code"><span>代码</span></a></li>
   </ol>
@@ -122,15 +122,15 @@
 </section>
 
 <section class="ad-sec" id="play">
-<h2 class="ad-h2">怎么玩</h2>
-<p>打开模拟器点击「最新」，或填入指定区块高度，例如生日当天或首笔交易所在的区块。计算耗时数秒。无需付费，无需钱包，可无限次查看。</p>
+<h2 class="ad-h2">如何使用</h2>
+<p>打开引爆页点击「最新」，或填入指定区块高度，例如生日当天或首笔交易所在的区块。计算耗时数秒。无需付费，无需钱包，可无限次查看。</p>
 <p>页面另提供沙盒，可自行调整常数并观察结局变化。沙盒结果不上链，也不可铸造。</p>
 </section>
 
 <section class="ad-sec" id="supply">
 <h2 class="ad-h2">1,387 枚</h2>
 <p>总量 1,387 枚，永不增发。取数依据是宇宙年龄 137.87 亿年，一枚 NFT 对应一千万年。</p>
-<p>前 887 枚免费，每个地址 1 枚，仅需支付 gas。Arc 的 gas 以 USDC 结算，单次铸造约合几厘钱，无需另备燃料币。剩下 500 枚的价格另行公布，每个地址最多再铸 3 枚。限 3 枚是为了防止单一地址扫走全部供应，而不是制造稀缺感。</p>
+<p>免费 887 枚（保底 387 + 先到先得 500），每个地址 1 枚，仅需支付 gas。Arc 的 gas 以 USDC 结算，单次铸造约合几厘钱，无需另备燃料币。剩下 500 枚的价格另行公布，每个地址最多再铸 3 枚。限 3 枚是为了防止单一地址扫走全部供应，而不是制造稀缺感。</p>
 <p>铸造结果是标准 ERC-721，可在 OpenSea 等平台转让，版税 5%。</p>
 </section>
 
@@ -156,13 +156,13 @@
       <div class="ab-brand">ARC宇宙</div>
       <nav class="ab-foot-lnk" aria-label="页脚">
         <a href="/">首页</a>
-        <a href="app.html">模拟器</a>
+        <a href="app.html">引爆</a>
         <a href="faq.html">常见问题</a>
         <a href="verify.html">自己验证</a>
       </nav>
       <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
     </div>
-    <p class="ab-foot-tag">用区块哈希造宇宙。免费引爆，喜欢再铸。</p>
+    <p class="ab-foot-tag">以区块哈希生成宇宙。引爆免费，铸造可选。</p>
     <div class="ab-legal">
       <span>© 2026 ARCBANG</span>
       <span>一件收藏品，一次实验，不是投资产品。</span>

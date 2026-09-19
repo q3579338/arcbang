@@ -1343,25 +1343,25 @@ function create(opts) {
   async function submitProof(input, ip, now, fetchImpl) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
-    if (!addr) return { status: 400, body: { error: '地址不对' } };
+    if (!addr) return { status: 400, body: { error: '地址格式不正确' } };
     const sig = String(b.sig == null ? '' : b.sig).trim();
-    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不正确' } };
     let who = null;
     try { who = verifyMessage(registerMessage(addr), sig); }
     catch (e) { return { status: 400, body: { error: '签名验不过' } }; }
     if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
-    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，先去登记' } };
+    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，请先完成登记' } };
 
     const old = proofOf(addr);
     if (old && !old.rejected) {
-      return { status: 409, body: { error: '你已经提交过一条链接了，提交之后不能改。', already: true, proof: old } };
+      return { status: 409, body: { error: '该任务已提交过链接，提交后不可修改。', already: true, proof: old } };
     }
     if (old && (old.submits || 1) >= PROOF_MAX_SUBMITS) {
       return { status: 409, body: { error: '提交次数已用完（最多 ' + PROOF_MAX_SUBMITS + ' 次），将转人工复核。', proof: old } };
     }
     const url = String(b.url == null ? '' : b.url).trim();
     const m = PROOF_RE.exec(url);
-    if (!m) return { status: 400, body: { error: '要给一条推文链接（https://x.com/用户名/status/数字）' } };
+    if (!m) return { status: 400, body: { error: '请提供一条推文链接（https://x.com/用户名/status/数字）' } };
     const mine = xOf(addr);
     if (!mine || m[1].toLowerCase() !== String(mine).toLowerCase()) {
       return { status: 400, body: { error: '这条链接不是 @' + (mine || '?') + ' 发的。请贴你自己那条回复的链接。' } };
@@ -1456,14 +1456,14 @@ function create(opts) {
   async function submitPost(input, ip, now, fetchImpl) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
-    if (!addr) return { status: 400, body: { error: '地址不对' } };
+    if (!addr) return { status: 400, body: { error: '地址格式不正确' } };
     const sig = String(b.sig == null ? '' : b.sig).trim();
-    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不正确' } };
     let who = null;
     try { who = verifyMessage(registerMessage(addr), sig); }
     catch (e) { return { status: 400, body: { error: '签名验不过' } }; }
     if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
-    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，先去登记' } };
+    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，请先完成登记' } };
 
     const P = pointsTable();
     const list = postsOf(addr);
@@ -1475,14 +1475,14 @@ function create(opts) {
     }
     const url = String(b.url == null ? '' : b.url).trim();
     const m = PROOF_RE.exec(url);
-    if (!m) return { status: 400, body: { error: '要给一条推文链接（https://x.com/用户名/status/数字）' } };
+    if (!m) return { status: 400, body: { error: '请提供一条推文链接（https://x.com/用户名/status/数字）' } };
     const mine = xOf(addr);
     if (!mine || m[1].toLowerCase() !== String(mine).toLowerCase()) {
       return { status: 400, body: { error: '这条链接不是 @' + (mine || '?') + ' 发的。' } };
     }
     const clean = 'https://x.com/' + m[1] + '/status/' + m[2];
     if (list.some((x) => x.url === clean)) {
-      return { status: 409, body: { error: '这一条已经交过了。' } };
+      return { status: 409, body: { error: '这条链接已经提交过了。' } };
     }
     const at = new Date(now == null ? Date.now() : now).toISOString();
     mutState((nn) => {
@@ -1573,7 +1573,7 @@ function create(opts) {
   function claim(input, now) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
-    if (!addr) return { status: 400, body: { error: '地址不对' } };
+    if (!addr) return { status: 400, body: { error: '地址格式不正确' } };
     const raw = String(b.task || '').trim().toLowerCase();
     const task = ENGAGE_PARTS.indexOf(raw) >= 0 ? 'engage' : raw;
     if (CLAIM_TASKS.indexOf(task) < 0) {
@@ -1588,12 +1588,12 @@ function create(opts) {
     }
     const key = task === 'engage' ? (addr + '|engage:' + post.tweetId) : (addr + '|' + task);
     const sig = String(b.sig == null ? '' : b.sig).trim();
-    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不正确' } };
     let who = null;
     try { who = verifyMessage(registerMessage(addr), sig); }
     catch (e) { return { status: 400, body: { error: '签名验不过' } }; }
     if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
-    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，先去登记' } };
+    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，请先完成登记' } };
     if (isDistrusted(addr)) {
       return { status: 403, body: { error: '该地址已被抽查撤销，互动需人工复核。' } };
     }
@@ -2281,7 +2281,7 @@ function create(opts) {
   function register(input, ip, session) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
-    if (!addr) return { status: 400, body: { error: '地址不对（要 0x 开头的 40 位十六进制，且不能是零地址）' } };
+    if (!addr) return { status: 400, body: { error: '地址格式不正确（应为 0x 开头的 40 位十六进制，且不能是零地址）' } };
     const sess = session && session.id && session.handle ? session : null;
     const x = sess ? normX(sess.handle) : normX(b.xHandle);
     if (!x) return { status: 400, body: { error: 'X 用户名不对（1–15 位字母、数字或下划线）' } };
@@ -2295,7 +2295,7 @@ function create(opts) {
       }
     }
     const sig = String(b.sig == null ? '' : b.sig).trim();
-    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对（要 65 字节的 0x 串）' } };
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不正确（应为 65 字节的 0x 串）' } };
 
     /* 邀请码可选。空串 / 认不出的码一律**当没带**（不是报错）——
        别让一个抄错的码把人挡在登记之外。但自己邀自己要明说，那是在刷数。 */
@@ -2309,7 +2309,7 @@ function create(opts) {
        不该先扣掉他一次每日额度。 */
     let who = null;
     try { who = verifyMessage(registerMessage(addr), sig); }
-    catch (e) { return { status: 400, body: { error: '签名验不过，换个钱包重签一次' } }; }
+    catch (e) { return { status: 400, body: { error: '签名验证未通过，请重新签名' } }; }
     if (String(who).toLowerCase() !== addr) {
       return { status: 400, body: { error: '签名是另一个地址签的，和你填的地址对不上' } };
     }
@@ -2326,7 +2326,7 @@ function create(opts) {
       return {
         status: 409,
         body: {
-          error: '这个地址已经登记过了，登记内容不能修改。要改 X 用户名请联系我们。',
+          error: '该地址已完成登记，登记内容不可修改。如需更改 X 用户名请联系我们。',
           already: true, code: old.code, x: xOf(addr), at: old.at,
           xSource: old.xSource || 'typed',
           ref: old.ref || null, points: scoreOf(addr).total
@@ -2375,16 +2375,16 @@ function create(opts) {
   function share(input, ip, now) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
-    if (!addr) return { status: 400, body: { error: '地址不对' } };
+    if (!addr) return { status: 400, body: { error: '地址格式不正确' } };
     const hash = String(b.hash == null ? '' : b.hash).trim();
     if (!HASH_RE.test(hash)) return { status: 400, body: { error: '要给被分享的区块哈希' } };
     const sig = String(b.sig == null ? '' : b.sig).trim();
-    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不正确' } };
     let who = null;
     try { who = verifyMessage(registerMessage(addr), sig); }
     catch (e) { return { status: 400, body: { error: '签名验不过' } }; }
     if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
-    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，先去登记白名单' } };
+    if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，请先完成登记' } };
 
     const cur = sharesOf(addr, now);
     const day = cur.day;
@@ -2439,11 +2439,11 @@ function create(opts) {
   async function bang(input, ip, now, readBlock) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
-    if (!addr) return { status: 400, body: { error: '地址不对' } };
+    if (!addr) return { status: 400, body: { error: '地址格式不正确' } };
     const hash = String(b.hash == null ? '' : b.hash).trim().toLowerCase();
     if (!HASH_RE.test(hash)) return { status: 400, body: { error: '要给引爆的那个区块哈希' } };
     const sig = String(b.sig == null ? '' : b.sig).trim();
-    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不正确' } };
     let who = null;
     try { who = verifyMessage(registerMessage(addr), sig); }
     catch (e) { return { status: 400, body: { error: '签名验不过' } }; }
@@ -2489,7 +2489,7 @@ function create(opts) {
         console.error('[allowlist] 引爆计分读链失败：' + (e && e.message));
         return { status: 503, body: { error: '链上节点暂时打不通，稍后再试' } };
       }
-      if (!blk) return { status: 400, body: { error: '这个哈希在链上查不到，不是一个真实区块' } };
+      if (!blk) return { status: 400, body: { error: '这个哈希在链上查不到，不是一个真实区块。' } };
     }
 
     const day = cur.day;
@@ -2966,14 +2966,14 @@ function create(opts) {
     const p = phaseNow(now);
     const o = opensNow();
     const nx = nextOpenNow(now);
-    const when = (iso) => (iso ? '（' + iso + '）' : '（时间待定，看站上的倒计时）');
+    const when = (iso) => (iso ? '（' + iso + '）' : '（时间待定，以页面顶部倒计时为准）');
 
     if (p === 'warmup') {
       return {
         ok: false, status: 403, code: 'WARMUP', phase: p, opens: o, next: nx,
-        error: '铸造还没开。保底期' + when(o.gtd) + '开，先到先得期' + when(o.fcfs)
-          + '开，公售' + when(o.public) + '开。现在可以先去攒积分（登记 / 转发 / 邀请 / 分享），'
-          + '名单按积分榜排；引爆和模拟器随时都能玩。'
+        error: '铸造尚未开放。白名单阶段' + when(o.gtd) + '开放，先到先得阶段' + when(o.fcfs)
+          + '开放，公售' + when(o.public) + '开放。可先完成登记、关注、推文互动、邀请与引爆任务累积积分，'
+          + '名单由积分榜产生；引爆随时免费，无需连接钱包。'
       };
     }
     const tier = tierOf(minter);
@@ -2981,14 +2981,14 @@ function create(opts) {
       return {
         ok: false, status: 403, code: 'NOT_GTD', phase: p, opens: o, next: nx,
         /* 话里**不报具体名额**（用户拍板不承诺）：只说「榜首若干名」。 */
-        error: (tier ? '你在白名单里，但现在是保底期（积分榜榜首若干名）。先到先得期' + when(o.fcfs) + '开。'
-          : '你不在白名单里。先到先得期' + when(o.fcfs) + '开，公售' + when(o.public) + '开。')
+        error: (tier ? '该地址在名单内，但当前为白名单阶段，仅白名单地址可铸造。先到先得阶段' + when(o.fcfs) + '开放。'
+          : '该地址不在白名单内。先到先得阶段' + when(o.fcfs) + '开放，公售' + when(o.public) + '开放。')
       };
     }
     if (p === 'fcfs' && !tier) {
       return {
         ok: false, status: 403, code: 'NOT_LISTED', phase: p, opens: o, next: nx,
-        error: '你不在白名单里（名单取积分榜前列，定格时已公布）。公售' + when(o.public) + '开，到时候人人都能铸。'
+        error: '该地址不在名单内（名单由积分榜产生，已于定格时公布）。公售' + when(o.public) + '开放，届时所有地址均可铸造。'
       };
     }
     return null;

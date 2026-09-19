@@ -941,12 +941,12 @@
         copyTextAndImage(full, copyImgSrc).then(function (r) {
           cp.disabled = false;
           cpSpan.textContent = T('已复制 ✓');
-          say(r.image ? '' : T('图片没能复制（这个浏览器不支持），文案已经进剪贴板了 —— 图片可以在卡片上右键另存。'), 'warn');
+          say(r.image ? '' : T('该浏览器不支持复制图片，文案已复制。图片可在卡片上右键另存。'), 'warn');
         }, function () {
           cp.disabled = false;
           /* 剪贴板被浏览器整个拦下时给一条能自己走下去的退路：
              正文就摆在上面的预览里，手动选中就能复制 */
-          cpSpan.textContent = T('复制不了 —— 手动选中上面的文案');
+          cpSpan.textContent = T('无法自动复制，请手动选中上方文案');
           say('');
         });
       });
@@ -961,7 +961,7 @@
           clearTimeout(lk.__t);
           lk.__t = setTimeout(function () { lk.classList.remove('ok'); lkSpan.textContent = T('复制链接'); }, 1500);
         }
-        function bad() { say(T('复制不了 —— 手动选中上面的文案'), 'warn'); }
+        function bad() { say(T('无法自动复制，请手动选中上方文案'), 'warn'); }
         if (nc && nc.writeText) nc.writeText(link).then(okd, bad); else bad();
       });
       /* 微信：二维码是**本地算出来的**（qrEncode），不调任何第三方二维码接口 ——
@@ -1445,7 +1445,7 @@
     '<div class="bnb-head">',
     '  <span class="bnb-title">ARCBANG</span>',
     '  <span class="bnb-sub">免费引爆，喜欢再铸造</span>',
-    '  <button type="button" class="bnb-btn bnb-how" id="bnbHow" title="重看三步引导">怎么玩</button>',
+    '  <button type="button" class="bnb-btn bnb-how" id="bnbHow" title="重看三步引导">使用说明</button>',
     '  <a class="bnb-mk" id="bnbMarket" href="' + MARKET_URL + '" title="挂单、买卖宇宙 NFT 与资源（独立页面）">市场 ↗</a>',
     '</div>',
     '<div class="bnb-body">',
@@ -1458,8 +1458,8 @@
        这里抬到首屏，两个是同一个开关（见 wireGpu），状态双向同步。 */
     '  <div class="bnb-gpu" id="bnbGpuRow" hidden>',
     '    <label class="gpu-sw" id="bnbGpuLab"><input type="checkbox" id="bnbGpuChk"><span>WebGPU 显卡加速</span></label>',
-    '    <span class="gpu-st" id="bnbGpuSt">正在检测这台机器能不能用…</span>',
-    '    <button type="button" class="bnb-btn gpu-help" id="bnbGpuHelp" title="看看这台机器能不能开 WebGPU、该去哪儿开">怎么开？</button>',
+    '    <span class="gpu-st" id="bnbGpuSt">正在检测本机支持情况…</span>',
+    '    <button type="button" class="bnb-btn gpu-help" id="bnbGpuHelp" title="检测本机是否支持 WebGPU，以及如何开启">如何开启</button>',
     '  </div>',
     '  <div class="bnb-card" id="bnbCard" hidden>',
     '    <div id="bnbHash" class="bnb-hash"></div>',
@@ -1467,14 +1467,14 @@
     /* 这个区块本身值得说一句的时候才出现（目前只有创世区块用到） */
     '    <div id="bnbNote" class="bnb-note" hidden></div>',
     '    <div id="bnbTop"></div>',
-    '    <details id="bnbParams"><summary>想细看：这个宇宙的物理常数被推成了什么样</summary>',
+    '    <details id="bnbParams"><summary>查看这个宇宙的物理常数</summary>',
     '      <div class="pin" id="bnbParamsIn"></div></details>',
     '    <div class="bnb-row" id="bnbActions" hidden>',
     '      <button type="button" class="bnb-btn fire" id="bnbFire">引爆这个宇宙</button>',
     /* 「不看就收下」= 不引爆、不看结局，直接铸造。结局在本地照算（合约要这个参数），
        但一个字都不显示——想留悬念的人可以先收着，回头自己炸开看。 */
     '      <button type="button" class="bnb-btn" id="bnbMintNow"',
-    '        title="不引爆、也不看结局，直接铸造成 NFT——留着以后自己炸开看">不看就收下</button>',
+    '        title="不引爆、不查看结局，直接铸造为 NFT，留待之后开启。">直接铸造</button>',
     '      <button type="button" class="bnb-btn" id="bnbFix" hidden>干预沙盒</button>',
     '      <span id="bnbNowMsg" class="bnb-note"></span>',
     '    </div>',
@@ -1489,7 +1489,7 @@
     '        <button type="button" class="bnb-btn" id="bnbGenesis" title="这条链的第一个区块（0 号）">创世区块</button>',
     '        <button type="button" class="bnb-btn" id="bnbRandom">随机区块</button>',
     '        <input type="text" id="bnbInput" placeholder="区块高度，或直接粘贴 0x 开头的 64 位哈希" autocomplete="off">',
-    '        <button type="button" class="bnb-btn" id="bnbLoad">取这个</button>',
+    '        <button type="button" class="bnb-btn" id="bnbLoad">载入</button>',
     '      </div>',
     '    </div>',
     '  </details>',
@@ -1580,7 +1580,7 @@
     /* 状态句永远以我们自己探到的结果为准：app.js 那句只判断 navigator.gpu 在不在，
        在本机会把"有 API 没适配器"说成"支持"。只有一种情况要借 #gpuNote —— 开关被锁住、
        而锁它的理由我们探不出来（地址栏 ?mode=xxx），那时把它的理由接在后面。 */
-    var txt = s ? s.short : T('正在检测这台机器能不能用…');
+    var txt = s ? s.short : T('正在检测本机支持情况…');
     if (src && src.disabled && s && s.id === 'ok') {
       var note = $('gpuNote');
       if (note && note.textContent) txt += '　·　' + note.textContent;
@@ -2353,7 +2353,7 @@
       /* 手机浏览器多半没有注入环境：选择器会给「在 Binance App 里打开」的深链；
          桌面端它会说去装扩展。话术不再点名小狐狸 —— 币安钱包同样是正路。 */
       if (root.MirrorWallet && root.MirrorWallet.pick) root.MirrorWallet.pick({ force: true });
-      report(esc(T('未检测到钱包扩展。请安装浏览器钱包后重试；移动端可在钱包应用内打开本页。引爆与模拟器不受影响。')), 'bnb-err');
+      report(esc(T('未检测到钱包扩展。请安装浏览器钱包后重试；移动端可在钱包应用内打开本页。引爆不受影响。')), 'bnb-err');
       return;
     }
     S.busy = true;
@@ -3034,7 +3034,7 @@
       },
       switchAccount: function () {
         var p = provider();
-        if (!p || !p.request) return Promise.reject(new Error(T('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+        if (!p || !p.request) return Promise.reject(new Error(T('未检测到钱包扩展（MetaMask 等）')));
         /* wallet_requestPermissions 才会让钱包重新弹账户选择；
            4001 = 用户点了取消，**不能**退回 eth_requestAccounts（它不弹窗、
            立刻还你原账户，页面就会把「没换」说成「已切」—— 市场页踩过）。

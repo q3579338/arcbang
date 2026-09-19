@@ -34,7 +34,7 @@ const ST = {
   config: 'config.arc.js',
   stamp: 'arc',
   title: '引爆任意 Arc 区块 · ARCBANG',
-  desc: '在线宇宙模拟器：把任意 Arc 区块哈希读成 23 个物理常数，从奇点算到热寂，看它能不能长出原子、恒星、行星和观察者。免费引爆，喜欢再铸成 NFT。',
+  desc: '在线宇宙模拟器：把任意 Arc 区块哈希读成 23 个物理常数，从奇点推演到热寂，看它能否形成原子、恒星、行星与观察者。引爆免费，铸造可选。',
   landing: 'landing-arc.html',
   /* 任务页（web/quest-arc.html → dist-arc/quest.html + en/quest.html）。
      它**永远落盘**：铸造页在放号还没轮到时把人指过去，首页横幅与顶栏页签也指着它，
@@ -52,7 +52,7 @@ const ST = {
   warmupTitle: 'ARCBANG 任务 · 积分榜与白名单',
   warmupEn: {
     title: 'ARCBANG quests — leaderboard and allowlist',
-    desc: 'The allowlist is ranked by points: the leaders get a guaranteed slot and 887 of the 1,387 mint free, one per address; the remaining 500 are paid, price to be announced, up to 3 per address, and a block hash can only be minted once. Signing up scores, and so do reposts, invites and detonations you broadcast. Detonating and the simulator are free and open right now.'
+    desc: '1,387 universe NFTs in all, with no further issuance. 887 mint free — 387 guaranteed slots plus 500 first-come — one per address; the other 500 are paid, price to be announced, up to 3 per address, and a block hash can only be minted once. Signing up, following, engaging with posts, inviting others and detonating all score points, and the allowlist comes from that leaderboard. Detonating is free and needs no wallet.'
   },
   /* 资格查询页（web/check-arc.html → dist-arc/check.html + en/check.html）。
      任务页那一块层级提示只在「自己连上钱包并登记之后」才出现；这一页是给任意地址用的
@@ -188,6 +188,10 @@ if (html.indexOf(STAMP) >= 0) {
 const SITE_STAMP = '<script>window.ARCBANG_SITE="' + ST.stamp + '"</script>\n';
 
 html = html.replace('<title>镜像宇宙模拟器</title>', '<title>' + ST.title + '</title>');
+/* 首屏那一行也是底稿（镜像宇宙）的身份，站点版换成本站的：
+   标题里不能留旧项目名，副标题里的常数个数要跟文档页（23）对上。 */
+html = html.replace('<h1 class="hero-title">镜像宇宙模拟器</h1>', '<h1 class="hero-title">' + ST.name + ' 宇宙模拟器</h1>');
+html = html.replace('<p class="hero-sub">用 20 个物理学界公认的参数，真算一个宇宙的一生</p>', '<p class="hero-sub">用 23 个物理常数，完整推演一个宇宙的一生</p>');
 /* 社交预览图：web/assets/og/home-arc.png */
 const OG_IMG = ST.og;
 /* SEO 头（描述、canonical、OG/Twitter 卡、图标）。离线包 dist/mirror.html 不带这些，

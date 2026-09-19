@@ -24,7 +24,7 @@
     "用 20 个物理学界公认的参数，真算一个宇宙的一生": "Twenty physical constants science agrees on. One universe, computed end to end.",
     "模拟给出的是像我们的宇宙，不是我们的宇宙": "What you get is a universe like ours, not our universe",
     "随机引爆一个宇宙": "Detonate a random universe",
-    "一键就有东西看": "One click, something to look at",
+    "一键得到一个可查看的宇宙": "One click, one universe to look at",
     "搜索一个宇宙": "Search for a universe",
     "连续抽样直到命中目标": "Sample continuously until it hits your target",
     "自己调参数": "Tune the parameters yourself",
@@ -56,7 +56,7 @@
     "关于与来源": "About & sources",
     "里。": "",
     "粒子": "Particles",
-    "极低（低配机）": "Lowest (low-end machines)",
+    "极低（低配置设备）": "Lowest (low-end devices)",
     "低": "Low",
     "中": "Medium",
     "高": "High",
@@ -328,7 +328,7 @@
     "上一步": "Back",
     "下一步": "Next",
     "开始玩": "Start playing",
-    "正在检测这台机器能不能用…": "Checking whether this machine can use it…",
+    "正在检测本机支持情况…": "Checking whether this machine supports it…",
     "这台机器可以用 WebGPU": "This machine can use WebGPU",
     "浏览器支持，但这台机器没有可用的显卡适配器 —— 会自动回退 WebGL2": "The browser supports it, but this machine has no usable GPU adapter — it falls back to WebGL2",
     "这个浏览器没有 WebGPU —— 会一直用 WebGL2": "This browser has no WebGPU — it will always use WebGL2",
@@ -436,9 +436,7 @@
      「{0} · 点开看完整地址…」）全部沿用 i18n.js 核心表与 i18n-market.js 的现成
      全局词条 —— 别在这里重复收，收了就是两处维护一句话。 */
   I.add({
-    '没有检测到钱包扩展（MetaMask / 币安钱包 等）':
-      'No wallet extension detected (MetaMask, Binance Wallet, …)',
-    '未检测到钱包扩展（MetaMask、币安钱包等）': 'No wallet extension detected (MetaMask, Binance Wallet and similar)',
+    '未检测到钱包扩展（MetaMask 等）': 'No wallet extension detected (MetaMask and similar)',
     '本页已断开。钱包里的授权还在 —— 要彻底移除请到钱包扩展的「已连接的网站」':
       'Disconnected on this page. The wallet-side authorization is still there — to remove it fully, open your wallet extension’s “Connected sites”.',
     '本页已断开连接。钱包中的授权仍然存在，如需彻底移除请在钱包扩展的「已连接的网站」中操作。':
@@ -491,10 +489,10 @@
      收了就是两处维护一句话。'个人中心' 本身在 i18n-market.js 的全局导航段
      （钱包浮层四页都要翻它）。 */
   I.add({
-    '镜像宇宙 · 个人中心': 'Mirror Universe · Profile',
+    'ARCBANG · 个人中心': 'ARCBANG · Profile',
     '连接钱包查看个人中心': 'Connect a wallet to view your profile',
-    '本页展示你的余额、推广、资产与销毁记录，需先连接钱包。':
-      'This page shows your balance, referrals, assets and burn records. Connect a wallet first.',
+    '本页展示你的资产与铸造记录，需先连接钱包。':
+      'This page shows your assets and mint history. Connect a wallet first.',
     'BANG 余额': 'BANG balance',
     /* 单位名由 config.js 的 chain.currency 填（tBNB / BNB）—— 整句进词典，英文语序不同。 */
     '{0} 余额': '{0} balance',

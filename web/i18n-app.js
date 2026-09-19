@@ -691,7 +691,7 @@
     '广播这枚': 'Broadcast this one',
     '复制链接+文案': 'Copy link + text',
     '已复制 ✓': 'Copied ✓',
-    '复制不了 —— 手动选中上面的文案': 'Copy failed — select the text above by hand',
+    '无法自动复制，请手动选中上方文案': 'Copy failed — select the text above by hand',
     '广播到 X': 'Broadcast on X',
     /* 渠道网格（用户 2026-08-21 加渠道）：专名 X/Telegram/Facebook/Reddit/WhatsApp
        中英同形不进词典，进词典的只有这两条。与市场分册同句同译。 */
@@ -737,18 +737,18 @@
     '每个 BNB 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命':
       'Every BNB block hash is a complete set of physical laws: detonate it and see whether such a universe can grow life',
     '免费引爆，喜欢再铸造': 'Detonate free — mint the ones you like',
-    '怎么玩': 'How to play',
+    '使用说明': 'How it works',
     '重看三步引导': 'Replay the three-step intro',
     '市场 ↗': 'Market ↗',
     '挂单、买卖宇宙 NFT 与资源（独立页面）': 'List, buy and sell universe NFTs and assets (separate page)',
     '给我一个宇宙': 'Give me a universe',
     '再给我一个': 'Give me another',
     'WebGPU 显卡加速': 'WebGPU GPU acceleration',
-    '怎么开？': 'How do I turn it on?',
-    '看看这台机器能不能开 WebGPU、该去哪儿开': 'See whether this machine can run WebGPU, and where to turn it on',
+    '如何开启': 'How to turn it on',
+    '检测本机是否支持 WebGPU，以及如何开启': 'Check whether this machine supports WebGPU, and how to turn it on',
     '　·　下次引爆生效（当前 3D 视图不变）': '　·　takes effect on the next detonation (the current 3D view stays)',
-    '想细看：这个宇宙的物理常数被推成了什么样': 'A closer look: where this universe\'s physical constants ended up',
-    '不看就收下': 'Mint it unseen',
+    '查看这个宇宙的物理常数': 'The physical constants of this universe',
+    '直接铸造': 'Mint without viewing',
     '不引爆、不查看结局，直接铸造为 NFT，留待之后开启。':
       'Mint it as an NFT without detonating it or seeing the outcome, and open it later.',
     '在沙盒中调整该宇宙的创世参数并即时查看结果；不花费、不上链。':
@@ -760,7 +760,7 @@
     '这条链的第一个区块（0 号）': 'The first block of this chain (#0)',
     '随机区块': 'Random block',
     '区块高度，或直接粘贴 0x 开头的 64 位哈希': 'Block height, or paste a 64-digit hash starting with 0x',
-    '取这个': 'Use this one',
+    '载入': 'Load',
     '更多：我保存的宇宙 · 怎么操作 · 快捷键 · 已经铸造成 NFT 的宇宙':
       'More: my saved universes · how to play · shortcuts · universes already minted as NFTs',
     /* index.html 底稿上的画布与控件标签（读屏用） */
@@ -903,8 +903,8 @@
     '连接失败': 'connection failed',
     /* 铸造入口的钱包话术（不再点名小狐狸 —— 币安钱包同样是正路） */
     /* 这一句原来点名 Binance App —— ARCBANG 在 Arc 链上，那是抄过来忘了改的。 */
-    '未检测到钱包扩展。请安装浏览器钱包后重试；移动端可在钱包应用内打开本页。引爆与模拟器不受影响。':
-      'No wallet extension detected. Install a browser wallet and try again; on mobile, open this page inside your wallet app. Detonation and the simulator are unaffected.',
+    '未检测到钱包扩展。请安装浏览器钱包后重试；移动端可在钱包应用内打开本页。引爆不受影响。':
+      'No wallet extension detected. Install a browser wallet and try again; on mobile, open this page inside your wallet app. Detonation is unaffected.',
     /* 钱包选择器（web/wallet.js 的 pick，词条走 app 命名空间：app 页与市场页都载这一册） */
     '没检测到钱包': 'No wallet detected',
     '怎么连？': 'How do I connect?',

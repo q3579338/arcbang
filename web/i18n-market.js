@@ -57,16 +57,16 @@
     /* ---------------- 页面引子与标题 ---------------- */
     '{0} · 只上架带参数的宇宙。没连钱包也能看。':
       '{0} · only universes with parameters are listed. Browsable without a wallet.',
-    '未连钱包 · 只读浏览（走公开 RPC）': 'No wallet · read-only browsing (public RPC)',
+    '未连接钱包 · 只读浏览': 'No wallet · read-only browsing',
     '已断开 · 只读浏览（走公开 RPC）': 'Disconnected · read-only browsing (public RPC)',
     '在售的宇宙': 'Universes for sale',
     '销毁量与救活记录是两项关键指标：区块可无限产生，BANG 不能':
       'Burn totals and rescue records are the two key columns: blocks are unlimited, BANG is not',
     '最近铸造的宇宙': 'Recently minted universes',
     '未挂单，仅展示链上现有的宇宙': 'Not listed for sale; a view of what currently exists on-chain',
-    '挂一单': 'Post a listing',
+    '挂单出售': 'Post a listing',
     '选宇宙 → 填价 → 授权 → 挂单': 'Pick a universe → set a price → approve → list',
-    '我挂着的单': 'My listings',
+    '我的挂单': 'My listings',
 
     /* ---------------- 合约与配置 ---------------- */
     '宇宙 NFT': 'Universe NFT',
@@ -357,7 +357,7 @@
     '在新标签打开': 'Open in a new tab',
     '复制链接+文案': 'Copy link + text',
     '已复制 ✓': 'Copied ✓',
-    '复制不了 —— 手动选中上面的文案': 'Copy failed — select the text above by hand',
+    '无法自动复制，请手动选中上方文案': 'Copy failed — select the text above by hand',
     '无法复制，请手动选中上方文案': 'Copying failed. Select the text above manually.',
     '广播到 X': 'Broadcast on X',
     /* 渠道网格（用户 2026-08-21 加渠道）：专名 X/Telegram/Facebook/Reddit/WhatsApp
@@ -370,7 +370,7 @@
     '正在准备图片…': 'Preparing the image…',
     '复制中…': 'Copying…',
     /* 剪贴板装不下图片时**必须明说**，否则用户以为图丢了。整句进词典 */
-    '图片没能复制（这个浏览器不支持），文案已经进剪贴板了 —— 图片可以在卡片上右键另存。':
+    '该浏览器不支持复制图片，文案已复制。图片可在卡片上右键另存。':
       'The image could not be copied (this browser does not support it). The text is on the clipboard — you can right-click the card image and save it.',
     '图片未能复制（当前浏览器不支持），文案已复制到剪贴板。可在卡片上右键另存图片。':
       'The image could not be copied (unsupported in this browser); the text is on the clipboard. Right-click the card to save the image.',

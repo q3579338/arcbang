@@ -8,7 +8,7 @@
      那一步等于空操作，换域时只改 ST.base 一处即可。
      **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
 <title>ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次</title>
-<meta name="description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点算到热寂，93% 的宇宙长不出任何东西。Arc 上 gas 就是 USDC：免费引爆任意区块，喜欢再铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发代币，引擎开源，高维宇宙真的在高维里算。">
+<meta name="description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点推演到热寂，93% 的宇宙不会形成任何结构。Arc 上 gas 即 USDC：免费引爆任意区块，可选择铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发行代币，引擎开源，高维宇宙在高维中完整计算。">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/">
 <link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/">
@@ -17,7 +17,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/">
 <meta property="og:title" content="ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次">
-<meta property="og:description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点算到热寂，93% 的宇宙长不出任何东西。Arc 上 gas 就是 USDC：免费引爆任意区块，喜欢再铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发代币，引擎开源，高维宇宙真的在高维里算。">
+<meta property="og:description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点推演到热寂，93% 的宇宙不会形成任何结构。Arc 上 gas 即 USDC：免费引爆任意区块，可选择铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发行代币，引擎开源，高维宇宙在高维中完整计算。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -25,7 +25,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次">
-<meta name="twitter:description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点算到热寂，93% 的宇宙长不出任何东西。Arc 上 gas 就是 USDC：免费引爆任意区块，喜欢再铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发代币，引擎开源，高维宇宙真的在高维里算。">
+<meta name="twitter:description" content="把 Arc 主网的区块哈希读成 23 个物理常数，从奇点推演到热寂，93% 的宇宙不会形成任何结构。Arc 上 gas 即 USDC：免费引爆任意区块，可选择铸成 NFT，全网 1,387 枚，一个哈希只铸一次。不发行代币，引擎开源，高维宇宙在高维中完整计算。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -504,7 +504,7 @@ a.cardc:hover code{color:var(--ab-signal)}
       return pre.then(function (sel) {
         if (sel === false) return null;
         var p = (sel && sel.provider) || prov();
-        if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+        if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask 等）')));
         return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
           addr = (a && a[0]) || null;
           if (!addr) throw new Error(ST('没拿到账户 —— 钱包可能锁着，或者你在弹窗里拒绝了'));
@@ -526,7 +526,7 @@ a.cardc:hover code{color:var(--ab-signal)}
     },
     switchAccount: function () {
       var p = prov();
-      if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+      if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask 等）')));
       /* 4001 = 用户点了取消，不能退回 eth_requestAccounts（它不弹窗、立刻还你
          原账户，「没换」就会被说成「已切」）。只有钱包不支持这个方法才退回。 */
       return p.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
@@ -603,11 +603,11 @@ a.cardc:hover code{color:var(--ab-signal)}
         </div>
       </div>
 
-      <p class="ab-winnote">窗口里那片星场是引擎此刻算出来的。Arc 每出一个新块，它闪一次。</p>
+      <p class="ab-winnote">窗口中的星场由引擎实时计算。Arc 每产出一个新区块，它闪烁一次。</p>
     </div>
 
     <div class="ab-hero-copy">
-      <p class="ab-lede">引爆它。哈希里读出 23 个常数：引力多强、光速多快、空间有几个维度。引擎按这套常数把宇宙从第一秒算到热寂，看它长不长得出恒星、行星、生命。</p>
+      <p class="ab-lede">引爆它。哈希被读成 23 个常数：引力强度、光速、空间维数等。引擎按这套常数把宇宙从第一秒推演到热寂，看它能否形成恒星、行星与生命。</p>
       <!-- 邀请计划那颗按钮在 ARCBANG 上不存在：没有代币就没有返利专款，
            一个点开只能说「暂未开放」的按钮比没有更糟（specs/arcbang-v1.md）。 -->
       <div class="ab-cta">
@@ -643,7 +643,7 @@ a.cardc:hover code{color:var(--ab-signal)}
   <div class="ab-wrap ab-livehead">
     <div>
       <h2 class="ab-h2">引擎实况</h2>
-      <p class="ab-say">每一张都是引擎实时渲染时截的屏，没修图。这里有 D = 18 的宇宙（D 就是空间有几个维度，我们的宇宙是 3），有 2.5 维的黑平面，也有 D = 1 的时空图和 D = 2 的圆盘世界。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。<a href="https://github.com/q3579338/arcbang/tree/main/engine" target="_blank" rel="noopener noreferrer">引擎开源，谁都能自己复算</a>。</p>
+      <p class="ab-say">每一张都是引擎实时渲染的截图，未经修饰。这里有 D = 18 的宇宙（D 就是空间有几个维度，我们的宇宙是 3），有 2.5 维的黑平面，也有 D = 1 的时空图和 D = 2 的圆盘世界。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。<a href="https://github.com/q3579338/arcbang/tree/main/engine" target="_blank" rel="noopener noreferrer">引擎开源，谁都能自己复算</a>。</p>
     </div>
     <!-- 自动漂移超过 5 秒且与其它内容并列，必须给一个看得见的停法（WCAG 2.2.2）——
          只靠 hover 暂停对键盘和触屏用户等于没有。这颗钮同时管窗口里的星场。 -->
@@ -820,11 +820,11 @@ a.cardc:hover code{color:var(--ab-signal)}
     <div class="ab-facts">
       <div>
         <span class="ab-fact-v" data-nolang>1,387<span class="u">×0</span></span>
-        <p class="ab-fact-k">前 887 枚免费 · 每地址限 1 次</p>
+        <p class="ab-fact-k">免费 887 枚 · 每地址 1 枚</p>
       </div>
       <div>
-        <span class="ab-fact-v" data-nolang>1<span class="u">USDC</span></span>
-        <p class="ab-fact-k">免费期之后的固定价 · 一次铸造 gas 约 0.003 USDC</p>
+        <span class="ab-fact-v" data-nolang>500</span>
+        <p class="ab-fact-k">付费铸造 · 价格另行公布 · 每地址上限 3 枚</p>
       </div>
     </div>
   </div>
@@ -835,22 +835,22 @@ a.cardc:hover code{color:var(--ab-signal)}
 <section class="ab-sec" id="actions">
   <div class="ab-wrap">
     <h2 class="ab-h2">三个动作</h2>
-    <p class="ab-say">引爆随便玩，铸造看你喜不喜欢，铸完了想卖就卖。</p>
+    <p class="ab-say">引爆免费且不限次数，铸造可选，铸后可自行转让。</p>
     <div class="ab-acts">
       <div class="ab-act">
         <h3><span class="n" data-nolang>1</span>引爆</h3>
-        <p>挑一个 Arc 区块，哈希当场展开成一整套物理常数，引擎推演这个宇宙的一生。Arc 每 0.5 秒出一个块，每个块都还没人引爆过。<span class="mono">可复算，不可挑选</span>。<a href="https://github.com/q3579338/arcbang/tree/main/engine" target="_blank" rel="noopener noreferrer">引擎开源，可以自己复算一遍</a></p>
+        <p>挑一个 Arc 区块，哈希当场展开成一整套物理常数，引擎推演这个宇宙的一生。Arc 每 0.5 秒出一个区块，每个区块都尚未被引爆。<span class="mono">可复算，不可挑选</span>。<a href="https://github.com/q3579338/arcbang/tree/main/engine" target="_blank" rel="noopener noreferrer">引擎开源，可以自己复算一遍</a></p>
         <a class="ab-more" href="app.html">前往引爆 →</a>
       </div>
       <div class="ab-act">
         <h3><span class="n" data-nolang>2</span>铸造</h3>
-        <p>看完再决定收不收。1,387 枚，永不增发。前 887 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后 500 枚价格另行公布，每个地址最多 3 枚。</p>
+        <p>先看结果，再决定是否铸造。1,387 枚，永不增发。免费 887 枚（保底 387 + 先到先得 500），每个地址 1 枚，仅需约 0.003 USDC 的 gas。其余 500 枚价格另行公布，每个地址最多 3 枚。</p>
         <a class="ab-more" href="how-it-works.html">看它怎么运作 →</a>
       </div>
       <div class="ab-act">
         <h3><span class="n" data-nolang>3</span>转手</h3>
-        <p>铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。</p>
-        <a class="ab-more" href="market.html">去市场看看 →</a>
+        <p>铸造结果是标准 NFT，可在站内市场挂单，OpenSea 等平台同样支持。</p>
+        <a class="ab-more" href="market.html">前往市场 →</a>
       </div>
     </div>
   </div>
@@ -864,7 +864,7 @@ a.cardc:hover code{color:var(--ab-signal)}
 <section class="ab-sec" id="find">
   <div class="ab-wrap">
     <h2 class="ab-h2">找到你的宇宙</h2>
-    <p class="ab-say">粘一个 Arc 区块高度，或者一个 0x 开头的区块哈希。你生日那天的块、你第一笔交易所在的块，都可以。同一个哈希，谁来引爆都是同一个宇宙。</p>
+    <p class="ab-say">填入一个 Arc 区块高度，或一个 0x 开头的区块哈希，例如生日当天或首笔交易所在的区块。同一个哈希，由谁引爆都是同一个宇宙。</p>
     <form class="ab-find" id="findForm" autocomplete="off">
       <div class="ab-find-box">
         <input id="findInp" name="q" type="search" inputmode="search" spellcheck="false" autocomplete="off"
@@ -885,17 +885,17 @@ a.cardc:hover code{color:var(--ab-signal)}
     <h2 class="ab-h2">一个哈希，一枚</h2>
     <div class="ab-split">
       <div>
-        <p>Arc 每 0.5 秒出一个块，一天十七万个。引爆它们不要钱，想炸多少炸多少。</p>
-        <p>铸造只有一次机会。一个区块哈希只能长出一个宇宙，谁先铸走就是谁的。1,387 枚，永不增发。你挑中的那个被别人先铸了，它就永远不是你的了。</p>
-        <p>ARCBANG 没有代币，没有预售，没有空投，也没有解锁表。你拿到的就是一枚 NFT，价格就是价格。</p>
+        <p>Arc 每 0.5 秒出一个区块，一天十七万个。引爆不收费，也不限次数。</p>
+        <p>铸造只有一次机会。一个区块哈希只能长出一个宇宙，先铸先得。1,387 枚，永不增发。你选中的那一个被他人先铸走后，就不会再有第二枚。</p>
+        <p>ARCBANG 不发行代币，不进行预售与空投，也没有解锁表。你拿到的就是一枚 NFT。</p>
       </div>
       <div><table class="ab-tbl">
         <thead><tr><th data-nolang>ARCBANG</th><th>数量</th><th>说明</th></tr></thead>
         <tbody>
-          <tr><td class="k">全网总量</td><td><span class="mono">1,387</span></td><td>宇宙 137.87 亿岁，一枚 NFT 一千万年；写死在合约里</td></tr>
-          <tr><td class="k">免费期</td><td><span class="mono">前 887 枚</span></td><td>每地址 1 次，只花 gas（约 0.003 USDC）</td></tr>
-          <tr><td class="k">之后</td><td>价格另行公布</td><td>每地址最多 3 枚；合约把价格夹在 0.1 – 20 USDC 之间</td></tr>
-          <tr><td class="k">二级版税</td><td><span class="mono">5%</span></td><td>OpenSea 这类市场直接读得到</td></tr>
+          <tr><td class="k">全网总量</td><td><span class="mono">1,387</span></td><td>宇宙 137.87 亿岁，一枚 NFT 一千万年；数量写入合约</td></tr>
+          <tr><td class="k">免费</td><td><span class="mono">887 枚</span></td><td>保底 387 + 先到先得 500，每地址 1 枚，仅需 gas（约 0.003 USDC）</td></tr>
+          <tr><td class="k">之后</td><td>价格另行公布</td><td>每地址最多 3 枚；价格由合约常数限定上下界</td></tr>
+          <tr><td class="k">二级版税</td><td><span class="mono">5%</span></td><td>OpenSea 等平台直接读取</td></tr>
         </tbody>
       </table></div>
     </div>
@@ -908,20 +908,20 @@ a.cardc:hover code{color:var(--ab-signal)}
      **不编号**：这四条不是一条序列，谁先谁后都成立，编号会骗人说它是步骤。 -->
 <section class="ab-sec" id="principles">
   <div class="ab-wrap">
-    <h2 class="ab-h2">四条规矩</h2>
-    <p class="ab-say">四条，都能自己核。</p>
+    <h2 class="ab-h2">四条规则</h2>
+    <p class="ab-say">四条规则，均可自行核验。</p>
     <div class="ab-rules">
       <div class="ab-rule-b">
-        <h3>免费玩，只铸你真喜欢的</h3>
-        <p>引爆不要钱，也不限次数。看完结果再决定铸不铸。</p>
+        <h3>免费引爆，按需铸造</h3>
+        <p>引爆不收费，也不限次数。看完结果再决定是否铸造。</p>
       </div>
       <div class="ab-rule-b">
         <h3>一个区块哈希，一个宇宙，永远</h3>
-        <p>一个哈希只能铸一枚。被别人铸走了，这个宇宙就不会再有第二枚。</p>
+        <p>一个哈希只能铸一枚。被他人铸走后，这个宇宙不会再有第二枚。</p>
       </div>
       <div class="ab-rule-b">
         <h3>不发代币</h3>
-        <p>没有预售，没有空投，没有解锁表，也没有任何收益话术。</p>
+        <p>不进行预售与空投，没有解锁表，也不作任何收益承诺。</p>
       </div>
       <div class="ab-rule-b">
         <h3>全程可验证</h3>
@@ -938,7 +938,7 @@ a.cardc:hover code{color:var(--ab-signal)}
     <div class="ab-addr" id="addrList"></div>
     <!-- 合约还没部署时的占位说明。默认 hidden，脚本按 config 的 contract 是否是地址来放它出来 ——
          一排「未部署」而不说为什么，比多一句话糟。 -->
-    <p class="ab-say" id="notDeployed" hidden>合约还没上 Arc 主网。上线那天，上面两张卡会自己亮起来。</p>
+    <p class="ab-say" id="notDeployed" hidden>合约尚未部署到 Arc 主网。部署完成后，上方两张卡片会自动显示链上状态。</p>
   </div>
 </section>
 
@@ -1202,12 +1202,12 @@ a.cardc:hover code{color:var(--ab-signal)}
   }
 
   /* ================================================================ 链上状态区
-     ARCBANG v1 只部署两个合约（specs/arcbang-v1.md §四）：ArcUniverse + 无币版 MirrorMarket。
+     ARCBANG v1 只部署两个合约（specs/arcbang-v1.md §四）：ArcUniverse + 无币版 ArcMarket。
      原始读数存进 RAW，渲染纯函数化 —— 语言切换（mirror:lang）时用同一份 RAW 重画，不重新打链。 */
   var ROWS = [
     /* [中文名, 合约名, 地址, key] —— key 同时是状态格 id 与 RAW.codes 的键 */
     ['宇宙 NFT', 'ArcUniverse', CFG.contract, 'mu'],
-    ['市场', 'MirrorMarket', CFG.market, 'market']
+    ['市场', 'ArcMarket', CFG.market, 'market']
   ];
   var RAW = { codes: {}, v: {}, loaded: false };
 

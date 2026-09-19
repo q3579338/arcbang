@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>镜像宇宙 · 个人中心</title>
+<title>ARCBANG · 个人中心</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -235,7 +235,7 @@ footer a{color:var(--cyan)}
   <!-- 未连接：整页一个居中连接态 -->
   <div id="gate" class="gate">
     <p class="gate-t">连接钱包查看个人中心</p>
-    <p class="gate-sub">本页展示你的余额、推广、资产与销毁记录，需先连接钱包。</p>
+    <p class="gate-sub">本页展示你的资产与铸造记录，需先连接钱包。</p>
     <button id="btnGateConnect" class="primary" type="button">连接钱包查看个人中心</button>
     <p id="gateMsg" class="err tiny" hidden></p>
   </div>
@@ -980,7 +980,7 @@ footer a{color:var(--cyan)}
       return pre.then(function (sel) {
         if (sel === false) return null;
         var p = (sel && sel.provider) || prov();
-        if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
+        if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask 等）')));
         return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
           setAccount((a && a[0]) || null);
           if (!S.account) throw new Error(ST('未获取到账户。钱包可能处于锁定状态，或已在弹窗中拒绝。'));
@@ -1002,7 +1002,7 @@ footer a{color:var(--cyan)}
     },
     switchAccount: function () {
       var p = prov();
-      if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
+      if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask 等）')));
       /* 4001 = 用户点了取消，不能退回 eth_requestAccounts（它不弹窗、立刻还你
          原账户，「没换」就会被说成「已切」）。只有钱包不支持这个方法才退回。 */
       return p.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })

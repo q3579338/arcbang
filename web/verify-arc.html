@@ -9,7 +9,7 @@
      域名只存在于 SITES 表那一处，换域那天不用回来改这些文件。
      **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
 <title>自己验证 · ARCBANG</title>
-<meta name="description" content="别信站点的一面之词。把引擎克隆下来，用任意 Arc 区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。两条命令，几分钟。">
+<meta name="description" content="不必只看站点的说法。克隆引擎，用任意 Arc 区块哈希在本机重算一个宇宙，再与链上那枚 NFT 逐字节比对。两条命令，几分钟。">
 <link rel="canonical" href="https://arcbang.xyz/verify.html">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/verify.html">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/verify.html">
@@ -18,7 +18,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/verify.html">
 <meta property="og:title" content="自己验证">
-<meta property="og:description" content="两条命令：从区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。">
+<meta property="og:description" content="两条命令：从区块哈希重算一个宇宙，再与链上那枚 NFT 逐字节比对。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -26,7 +26,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="自己验证">
-<meta name="twitter:description" content="两条命令：从区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。">
+<meta name="twitter:description" content="两条命令：从区块哈希重算一个宇宙，再与链上那枚 NFT 逐字节比对。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -125,7 +125,7 @@ node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b
 <thead><tr><th>合约</th><th>干什么的</th></tr></thead>
 <tbody>
 <tr><td class="k">ArcUniverse</td><td>宇宙本身。铸造价格与免费额度、5% 版税，以及 <code>tokenURI</code> 的链上 SVG 兜底。</td></tr>
-<tr><td class="k">MirrorMarket</td><td>站内挂单、买入、撤单。手续费上限写入合约。</td></tr>
+<tr><td class="k">ArcMarket</td><td>站内挂单、买入、撤单。市场不收手续费，成交按 ERC-2981 支付 5% 版税。</td></tr>
 </tbody></table></div>
 <p>部署地址将在上链当天公布于本页与 <code>config.js</code>。站点只从该文件读取地址，因此页面显示的合约与钱包交互的合约始终一致。</p>
 </section>
@@ -155,13 +155,13 @@ node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b
       <div class="ab-brand">ARC宇宙</div>
       <nav class="ab-foot-lnk" aria-label="页脚">
         <a href="/">首页</a>
-        <a href="app.html">模拟器</a>
-        <a href="how-it-works.html">怎么回事</a>
+        <a href="app.html">引爆</a>
+        <a href="how-it-works.html">怎么运作</a>
         <a href="faq.html">常见问题</a>
       </nav>
       <a class="ab-mail" href="mailto:admin@arcbang.xyz">admin@arcbang.xyz</a>
     </div>
-    <p class="ab-foot-tag">用区块哈希造宇宙。免费引爆，喜欢再铸。</p>
+    <p class="ab-foot-tag">以区块哈希生成宇宙。引爆免费，铸造可选。</p>
     <div class="ab-legal">
       <span>© 2026 ARCBANG</span>
       <span>一件收藏品，一次实验，不是投资产品。</span>

@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG</title>
+<title>ARCBANG 市场 · 买卖宇宙 NFT</title>
 <meta name="description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。市场不收手续费，成交只按 ERC-2981 支付 5% 版税。">
 <link rel="canonical" href="https://arcbang.xyz/market.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/market.html">
-<meta property="og:title" content="镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG">
+<meta property="og:title" content="ARCBANG 市场 · 买卖宇宙 NFT">
 <meta property="og:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。市场不收手续费，成交只按 ERC-2981 支付 5% 版税。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
@@ -18,7 +18,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG">
+<meta name="twitter:title" content="ARCBANG 市场 · 买卖宇宙 NFT">
 <meta name="twitter:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。市场不收手续费，成交只按 ERC-2981 支付 5% 版税。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
@@ -27,7 +27,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0A0F2E">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebPage","name":"镜像宇宙市场 · 买卖宇宙 NFT","url":"https://arcbang.xyz/market.html","inLanguage":["zh-CN","en"],"isPartOf":{"@type":"WebSite","name":"ARCBANG","url":"https://arcbang.xyz/"},"about":{"@type":"Thing","name":"Mirror Universe NFT market on Arc"},"publisher":{"@type":"Organization","name":"ARCBANG","url":"https://arcbang.xyz/"}}
+{"@context":"https://schema.org","@type":"WebPage","name":"ARCBANG 市场 · 买卖宇宙 NFT","url":"https://arcbang.xyz/market.html","inLanguage":["zh-CN","en"],"isPartOf":{"@type":"WebSite","name":"ARCBANG","url":"https://arcbang.xyz/"},"about":{"@type":"Thing","name":"ARCBANG universe NFT market on Arc"},"publisher":{"@type":"Organization","name":"ARCBANG","url":"https://arcbang.xyz/"}}
 </script>
 <!--
   web/market.html —— 宇宙 NFT 的交易市场（独立静态页，与模拟器分开）
@@ -545,7 +545,7 @@ img.uthumb[data-view]{cursor:zoom-in}
        本页整页都是 JS 画的，留空比留一句写死链名的兜底诚实。 -->
   <p class="sub" id="subLede"></p>
 
-  <div id="acct" class="mono dim">未连钱包 · 只读浏览（走公开 RPC）</div>
+  <div id="acct" class="mono dim">未连接钱包 · 只读浏览</div>
   <div id="cfgbar" class="cfgbar"></div>
   <div id="bangbar" class="bangbar"></div>
 
@@ -573,7 +573,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     <div class="block">
       <div class="cardhead">
         <h2>在售的宇宙</h2>
-        <span class="dim tiny">销毁量与救活记录是两项关键指标：区块可无限产生，BANG 不能</span>
+        <span class="dim tiny">一个区块哈希只对应一个宇宙，铸走之后不再重复</span>
       </div>
       <!-- 系列筛选（全部 / 原生 / 造物）。**永远由 JS 填**：config.js 里 crafted
            没配时这个容器保持空，页面与没有造物代码时逐像素一致。 -->
@@ -592,12 +592,12 @@ img.uthumb[data-view]{cursor:zoom-in}
   <!-- ============================ 3. 挂单 ============================ -->
   <section id="sec-list" hidden>
     <div class="card">
-      <div class="cardhead"><h2>挂一单</h2><span class="dim tiny">选宇宙 → 填价 → 授权 → 挂单</span></div>
+      <div class="cardhead"><h2>挂单出售</h2><span class="dim tiny">选宇宙 → 填价 → 授权 → 挂单</span></div>
       <div id="listNotice"></div>
       <div class="form">
         <div class="field">
-          <label for="fAsset">卖哪一个宇宙</label>
-          <select id="fAsset"><option value="">先连钱包</option></select>
+          <label for="fAsset">选择要出售的宇宙</label>
+          <select id="fAsset"><option value="">请先连接钱包</option></select>
         </div>
         <div class="field">
           <label for="fCur">计价</label>
@@ -626,7 +626,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       </div>
     </div>
     <div class="card">
-      <div class="cardhead"><h2>我挂着的单</h2><span class="dim tiny" id="myListNote"></span></div>
+      <div class="cardhead"><h2>我的挂单</h2><span class="dim tiny" id="myListNote"></span></div>
       <div id="myListings"></div>
     </div>
   </section>
@@ -863,7 +863,7 @@ img.uthumb[data-view]{cursor:zoom-in}
        走散的表现是界面说能用、交易发上去 revert）。 */
     check:            '0x3edee90e',
     totalBurnedForNames: '0x3e9074c3',   // totalBurnedForNames()
-    /* MirrorMarket */
+    /* ArcMarket */
     listingCount:     '0xa9b07c26',   // listingCount()
     activeListings:   '0xaa4df6f0',   // activeListings(uint256,uint256)
     listings:         '0xde74e57b',   // listings(uint256)
@@ -1454,7 +1454,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
 
   /* --- 挂单簿 ---------------------------------------------------------------
-     实装的 MirrorMarket 是三返回值：
+     实装的 ArcMarket 是三返回值：
        activeListings(offset, limit) → (uint256[] ids, Listing[] items, uint256 nextOffset)
      头三槽依次是 ids 偏移(0x60)、items 偏移、nextOffset。这是主路径，翻页也靠 nextOffset。
      另外两种形状也认（合约万一改了返回类型也不至于白屏）：
@@ -2175,7 +2175,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       opts = (opts ? '<optgroup label="' + esc(T('宇宙')) + '">' + opts + '</optgroup>' : '')
         + '<optgroup label="' + esc(T('造物宇宙')) + '">' + copts + '</optgroup>';
     }
-    if (!opts) opts = '<option value="">' + esc(S.account ? T('名下没有可出售的宇宙') : T('先连钱包')) + '</option>';
+    if (!opts) opts = '<option value="">' + esc(S.account ? T('名下没有可出售的宇宙') : T('请先连接钱包')) + '</option>';
     var keep = sel.value;
     sel.innerHTML = opts;
     if (keep) sel.value = keep;
@@ -3769,7 +3769,7 @@ img.uthumb[data-view]{cursor:zoom-in}
        因为市场没有提取 BNB 的通路，误收就是永久卡死；付款走 transferFrom，
        所以先得有够额的 approve。授权不够就先发一笔，落地后自动接着买：
        两次钱包确认，一次点击。授权只批这一单的数目，不批无限额度。 */
-    if (!S.account) { toast(function () { return T('先连钱包'); }, 'err'); return; }
+    if (!S.account) { toast(function () { return T('请先连接钱包'); }, 'err'); return; }
     if (!ADDR.bang) { toast(function () { return T('未配置 BANG 代币地址，无法购买以 BANG 计价的挂单'); }, 'err'); return; }
     ethCall(ADDR.bang, SEL.allowance + encAddr(S.account) + encAddr(ADDR.market)).then(function (r) {
       var have = uw(r, 0);
@@ -4095,7 +4095,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     attrT('themeSeg', 'aria-label', '主题');
     var nav = document.querySelector('.pagenav');
     if (nav) nav.setAttribute('aria-label', T('站点页面'));
-    document.title = T('镜像宇宙 · 市场');     // <title> 在 <head> 里，DOM 遍历只走 body
+    document.title = T('ARCBANG · 市场');     // <title> 在 <head> 里，DOM 遍历只走 body
   }
 
   /* 切语言。静态文字 MirrorI18n 自己翻过了，这里管**另一半**：卡片、表格、下拉、
@@ -4287,7 +4287,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         eth().on('accountsChanged', function (a) {
           setWallet((a && a[0]) || null);
           toast(function () {
-            return S.account ? TF('已连接 {0}', S.account) : T('未连钱包 · 只读浏览（走公开 RPC）');
+            return S.account ? TF('已连接 {0}', S.account) : T('未连接钱包 · 只读浏览');
           }, S.account ? 'ok' : 'dim');
           refresh().catch(function () {});
         });

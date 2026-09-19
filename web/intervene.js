@@ -3014,7 +3014,7 @@
     var C = root.MirrorChain;
     var noWallet = !(C && C.hasWallet && C.hasWallet());
     btn.disabled = !!S.craftBusy || noWallet || !CFG.bangToken || box.busy();
-    btn.title = noWallet ? T('没有检测到钱包扩展（MetaMask / 币安钱包 等），铸不了造物')
+    btn.title = noWallet ? T('未检测到钱包扩展（MetaMask 等），铸不了造物')
       : !CFG.bangToken ? T('BANG 代币地址没配，付不了铸造费')
       : S.craftBusy ? T('正在铸，等这一笔走完')
       : box.busy() ? T('上一格还在服务端算，等它回来再铸')
@@ -3518,7 +3518,7 @@
     btn.disabled = !can || !!S.rescueBusy || noBang || box.busy()
       || (mode === 'mint' && noWallet);
     btn.title = (mode === 'mint' && noWallet)
-      ? T('没有检测到钱包扩展（MetaMask / 币安钱包 等），铸不了也拯救不了')
+      ? T('未检测到钱包扩展（MetaMask 等），铸不了也拯救不了')
       : noBang ? T('BANG 代币地址没配，付不了拯救的费用')
         : S.rescueBusy ? T('正在拯救，等这一笔走完')
           : box.busy() ? T('上一格还在服务端算，等它回来再拯救')

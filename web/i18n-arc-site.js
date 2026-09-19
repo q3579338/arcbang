@@ -32,7 +32,7 @@
        D 在首页上第一次露面是在下面「引擎实况」那一段，那里带着一句人话解释；
        这条 lede 排在它前面，所以只说「空间有几个维度」，先不搬字母。 */
     '每个 Arc 区块哈希，都是一个宇宙': 'Every Arc block hash is a universe',
-    '引爆它。哈希里读出 23 个常数：引力多强、光速多快、空间有几个维度。引擎按这套常数把宇宙从第一秒算到热寂，看它长不长得出恒星、行星、生命。':
+    '引爆它。哈希被读成 23 个常数：引力强度、光速、空间维数等。引擎按这套常数把宇宙从第一秒推演到热寂，看它能否形成恒星、行星与生命。':
       'Detonate it. The hash gives you 23 constants: how strong gravity is, how fast light travels, how many dimensions space has. The engine takes them and runs the universe from its first second to heat death, to see whether it grows stars, planets, life.',
     /* {0} = config.arc.js 的 chain 块给的链名（中文态 name、英文态 nameEn）。
        **整句进词典**：英文语序和中文对不上，在外面拼 T('当前在') + 链名 会拼错。 */
@@ -52,13 +52,13 @@
     /* ---- 1,387 ---- */
     '全网只有这么多。一枚宇宙算一千万年，铸满正好 137.87 亿年，就是这个宇宙的岁数。':
       'That is all there will ever be. One universe stands for ten million years, so the full set comes to 13.787 billion — the age of this universe.',
-    '前 887 枚免费 · 每地址限 1 次': 'First 887 free · 1 per address',
-    '免费期之后的固定价 · 一次铸造 gas 约 0.003 USDC':
-      'The flat price after the free tier · about 0.003 USDC of gas per mint',
+    '免费 887 枚 · 每地址 1 枚': '887 free · 1 per address',
+    '付费铸造 · 价格另行公布 · 每地址上限 3 枚':
+      'Paid mints · price to be announced · up to 3 per address',
 
     /* ---- 找到你的宇宙 ---- */
     '找到你的宇宙': 'Find your universe',
-    '粘一个 Arc 区块高度，或者一个 0x 开头的区块哈希。你生日那天的块、你第一笔交易所在的块，都可以。同一个哈希，谁来引爆都是同一个宇宙。':
+    '填入一个 Arc 区块高度，或一个 0x 开头的区块哈希，例如生日当天或首笔交易所在的区块。同一个哈希，由谁引爆都是同一个宇宙。':
       'Paste an Arc block height, or a 0x block hash. The block from your birthday, the block your first transaction landed in, anything. The same hash is the same universe, whoever detonates it.',
     '区块高度 / 0x 区块哈希': 'Block height / 0x block hash',
     '区块高度或区块哈希': 'Block height or block hash',
@@ -74,7 +74,7 @@
     /* ---- 引擎实况（滚动墙） ----
        **D 在整页上第一次出现就在这一句里**，所以括号里必须有一句人话；
        后面（图廊卡、模拟器）再出现就只写 D。 */
-    '每一张都是引擎实时渲染时截的屏，没修图。最后一张的空间维数 D = 4（D 就是空间有几个维度，我们的宇宙是 3）。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
+    '每一张都是引擎实时渲染的截图，未经修饰。最后一张的空间维数 D = 4（D 就是空间有几个维度，我们的宇宙是 3）。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
       'Every frame is a screenshot of the engine rendering live, untouched. The last one has spatial dimension D = 4 — D is how many dimensions space has, and ours has 3. 55% of universes come out above D = 4, where no orbit is stable and matter either flies apart or falls into the core. Draw D = 14 and the engine really does run an N-body in 14 dimensions, then projects it onto three axes you pick. Swap the axes and the same universe wears a different face. ',
     '引擎开源，谁都能自己复算': 'The engine is open source — recompute it yourself',
     '引爆同一个哈希 →': 'Detonate the same hash →',
@@ -82,7 +82,7 @@
     '横向滑动看全部六个 · 点图看大图': 'Scroll sideways for all six · tap an image for full size',
     /* ---- 引擎实况：09-17 换成六张 Arc 主网区块图之后的说明与卡片文字（用户：「英文部分没汉化」）----
        图廊卡的「区块 N · 0x…」原来带 data-nolang，预渲染会整个跳过，英文页里就一直是中文；现已去掉。 */
-    '每一张都是引擎实时渲染时截的屏，没修图。第五张的空间维数 D = 18（D 就是空间有几个维度，我们的宇宙是 3），第六张是 2.5 维的黑平面。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
+    '每一张都是引擎实时渲染的截图，未经修饰。第五张的空间维数 D = 18（D 就是空间有几个维度，我们的宇宙是 3），第六张是 2.5 维的黑平面。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
       'Every frame is a screenshot of the engine rendering live, untouched. The fifth one has spatial dimension D = 18 — D is how many dimensions space has; ours has 3 — and the sixth is a 2.5-dimensional black plane. Universes with D above 4 make up 55% of all blocks: no stable orbits exist there, matter either flies apart or falls into the core. Draw D = 14 and the engine really runs the N-body in 14 dimensions, then projects onto the three axes you pick; change the axes and the same universe shows another face.',
     '恒星系': 'Planetary system',
     '熔岩行星地表': 'Lava planet surface',
@@ -100,7 +100,7 @@
     /* ---- 引擎实况：09-17 补到十四张之后新增的八张（用户：「图片太少了，补充」）----
        说明那一句原来写「第五张 / 第六张」，靠顺序指代；穿插加图之后顺序会变，
        改成不依赖顺序的写法（直接点名 D = 18 / 2.5 / 1 / 2 这几类），中英一起换。 */
-    '每一张都是引擎实时渲染时截的屏，没修图。这里有 D = 18 的宇宙（D 就是空间有几个维度，我们的宇宙是 3），有 2.5 维的黑平面，也有 D = 1 的时空图和 D = 2 的圆盘世界。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
+    '每一张都是引擎实时渲染的截图，未经修饰。这里有 D = 18 的宇宙（D 就是空间有几个维度，我们的宇宙是 3），有 2.5 维的黑平面，也有 D = 1 的时空图和 D = 2 的圆盘世界。D 在 4 以上的宇宙占 55%，那里没有稳定轨道，物质只会飞散或者坠核。开出 D = 14，引擎就真的在 14 维里跑 N 体，再投影到你挑的三根轴上；换一组轴，同一个宇宙换一张脸。':
       'Every frame is a screenshot of the engine rendering live, untouched. There is a universe with spatial dimension D = 18 in here — D is how many dimensions space has; ours has 3 — a 2.5-dimensional black plane, a D = 1 spacetime diagram and a D = 2 disc world. Universes with D above 4 make up 55% of all blocks: no stable orbits exist there, matter either flies apart or falls into the core. Draw D = 14 and the engine really runs the N-body in 14 dimensions, then projects onto the three axes you pick; change the axes and the same universe shows another face.',
     '横向滑动看全部十四个 · 点图看大图': 'Scroll sideways for all fourteen · tap an image for full size',
     '一维宇宙的时空图（D=1）': 'Spacetime diagram of a one-dimensional universe (D=1)',
@@ -126,16 +126,16 @@
 
     /* ---- 三个动作 ----
        第三张原来是「拯救」。拯救整套下线，这一格换成「转手」—— 铸完之后真的能做的事。 */
-    '引爆随便玩，铸造看你喜不喜欢，铸完了想卖就卖。':
-      'Detonate as much as you want, mint what you like, sell it when you want to.',
-    '挑一个 Arc 区块，哈希当场展开成一整套物理常数，引擎推演这个宇宙的一生。Arc 每 0.5 秒出一个块，每个块都还没人引爆过。':
+    '引爆免费且不限次数，铸造可选，铸后可自行转让。':
+      'Detonation is free and unlimited, minting is optional, and what you mint is yours to transfer.',
+    '挑一个 Arc 区块，哈希当场展开成一整套物理常数，引擎推演这个宇宙的一生。Arc 每 0.5 秒出一个区块，每个区块都尚未被引爆。':
       'Pick an Arc block. The hash expands on the spot into a full set of physical constants and the engine runs that universe’s whole life. Arc closes a block every 0.5 seconds and nobody has detonated any of them yet. ',
     '引擎开源，可以自己复算一遍': 'The engine is open source — recompute it yourself',
     '看完再决定收不收。全网': 'You decide after you have seen it. There are',
     '枚，前 887 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后 500 枚价格另行公布，每个地址最多 3 枚。':
       'universes in all. The first 887 are free: 1 per address, about 0.003 USDC of gas. The remaining 500 are paid, price to be announced, up to 3 per address.',
     '转手': 'Resell',
-    '铸下来的就是一枚标准 NFT，站内市场能挂，OpenSea 这类市场也认。':
+    '铸造结果是标准 NFT，可在站内市场挂单，OpenSea 等平台同样支持。':
       'What you mint is a standard NFT. List it on the built-in market, or on OpenSea.',
     '看它怎么运作 →': 'See how it works →',
 
@@ -143,37 +143,37 @@
        这一节原来叫「为什么销毁的是真美元」，整节建在拯救系统上。
        拯救下线之后换成剩下的那个卖点：稀缺来自哈希本身。 */
     '一个哈希，一枚': 'One hash, one universe',
-    'Arc 每 0.5 秒出一个块，一天十七万个。引爆它们不要钱，想炸多少炸多少。':
-      'Arc closes a block every 0.5 seconds, about 170,000 a day. Detonating them is free, as often as you like.',
-    '铸造只有一次机会。一个区块哈希只能长出一个宇宙，谁先铸走就是谁的。1,387 枚，永不增发。你挑中的那个被别人先铸了，它就永远不是你的了。':
-      'Minting is the part you get one shot at. One block hash grows exactly one universe and it belongs to whoever mints it first. 1,387 pieces. No further issuance, ever. If someone mints the one you picked, it is never going to be yours.',
-    'ARCBANG 没有代币，没有预售，没有空投，也没有解锁表。你拿到的就是一枚 NFT，价格就是价格。':
-      'ARCBANG has no token, no presale, no airdrop and no unlock schedule. What you get is an NFT, and the price is just the price.',
+    'Arc 每 0.5 秒出一个区块，一天十七万个。引爆不收费，也不限次数。':
+      'Arc closes a block every 0.5 seconds, about 170,000 a day. Detonation is free and unlimited.',
+    '铸造只有一次机会。一个区块哈希只能长出一个宇宙，先铸先得。1,387 枚，永不增发。你选中的那一个被他人先铸走后，就不会再有第二枚。':
+      'Minting is the part you get one shot at. One block hash grows exactly one universe and it belongs to whoever mints it first. 1,387 pieces. No further issuance, ever. Once someone mints the one you picked, there is no second copy.',
+    'ARCBANG 不发行代币，不进行预售与空投，也没有解锁表。你拿到的就是一枚 NFT。':
+      'ARCBANG issues no token and runs no presale or airdrop, and there is no unlock schedule. What you get is an NFT.',
     /* 表头两列（数量 / 说明）走 i18n-site.js 的全局词条，这里不重收 */
     '全网总量': 'Hard cap',
     '免费期': 'Free tier',
     '之后': 'After that',
     '二级版税': 'Secondary royalty',
     '前 887 枚': 'first 887',
-    '宇宙 137.87 亿岁，一枚 NFT 一千万年；写死在合约里':
+    '宇宙 137.87 亿岁，一枚 NFT 一千万年；数量写入合约':
       'The universe is 13.787 Gyr old and one NFT is ten million years; hard-coded in the contract',
     '每地址 1 次，只花 gas（约 0.003 USDC）': '1 per address, gas only (about 0.003 USDC)',
     '每地址最多 3 枚；合约把价格夹在 0.1 – 20 USDC 之间': 'At most 3 per address; the contract clamps the price to 0.1 – 20 USDC',
-    'OpenSea 这类市场直接读得到':
+    'OpenSea 等平台直接读取':
       'Markets like OpenSea read it straight off the NFT',
 
     /* ---- 四条规矩 ---- */
-    '四条规矩': 'Four rules',
-    '四条，都能自己核。': 'Four of them, all checkable.',
-    '免费玩，只铸你真喜欢的': 'Free to play; mint only what you like',
-    '引爆不要钱，也不限次数。看完结果再决定铸不铸。':
-      'Detonating costs nothing and has no limit. You decide whether to mint after you have seen the result.',
+    '四条规则': 'Four rules',
+    '四条规则，均可自行核验。': 'Four rules, all of them checkable.',
+    '免费引爆，按需铸造': 'Free to detonate, mint what you want',
+    '引爆不收费，也不限次数。看完结果再决定是否铸造。':
+      'Detonation costs nothing and has no limit. You decide whether to mint after seeing the result.',
     '一个区块哈希，一个宇宙，永远': 'One block hash, one universe, forever',
-    '一个哈希只能铸一枚。被别人铸走了，这个宇宙就不会再有第二枚。':
-      'A hash can be minted once. If someone else takes it, there is no second copy of that universe.',
+    '一个哈希只能铸一枚。被他人铸走后，这个宇宙不会再有第二枚。':
+      'A hash can be minted once. Once someone else takes it, there is no second copy of that universe.',
     '不发代币': 'No token',
-    '没有预售，没有空投，没有解锁表，也没有任何收益话术。':
-      'No presale, no airdrop, no unlock schedule, and no talk of returns.',
+    '不进行预售与空投，没有解锁表，也不作任何收益承诺。':
+      'No presale, no airdrop, no unlock schedule, and no promises of returns.',
     '全程可验证': 'Fully verifiable',
     '哈希是种子，引擎开源。同一个哈希在你的机器上会算出同一个宇宙。':
       'The hash is the seed and the engine is open source. The same hash computes the same universe on your machine.',
@@ -181,13 +181,13 @@
     /* ---- 链上状态 ---- */
     '两个合约的地址和实时状态，都从链上现读。':
       'Addresses and live state of both contracts, read straight from the chain.',
-    '合约还没上 Arc 主网。上线那天，上面两张卡会自己亮起来。':
-      'The contracts are not on Arc mainnet yet. The two cards above light up on their own the day they are.',
+    '合约尚未部署到 Arc 主网。部署完成后，上方两张卡片会自动显示链上状态。':
+      'The contracts are not deployed to Arc mainnet yet. Once they are, the two cards above will show their on-chain status automatically.',
 
     /* ---- 2026-09-17 首页改版（web/landing-arc.html v2「测绘板」）新增的句子 ----
        （旧版已经不在仓库里。） */
     '跳到主要内容': 'Skip to content',
-    '窗口里那片星场是引擎此刻算出来的。Arc 每出一个新块，它闪一次。':
+    '窗口中的星场由引擎实时计算。Arc 每产出一个新区块，它闪烁一次。':
       'That star field is the engine computing, right now. It flashes once for every new Arc block.',
     /* 动效开关（WCAG 2.2.2：自动播放超过 5 秒必须给一个看得见的停法）。
        按钮上写的是**点下去会发生什么**，不是当前状态。 */
@@ -250,7 +250,6 @@
     '前往关注': 'Follow',
     '已完成，提交核验': 'Submit for verification',
     '重新提交核验': 'Resubmit for verification',
-    '转发置顶推文并回复登记码': 'Repost the pinned post and reply with your code',
     '提交链接': 'Submit link',
     '点赞置顶推': 'Like the pinned post',
     '前往点赞': 'Like',
@@ -263,7 +262,7 @@
     '点赞': 'Like',
     '转发': 'Repost',
     '评论': 'Reply',
-    '还没有可互动的推文，过一会儿再来。': 'No posts to engage with yet. Check back later.',
+    '暂无可互动的推文，稍后再来查看。': 'No posts to engage with yet. Check back later.',
     '未核验到互动': 'engagement not found on X',
     '已在 X 核验到该互动。': 'Engagement verified on X.',
     '已提交，系统正在通过 X 核验该互动。': 'Submitted. Verifying the engagement through X.',
@@ -303,12 +302,10 @@
     '已提交：': 'Submitted: ',
     /* 待核的原因 */
     '作者不符': 'author does not match',
-    '回复里没找到你的码': 'registration code not found in the reply',
-    '不是回复置顶推': 'not a reply to the pinned post',
-    '在人工看了': 'in manual review',
-    '推文打不开': 'post could not be retrieved',
-    '链接不对': 'invalid link',
-    '被驳回了': 'rejected',
+    '人工复核中': 'in manual review',
+    '推文无法访问': 'post could not be retrieved',
+    '链接格式有误': 'invalid link',
+    '未通过复核': 'rejected',
 
     /* ---- 登记 ---- */
     '登记': 'Sign up',
@@ -338,7 +335,6 @@
       'This address is in the free band. {0} more points reaches the whitelist priority band.',
     '还没进免费那一档。再 {0} 分就进去。': 'Not in the free band yet. {0} more points gets you in.',
     '下一步：关注。': 'Next: follow.',
-    '下一步：转发并回复你的码。': 'Next: repost and reply with your code.',
     '下一步：点赞。': 'Next: like it.',
     '下一步：把邀请链接发出去。': 'Next: send your invite link.',
     '下一步：引爆一个并广播。': 'Next: detonate one and broadcast it.',
@@ -350,8 +346,8 @@
 
     /* ---- 榜 ---- */
     '积分榜': 'Leaderboard',
-    '公开展示 TOP 100。免费名额自积分榜 TOP 100 产生。':
-      'The TOP 100 are shown publicly. Free mints are allocated from the TOP 100 of this leaderboard.',
+    '公开展示 TOP 100。免费名额自积分榜产生：保底 387 枚，其余 500 枚在先到先得阶段发放。':
+      'The TOP 100 are shown publicly. Free mints come from this leaderboard: 387 guaranteed slots, with the other 500 released in the first-come round.',
     '名次': 'Rank', '积分': 'Points',
     '在榜人数': 'On the board', '免费上限': 'Free cap', '免费剩余': 'Free remaining',
     '还没有人上榜 —— 第一个登记的就是第一名。': 'Empty so far. First to sign up takes first place.',
@@ -380,12 +376,12 @@
     '总量': 'Supply',
     '1,387 枚，永不增发': '1,387 pieces. No further issuance, ever.',
     '免费': 'Free',
-    '每地址 1 枚，名额自积分榜前列产生，数量于榜单定格时公布':
-      'One per address. Allocated from the front of the leaderboard; the count is announced at the freeze.',
+    '887 枚（保底 387 + 先到先得 500），每地址 1 枚，名单自积分榜产生':
+      '887 in all (387 guaranteed + 500 first-come), one per address, allocated from the leaderboard.',
     '价格另行公布，每地址上限 3 枚': 'Price to be announced. Up to 3 per address.',
     '价格另行公布': 'Price to be announced',
     '看完再决定收不收。1,387 枚，永不增发。前 387 枚免费，每个地址 1 次，只花约 0.003 USDC 的 gas。之后价格另行公布，每个地址最多 3 枚。':
-      'Look first, then decide. 1,387 pieces. No further issuance, ever. The first 387 are free, one per address, costing about 0.003 USDC in gas. The price after that will be announced separately, and any address can take at most 3.',
+      'Look first, then decide whether to mint. 1,387 pieces. No further issuance, ever. 887 are free (387 guaranteed plus 500 first-come), one per address, costing about 0.003 USDC in gas. The remaining 500 are paid, price to be announced, up to 3 per address.',
     '唯一': 'One of one',
     '每个区块仅可铸造一次': 'Each block can be minted once',
     '没有代币': 'No token',
@@ -407,10 +403,10 @@
     '距离{0}开放': '{0} opens in',
     '{0}的开放时间待定，确定后将在此公布。当前积分照常累积。':
       'The {0} date is not set yet and will be announced here. Points continue to accrue.',
-    '已进入最后阶段，可直接在模拟器中铸造。': 'The final round is open. Mint from the simulator.',
+    '已进入最后阶段，可直接在引爆页铸造。': 'The final round is open. Mint from the detonate page.',
     '已到时间，正在刷新状态': 'Refreshing',
-    '服务端这一刻问不到（{0}）。刷新试试；模拟器不受影响。':
-      'Cannot reach the server right now ({0}). Try refreshing.',
+    '暂时无法读取开放时间（{0}）。请刷新页面重试，引爆不受影响。':
+      'The opening times cannot be read right now ({0}). Refresh the page and try again; detonation is unaffected.',
     '请先连接钱包': 'Connect a wallet first',
     '请先连接钱包并完成登记': 'Connect a wallet and register first',
     'X 用户名为 1–15 位字母、数字或下划线，不含 @': '1–15 letters, digits or underscores. No @.',
@@ -431,22 +427,21 @@
       'This address is already registered and cannot be edited.',
     '登记完成，已计入登记积分。下一步：推文互动，单项分值最高。':
       'Registered. Registration points are in. Next: post engagement, the highest single task.',
-    '完成关注、推文互动、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。':
-      'Earn points by following, engaging with posts, inviting others and detonating universes. Free mints are allocated by rank. Some are also assigned directly to early supporters and partners.',
-    '登记完成，已计入登记积分。建议下一步完成转发任务，该项积分最高。':
+    '完成关注、推文互动、邀请与引爆任务累积积分。免费共 887 枚：保底 387 枚由积分榜产生，其余 500 枚在先到先得阶段发放。':
+      'Earn points by following, engaging with posts, inviting others and detonating universes. 887 mints are free: 387 guaranteed slots come from the leaderboard, and the other 500 are released in the first-come round.',
+    '登记完成，已计入登记积分。下一步：推文互动，单项分值最高。':
       'Registered. Registration points have been added. The repost quest is worth the most next.',
     '已在钱包中取消': 'Cancelled in the wallet',
     /* '你在钱包里取消了' 在 i18n.js 的全局表里已经有了，这里不重收（值不一样会打架） */
     '未检测到钱包扩展': 'No wallet extension found',
-    '未检测到钱包扩展（MetaMask、币安钱包等）':
-      'No wallet extension found (MetaMask, Binance Wallet, and so on)',
+    '未检测到钱包扩展（MetaMask 等）': 'No wallet extension found (MetaMask and similar)',
 
     /* ---- 任务区（2026-09-18 重做结构，2026-09-19 改成产品口吻）---- */
     '完成关注、转发、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。':
       'Complete the follow, repost, invite and detonate quests to earn points. Free mints are allocated by rank; a portion is reserved for early supporters and partners.',
     '总积分': 'Points', '连接钱包后显示': 'Connect a wallet to view',
     '已完成任务': 'Quests completed', '共 8 项': 'of 8',
-    '有效邀请': 'Valid invites', '每位 +20 分': '+20 each', '每位 +{0} 分': '+{0} each',
+    '有效邀请': 'Valid invites', '每位 +10 分': '+10 each', '每位 +{0} 分': '+{0} each',
     'TOP 100': 'TOP 100', '按积分排名': 'by points',
     '剩余天数': 'Days remaining',
     '积分为实时统计结果，预热结束后经复核确定最终名单。':
@@ -467,15 +462,15 @@
     '创作推文': 'Original post',
     '发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。发布后提交链接。':
       'Publish a post that mentions @arcbang_xyz and includes #ARCBANG. Content is up to you. Submit the link afterwards.',
-    '在模拟器中引爆任意 Arc 区块，每次计 1 分。同一区块只计一次，每日 5 次。':
-      'Detonate any Arc block in the simulator: 1 point each. One point per block, up to 5 a day.',
-    '在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次，每日 {1} 次。':
-      'Detonate any Arc block in the simulator: {0} point(s) each. One point per block, up to {1} a day.',
+    '在引爆页引爆任意 Arc 区块，每次计 1 分。同一区块只计一次，每日 5 次。':
+      'Detonate any Arc block on the detonate page: 1 point each. One point per block, up to 5 a day.',
+    '在引爆页引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次，每日 {1} 次。':
+      'Detonate any Arc block on the detonate page: {0} point(s) each. One point per block, up to {1} a day.',
     /* ---- 两张「每日」卡的说明统一成同一句式（2026-09-19 用户截图指出不对称）---- */
-    '在模拟器中引爆任意 Arc 区块，每次 1 分。同一区块只计一次，每日最多 5 次，累计 50 次。':
-      'Detonate any Arc block in the simulator, 1 point each. Each block counts once, up to 5 a day and 50 in total.',
-    '在模拟器中引爆任意 Arc 区块，每次 {0} 分。同一区块只计一次，每日最多 {1} 次，累计 {2} 次。':
-      'Detonate any Arc block in the simulator, {0} point(s) each. Each block counts once, up to {1} a day and {2} in total.',
+    '在引爆页引爆任意 Arc 区块，每次 1 分。同一区块只计一次，每日最多 5 次，累计 50 次。':
+      'Detonate any Arc block on the detonate page, 1 point each. Each block counts once, up to 5 a day and 50 in total.',
+    '在引爆页引爆任意 Arc 区块，每次 {0} 分。同一区块只计一次，每日最多 {1} 次，累计 {2} 次。':
+      'Detonate any Arc block on the detonate page, {0} point(s) each. Each block counts once, up to {1} a day and {2} in total.',
     '引爆后广播到 X，每次 3 分。每日最多 3 次，累计 15 次。':
       'Broadcast a detonation to X, 3 points each. Up to 3 a day and 15 in total.',
     '引爆后广播到 X，每次 {0} 分。每日最多 {1} 次，累计 {2} 次。':
@@ -488,17 +483,17 @@
     /* ---- 引爆计分（2026-09-19）---- */
     '引爆宇宙': 'Detonate a universe',
     '未获资格': 'Not eligible',
-    '白名单：TOP 100 优先铸造。': 'Whitelist: the TOP 100 mint first.',
+    '白名单：在白名单阶段优先铸造。': 'Whitelist: you mint first, in the allowlist round.',
     '先到先得：白名单阶段之后按顺序领取剩余免费名额。':
       'First-come, first-served: claim the remaining free mints in order after the whitelist phase.',
     '未获资格：完成任一任务即可进入先到先得。':
       'Not eligible: complete any quest to enter first-come, first-served.',
     '层级': 'Tier',
-    '在模拟器中引爆任意 Arc 区块，每次计 1 分。':
-      'Detonate any Arc block in the simulator for 1 point each.',
+    '在引爆页引爆任意 Arc 区块，每次计 1 分。':
+      'Detonate any Arc block on the detonate page for 1 point each.',
     '+{0} / 次': '+{0} each', '+1 / 次': '+1 each',
-    '在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次。':
-      'Detonate any Arc block in the simulator for {0} point each. Each block counts once.',
+    '在引爆页引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次。':
+      'Detonate any Arc block on the detonate page for {0} point each. Each block counts once.',
     '每日最多 {0} 分，预热期最多 {1} 分':
       'Up to {0} points a day, {1} during the warm-up',
     '今日 {0} / {1} 分 · 累计 {2} / {3} 分':
@@ -507,6 +502,10 @@
     '今日 {0} 分 · 累计 {1} 分 · 共 {2} 个区块':
       '{0} points today · {1} in total · {2} blocks',
     '+{0} / 人': '+{0} each', '+{0} / 条': '+{0} each', '+{0} / 天': '+{0} a day',
+    /* 模板里写死的那几个默认值：JS 跑起来之前（以及英文预渲染时）亮的是它们，
+       只收 {0} 版的话英文页上会先闪一行中文。三条要跟 server 的默认分值对上。 */
+    '+10 / 人': '+10 each', '+20 / 条': '+20 each', '+1 / 次': '+1 each', '+3 / 次': '+3 each',
+    '每周最多 3 条，共 6 条，每条 20 分。': 'Up to 3 per week, 6 in total, 20 points each.',
     '登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4} · 引爆 {5}':
       'registration {0} · X {1} · invites {2} · posts {3} · daily {4} · detonations {5}',
     '已进入': 'Yes', '已进 TOP 100': 'inside the TOP 100',
@@ -522,10 +521,10 @@
     '每周上限 {0} 条，预热期共 {1} 条': 'Limit {0} per week, {1} during the warm-up',
     '创作 #{0}': 'Post #{0}',
     '{0} 人 +{1}': '{0} → +{1}',
-    '还没有人上榜，第一个是你。': 'No entries yet. Be the first.',
-    '转发不算创作': 'a repost does not count as an original post',
-    '没提到 @arcbang_xyz': 'it does not mention @arcbang_xyz',
-    '没带 #ARCBANG': 'it is missing #ARCBANG',
+    '还没有人上榜，完成任务即可上榜。': 'No entries yet. Be the first.',
+    '转发不计为创作推文': 'a repost does not count as an original post',
+    '未提及 @arcbang_xyz': 'it does not mention @arcbang_xyz',
+    '未包含 #ARCBANG': 'it is missing #ARCBANG',
 
     /* ---- 用 X 登录 ---- */
     '用 X 登录': 'Sign in with X', '退出登录': 'Sign out', '更换 X 账号': 'Change X account',
@@ -606,8 +605,8 @@
     '预热期共 14 天，结束后依次进入白名单、先到先得与公售三个阶段。具体时间以页面顶部倒计时为准。':
       'The warm-up runs for 14 days, followed by the whitelist, first-come and public sale phases. The countdown at the top of the page is authoritative.',
     '免费名额怎么来？': 'How are free mints allocated?',
-    '免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 887 枚。':
-      'Most free mints are allocated from the leaderboard; a portion is reserved for early supporters and partners. The exact count is announced when the leaderboard freezes and never exceeds the 887 allowed by the contract.',
+    '免费共 887 枚，全部来自积分榜：保底 387 枚在白名单阶段优先铸造，其余 500 枚在先到先得阶段发放。每地址免费 1 枚。':
+      'All 887 free mints come from the leaderboard: 387 guaranteed slots mint first in the allowlist round, and the other 500 are released in the first-come round. One free mint per address.',
     '为什么在 Arc 上？': 'Why Arc?',
     'Arc 以 USDC 作为 gas，单次铸造约 0.003 USDC，无需先行持有其他代币。':
       'Arc uses USDC for gas, about 0.003 USDC per mint, so no other token is required beforehand.',

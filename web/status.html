@@ -275,7 +275,7 @@ footer a:hover{text-decoration:underline}
       return pre.then(function (sel) {
         if (sel === false) return null;
         var p = (sel && sel.provider) || prov();
-        if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
+        if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask 等）')));
         return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
           addr = (a && a[0]) || null;
           if (!addr) throw new Error(ST('未获取到账户。钱包可能处于锁定状态，或已在弹窗中拒绝。'));
@@ -297,7 +297,7 @@ footer a:hover{text-decoration:underline}
     },
     switchAccount: function () {
       var p = prov();
-      if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
+      if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask 等）')));
       return p.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
         .then(
           function () { return p.request({ method: 'eth_accounts' }); },
@@ -376,16 +376,16 @@ footer a:hover{text-decoration:underline}
     <summary><h2>放号阶段</h2><span class="fsum" id="fsPhase">—</span></summary>
     <div class="fbody">
     <p class="why">预热期不签发任何铸造签名；白名单阶段仅对白名单地址开放；先到先得阶段对白名单与先到先得地址开放，免费额度先到先得；公售阶段向所有地址开放。
-       白名单依据积分榜排名产生，名额数量于榜单定格时公布，上限不超过合约中的 887 枚。
+       免费共 887 枚（保底 387 + 先到先得 500），由积分榜产生，名单于榜单定格时确定。
        免费额度为每地址 1 枚，额度用尽后，名单内地址同样按公售价铸造。</p>
     <div class="kline"><span>当前阶段</span><span class="num" id="phNow">—</span></div>
     <div class="kline"><span>下一段开放</span><span id="phNext">—</span></div>
     <div class="kline"><span>名单</span><span id="phFrozen">—</span></div>
-    <div class="kline"><span>白名单 · 优先层</span><span class="num" id="phGtd">—</span></div>
+    <div class="kline"><span>白名单 · 保底层</span><span class="num" id="phGtd">—</span></div>
     <div class="kline"><span>白名单 · 先到先得层</span><span class="num" id="phFcfs">—</span></div>
     <div class="kline"><span>在榜人数</span><span class="num" id="phApplied">—</span></div>
     <div class="kline"><span>分值</span><span id="phPts">—</span></div>
-    <!-- 榜前 10（只给地址缩写）。完整的榜在预热页，那里也只公布前 100 名。 -->
+    <!-- 榜前 10（只给地址缩写，不给名次）。完整的榜在任务页，那里也只公布前 100 名。 -->
     <div class="dist" id="phTop" style="margin-top:14px"></div>
     </div>
   </details>
@@ -889,15 +889,15 @@ footer a:hover{text-decoration:underline}
       }
       var P = h.allowlistPts;
       $('phPts').textContent = !P ? '—'
-        : TN('登记 {0} · 转发 {1} · 邀请 {2}/人（上限 {3} 人）· 分享 {4}/天（上限 {5} 天）',
-             P.register, P.repost, P.invite, P.inviteMax, P.share, P.shareMaxDays);
+        : TN('登记 {0} · 关注 {1} · 置顶推互动 {2} · 邀请 {3}/人（上限 {4} 人）· 引爆并广播 {5}/次（累计 {6} 次）',
+             P.register, P.follow, P.engage, P.invite, P.inviteMax, P.share, P.shareMax);
       /* 榜前 10。空榜就写一句，别留个空框。 */
       var top = h.allowlistTop || [];
-      var TIER = { gtd: '优先', fcfs: '免费' };
+      var TIER = { gtd: '白名单', fcfs: '先到先得' };
       $('phTop').innerHTML = !top.length
         ? '<div class="row"><span class="k">' + T('暂无上榜地址') + '</span><span class="dimtx">—</span></div>'
         : top.map(function (r) {
-            return '<div class="row"><span class="k"><b>#' + r.rank + '</b> '
+            return '<div class="row"><span class="k">'
               + '<span class="mono">' + r.addr + '</span></span>'
               /* tier 定格之前是 null（不承诺名额）：那就一个字都别写 ——
                  摆一个「—」在那儿只是噪声，还会让人以为读数坏了。 */

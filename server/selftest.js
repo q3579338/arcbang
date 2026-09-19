@@ -3081,7 +3081,7 @@ function call(method, url, body, headers) {
       process.env.ARCBANG_PHASE = 'warmup';
       const gw = await AL.gate(gtdAddr, yes);
       ok('warmup：连榜首都不签，403 + WARMUP',
-        gw.ok === false && gw.status === 403 && gw.code === 'WARMUP' && /还没开/.test(gw.error));
+        gw.ok === false && gw.status === 403 && gw.code === 'WARMUP' && /尚未开放/.test(gw.error));
       /* denyReason 是同一套判断里**不碰链**的那一半：/api/bang 用它在取块算卡之前就挡人。 */
       let probed = 0;
       await AL.gate(gtdAddr, async () => { probed++; return true; });

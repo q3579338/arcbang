@@ -21,7 +21,7 @@
      **文案里带换行的整段必须写成一行**：i18n 的词条 key 是「trim 之后逐字相等」，
      源码里换行加缩进会把文本节点里塞进 \n 和一串空格，词典就再也命中不了。踩过一次。 -->
 <title>ARCBANG 任务 · 积分榜与白名单</title>
-<meta name="description" content="ARCBANG 全网 1,387 枚宇宙 NFT。白名单按积分榜排：免费名额从榜的前列产生，数量在预热结束定格榜单时公布，上限不超过合约的 887 枚。登记、转发、邀请、引爆分享都算分；引爆和模拟器随时免费玩。">
+<meta name="description" content="ARCBANG 全网 1,387 枚宇宙 NFT，永不增发。免费 887 枚（保底 387 + 先到先得 500），每地址 1 枚；其余 500 枚付费，价格另行公布，每地址上限 3 枚。登记、关注、推文互动、邀请与引爆均可累积积分，名单按积分榜产生。引爆免费，无需连接钱包。">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/quest.html">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/quest.html">
 <link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/quest.html">
@@ -30,7 +30,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/quest.html">
 <meta property="og:title" content="ARCBANG 任务 · 积分榜与白名单">
-<meta property="og:description" content="白名单按积分榜排。登记 10 分、关注 20 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 3 分/次。免费名额从榜的前列产生，数量定格时公布。">
+<meta property="og:description" content="白名单按积分榜产生。登记 10 分、关注 20 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 3 分/次。免费 887 枚：保底 387 + 先到先得 500。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -38,7 +38,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ARCBANG 任务 · 积分榜与白名单">
-<meta name="twitter:description" content="白名单按积分榜排。登记 10 分、关注 20 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 3 分/次。免费名额从榜的前列产生，数量定格时公布。">
+<meta name="twitter:description" content="白名单按积分榜产生。登记 10 分、关注 20 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 3 分/次。免费 887 枚：保底 387 + 先到先得 500。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -422,7 +422,7 @@ button,input{font-family:inherit}
   <div class="ab-wrap">
     <p class="ab-phase" id="phaseChip" hidden>现在是 <b id="phaseName">预热期</b></p>
     <h1 class="ab-h1">1,387 个宇宙。积分榜前列获得免费铸造资格。</h1>
-    <p class="ab-lede">完成关注、推文互动、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。</p>
+    <p class="ab-lede">完成关注、推文互动、邀请与引爆任务累积积分。免费共 887 枚：保底 387 枚由积分榜产生，其余 500 枚在先到先得阶段发放。</p>
 
     <div class="ab-cd" id="cd" aria-live="polite">
       <div class="ab-cd-i"><b class="ab-cd-v" id="cdD">—</b><span class="ab-cd-k">天</span></div>
@@ -472,7 +472,7 @@ button,input{font-family:inherit}
       <div class="ab-stat">
         <b class="ab-stat-v" id="stInv">—</b>
         <span class="ab-stat-k">有效邀请</span>
-        <span class="ab-stat-s" id="stInvSub">每位 +20 分</span>
+        <span class="ab-stat-s" id="stInvSub">每位 +10 分</span>
       </div>
       <div class="ab-stat">
         <b class="ab-stat-v" id="stTop">—</b>
@@ -540,7 +540,7 @@ button,input{font-family:inherit}
            所以这一组的卡是**服务端给什么就画什么**（st.engagePosts），不是写死的。 -->
       <h3 class="ab-group">推文互动</h3>
       <div class="ab-rows" id="engageRows"></div>
-      <p class="ab-group-d" id="engageEmpty" hidden>还没有可互动的推文，过一会儿再来。</p>
+      <p class="ab-group-d" id="engageEmpty" hidden>暂无可互动的推文，稍后再来查看。</p>
 
       <!-- 评论那一项平时由 X 自动核。核不了的时候（搜索档位被拒）这一块会被
            搬进置顶推那张卡里，退回「贴一条回复链接」的老路。平时它不在页面上。 -->
@@ -587,7 +587,7 @@ button,input{font-family:inherit}
 
           <div class="ab-invc-col">
             <span class="ab-invc-k">有效邀请</span>
-            <div class="ab-invc-n"><b id="invN">0</b><span id="invMax">/ 20</span></div>
+            <div class="ab-invc-n"><b id="invN">0</b><span id="invMax">/ 10</span></div>
             <div class="ab-track" id="msTrack" aria-hidden="true"></div>
           </div>
 
@@ -609,7 +609,7 @@ button,input{font-family:inherit}
             <div id="postBox" hidden>
               <div class="ab-inline">
                 <input class="ab-in mono" id="inPost" type="url" inputmode="url" autocomplete="off"
-                       spellcheck="false" placeholder="https://x.com/你/status/…">
+                       spellcheck="false" placeholder="https://x.com/…/status/…">
                 <button class="ab-btn3" type="button" id="btnPost2">提交链接</button>
               </div>
               <p class="ab-msg" id="postMsg"></p>
@@ -626,7 +626,7 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙</h4><span class="ab-qr-p" data-pts>+1 / 次</span></div>
-            <p class="ab-qr-d" id="bangHow">在模拟器中引爆任意 Arc 区块，每次 1 分。同一区块只计一次，每日最多 5 次，累计 50 次。</p>
+            <p class="ab-qr-d" id="bangHow">在引爆页引爆任意 Arc 区块，每次 1 分。同一区块只计一次，每日最多 5 次，累计 50 次。</p>
             <div class="ab-dots" id="bangDots"></div>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
@@ -658,7 +658,7 @@ button,input{font-family:inherit}
 
     <!-- ================= 积分榜 ================= -->
     <div class="ab-panel" data-panel="board" hidden>
-      <p class="ab-say" style="margin-top:0">公开展示 TOP 100。免费名额自积分榜 TOP 100 产生。</p>
+      <p class="ab-say" style="margin-top:0">公开展示 TOP 100。免费名额自积分榜产生：保底 387 枚，其余 500 枚在先到先得阶段发放。</p>
       <table class="ab-board">
         <thead><tr><th class="c-addr">地址</th><th class="c-tier">层级</th><th class="c-pts">积分</th></tr></thead>
         <tbody id="boardBody"><tr><td colspan="3" class="tag">读取中…</td></tr></tbody>
@@ -754,7 +754,7 @@ button,input{font-family:inherit}
     <h2 class="ab-h2">规则</h2>
     <table class="ab-tbl">
       <tr><th>总量</th><td>1,387 枚，永不增发</td></tr>
-      <tr><th>免费</th><td>每地址 1 枚，名额自积分榜前列产生，数量于榜单定格时公布</td></tr>
+      <tr><th>免费</th><td>887 枚（保底 387 + 先到先得 500），每地址 1 枚，名单自积分榜产生</td></tr>
       <tr><th>公售</th><td>价格另行公布，每地址上限 3 枚</td></tr>
       <tr><th>唯一</th><td>每个区块仅可铸造一次</td></tr>
       <tr><th>没有代币</th><td>不发行代币，不进行预售</td></tr>
@@ -792,7 +792,7 @@ button,input{font-family:inherit}
       </details>
       <details>
         <summary>免费名额怎么来？</summary>
-        <p>免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 887 枚。</p>
+        <p>免费共 887 枚，全部来自积分榜：保底 387 枚在白名单阶段优先铸造，其余 500 枚在先到先得阶段发放。每地址免费 1 枚。</p>
       </details>
       <details>
         <summary>为什么在 Arc 上？</summary>
@@ -970,7 +970,7 @@ button,input{font-family:inherit}
     } else {
       target = null;
       $('cd').hidden = true;
-      $('cdWhen').textContent = T('已进入最后阶段，可直接在模拟器中铸造。');
+      $('cdWhen').textContent = T('已进入最后阶段，可直接在引爆页铸造。');
     }
 
     $('kvApplied').textContent = st.boardSize == null ? '—' : String(st.boardSize);
@@ -1349,7 +1349,7 @@ button,input{font-family:inherit}
     $('stDone').textContent = connected ? (done + ' / 7') : '—';
 
     $('stInv').textContent = connected ? ((st.validInvites || 0) + ' / ' + (P.inviteMax || 10)) : '—';
-    $('stInvSub').textContent = TF('每位 +{0} 分', P.invite || 20);
+    $('stInvSub').textContent = TF('每位 +{0} 分', P.invite || 10);
 
     var inTop = !!st.inTop100;
     $('stTop').textContent = connected ? (inTop ? T('已进入') : ('+' + (st.gapToTop100 == null ? '—' : st.gapToTop100))) : '—';
@@ -1422,10 +1422,9 @@ button,input{font-family:inherit}
     var reg = !!st.registered;
     var pf = st.proof || null;
     var WHY = {
-      AUTHOR_MISMATCH: '作者不符', CODE_NOT_FOUND: '回复里没找到你的码',
-      NOT_REPLY_TO_PINNED: '不是回复置顶推', REPLY_UNKNOWN: '在人工看了',
-      FETCH_FAILED: '推文打不开', BAD_URL: '链接不对', REJECTED: '被驳回了',
-      IS_RETWEET: '转发不算创作', NO_MENTION: '没提到 @arcbang_xyz', NO_HASHTAG: '没带 #ARCBANG'
+      AUTHOR_MISMATCH: '作者不符', REPLY_UNKNOWN: '人工复核中',
+      FETCH_FAILED: '推文无法访问', BAD_URL: '链接格式有误', REJECTED: '未通过复核',
+      IS_RETWEET: '转发不计为创作推文', NO_MENTION: '未提及 @arcbang_xyz', NO_HASHTAG: '未包含 #ARCBANG'
     };
     var bad = pf && (pf.status === 'pending' || pf.status === 'partial' || pf.status === 'rejected');
 
@@ -1697,7 +1696,7 @@ button,input{font-family:inherit}
       : TF('每日最多 {0} 次，累计 {1} 次', bMaxDay, P.bangMax || 50)) + '</span>';
     /* 两次计分之间还有一道最短间隔（服务端的 ARCBANG_BANG_INTERVAL_MIN），
         **故意不写在这句话里**：写出来等于教人踩着点刷，而正常玩的人碰不到它。 */
-    $('bangHow').textContent = TF('在模拟器中引爆任意 Arc 区块，每次 {0} 分。同一区块只计一次，每日最多 {1} 次，累计 {2} 次。',
+    $('bangHow').textContent = TF('在引爆页引爆任意 Arc 区块，每次 {0} 分。同一区块只计一次，每日最多 {1} 次，累计 {2} 次。',
       P.bang || 1, bMaxDay, P.bangMax || 50);
 
     /* 主 CTA：登记过了就叫「继续」 */
@@ -1764,7 +1763,7 @@ button,input{font-family:inherit}
     var tag = $('tierTag');
     tag.className = 'ab-tag ' + k;
     tag.textContent = T(TIER_CN[t] || '未获资格');
-    $('tierWhy').textContent = t === 'gtd' ? T('白名单：TOP 100 优先铸造。')
+    $('tierWhy').textContent = t === 'gtd' ? T('白名单：在白名单阶段优先铸造。')
       : t === 'fcfs' ? T('先到先得：白名单阶段之后按顺序领取剩余免费名额。')
         : T('未获资格：完成任一任务即可进入先到先得。');
   }
@@ -1779,7 +1778,7 @@ button,input{font-family:inherit}
         + '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2"/>'
         + '<circle cx="32" cy="32" r="15" fill="none" stroke="currentColor" stroke-width="2"/>'
         + '<circle cx="32" cy="32" r="4" fill="currentColor"/></svg>'
-        + esc(T('还没有人上榜，第一个是你。')) + '</div></td></tr>';
+        + esc(T('还没有人上榜，完成任务即可上榜。')) + '</div></td></tr>';
       $('boardFoot').textContent = '';
       $('btnMore').hidden = true;
       $('meLine').hidden = true;
@@ -1824,7 +1823,7 @@ button,input{font-family:inherit}
 
   function load() {
     var a = api('/allowlist/status' + (ADDR ? '?addr=' + ADDR : '')).then(renderStatus, function (e) {
-      $('cdWhen').textContent = TF('服务端这一刻问不到（{0}）。刷新试试；模拟器不受影响。', (e && e.message) || e);
+      $('cdWhen').textContent = TF('暂时无法读取开放时间（{0}）。请刷新页面重试，引爆不受影响。', (e && e.message) || e);
       throw e;
     });
     /* 榜排在 status 之后画：renderBoard 要用 ST.rank 决定高亮哪一行。
@@ -1842,7 +1841,7 @@ button,input{font-family:inherit}
     return pre.then(function (sel) {
       if (sel === false) return null;
       var p = (sel && sel.provider) || prov();
-      if (!p || !p.request) throw new Error(T('未检测到钱包扩展（MetaMask、币安钱包等）'));
+      if (!p || !p.request) throw new Error(T('未检测到钱包扩展（MetaMask 等）'));
       return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
         return (a && a[0]) || null;
       }, function (er) {

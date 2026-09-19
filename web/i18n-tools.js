@@ -469,8 +469,8 @@
     '真烧要 <b>{n} BANG</b>': 'A real burn would cost <b>{n} BANG</b>',
     '把调教出来的这个宇宙铸成造物 NFT：先授权 BANG 再铸造，一次点击、两次钱包确认':
       'Mint this tuned universe as a Crafted NFT: approve BANG first, then mint — one click, two wallet confirmations',
-    '没有检测到钱包扩展（MetaMask / 币安钱包 等），铸不了造物':
-      'No wallet extension detected (MetaMask, Binance Wallet, …) — cannot mint a Crafted',
+    '未检测到钱包扩展（MetaMask 等），无法铸造造物':
+      'No wallet extension detected (MetaMask and similar) — cannot mint a Crafted',
     'BANG 代币地址没配，付不了铸造费':
       'The BANG token address is not configured — the mint fee cannot be paid',
     '正在铸，等这一笔走完': 'Minting — wait for this one to finish',
@@ -541,8 +541,8 @@
        英文用 Mint & Rescue（不是 Mint and Rescue）：它是一颗按钮上的名字，
        连字号版本短、也更像一个动作 —— 用户拍板的原话就是「实际上就是一个操作」。 */
     '铸下并拯救': 'Mint & Rescue',
-    '没有检测到钱包扩展（MetaMask / 币安钱包 等），铸不了也拯救不了':
-      'No wallet extension detected (MetaMask, Binance Wallet, …) — cannot mint or rescue',
+    '未检测到钱包扩展（MetaMask 等），无法铸造或拯救':
+      'No wallet extension detected (MetaMask and similar) — cannot mint or rescue',
     '一次点击串起两件事：先把这个宇宙铸成你的原生 NFT，再烧 BANG 把它改写成沙盒里这个样子。钱包会依次弹三次（铸造、授权、拯救），界面上会写现在是第几步':
       'One click chains two things: first mint this universe as your native NFT, then burn BANG to rewrite it into what the sandbox shows. The wallet will pop up three times in a row (mint, approve, rescue) and the panel says which step you are on',
     /* 「铸下并拯救」那一格的说明。原来这里只有一句「你可以先铸下它」而**按钮根本不出现** ——

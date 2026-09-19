@@ -27,6 +27,7 @@
     'ARC宇宙': 'ARCBANG',
     '宇宙 NFT · ArcUniverse': 'Universe NFT · ArcUniverse',
     '市场 · ArcMarket': 'Market · ArcMarket',
+    '一个区块哈希只对应一个宇宙，铸走之后不再重复': 'One block hash yields one universe; once minted it does not recur',
     '每个 Arc 区块哈希，都是一个宇宙：引爆它，看它能否长出生命':
       'Every Arc block hash is a universe: detonate it and see whether it can grow life'
   });
@@ -69,8 +70,8 @@
   /* ---- web/onboard.js 新手引导第 1 / 3 步（命名空间 'site'；第 2 步与 bnb 站同 key） ----
      第 3 步在 arc 上换了措辞：拯救下线之后「救活」是那套话术的词，沙盒改叫「调参沙盒」。 */
   I.add({
-    'Arc 链每 0.5 秒吐出一个区块，每个区块带一串 64 位哈希。这串数字被拆成 20 个创世参数 —— 电磁力有多强、暗能量有多少、空间有几个维度……全由它决定。你不需要懂这些参数：换一个区块，就是换一套物理定律。':
-      'Arc seals a new block every 0.5 seconds, and every block carries a 64-digit hash. That number is split into 20 genesis parameters: how strong electromagnetism is, how much dark energy there is, how many dimensions space has. You do not need to understand any of them — a different block is a different set of physical laws.',
+    'Arc 链每 0.5 秒产出一个区块，每个区块带一串 64 位哈希。这串数字被拆成 23 个创世参数 —— 电磁力有多强、暗能量有多少、空间有几个维度……全由它决定。你不需要懂这些参数：换一个区块，就是换一套物理定律。':
+      'Arc seals a new block every 0.5 seconds, and every block carries a 64-digit hash. That number is split into 23 genesis parameters: how strong electromagnetism is, how much dark energy there is, how many dimensions space has. You do not need to understand any of them — a different block is a different set of physical laws.',
     '死掉的宇宙，能推活': 'A dead universe can be pushed back to life',
     '结局不好别扔。进「调参沙盒」，照着提示一格一格地推参数，右边的仪表会跟着动 ——结局标签常常十几格才跳一次，动的是仪表。实测 83% 的死宇宙能推活，中位 4 步。沙盒不花钱、不上链、可撤销，随便试。':
       'A bad ending is not the end of it. Open the parameter sandbox and push the constants one notch at a time, following the prompts; the gauges on the right move with you. The ending label often takes a dozen notches to flip, so watch the gauges. In testing, 83% of dead universes can be pushed back to life, four steps being the median. The sandbox costs nothing, touches no chain, and every step can be undone.'
@@ -84,7 +85,8 @@
       'I detonated universe {0} on ARCBANG: {1}. Every Arc block hash is a universe. 1,387 pieces. No further issuance, ever. @arcbang_xyz @arc {2}',
     '链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。':
       'The link is this universe: whoever opens it sees the same physical constants. ARCBANG has no token, no mint reward and no referral rebate — detonating is always free, and you only mint if you want to keep one.',
-    /* ArcMarket 比 MirrorMarket 多两个动作：卖家改价、任何人清掉一条已失效的挂单。 */
+    /* ArcMarket 比 ArcMarket 多两个动作：卖家改价、任何人清掉一条已失效的挂单。 */
+    'ARCBANG · 市场': 'ARCBANG · Market',
     '改价': 'Change price',
     '清失效挂单': 'Clear stale listing',
     '新的总价（{0}）': 'New total price ({0})'
@@ -97,6 +99,8 @@
      这几个词在中文里短得像标签，英文里也必须短 —— 它们出现在表格的一格里。 */
   I.add({
     '白名单': 'Whitelist',
+    '白名单 · 保底层': 'Allowlist · guaranteed tier',
+    '白名单 · 先到先得层': 'Allowlist · first-come tier',
     '先到先得': 'First-come, first-served',
     '免费': 'Free',
     '未核': 'unchecked',
@@ -109,8 +113,8 @@
     /* **整句进词典**：'分' / '天' 这种单字在预热页的倒计时里已经是 min / sec 的意思，
        在这儿按「积分 / 天数」再收一遍必然撞车（i18n 的 key 是全局唯一的中文原文）。 */
     '{0} 分': '{0} pts',
-    '登记 {0} · 转发 {1} · 邀请 {2}/人（上限 {3} 人）· 分享 {4}/天（上限 {5} 天）':
-      'Sign-up {0} · repost {1} · invite {2} each (cap {3}) · broadcast {4}/day (cap {5} days)'
+    '登记 {0} · 关注 {1} · 置顶推互动 {2} · 邀请 {3}/人（上限 {4} 人）· 引爆并广播 {5}/次（累计 {6} 次）':
+      'Sign-up {0} · follow {1} · pinned-post engagement {2} · invite {3} each (cap {4}) · detonate and broadcast {5} each (cap {6})'
   });
 
   /* ---- 放号分期（2026-09-18）：web/arc-ui.js 在铸造入口上说的话 ----
