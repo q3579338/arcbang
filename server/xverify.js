@@ -163,16 +163,20 @@ function create(opts) {
   function auth(method, url) {
     const c = XA && XA.readCred ? XA.readCred() : null;
     if (!c) return null;
-    if (c.accessToken && c.accessSecret) {
+    /* 优先站方官号的 token（点赞列表只对推文作者本人返回），其次是后台贴的 Access Token 对。 */
+    const tok = (c.ownerAccessToken && c.ownerAccessSecret)
+      ? { t: c.ownerAccessToken, s: c.ownerAccessSecret }
+      : ((c.accessToken && c.accessSecret) ? { t: c.accessToken, s: c.accessSecret } : null);
+    if (tok) {
       const p = {
         oauth_consumer_key: c.key,
         oauth_nonce: nonce(),
         oauth_signature_method: 'HMAC-SHA1',
         oauth_timestamp: String(nowSec()),
-        oauth_token: c.accessToken,
+        oauth_token: tok.t,
         oauth_version: '1.0'
       };
-      const sg = XAUTH.sign(method, url, p, c.secret, c.accessSecret);
+      const sg = XAUTH.sign(method, url, p, c.secret, tok.s);
       return XAUTH.authHeader(p, sg);
     }
     if (c.bearer) return 'Bearer ' + c.bearer;

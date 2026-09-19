@@ -512,7 +512,8 @@ tr.dis td{background:#FBF1F1}
       $('xState').textContent = j.configured
         ? ('已配置：key ' + (j.key4 || '') + '…（' + (j.savedAt || '') + '）'
           + ' · Bearer ' + (j.hasBearer ? '有' : '无')
-          + ' · Access Token ' + (j.hasAccessToken ? '有' : '无'))
+          + ' · Access Token ' + (j.hasAccessToken ? '有' : '无')
+          + ' · 官号授权 ' + (j.hasOwnerToken ? ('@' + (j.ownerHandle || '') + '（点赞核验可用）') : '无（用官号在任务页登录一次即可，否则点赞一项核不到）'))
         : '还没配。没配的时候预热页显示「用 X 登录暂未开放」，退回手填 X 名。';
     }, function (e) { $('xState').textContent = e.message; });
   }

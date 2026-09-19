@@ -844,6 +844,22 @@ async function handle(req, res, u) {
           'cache-control': 'no-store'
         });
       }
+      /* 站方官号（ARCBANG_X_HANDLE）登录：把它的 Access Token 对存成 owner token。
+         自动核读官号推文的点赞列表只认作者本人的用户上下文（X 的点赞已是私密），
+         机器人号的 token 读出来永远是空。存盘走 saveCred，secret 一个字符不进日志。 */
+      try {
+        const want = String(process.env.ARCBANG_X_HANDLE || 'arcbang_xyz').replace(/^@+/, '').toLowerCase();
+        if (r.tokens && r.tokens.token && r.tokens.secret && String(r.session.handle).toLowerCase() === want) {
+          const cur = XA.readCred();
+          if (cur) {
+            XA.saveCred(cur.key, cur.secret, {
+              ownerAccessToken: r.tokens.token, ownerAccessSecret: r.tokens.secret,
+              ownerHandle: r.session.handle, ownerAt: new Date().toISOString()
+            });
+            console.log('[xauth] 站方官号 @' + r.session.handle + ' 已授权：自动核改用它的用户上下文读点赞/转发/回复');
+          }
+        }
+      } catch (e) { console.error('[xauth] 存站方 token 失败：' + (e && e.message)); }
       return send(res, 302, '', {
         location: back + '?x=1',
         'set-cookie': [r.cookie, killState],

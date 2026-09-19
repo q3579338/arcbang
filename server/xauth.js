@@ -141,6 +141,14 @@ function create(opts) {
         bearer: j.bearer ? String(j.bearer) : null,
         accessToken: j.accessToken ? String(j.accessToken) : null,
         accessSecret: j.accessSecret ? String(j.accessSecret) : null,
+        /* 站方账号（ARCBANG_X_HANDLE）自己的 Access Token 对。2026-09-19 踩过：
+           liking_users 只对**推文作者本人**的用户上下文返回数据（X 把点赞设成了私密），
+           用机器人号的 token 去读官号推文的点赞永远是 0。站方用官号在任务页「用 X 登录」
+           一次，回调里就把这对 token 存到这里（server/index.js /x/callback），自动核优先用它。 */
+        ownerAccessToken: j.ownerAccessToken ? String(j.ownerAccessToken) : null,
+        ownerAccessSecret: j.ownerAccessSecret ? String(j.ownerAccessSecret) : null,
+        ownerHandle: j.ownerHandle ? String(j.ownerHandle) : null,
+        ownerAt: j.ownerAt || null,
         mtimeMs: st.mtimeMs
       };
       return credCache;
@@ -176,6 +184,10 @@ function create(opts) {
       bearer: keep('bearer'),
       accessToken: keep('accessToken'),
       accessSecret: keep('accessSecret'),
+      ownerAccessToken: keep('ownerAccessToken'),
+      ownerAccessSecret: keep('ownerAccessSecret'),
+      ownerHandle: keep('ownerHandle'),
+      ownerAt: keep('ownerAt'),
       savedAt: new Date().toISOString()
     };
     fs.mkdirSync(storeDir, { recursive: true });
@@ -196,6 +208,10 @@ function create(opts) {
       /* 同样只回「配没配」。Bearer 和 Access Token 一个字符都不回。 */
       hasBearer: !!(c && c.bearer),
       hasAccessToken: !!(c && c.accessToken && c.accessSecret),
+      /* 站方官号有没有授权过（读官号推文的点赞列表要它）。只回有没有和用户名。 */
+      hasOwnerToken: !!(c && c.ownerAccessToken && c.ownerAccessSecret),
+      ownerHandle: c && c.ownerAccessToken ? (c.ownerHandle || null) : null,
+      ownerAt: c && c.ownerAccessToken ? (c.ownerAt || null) : null,
       callback: publicBase() ? publicBase() + '/api/x/callback' : null
     };
   }
@@ -399,7 +415,9 @@ function create(opts) {
       handle: String(j.screen_name),
       exp: (now == null ? Date.now() : now) + SESSION_MS
     };
-    return { ok: true, session: payload, cookie: cookieHeader(payload) };
+    /* tokens 只给 index.js 的回调用一次（站方官号登录时存成 owner token），不进 cookie、不回给页面。 */
+    return { ok: true, session: payload, cookie: cookieHeader(payload),
+      tokens: { token: String(j.oauth_token || ''), secret: String(j.oauth_token_secret || '') } };
   }
 
   return {
