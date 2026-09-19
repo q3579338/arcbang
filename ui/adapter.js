@@ -513,7 +513,11 @@
   var A = {
     isReal: !!E,
     engineVersion: E ? (E.version || null) : null,
+    /* 2026-09-20：原来这里存的是一个**算好的常量串** —— 模块加载那一刻是什么语言，
+       它就永远是什么语言，切语言时页脚的引擎信息行跟着不动。改成现算。
+       unitNote 这个老名字留着（外部可能读它），新代码用 unitNoteText()。 */
     unitNote: baseSchema().length + TR(' 个公认基础参数'),
+    unitNoteText: function () { return baseSchema().length + TR(' 个公认基础参数'); },
     OUTCOME_META: OUTCOME_META,
     OURS_ID: OURS_ID,
     MODULES: MODULES,

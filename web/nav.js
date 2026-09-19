@@ -339,7 +339,7 @@
        /* data-nolang：语言名永远用它自己那门语言写（「中文 / English」不进词典），
           「语言 / Language」这行标签本身就是双语 —— 整行按专名白名单处理，CJK 扫描不算残留。 */
        +   '<div class="setrow" data-nolang><span class="setlab">语言 / Language</span>'
-       +     '<div class="seg" id="langSeg" role="radiogroup" aria-label="语言 / Language">'
+       +     '<div class="seg" id="langSeg" role="radiogroup" data-nolang aria-label="语言 / Language">'
        +       '<button class="segbtn" type="button" role="radio" aria-checked="false" data-lang="zh">中文</button>'
        +       '<button class="segbtn" type="button" role="radio" aria-checked="false" data-lang="en">English</button>'
        +     '</div>'

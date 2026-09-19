@@ -82,6 +82,9 @@
     ' 次大爆炸': ' big bangs',
     '（第一千二百零七号之后了）': ' (past No. 1207)',
     ' · 构建 ': ' · build ',
+    /* 页脚引擎信息行里的括号。中文用全角、英文用半角并带一个前导空格 ——
+       它直接跟在「21 个公认基础参数」后面，英文那边不加空格会粘成一个词。 */
+    '（PDG 2022 / Planck 2018）': ' (PDG 2022 / Planck 2018)',
     ' · 已开启模块：': ' · modules on: ',
     '3D 模块未加载': '3D module not loaded',
     'WebGPU 不可用': 'WebGPU unavailable',

@@ -50,6 +50,43 @@
     }
     // 分模块的词条同时补进全局：DOM 遍历只认全局表，静态 HTML 才有得翻
     if (ns) for (var k2 in map) if (map.hasOwnProperty(k2) && !EN.hasOwnProperty(k2)) EN[k2] = map[k2];
+    REV = null;               // 词表变了：反查表作废，下次用时重建
+  }
+
+  /* ---- 反查表（英文 → 中文）：切回中文时用 --------------------------------
+     切语言原本有两条路：静态标记走 DOM 遍历（切英文时把中文原文记在 node.__zh 上，
+     切回来照着还原），动态渲染的那一半靠各页监听 mirror:lang 自己重画。
+     漏掉的是第三种：**节点本身就是在英文态下现画出来的** —— 它从来没有过中文原文，
+     __zh 是空的，那一块又没人重画，于是它在中文界面里永远是英文。
+     （2026-09-20 用户报的「好多英文没汉化」有一半是这个。）
+
+     按值反查回中文，规则比正向更严，只认铁板钉钉的那些：
+       · key 必须是**纯中文**（不含任何拉丁字母）—— 'ARC宇宙' → 'ARCBANG' 这种带品牌名的不收：
+         页面上真有一处写着 ARCBANG 的地方会被它改成中文品牌名；
+       · 一个英文值指向两个不同中文 key 的一律丢弃（有歧义就不猜）；
+       · 带前后空格的**拼接碎片**不收（见下面那条 if 的说明）；
+       · 与正向一致，**整段逐字相等**才换，绝不做子串替换。 */
+  var REV = null;
+  function rev() {
+    if (REV) return REV;
+    var r = {}, dup = {}, k, v, s;
+    for (k in EN) if (EN.hasOwnProperty(k)) {
+      v = EN[k];
+      if (typeof v !== 'string') continue;
+      s = v.trim();
+      if (!s || s === k) continue;
+      /* 带前后空格的 key 是**拼接用的碎片**（' 维' → 'D'、' 次大爆炸' → ' big bangs'）：
+         反查会把整段就是 'D' 的那个节点换成 ' 维'，而正向查的是 trim 过的 '维' —— 对不上，
+         于是英文态里那一格永远停在中文（2026-09-20 实测踩到）。碎片一律不反推。 */
+      if (k !== k.trim() || v !== s) continue;
+      if (!/[\u4e00-\u9fff]/.test(k) || /[A-Za-z]/.test(k)) continue;   // 非纯中文 key：不反推
+      if (!/[A-Za-z]/.test(s)) continue;                                // 译文里一个字母都没有：换回去没意义
+      if (r.hasOwnProperty(s)) { if (r[s] !== k) dup[s] = 1; }
+      else r[s] = k;
+    }
+    for (k in dup) if (dup.hasOwnProperty(k)) delete r[k];
+    REV = r;
+    return r;
   }
 
   /* ---- 通用 ---- */
@@ -196,6 +233,10 @@
   var cur = stored() || detect();
 
   function lang() { return cur; }
+  /** 日期 / 数字格式化用的 locale：中文 zh-CN、英文 en-US。
+      各页的 toLocaleString() 都要带上它 —— 不带就跟着浏览器语言走，
+      英文界面上会冒出 "2026/10/4" 这种中文写法（2026-09-20 用户点名）。 */
+  function locale() { return cur === 'en' ? 'en-US' : 'zh-CN'; }
 
   /**
    * 翻译一句。**没有译文就原样返回中文** —— 这是有意的：
@@ -239,11 +280,23 @@
     }
   }
 
-  /** 切回中文：把记过原文的节点还原。比重新翻译一遍可靠。 */
+  /** 切回中文：把记过原文的节点还原。比重新翻译一遍可靠。
+      记过原文的照着还原；**没记过原文的**（在英文态下现画出来的那些）走反查表 rev()，
+      整段逐字命中才换回中文。后者不留标记 —— 下次切英文时 walk() 会照常再翻一遍。 */
   function restore(node) {
+    var SKIP = { SCRIPT: 1, STYLE: 1, CODE: 1, PRE: 1, TEXTAREA: 1 };
     var it = root.document.createTreeWalker(node || root.document.body, root.NodeFilter.SHOW_TEXT, null);
-    var n;
-    while ((n = it.nextNode())) if (n.__zh != null) { n.nodeValue = n.__zh; n.__zh = null; }
+    var R = rev(), n, p, raw, s2, zh;
+    while ((n = it.nextNode())) {
+      if (n.__zh != null) { n.nodeValue = n.__zh; n.__zh = null; continue; }
+      p = n.parentNode;
+      if (!p || SKIP[p.nodeName]) continue;
+      if (p.getAttribute && p.getAttribute('data-nolang') != null) continue;
+      raw = n.nodeValue; s2 = raw.trim();
+      if (!s2) continue;
+      zh = R[s2];
+      if (zh != null) n.nodeValue = raw.replace(s2, zh);
+    }
   }
 
   /* 属性也要翻。DOM 遍历只走文本节点，够不着 aria-label / title / placeholder ——
@@ -269,13 +322,21 @@
     }
   }
   function restoreAttrs(rootEl) {
-    var all = rootEl.querySelectorAll('*'), i, j, el, a, zh;
+    var all = rootEl.querySelectorAll('*'), i, j, el, a, zh, raw, R = rev();
     for (i = 0; i < all.length; i++) {
       el = all[i];
+      if (el.getAttribute('data-nolang') != null) continue;
       for (j = 0; j < ATTRS.length; j++) {
         a = ATTRS[j];
         zh = el.getAttribute('data-zh-' + a);
-        if (zh == null) continue;
+        if (zh == null) {
+          /* 英文态下由 JS 现写上去的属性没有 data-zh-* 备份：走反查表 */
+          raw = el.getAttribute(a);
+          if (raw == null) continue;
+          var back = R[raw.trim()];
+          if (back != null) el.setAttribute(a, raw.replace(raw.trim(), back));
+          continue;
+        }
         el.setAttribute(a, zh);
         el.removeAttribute('data-zh-' + a);
       }
@@ -327,6 +388,9 @@
   root.MirrorI18n = {
     t: t,
     lang: lang,
+    locale: locale,
+    /** 英文 → 中文的反查（整段逐字命中才有结果，查不到返回 null）。自检与各页兜底用。 */
+    zh: function (en) { var v = rev()[String(en).trim()]; return v == null ? null : v; },
     set: setLang,
     apply: applyStatic,
     /** 给各模块补词条用：MirrorI18n.add({'中文':'English'}, '模块名') */

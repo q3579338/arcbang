@@ -114,9 +114,11 @@
     var D = +o.dim;
     /* 出口按钮与常驻提示的措辞由调用方给**整句**，不在这里拼 "…的" + "三维投影"：
        i18n 用中文原文当 key（web/i18n.js 开头写明了这个取舍），碎片越短越容易和别处撞车，
-       而且 "仍然要看它的" 这种半句根本没法翻好。3D 给"三维投影"、2D 回退给"二维投影"。 */
-    var exitText = o.exitText || T('仍然要看它的三维投影');
-    var tipHead = o.tipHead || T('屏幕上是它的三维投影（D=');
+       而且 "仍然要看它的" 这种半句根本没法翻好。3D 给"三维投影"、2D 回退给"二维投影"。
+       **调用方传中文原文，这里现翻**（2026-09-20 改）：原来传的是已经翻好的串，
+       那张卡在哪个语言下建出来就永远是哪个语言，切语言也不跟着走。 */
+    var exitZh = o.exitText || '仍然要看它的三维投影';
+    var tipZh = o.tipHead || '屏幕上是它的三维投影（D=';
     var onChange = typeof o.onChange === 'function' ? o.onChange : function () {};
     var revealed = dimVeilSeen, disposed = false;
     var el = document.createElement('div');
@@ -134,7 +136,7 @@
         card.setAttribute('aria-live', 'polite');
         card.appendChild(mk('div', 'u3d-veil-h', T('我们无法观察它')));
         card.appendChild(mk('div', 'u3d-veil-p', T('这是一个 D=') + dtxt() + T(' 的高维宇宙：屏幕上只有一堆极其混乱的色彩和形状。')));
-        var b = mk('button', 'u3d-veil-b', exitText);
+        var b = mk('button', 'u3d-veil-b', T(exitZh));
         b.type = 'button';
         card.appendChild(b);
         card.appendChild(mk('div', 'u3d-veil-k', T('点击画面任意处，或按 Enter')));
@@ -142,7 +144,7 @@
       } else {
         el.className = 'u3d-veil done';
         var tip = mk('div', 'u3d-veil-tip');
-        tip.appendChild(mk('span', null, tipHead + dtxt() + T('）· 这个宇宙本身我们无法直接观察')));
+        tip.appendChild(mk('span', null, T(tipZh) + dtxt() + T('）· 这个宇宙本身我们无法直接观察')));
         var b2 = mk('button', 'u3d-veil-b sm', T('重看那一屏'));
         b2.type = 'button';
         tip.appendChild(b2);
@@ -176,6 +178,9 @@
       set(true);
     }
     root.addEventListener('keydown', onKey, true);
+    /* 切语言：整张卡按当前语言重画（只重写文字，不动 revealed 状态）。 */
+    function onLang() { if (!disposed) paint(); }
+    document.addEventListener('mirror:lang', onLang);
     paint();
     return {
       el: el,
@@ -188,6 +193,7 @@
         disposed = true;
         try { el.removeEventListener('click', onClick); } catch (e) { /* ignore */ }
         try { root.removeEventListener('keydown', onKey, true); } catch (e) { /* ignore */ }
+        try { document.removeEventListener('mirror:lang', onLang); } catch (e) { /* ignore */ }
         if (el.parentNode) el.parentNode.removeChild(el);
       }
     };
@@ -2682,7 +2688,7 @@
     var dimVeil = null;
     if (dimMode === 'chaos' && root.document && canvas.parentNode) {
       dimVeil = createDimVeil(canvas.parentNode, {
-        dim: dimS, exitText: T('仍然要看它的三维投影'), tipHead: T('屏幕上是它的三维投影（D='),
+        dim: dimS, exitText: '仍然要看它的三维投影', tipHead: '屏幕上是它的三维投影（D=',
         onChange: function (rev) {
           dimVeiled = !rev;
           // 揭开 → 混乱色块层不再显示也不再画；晕标签/小地图/比例尺/线框跟着回来；顶部标注换成"这是投影"

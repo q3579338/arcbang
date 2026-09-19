@@ -472,7 +472,7 @@
     var onNow = modsLabel(A.getModules());
     var bt = buildLabel();
     $('engineInfo').textContent = verLabel() + ' · ' + (A.isReal ? 'engine ' + (A.engineVersion || '') : 'engine: stub') +
-      (bt ? T(' · 构建 ') + bt : '') + ' · ' + A.unitNote + '（PDG 2022 / Planck 2018）' +
+      (bt ? T(' · 构建 ') + bt : '') + ' · ' + (A.unitNoteText ? A.unitNoteText() : A.unitNote) + T('（PDG 2022 / Planck 2018）') +
       (onNow ? T(' · 已开启模块：') + modsLabelQ(A.getModules()) : '') + ' · ' + (glR.ok ? 'webgl2' : 'canvas2d');
   }
   /* ---------------------------------------------------------- WebGPU 开关（页脚）
@@ -2774,7 +2774,24 @@
       var st = null; try { st = S.u3d && S.u3d.getState(); } catch (e) { /* 还没就绪 */ }
       if (st) hudSync3D(sim, st);                                      // 状态行 + 三态 + 分析面板按钮文案，一次到位
       INFO.sig = '';                                                   // ⓘ 开着就让它下一帧按新语言重画
+      /* 「随机恒星」那颗按钮的 title 是拼出来的（当中夹着结局名）：
+         railRelabel 只换按钮上的字，够不着 title —— 按原式重拼一遍。 */
+      /* 「进入镜像」那颗按钮在画不出这个维数时会把原因写进 title，
+         那句话里夹着 D 与结局名，整段命中同样够不着。 */
+      var be = $('hudEnter');
+      if (be && !mirrorOK) be.title = mirrorNote(sim);
+      var bs = $('hudStar');
+      if (bs) {
+        if (dark) bs.title = T('这个宇宙里没有恒星（结局：') + T(sim.outcome.title || sim.outcome.type) + T('），3D 视图不生成星系，也没有恒星可选');
+        else if (!mirrorOK) bs.title = mirrorNote(sim);
+      }
       hud3dAcc = 999;                                                  // 逼 tick3D 下一帧立刻重算底部维度说明（setDisclaim）
+      /* 跑完（或暂停）之后 tick3D 不再被调用，光把 hud3dAcc 顶上去是等不来下一帧的 ——
+         底部那行维度说明会一直停在切语言之前的那种语言上（2026-09-20 实测）。这里补一拍。
+         tick3D 只读 getState() 重写文字，不推物理、不动渲染。 */
+      /* 放到下一拍再补：universe3d / hyper 自己的 mirror:lang 监听器是在它们被创建时
+         才挂上的，排在本文件这一条**后面** —— 同一拍里读 getState().label 拿到的还是旧语言。 */
+      setTimeout(function () { hud3dAcc = 999; try { tick3D(0); } catch (e) { /* 还没就绪：下一帧自会重算 */ } }, 0);
     });
     function act3(id, fn) { var b = $(id); if (b) b.addEventListener('click', fn); return b; }
     act3('hudAnalysis', function () { toggleAnalysis(); });
@@ -4273,6 +4290,9 @@
      universe3d 的状态行由它自己监听 mirror:lang 重算，这里只负责宿主这一侧。 */
   document.addEventListener('mirror:lang', function () {
     relangRun();
+    /* 起爆页那行「你已启动 N 次大爆炸」与页脚的引擎信息行都是当场拼出来的
+       （中间夹着数字），i18n 的整段命中够不着它们 —— 按原式重拼一遍。 */
+    try { refreshBangCount(); } catch (e) { /* 这一条挂了不该连累时间轴 */ }
     if (S.sim && TL.on) tlRelabel();                 // 时间轴刻度的 title（事件名 + 时刻）
   });
 

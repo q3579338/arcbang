@@ -24,6 +24,9 @@
 
   /* ---- 静态文本（DOM 遍历翻）：顶栏品牌名、面板副标题、输入框提示 ---- */
   I.add({
+    /* 起爆页的大标题（build-web.js 注入）与输入框提示：原来两处都没进词典，
+       英文界面上是中文（2026-09-20 用户点名）。 */
+    'ARCBANG · 引爆任意 Arc 区块': 'ARCBANG · Detonate any Arc block',
     'ARC宇宙': 'ARCBANG',
     '宇宙 NFT · ArcUniverse': 'Universe NFT · ArcUniverse',
     '市场 · ArcMarket': 'Market · ArcMarket',
@@ -46,6 +49,8 @@
     /* ---- 2026-09-17：拯救系统在 ARCBANG 上整套下线 ----
        沙盒留着当免费玩法，但在这个站上它叫「调参沙盒」，而且没有任何上链的出口。
        下面几条都是 arc 专属的新句子；bnb / btc 的 key 一个字没动。 */
+    'Arc 区块高度，或粘贴 64 位区块哈希（带不带 0x 都行）':
+      'An Arc block height, or paste a 64-character block hash (0x prefix optional)',
     '调参沙盒': 'Parameter sandbox',
     '进调参沙盒': 'Open the sandbox',
     '调参后的宇宙': 'The universe after tuning',
@@ -103,11 +108,19 @@
     '白名单 · 先到先得层': 'Allowlist · first-come tier',
     '先到先得': 'First-come, first-served',
     '免费': 'Free',
-    '未核': 'unchecked',
-    '已定格（不再随积分变）': 'frozen (no longer follows the board)',
+    /* ---- 2026-09-20：下面五条原来与页面上真正那句对不上，逐字改回来了 ----
+       key 要**逐字相等**才命中，差一个「动」字就整条漏翻，而且一个错都不报
+       （漏翻自动退回中文，正是用户在英文界面上看到中文的那一半原因）。
+       原写法 → 现写法：
+         '未核'                 → 公开榜不再显示核验状态，整条删（见 status.html）
+         '已定格（不再随积分变）' → '已定格（不再随积分变动）'
+         '还没有人上榜'          → '暂无上榜地址'
+         '已是最后一段'          → '已是最后阶段'
+         '问不到'                → '读不到'（'问不到' 只有部署向导在用，留着） */
+    '已定格（不再随积分变动）': 'frozen (no longer follows the board)',
     '实时按积分榜算': 'live from the leaderboard',
-    '还没有人上榜': 'Nobody on the board yet',
-    '已是最后一段': 'the last round',
+    '暂无上榜地址': 'Nobody on the board yet',
+    '已是最后阶段': 'the last round',
     '定格时公布': 'announced at the freeze',
     '问不到': 'no answer',
     /* **整句进词典**：'分' / '天' 这种单字在预热页的倒计时里已经是 min / sec 的意思，
@@ -160,12 +173,27 @@
 
   /* ---- web/status.html 的 arc 改写（命名空间 'status'） ---- */
   I.add({
-    '两个合约的地址、在线状态与关键参数。点击进区块浏览器。':
+    /* 2026-09-20：原来收的是 '…点击进区块浏览器。'，页面上写的是下面这句，
+       两者差了三个字 —— 于是英文态整句退回中文。以页面为准。 */
+    '两个合约的地址、在线状态与关键参数。点击可在区块浏览器中打开。':
       'Addresses, liveness and key parameters of the two contracts. Click through to the explorer.',
     '成交费 ': 'Sale fee ',
     '宇宙 {0} / 1,387': 'Universes {0} / 1,387',
     '1,387 枚，永不增发。宇宙 137.87 亿岁，一枚 NFT 就是一千万年。铸满即止。':
-      '1,387 pieces. No further issuance, ever. The universe is 13.787 billion years old, so one NFT stands for ten million years.'
+      '1,387 pieces. No further issuance, ever. The universe is 13.787 billion years old, so one NFT stands for ten million years.',
+
+    /* ---- 放号阶段那一块（2026-09-20 补齐）----
+       这一整块原来一条词条都没有：标题、说明段、六个行标签全是中文，
+       而同一块里由 JS 拼出来的读数（Whitelist / live from the leaderboard …）
+       早就有译文，于是英文界面上中英混排，用户截图报的就是它。
+       行标签收在 'status' 分册里 —— '名单' / '分值' 这种两字词在别的页上
+       是另一个意思，进全局表会撞车。 */
+    '放号阶段': 'Mint rounds',
+    '预热期不签发任何铸造签名；白名单阶段仅对白名单地址开放；先到先得阶段对白名单与先到先得地址开放，免费额度先到先得；公售阶段向所有地址开放。免费共 887 枚（保底 387 + 先到先得 500），由积分榜产生，名单于榜单定格时确定。免费额度为每地址 1 枚，额度用尽后，名单内地址同样按公售价铸造。':
+      'The warm-up signs no mint signatures at all; the whitelist round is open to whitelisted addresses only; the first-come round is open to both whitelist and first-come addresses, with the free allocation handed out on a first-come basis; the public sale is open to every address. 887 mint free in all (387 guaranteed plus 500 first-come), drawn from the leaderboard, and the list is settled when the board freezes. The free allocation is one per address; once it is used up, addresses on the list mint at the public-sale price like everyone else.',
+    '下一段开放': 'Next round opens',
+    '名单': 'Allowlist',
+    '分值': 'Points'
   }, 'status');
 
   /* ---- web/profile.html 的 arc 改写 ----

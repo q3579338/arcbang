@@ -26,7 +26,6 @@
     /* ---- 浏览器标题（/en/ 预渲染会整条换掉，这条是给运行时切语言用的）---- */
     'ARCBANG — 每个 Arc 区块哈希都是一个宇宙 | 免费引爆，一个哈希只铸一次':
       'ARCBANG — Every Arc block hash is a universe | Free to detonate, mint once.',
-    'ARC宇宙 · ARCBANG': 'Arc Universe · ARCBANG',
 
     /* ---- 首屏 ----
        D 在首页上第一次露面是在下面「引擎实况」那一段，那里带着一句人话解释；
@@ -150,6 +149,16 @@
     'ARCBANG 不发行代币，不进行预售与空投，也没有解锁表。你拿到的就是一枚 NFT。':
       'ARCBANG issues no token and runs no presale or airdrop, and there is no unlock schedule. What you get is an NFT.',
     /* 表头两列（数量 / 说明）走 i18n-site.js 的全局词条，这里不重收 */
+    /* ---- 2026-09-20 补：首页「铸造规则」那张表与它上面那段，五句一直没进词典 ----
+       中文页切到英文时整段是中文（/en/ 预渲染也照样漏），用户报的「好多英文没汉化」里有它们。 */
+    '先看结果，再决定是否铸造。1,387 枚，永不增发。免费 887 枚（保底 387 + 先到先得 500），每个地址 1 枚，仅需约 0.003 USDC 的 gas。其余 500 枚价格另行公布，每个地址最多 3 枚。':
+      'See the result first, then decide whether to mint. 1,387 pieces, no further issuance ever. 887 are free (387 guaranteed plus 500 first-come), one per address, costing only about 0.003 USDC in gas. The price of the remaining 500 will be announced separately, with at most 3 per address.',
+    '前往市场 →': 'Go to the market →',
+    '887 枚': '887',
+    '保底 387 + 先到先得 500，每地址 1 枚，仅需 gas（约 0.003 USDC）':
+      '387 guaranteed + 500 first-come, one per address, gas only (about 0.003 USDC)',
+    '每地址最多 3 枚；价格由合约常数限定上下界':
+      'At most 3 per address; the price is bounded above and below by contract constants',
     '全网总量': 'Hard cap',
     '免费期': 'Free tier',
     '之后': 'After that',
@@ -373,7 +382,6 @@
     '向所有地址开放': 'Open to every address',
     '白名单阶段开启时积分榜定格。': 'The leaderboard freezes when the whitelist round opens.',
     '规则': 'Rules',
-    '总量': 'Supply',
     '1,387 枚，永不增发': '1,387 pieces. No further issuance, ever.',
     '免费': 'Free',
     '887 枚（保底 387 + 先到先得 500），每地址 1 枚，名单自积分榜产生':
@@ -434,7 +442,6 @@
     '已在钱包中取消': 'Cancelled in the wallet',
     /* '你在钱包里取消了' 在 i18n.js 的全局表里已经有了，这里不重收（值不一样会打架） */
     '未检测到钱包扩展': 'No wallet extension found',
-    '未检测到钱包扩展（MetaMask 等）': 'No wallet extension found (MetaMask and similar)',
 
     /* ---- 任务区（2026-09-18 重做结构，2026-09-19 改成产品口吻）---- */
     '完成关注、转发、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。':

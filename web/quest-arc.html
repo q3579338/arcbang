@@ -859,6 +859,9 @@ button,input{font-family:inherit}
   var PROOF_RE = /^https:\/\/(x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/status\/\d{5,25}/;
   function $(id) { return document.getElementById(id); }
   function T(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh) : zh; }
+  /* 日期用的 locale：中文 zh-CN、英文 en-US。**不能省** —— 不带参数的 toLocaleString()
+     跟的是浏览器语言，英文界面上会冒出 "2026/10/4" 这种中文写法。 */
+  function LOC() { return window.MirrorI18n ? window.MirrorI18n.locale() : undefined; }
   function TF(zh) {
     var a = Array.prototype.slice.call(arguments, 1);
     return T(zh).replace(/\{(\d+)\}/g, function (m, i) { return a[i] == null ? m : a[i]; });
@@ -903,7 +906,7 @@ button,input{font-family:inherit}
     if (!iso) return T('时间待定');
     var d = new Date(iso);
     if (isNaN(d.getTime())) return T('时间待定');
-    try { return d.toLocaleString(); } catch (e) { return iso; }
+    try { return d.toLocaleString(LOC()); } catch (e) { return iso; }
   }
   var target = null;
   /* 到点后的重问要**节流**：2026-09-19 踩过 —— 后台把开放时间设成「现在」，服务端一度
@@ -1176,7 +1179,7 @@ button,input{font-family:inherit}
       stEl.className = 'ab-st ' + state;
       stEl.textContent = T({ todo: '未完成', wait: '核验中', ok: '已完成', bad: '未通过' }[state]) + (tail ? ' · ' + tail : '');
       if (st.apiOn && st.lastCheckAt) {
-        stEl.title = TF('上次核验 {0}', new Date(st.lastCheckAt).toLocaleString());
+        stEl.title = TF('上次核验 {0}', new Date(st.lastCheckAt).toLocaleString(LOC()));
       } else stEl.removeAttribute('title');
 
       c.querySelector('[data-how]').textContent = r.ok
@@ -1378,7 +1381,7 @@ button,input{font-family:inherit}
       if (!v) return '—';
       var d = new Date(v);
       if (isNaN(d.getTime())) return '—';
-      try { return d.toLocaleString(); } catch (e) { return v; }
+      try { return d.toLocaleString(LOC()); } catch (e) { return v; }
     };
     var eps = st.engagePosts || [];
     var rows = [
@@ -1552,7 +1555,7 @@ button,input{font-family:inherit}
       stEl.textContent = T(LABEL[label]) + (tail ? ' · ' + tail : '');
       /* 上次核对时间挂成 title：写进胶囊会太长，但要查得到。 */
       if (st.apiOn && st.lastCheckAt) {
-        stEl.title = TF('上次核验 {0}', new Date(st.lastCheckAt).toLocaleString());
+        stEl.title = TF('上次核验 {0}', new Date(st.lastCheckAt).toLocaleString(LOC()));
       } else { stEl.removeAttribute('title'); }
 
       var a = c.querySelector('[data-act]');
@@ -1734,7 +1737,7 @@ button,input{font-family:inherit}
       + (st.xSource === 'oauth' ? ' · ' + T('经 X 登录绑定') : '');
     var at = st.registeredAt ? new Date(st.registeredAt) : null;
     var txt = '—';
-    if (at && !isNaN(at.getTime())) { try { txt = at.toLocaleString(); } catch (e) { txt = st.registeredAt; } }
+    if (at && !isNaN(at.getTime())) { try { txt = at.toLocaleString(LOC()); } catch (e) { txt = st.registeredAt; } }
     $('doneAt').textContent = txt;
   }
 
@@ -2020,6 +2023,19 @@ button,input{font-family:inherit}
   })();
   /* 榜是活的：60 秒刷一次（服务端自己缓存 30 秒，再密也没有新东西）。 */
   setInterval(function () { if (!document.hidden) load(); }, 60000);
+
+  /* ---------------- 切语言：整页重画 ----------------
+     这一页几乎全是 JS 拼出来的（任务卡、分值胶囊、榜、倒计时、记录表），
+     而 MirrorI18n 的 DOM 遍历只认「整段逐字命中」——
+     '每日最多 5 次，累计 50 次' 这种带数字的句子它一个也够不着（词典里的 key 是
+     '每日最多 {0} 次，累计 {1} 次'）。所以拿**最近一次的读数原地重画**：
+     不重新打接口 —— 切个语言不该产生一轮网络请求。 */
+  document.addEventListener('mirror:lang', function () {
+    try { renderX(); } catch (e) { /* X 那一块没读到就算了 */ }
+    if (ST) { try { renderStatus(ST); } catch (e) { /* 重画失败不该把页面带走 */ } }
+    if (BD) { try { renderBoard(BD); } catch (e) { } }
+    try { tick(); } catch (e) { }
+  });
 })();
 </script>
 

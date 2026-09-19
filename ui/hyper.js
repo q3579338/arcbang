@@ -1654,8 +1654,8 @@
       }
       veil = U.createDimVeil(host, {
         dim: D,
-        exitText: T('仍然要看它的 D 维 N 体投影'),
-        tipHead: T('屏幕上是它的 D 维 N 体投影（D='),
+        exitText: '仍然要看它的 D 维 N 体投影',
+        tipHead: '屏幕上是它的 D 维 N 体投影（D=',
         onChange: function (rev) { veiled = !rev; syncVeil(); label(); }
       });
       if (veil) { veiled = !veil.revealed(); veil.setVisible(true); }
@@ -1816,7 +1816,10 @@
     on(root, 'blur', function () { S.blurred = true; syncSuspend(); });
     on(root, 'focus', function () { S.blurred = false; syncSuspend(); });
     on(root, 'resize', resize);
-    on(root.document, 'mirror:lang', function () { try { label(); paintAxes(); } catch (e) { /* ignore */ } });
+    on(root.document, 'mirror:lang', function () {
+      try { label(); paintAxes(); } catch (e) { /* ignore */ }
+      try { canvas.setAttribute('aria-label', T('D 维 N 体投影视图')); } catch (e) { /* ignore */ }
+    });
     function syncSuspend() {
       var sus = S.hidden || S.blurred;
       if (worker) {

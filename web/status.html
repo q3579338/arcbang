@@ -19,6 +19,10 @@
 <script src="i18n.js"></script>
 <script src="i18n-site.js"></script>
 <script src="i18n-market.js"></script>
+<!-- 放号阶段那一块用的是 ARCBANG 站的通用词（阶段名、层级名、榜的短词），
+     它们收在 i18n-arc-site.js。不引这一册，本页的「当前阶段 / 在榜人数 /
+     预热期 / 公售」在英文态全是中文（2026-09-20 用户报的截图就是这样）。 -->
+<script src="i18n-arc-site.js"></script>
 <link rel="stylesheet" href="tokens.css">
 <!-- 多钱包发现（EIP-6963）：顶栏「连接钱包」必须走 MirrorWallet.pick()，不能直打 window.ethereum -->
 <script src="wallet.js"></script>
@@ -375,9 +379,9 @@ footer a:hover{text-decoration:underline}
   <details class="fold" data-fold="phase" open>
     <summary><h2>放号阶段</h2><span class="fsum" id="fsPhase">—</span></summary>
     <div class="fbody">
-    <p class="why">预热期不签发任何铸造签名；白名单阶段仅对白名单地址开放；先到先得阶段对白名单与先到先得地址开放，免费额度先到先得；公售阶段向所有地址开放。
-       免费共 887 枚（保底 387 + 先到先得 500），由积分榜产生，名单于榜单定格时确定。
-       免费额度为每地址 1 枚，额度用尽后，名单内地址同样按公售价铸造。</p>
+    <!-- 整段必须写在**一行**里：i18n 的 DOM 遍历按 trim 之后逐字相等命中，
+         拆成三行的话缩进空白会留在 key 中间，词典永远对不上。 -->
+    <p class="why">预热期不签发任何铸造签名；白名单阶段仅对白名单地址开放；先到先得阶段对白名单与先到先得地址开放，免费额度先到先得；公售阶段向所有地址开放。免费共 887 枚（保底 387 + 先到先得 500），由积分榜产生，名单于榜单定格时确定。免费额度为每地址 1 枚，额度用尽后，名单内地址同样按公售价铸造。</p>
     <div class="kline"><span>当前阶段</span><span class="num" id="phNow">—</span></div>
     <div class="kline"><span>下一段开放</span><span id="phNext">—</span></div>
     <div class="kline"><span>名单</span><span id="phFrozen">—</span></div>
@@ -858,60 +862,76 @@ footer a:hover{text-decoration:underline}
      **绝不猜一个阶段出来**：猜错的后果是页面告诉人「公售开了」而服务端一张签名都不签。 */
   function loadPhase() {
     var base = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
-    /* 显示名（2026-09-19 拍板）：内部 key 不变，只改人看的那一面。 */
-    var NAME = { warmup: '预热期', gtd: '白名单', fcfs: '先到先得', public: '公售' };
     fetch(base + '/health').then(function (r) { return r.json(); }).then(function (h) {
-      var p = h.phase || null;
-      var c = h.allowlist || {};
-      $('phNow').textContent = p ? T(NAME[p] || p) : '—';
-      var nx = h.phaseNext;
-      $('phNext').textContent = !nx ? T('已是最后阶段')
-        : (T(NAME[nx.phase] || nx.phase) + ' · ' + (nx.at ? new Date(nx.at).toLocaleString() : T('时间待定')));
-      /* 名单已定格 = 不再随积分变。**不在预热期却还没定格是真实故障**
-         （有人会在铸到一半被后来者挤出名单），所以那一种要标黄。 */
-      var frozen = !!c.frozen;
-      $('phFrozen').textContent = frozen ? T('已定格（不再随积分变动）') : T('实时按积分榜算');
-      $('phFrozen').className = (!frozen && p && p !== 'warmup') ? 'bad' : '';
-      /* 定格之前服务端一律回 null（**不承诺名额**）：这里就写「定格时公布」，
-         不要自己拿榜的长度去猜一个数出来。 */
-      $('phGtd').textContent = c.gtd == null ? T('定格时公布') : String(c.gtd);
-      $('phFcfs').textContent = c.fcfs == null ? T('定格时公布') : String(c.fcfs);
-      $('phApplied').textContent = h.allowlistBoardSize == null
-        ? (h.allowlistApplied == null ? '—' : String(h.allowlistApplied))
-        : String(h.allowlistBoardSize);
-      /* 分值全部来自服务端（env 可调）：这一页一个数字都不写死。
-         **整句进词典**，不在这里拼词 —— '分'/'天' 这种单字在预热页的倒计时里
-         已经是 min/sec 的意思了，在这儿按「积分/天数」再翻一次必然撞车。
-         这一页的 TF 只认一个 {0}，所以六个占位用下面这个本地 TN。 */
-      function TN(zh) {
-        var a = Array.prototype.slice.call(arguments, 1);
-        return T(zh).replace(/\{(\d+)\}/g, function (m, i) { return a[i] == null ? m : a[i]; });
-      }
-      var P = h.allowlistPts;
-      $('phPts').textContent = !P ? '—'
-        : TN('登记 {0} · 关注 {1} · 置顶推互动 {2} · 邀请 {3}/人（上限 {4} 人）· 引爆并广播 {5}/次（累计 {6} 次）',
-             P.register, P.follow, P.engage, P.invite, P.inviteMax, P.share, P.shareMax);
-      /* 榜前 10。空榜就写一句，别留个空框。 */
-      var top = h.allowlistTop || [];
-      var TIER = { gtd: '白名单', fcfs: '先到先得' };
-      $('phTop').innerHTML = !top.length
-        ? '<div class="row"><span class="k">' + T('暂无上榜地址') + '</span><span class="dimtx">—</span></div>'
-        : top.map(function (r) {
-            return '<div class="row"><span class="k">'
-              + '<span class="mono">' + r.addr + '</span></span>'
-              /* tier 定格之前是 null（不承诺名额）：那就一个字都别写 ——
-                 摆一个「—」在那儿只是噪声，还会让人以为读数坏了。 */
-              + '<span>' + TN('{0} 分', r.points)
-              + (r.tier ? ' · ' + T(TIER[r.tier]) : '')
-              + (r.verified ? '' : ' · ' + T('未核对')) + '</span></div>';
-          }).join('');
-      $('fsPhase').textContent = p ? T(NAME[p] || p) : '—';
-      $('fsPhase').className = 'fsum' + (p === 'warmup' ? ' warn' : '');
+      PH = h;
+      renderPhase(h);
     }, function () {
+      PH = null;
       $('fsPhase').textContent = T('读不到');
       $('fsPhase').className = 'fsum warn';
     });
   }
+  /* 显示名（2026-09-19 拍板）：内部 key 不变，只改人看的那一面。 */
+  var NAME = { warmup: '预热期', gtd: '白名单', fcfs: '先到先得', public: '公售' };
+  /* 最近一次 /api/health。切语言时拿它原地重画 —— 这一块整段都是 JS 拼的，
+     MirrorI18n 的 DOM 遍历只认「整段逐字命中」，'{0} 分' 这种带占位符的句子它够不着，
+     而且在英文态画出来的字切回中文后会一直留在那儿。 */
+  var PH = null;
+  function renderPhase(h) {
+    var p = h.phase || null;
+    var c = h.allowlist || {};
+    $('phNow').textContent = p ? T(NAME[p] || p) : '—';
+    var nx = h.phaseNext;
+    $('phNext').textContent = !nx ? T('已是最后阶段')
+      : (T(NAME[nx.phase] || nx.phase) + ' · '
+         + (nx.at ? new Date(nx.at).toLocaleString(window.MirrorI18n ? MirrorI18n.locale() : undefined)
+                  : T('时间待定')));
+    /* 名单已定格 = 不再随积分变。**不在预热期却还没定格是真实故障**
+       （有人会在铸到一半被后来者挤出名单），所以那一种要标黄。 */
+    var frozen = !!c.frozen;
+    $('phFrozen').textContent = frozen ? T('已定格（不再随积分变动）') : T('实时按积分榜算');
+    $('phFrozen').className = (!frozen && p && p !== 'warmup') ? 'bad' : '';
+    /* 定格之前服务端一律回 null（**不承诺名额**）：这里就写「定格时公布」，
+       不要自己拿榜的长度去猜一个数出来。 */
+    $('phGtd').textContent = c.gtd == null ? T('定格时公布') : String(c.gtd);
+    $('phFcfs').textContent = c.fcfs == null ? T('定格时公布') : String(c.fcfs);
+    $('phApplied').textContent = h.allowlistBoardSize == null
+      ? (h.allowlistApplied == null ? '—' : String(h.allowlistApplied))
+      : String(h.allowlistBoardSize);
+    /* 分值全部来自服务端（env 可调）：这一页一个数字都不写死。
+       **整句进词典**，不在这里拼词 —— '分'/'天' 这种单字在预热页的倒计时里
+       已经是 min/sec 的意思了，在这儿按「积分/天数」再翻一次必然撞车。
+       这一页的 TF 只认一个 {0}，所以六个占位用下面这个本地 TN。 */
+    function TN(zh) {
+      var a = Array.prototype.slice.call(arguments, 1);
+      return T(zh).replace(/\{(\d+)\}/g, function (m, i) { return a[i] == null ? m : a[i]; });
+    }
+    var P = h.allowlistPts;
+    $('phPts').textContent = !P ? '—'
+      : TN('登记 {0} · 关注 {1} · 置顶推互动 {2} · 邀请 {3}/人（上限 {4} 人）· 引爆并广播 {5}/次（累计 {6} 次）',
+           P.register, P.follow, P.engage, P.invite, P.inviteMax, P.share, P.shareMax);
+    /* 榜前 10。空榜就写一句，别留个空框。 */
+    var top = h.allowlistTop || [];
+    var TIER = { gtd: '白名单', fcfs: '先到先得' };
+    $('phTop').innerHTML = !top.length
+      ? '<div class="row"><span class="k">' + T('暂无上榜地址') + '</span><span class="dimtx">—</span></div>'
+      : top.map(function (r) {
+          return '<div class="row"><span class="k">'
+            + '<span class="mono">' + r.addr + '</span></span>'
+            /* tier 定格之前是 null（不承诺名额）：那就一个字都别写 ——
+               摆一个「—」在那儿只是噪声，还会让人以为读数坏了。 */
+            /* **公开页不显示核验状态**（既定规矩）：核没核过是那个地址自己的事，
+               摆在公开榜上等于替人公布「这条还没核」。 */
+            + '<span>' + TN('{0} 分', r.points)
+            + (r.tier ? ' · ' + T(TIER[r.tier]) : '') + '</span></div>';
+        }).join('');
+    $('fsPhase').textContent = p ? T(NAME[p] || p) : '—';
+    $('fsPhase').className = 'fsum' + (p === 'warmup' ? ' warn' : '');
+  }
+  /* 切语言：放号阶段整块重画（用缓存的读数，不重新打接口）。 */
+  document.addEventListener('mirror:lang', function () {
+    if (PH) { try { renderPhase(PH); } catch (e) { /* 重画失败不该把整页带走 */ } }
+  });
 
   foldRestore();
   $('btnRe').addEventListener('click', function () { load(); loadPhase(); });

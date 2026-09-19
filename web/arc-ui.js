@@ -742,6 +742,10 @@
     link: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.7 1.7"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.7-1.7"/></svg>'
   };
   var SHARE_POP = null;
+  /* 最近一次 openShare 的入参。浮层的正文、说明、渠道按钮都是当场拼出来的
+     （正文里夹着区块号与分享链接，i18n 的整段命中一条也够不着），
+     所以切语言时只能照原样重开一次 —— 见文件末尾的 mirror:lang 监听。 */
+  var SHARE_LAST = null;
   /* 代际令牌：openShare 是异步的（account() + myRefCode 最多 4 秒），飞行中用户
      可能已经点了 ×、或又点开了另一个宇宙的广播。只清 SHARE_POP 拦不住飞行中的
      那条链 —— 它回来照样 appendChild，屏幕上就叠出两层（后写的才被记住，
@@ -791,6 +795,7 @@
   function closeShotBig() { if (SHOT_BIG) { SHOT_BIG.remove(); SHOT_BIG = null; } }
   function openShare(o) {
     if (!o) return;
+    SHARE_LAST = o;
     closeShare();
     var gen = SHARE_GEN;               // closeShare 刚把代推进了一格，这一代归本次打开
     /* 附图在浮层打开的**这一帧**就开抓（用户 2026-08-21「附带一张游戏内的截图」）：
@@ -1850,7 +1855,8 @@
     var tt = panel.querySelector('.bnb-title');
     if (tt) tt.textContent = 'ARCBANG';
     var inp = $('bnbInput');
-    if (inp) inp.placeholder = 'Arc 区块高度，或粘贴 64 位区块哈希（带不带 0x 都行）';
+    /* 走词典：写死的话英文界面上这行提示永远是中文（2026-09-20 用户点名）。 */
+    if (inp) inp.placeholder = T('Arc 区块高度，或粘贴 64 位区块哈希（带不带 0x 都行）');
     var fx = $('bnbFix');
     if (fx) {
       fx.textContent = T('调参沙盒');
@@ -2682,6 +2688,16 @@
         if (el) el.textContent = txt;
       }
       HUD.lastKey = '';                                   // 逼下一次 hudSync 把卡片正文重画一遍
+      /* 分享浮层开着的话，照原样重开一次（关了就什么都不做）。
+         放到下一拍：这一拍里别的监听器还在改语言相关的状态。 */
+      if (SHARE_POP && SHARE_LAST) {
+        var so = SHARE_LAST;
+        setTimeout(function () { if (SHARE_POP) openShare(so); }, 0);
+      }
+      /* 起爆页面板那几处一次性文案（品牌名、输入框提示、沙盒按钮与它的 title）
+         是 arcMount 挂载时写死的，切语言不跟着走 —— 按原式再写一遍。 */
+      var pnl = doc.querySelector('.bnb-panel') || doc.getElementById('bnbPanel');
+      if (pnl) arcMount(pnl);
     } catch (e) { console.warn('[bnb-ui] 切语言重刷失败', e); }
   });
 

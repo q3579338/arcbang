@@ -685,7 +685,7 @@
         if (!ui && mkVeil && ctx.canvas && ctx.canvas.parentNode) {
           host = ctx.canvas.parentNode;
           ui = mkVeil(host, {
-            dim: D, exitText: T('仍然要看它的二维投影'), tipHead: T('屏幕上是它的二维投影（D='),
+            dim: D, exitText: '仍然要看它的二维投影', tipHead: '屏幕上是它的二维投影（D=',
             onChange: function (rev) {
               veiled = !rev;
               swapDisclaim(rev ? LAB_VEIL() : LAB_OPEN(), rev ? LAB_OPEN() : LAB_VEIL());

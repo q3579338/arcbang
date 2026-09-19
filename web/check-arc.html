@@ -277,8 +277,10 @@ button,input{font-family:inherit}
     if (!iso) return T('待定');
     var d = new Date(iso);
     if (isNaN(d.getTime())) return T('待定');
-    /* 本地时间：访问者自己那一套时区与格式，比 UTC 串少一道心算。 */
-    try { return d.toLocaleString(); } catch (e) { return iso; }
+    /* 本地时间：访问者自己那一套时区与格式，比 UTC 串少一道心算。
+       locale 必须跟着界面语言给 —— 不给参数就跟浏览器语言走，
+       英文界面上会冒出 "2026/10/4" 这种中文写法。 */
+    try { return d.toLocaleString(window.MirrorI18n ? MirrorI18n.locale() : undefined); } catch (e) { return iso; }
   }
 
   function msg(text, cls) {
@@ -289,8 +291,14 @@ button,input{font-family:inherit}
 
   function prov() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum || null; }
 
-  /* ---------------- 结果卡 ---------------- */
+  /* ---------------- 结果卡 ----------------
+     LAST 记住最近一次查询的结果：切语言时拿它原地重画。
+     这张卡整张都是 JS 写进去的，MirrorI18n 的 DOM 遍历只认「整段逐字命中」，
+     '开放时间：{0}' 这种带占位符的句子它够不着 —— 不重画的话，
+     英文态查完再切回中文，卡上会一直停在英文（2026-09-20 用户报的就是这个）。 */
+  var LAST = null;
   function render(addr, st) {
+    LAST = { addr: addr, st: st };
     var t = st.tier;                              // 'gtd' / 'fcfs' / null
     var k = (t === 'gtd' || t === 'fcfs') ? t : 'none';
 
@@ -375,6 +383,11 @@ button,input{font-family:inherit}
     }, function (er) {
       msg(er && er.code === 4001 ? T('已在钱包中取消') : ((er && er.message) || String(er)), 'err');
     });
+  });
+
+  /* 切语言：结果卡原地重画（不重新打接口）。 */
+  document.addEventListener('mirror:lang', function () {
+    if (LAST) { try { render(LAST.addr, LAST.st); } catch (e) { /* 重画失败不该把页面带走 */ } }
   });
 
   /* ?addr=0x… 直接查：别人把结果链接发给你时，打开就是那一张卡。 */
