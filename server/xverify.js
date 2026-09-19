@@ -488,9 +488,18 @@ function create(opts) {
     try {
       const acc = await accountId();
       const tid = AL && AL.pinnedTweetId ? AL.pinnedTweetId() : null;
+      /* 置顶推换了（2026-09-19 上线当晚：测试推 → 正式推）：像/转/评三份名单是**按推文**记的，
+         沿用旧名单会让增量拉取以为「这些人已经看过」，旧推上的互动就一直挂在新推名下（用户看到
+         没互动过新推却已 +50）。换推就清掉这三份、本轮强制全量，syncApi 随后把 api 打的勾撤掉。 */
+      let switched = false;
+      if (s.tweetId && tid && String(s.tweetId) !== String(tid)) {
+        for (const key of Object.keys(SOURCES)) if (SOURCES[key].kind !== 'followers') delete s.sets[key];
+        switched = true;
+        console.log('[xverify] 置顶推已从 ' + s.tweetId + ' 换成 ' + tid + '：清空点赞/转发/评论名单，本轮全量重拉');
+      }
       s.tweetId = tid || null;
 
-      const full = !!(opt && opt.full) || (s.rounds % FULL_EVERY() === 0);
+      const full = switched || !!(opt && opt.full) || (s.rounds % FULL_EVERY() === 0);
       const sets = {};
       for (const key of Object.keys(SOURCES)) {
         const kind = SOURCES[key].kind;
