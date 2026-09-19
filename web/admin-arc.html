@@ -476,7 +476,6 @@ tr.dis td{background:#FBF1F1}
       }
     });
   })();
-  $('tok').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') $('btnLogin').click(); });
   $('btnOut').addEventListener('click', function () { setTok(''); location.reload(); });
   $('btnReload').addEventListener('click', function () { load(); });
   $('q').addEventListener('input', function () { clearTimeout(window.__t); window.__t = setTimeout(load, 300); });
