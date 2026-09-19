@@ -887,7 +887,7 @@ $('btnHealth').addEventListener('click', function () {
       notes.push('服务端报的 chainId 是 ' + j.chainId + '，而这里在 ' + NET().label + '（' + NET().id + '）');
     }
     if (j.contract && isAddr(j.contract) && !sameAddr(j.contract, S.uni)) {
-      notes.push('服务端的 BNBBANG_CONTRACT 现在是 ' + j.contract + '，不是刚部署的 ' + S.uni +
+      notes.push('服务端的 ARCBANG_CONTRACT 现在是 ' + j.contract + '，不是刚部署的 ' + S.uni +
         '　—— 第 6 步抄完配置要重启服务端，否则签出来的名在链上一律 BadSig');
     }
     msg($('msg5'), 'signer = ' + j.signer + (notes.length ? '\n\n注意：\n· ' + notes.join('\n· ') : ''),
@@ -970,10 +970,10 @@ function renderOut() {
   ln("  contract: '" + S.uni + "',");
   ln("  market: '" + S.mkt + "',");
   cm('');
-  cm('# server/api.env.arc（线上 /etc/bnbbang/api.arc.env，键名照 api.env.example）');
-  ln('BNBBANG_CONTRACT=' + S.uni);
-  ln('BNBBANG_MARKET=' + S.mkt);
-  if (S.uniBlock != null) ln('BNBBANG_INDEX_FROM=' + S.uniBlock);
+  cm('# server/api.env（线上 /etc/arcbang/api.env，键名照 server/api.env.example）');
+  ln('ARCBANG_CONTRACT=' + S.uni);
+  ln('ARCBANG_MARKET=' + S.mkt);
+  if (S.uniBlock != null) ln('ARCBANG_INDEX_FROM=' + S.uniBlock);
   cm('');
   cm('# 链接');
   ln('https://opensea.io/assets/arc/' + S.uni + '/1');
