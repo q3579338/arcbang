@@ -122,15 +122,21 @@
      命名空间 'app'：arc-ui.js 的 T()/TF()/TX() 查的就是它（查不到会落回全局表）。 */
   I.add({
     '时间待定': 'to be announced',
+    /* 「开放时间：{0}」那种冒号句式里的短写。跟上面那条不是一回事：
+       那一条是整句的宾语，这一条是冒号后面孤零零的一个词。 */
+    '待定': 'TBA',
     '看开放时间 · 登记白名单': 'See the opening times · join the allowlist',
-    '铸造还没开：{0} 开放白名单铸造。现在可以先去登记白名单；引爆和模拟器随时都能玩。':
-      'Minting has not opened: the allowlist round starts {0}. You can sign up for the allowlist now; detonating and the simulator are open regardless.',
-    '当前为白名单阶段，尚未轮到该地址。先到先得阶段 {0} 开放。':
-      'The guaranteed round is running and it is not your turn yet. The first-come round starts {0}.',
-    '该地址不在白名单内。先到先得阶段 {0} 开放，公售 {1} 开放。':
-      'You are not on the allowlist. The first-come round starts {0} and the public sale {1}.',
-    '你不在白名单里，公售 {0} 开，到时候人人都能铸。':
-      'You are not on the allowlist. The public sale starts {0}, and then anyone can mint.',
+    /* 2026-09-19 用户拍板：这几句改成产品语气 —— 不出现「玩」「先去」「随时」。 */
+    '铸造尚未开放。白名单阶段将于 {0} 开放，可先完成登记与任务。':
+      'Minting has not opened. The allowlist round opens {0}. You can complete sign-up and the tasks in the meantime.',
+    '铸造尚未开放。白名单阶段开放时间待定，可先完成登记与任务。':
+      'Minting has not opened. The allowlist round has no confirmed date yet. You can complete sign-up and the tasks in the meantime.',
+    '当前为白名单阶段，仅白名单地址可铸造。先到先得阶段开放时间：{0}。':
+      'The allowlist round is open to allowlisted addresses only. First-come round opens: {0}.',
+    '该地址不在白名单内。先到先得阶段开放时间：{0}；公售开放时间：{1}。':
+      'This address is not on the allowlist. First-come round opens: {0}. Public sale opens: {1}.',
+    '该地址不在白名单内。当前为先到先得阶段，公售开放时间：{0}，届时所有地址均可铸造。':
+      'This address is not on the allowlist. The first-come round is running; the public sale opens: {0}, when any address can mint.',
     /* 免费额度是白名单的：名单外的人看到的必须是价格，不能是「首批免费」——
        展示和真报价打架比不显示糟得多（钱包弹出来要 1 USDC）。 */
     '{0} {1} 铸造（免费额度只给白名单）': 'Mint for {0} {1} (the free tier is allowlist only)',

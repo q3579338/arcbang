@@ -977,7 +977,7 @@
         if (slot.getAttribute('data-done')) return;
         var svg = qrSvg(link, 168);
         slot.innerHTML = svg || '';
-        if (!svg) slot.textContent = T('这条链接太长，二维码画不下 —— 直接复制下面的链接吧');
+        if (!svg) slot.textContent = T('链接过长，无法生成二维码，请直接复制下方链接。');
         slot.setAttribute('data-done', '1');
       });
       /* 键盘可达：焦点先落在对话框上（tabindex=-1），Esc 关、Tab 顺着往下走 */
@@ -1765,7 +1765,7 @@
     }).catch(function (e) {
       clearHash();
       status(TF('取不到创世区块（{0}）—— 没从链上核实过就不给引爆。换个网络或稍后再试。',
-        (e && e.message ? e.message : T('节点没答复'))), 'bnb-err');
+        (e && e.message ? e.message : T('节点无响应'))), 'bnb-err');
     });
   }
 
@@ -1825,12 +1825,12 @@
         setHash(b.hash, n);
         status(TF('核对通过：这是区块 {0}', n), 'bnb-ok');
       }).catch(function (e) {
-        status(TF('核对失败（节点没答复）：{0} —— 没核实之前不给引爆', (e && e.message ? e.message : e)), 'bnb-err');
+        status(TF('核对失败（节点无响应）：{0}。未完成核实前不能引爆。', (e && e.message ? e.message : e)), 'bnb-err');
       });
       return;
     }
     var n = Number(v);
-    if (!isFinite(n) || n < 0 || Math.floor(n) !== n) { status(T('看不懂：既不是区块高度，也不是 64 位哈希'), 'bnb-err'); return; }
+    if (!isFinite(n) || n < 0 || Math.floor(n) !== n) { status(T('无法识别：既不是区块高度，也不是 64 位哈希。'), 'bnb-err'); return; }
     status(TF('正在取区块 {0}…', n));
     C.blockHashOf(n).then(function (h) { setHash(h, n); status(''); }).catch(rpcFail);
   }
@@ -1854,7 +1854,7 @@
     var fx = $('bnbFix');
     if (fx) {
       fx.textContent = T('调参沙盒');
-      fx.title = T('进沙盒改这个宇宙的创世参数，看它会变成什么样——不花钱，不上链');
+      fx.title = T('在沙盒中调整该宇宙的创世参数并即时查看结果；不花费、不上链。');
     }
   }
 
@@ -1889,7 +1889,7 @@
           (e.message || T('稍后再试'))), 'bnb-warn');
         return;
       }
-      status(TF('服务端算不出来：{0}', (e && e.message || T('没响应'))), 'bnb-err');
+      status(TF('服务端算不出来：{0}', (e && e.message || T('无响应'))), 'bnb-err');
     });
   }
 
@@ -2029,6 +2029,9 @@
     if (isNaN(d.getTime())) return T('时间待定');
     try { return d.toLocaleString(); } catch (e) { return iso; }
   }
+  /** 「开放时间：{0}」这种冒号句式里的短写。没定就是「待定」——
+      那里再套 fmtWhen 会写出「开放时间：时间待定」。 */
+  function fmtOpen(iso) { return iso ? fmtWhen(iso) : T('待定'); }
   /** 段名的人话。**不点名谁在优先层**（用户拍板：名单构成不公开）。
       内部 key 一律还是 gtd / fcfs，改的只是显示名。 */
   function phaseWord(p) {
@@ -2042,17 +2045,21 @@
     if (!PH.got || !PH.phase) return null;
     var o = PH.opens || {};
     if (PH.phase === 'warmup') {
-      return TF('铸造还没开：{0} 开放白名单铸造。现在可以先去登记白名单；引爆和模拟器随时都能玩。',
-        fmtWhen(o.gtd || (PH.next && PH.next.at)));
+      /* 有确定时间就写时间，没有就直说待定 —— **不编一个日期出来**，
+         也不把「时间待定」塞进「将于 … 开放」那个句式里读成病句。 */
+      var gtdAt = o.gtd || (PH.next && PH.next.at) || null;
+      return gtdAt
+        ? TF('铸造尚未开放。白名单阶段将于 {0} 开放，可先完成登记与任务。', fmtWhen(gtdAt))
+        : T('铸造尚未开放。白名单阶段开放时间待定，可先完成登记与任务。');
     }
     if (!W.addr) return null;                   // 没连钱包就不知道在不在名单，别提前拦
     if (PH.phase === 'gtd' && PH.tier !== 'gtd') {
       return PH.listed
-        ? TF('当前为白名单阶段，尚未轮到该地址。先到先得阶段 {0} 开放。', fmtWhen(o.fcfs))
-        : TF('该地址不在白名单内。先到先得阶段 {0} 开放，公售 {1} 开放。', fmtWhen(o.fcfs), fmtWhen(o.public));
+        ? TF('当前为白名单阶段，仅白名单地址可铸造。先到先得阶段开放时间：{0}。', fmtOpen(o.fcfs))
+        : TF('该地址不在白名单内。先到先得阶段开放时间：{0}；公售开放时间：{1}。', fmtOpen(o.fcfs), fmtOpen(o.public));
     }
     if (PH.phase === 'fcfs' && !PH.listed) {
-      return TF('你不在白名单里，公售 {0} 开，到时候人人都能铸。', fmtWhen(o.public));
+      return TF('该地址不在白名单内。当前为先到先得阶段，公售开放时间：{0}，届时所有地址均可铸造。', fmtOpen(o.public));
     }
     return null;
   }
@@ -2071,9 +2078,9 @@
       nowMsg(esc(T('（合约还没部署，暂时不能铸造；引爆和干预都不受影响）')));
       return;
     }
-    if (S.minted) { b.disabled = true; b.title = S.minted > 0 ? T('这个宇宙已经被别人铸走了') : T('你已经收下它了'); return; }
+    if (S.minted) { b.disabled = true; b.title = S.minted > 0 ? T('该宇宙已被其他地址铸造') : T('你已铸造该宇宙'); return; }
     b.disabled = false;
-    b.title = T('不引爆、也不看结局，直接铸造成 NFT——留着以后自己炸开看');
+    b.title = T('不引爆、不查看结局，直接铸造为 NFT，留待之后开启。');
   }
 
   function mintNow() {
@@ -2082,13 +2089,13 @@
     if (blockedNow) { nowMsg(esc(blockedNow), 'bnb-warn'); return; }
     if (!C.contract()) { nowMsg(esc(TF('合约还没部署到 {0}，暂时不能铸造（引爆和干预都不受影响）', chainName()))); return; }
     if (S.minted) {
-      nowMsg(S.minted > 0 ? esc(T('这个宇宙已经被别人铸走了，换一个区块吧'))
-                          : esc(T('你已经收下它了')) + ' · <a href="' + MARKET_URL + '">' + esc(T('到市场看看')) + '</a>', 'bnb-warn');
+      nowMsg(S.minted > 0 ? esc(T('该宇宙已被其他地址铸造，请换一个区块。'))
+                          : esc(T('你已铸造该宇宙')) + ' · <a href="' + MARKET_URL + '">' + esc(T('到市场查看')) + '</a>', 'bnb-warn');
       return;
     }
     var idx = OUTCOME_ORDER.indexOf(outcomeOf(S.derived));
     // 结局算不出来就不能声明。措辞刻意不提"结局是什么"，只说这个宇宙铸不了
-    if (idx < 0) { nowMsg(esc(T('这个宇宙超出了引擎能算的范围，铸不了；换一个区块试试')), 'bnb-err'); return; }
+    if (idx < 0) { nowMsg(esc(T('该宇宙超出引擎的计算范围，无法铸造，请换一个区块。')), 'bnb-err'); return; }
     mint(idx, nowMsg, function () { return $('bnbMintNow'); });
   }
 
@@ -2175,7 +2182,7 @@
       if (S.hash !== h) return;                      // 用户已经换了一个哈希
       S.minted = Number(id);
       // 链上编号一律写成"NFT #N"：光一个 # 会和顶部 HUD 里的本机流水号看着像同一个东西
-      if (S.minted > 0) status(TF('这个宇宙已经被铸走了（宇宙 #{0} · 链上 NFT #{1}）——还能看，但不能再铸造', S.blockNumber != null ? S.blockNumber : '—', S.minted), 'bnb-warn');
+      if (S.minted > 0) status(TF('该宇宙已被铸造（宇宙 #{0} · 链上 NFT #{1}），仍可查看，但不能再次铸造。', S.blockNumber != null ? S.blockNumber : '—', S.minted), 'bnb-warn');
       syncMintNow();
     }).catch(function () { /* 合约没部署或节点抽风：不打扰，mint 时会再报 */ });
   }
@@ -2259,7 +2266,7 @@
     var rescue = (!alive && root.MirrorIntervene && root.MirrorIntervene.open)
       ? '<div class="bnb-row"><button type="button" class="bnb-btn save" id="bnbRescue">' +
         esc(T('进调参沙盒')) + '</button>' +
-        '<span class="bnb-note">' + esc(T('进沙盒照提示推参数，不花钱、不上链、可撤销')) + '</span></div>'
+        '<span class="bnb-note">' + esc(T('在沙盒中按提示调整参数；不花费、不上链、可撤销。')) + '</span></div>'
       : '';
 
     var mintPart;
@@ -2283,8 +2290,8 @@
       var artUrl = shareImgUrl({ hash: S.hash });
       var artName = 'universe-' + (S.blockNumber != null ? S.blockNumber : String(S.hash || '').slice(2, 10)) + '.png';
       mintPart = '<div class="bnb-row"><span class="bnb-warn">' +
-        esc(S.minted > 0 ? TF('这个宇宙已经被铸走了（宇宙 #{0} · 链上 NFT #{1}）', S.blockNumber != null ? S.blockNumber : '—', S.minted) : T('你刚刚已经把这个宇宙收下了')) +
-        '</span><a href="' + MARKET_URL + '">' + esc(S.minted > 0 ? T('到市场看看它在不在卖') : T('到市场看看')) + '</a>' +
+        esc(S.minted > 0 ? TF('该宇宙已被铸造（宇宙 #{0} · 链上 NFT #{1}）', S.blockNumber != null ? S.blockNumber : '—', S.minted) : T('该宇宙已由你铸造完成。')) +
+        '</span><a href="' + MARKET_URL + '">' + esc(S.minted > 0 ? T('到市场查看挂单') : T('到市场查看')) + '</a>' +
         (artUrl ? '<a class="bnb-btn" id="bnbArtDl" href="' + esc(artUrl) + '" download="' + esc(artName) + '" target="_blank" rel="noopener">' + esc(T('下载参数卡图（PNG）')) + '</a>' : '') +
         '</div>';
     } else {
@@ -2335,7 +2342,7 @@
       /* 手机浏览器多半没有注入环境：选择器会给「在 Binance App 里打开」的深链；
          桌面端它会说去装扩展。话术不再点名小狐狸 —— 币安钱包同样是正路。 */
       if (root.MirrorWallet && root.MirrorWallet.pick) root.MirrorWallet.pick({ force: true });
-      report(esc(T('没检测到钱包扩展（MetaMask / 币安钱包 等）。装好扩展再来，手机上可以在 Binance App 里打开这一页 —— 或者继续免费看。')), 'bnb-err');
+      report(esc(T('未检测到钱包扩展。请安装浏览器钱包后重试；移动端可在钱包应用内打开本页。引爆与模拟器不受影响。')), 'bnb-err');
       return;
     }
     S.busy = true;
@@ -2482,7 +2489,7 @@
              随时会被 innerHTML 重写，直接绑监听器活不过下一次重写。 */
           report(esc(same ? T('铸造成功！') : T('刚才那个宇宙铸造成功了（你现在看的已经是另一个了）　')) +
             '<a href="' + C.CHAIN.explorer + '/tx/' + tx + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">' + esc(T('看交易')) + '</a>' +
-            ' · <a href="' + MARKET_URL + '">' + esc(T('到市场看看')) + '</a>' +
+            ' · <a href="' + MARKET_URL + '">' + esc(T('到市场查看')) + '</a>' +
             ' · <button type="button" class="bnb-share-inline" data-bnbshare="' + esc(hash0) + '">' +
             esc(T('广播这枚')) + '</button>', 'bnb-ok');
           if (same) {
@@ -2792,9 +2799,9 @@
       return;
     }
     if (S.minted) {
-      HUD.el.innerHTML = '<div class="hud-title">' + esc(T('这个宇宙已经被铸走了')) + '</div>' +
+      HUD.el.innerHTML = '<div class="hud-title">' + esc(T('该宇宙已被铸造')) + '</div>' +
         '<div class="hud-msg">' + (S.minted > 0 ? esc(TF('宇宙 #{0}（链上 NFT #{1}）', S.blockNumber != null ? S.blockNumber : '—', S.minted)) : esc(T('刚刚铸造成功'))) +
-        ' · <a href="' + MARKET_URL + '">' + esc(T('到市场看看')) + '</a></div>' +
+        ' · <a href="' + MARKET_URL + '">' + esc(T('到市场查看')) + '</a></div>' +
       '<div class="hud-msg"><button type="button" class="bnb-share-inline" data-bnbshare="' + esc(S.hash || '') + '">' + esc(T('广播这个宇宙')) + '</button></div>';
       return;
     }

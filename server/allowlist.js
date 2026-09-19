@@ -302,28 +302,40 @@ function tsOf(v) {
   const t = Date.parse(s);
   return Number.isFinite(t) ? t : null;
 }
+/** ISO 串或 null。落盘的那一份时间一律规范成 ISO，省得盘上出现三种写法。 */
+function isoOrNull(v) {
+  const t = tsOf(v);
+  return t == null ? null : new Date(t).toISOString();
+}
 /**
  * 预热期窗口。ARCBANG_WARMUP_START（ISO）+ ARCBANG_WARMUP_DAYS（默认 14）。
  * 配了开始时间就能算出结束时间，**保底期没单独配时间时就用它** ——
  * 这样上线只要填一个开始时间，倒计时和放号时间一起就位。
+ *
+ * @param ov 后台落盘的那一份覆盖（.store/phase.json）。**只覆盖非空的字段** ——
+ *           后台没填的那几格仍然跟 env 走，不会因为存过一次就把 env 整份作废。
  */
-function warmupWindow() {
-  const start = tsOf(process.env.ARCBANG_WARMUP_START);
-  const days = envInt('ARCBANG_WARMUP_DAYS', 14);
+function warmupWindow(ov) {
+  const o = ov || {};
+  const start = o.warmupStart != null ? tsOf(o.warmupStart) : tsOf(process.env.ARCBANG_WARMUP_START);
+  const days = Number(o.warmupDays) > 0 ? Math.floor(Number(o.warmupDays)) : envInt('ARCBANG_WARMUP_DAYS', 14);
   return { start, days, end: start == null ? null : start + days * DAY };
 }
-function openTimes() {
-  const w = warmupWindow();
+function openTimes(ov) {
+  const o = ov || {};
+  const w = warmupWindow(ov);
+  const pick = (k, envKey) => (o[k] != null ? tsOf(o[k]) : tsOf(process.env[envKey]));
+  const g = pick('gtdOpenAt', 'ARCBANG_GTD_OPEN_AT');
   return {
     /* 显式配的那个永远优先；没配才拿预热期的结束时间顶上。 */
-    gtd: tsOf(process.env.ARCBANG_GTD_OPEN_AT) != null ? tsOf(process.env.ARCBANG_GTD_OPEN_AT) : w.end,
-    fcfs: tsOf(process.env.ARCBANG_FCFS_OPEN_AT),
-    public: tsOf(process.env.ARCBANG_PUBLIC_OPEN_AT)
+    gtd: g != null ? g : w.end,
+    fcfs: pick('fcfsOpenAt', 'ARCBANG_FCFS_OPEN_AT'),
+    public: pick('publicOpenAt', 'ARCBANG_PUBLIC_OPEN_AT')
   };
 }
 /** 给页面看的：ISO 串或 null */
-function opensIso() {
-  const o = openTimes();
+function opensIso(ov) {
+  const o = openTimes(ov);
   const iso = (t) => (t == null ? null : new Date(t).toISOString());
   return { gtd: iso(o.gtd), fcfs: iso(o.fcfs), public: iso(o.public) };
 }
@@ -333,20 +345,20 @@ function opensIso() {
  * 管理员那一份能往回切（比如临时收回 warmup），但只要某一段的时间已经到了，
  * 它就还是会被推回去 —— 时间是写在页面上给所有人看过的，不该被一个后台按钮悄悄推翻。
  */
-function phaseAt(now, base) {
+function phaseAt(now, base, ov) {
   const t = now == null ? Date.now() : now;
   let p = PHASES.indexOf(base) >= 0 ? base : envPhase();
-  const o = openTimes();
+  const o = openTimes(ov);
   if (o.gtd != null && t >= o.gtd && rank(p) < rank('gtd')) p = 'gtd';
   if (o.fcfs != null && t >= o.fcfs && rank(p) < rank('fcfs')) p = 'fcfs';
   if (o.public != null && t >= o.public && rank(p) < rank('public')) p = 'public';
   return p;
 }
 /** 下一段什么时候开（给倒计时用）：{ phase, at } 或 null（已经是最后一段） */
-function nextOpen(now, base) {
+function nextOpen(now, base, ov) {
   const t = now == null ? Date.now() : now;
-  const p = phaseAt(t, base);
-  const o = openTimes();
+  const p = phaseAt(t, base, ov);
+  const o = openTimes(ov);
   const seq = [['gtd', o.gtd], ['fcfs', o.fcfs], ['public', o.public]];
   for (const [name, at] of seq) {
     if (rank(name) <= rank(p)) continue;        // 已经过了这一段
@@ -423,6 +435,19 @@ function create(opts) {
       没接上时一律当「没开」—— 那是原来的信任模式，行为一个字不变。 */
   let apiProbe = typeof o.apiInfo === 'function' ? o.apiInfo : null;
   function setApiProbe(fn) { apiProbe = typeof fn === 'function' ? fn : null; }
+  /* X 账号的公开档案（注册日期 / 粉丝数），由 server/xverify.js 抓、存在 .store/xusers.json。
+     **后接而不是构造时传**：XV 依赖 AL，AL 再依赖 XV 就成环了（apiProbe 同理）。
+     没接上时后台那两列一律显示「未抓取」，不是 0 —— 0 会被当成「粉丝数为零的小号」。 */
+  let usersProbe = null;
+  function setXUsersProbe(fn) { usersProbe = typeof fn === 'function' ? fn : null; }
+  function xUserOf(xId) {
+    if (!usersProbe || xId == null) return null;
+    try {
+      const m = usersProbe() || {};
+      const u = m[String(xId)];
+      return (u && !u.missing) ? u : null;
+    } catch (e) { return null; }
+  }
   function apiInfo() {
     if (!apiProbe) return { configured: false, lastRunAt: null, everyMin: null };
     try {
@@ -522,6 +547,14 @@ function create(opts) {
     return applied;
   }
   function appliedCount() { return loadApplied().size; }
+  /** 登记过、而且是用 X 登录进来的那些数字 id。手填 X 名的没有 id，抓不了档案。 */
+  function xIds() {
+    const out = [];
+    for (const r of loadApplied().values()) {
+      if (r.xId && /^\d{1,25}$/.test(String(r.xId))) out.push(String(r.xId));
+    }
+    return Array.from(new Set(out));
+  }
   function appliedOf(addr) { const a = normAddr(addr); return a ? loadApplied().get(a) || null : null; }
   /** 码 → 地址。同一个码撞上两个地址（36^6 里的极小概率）时返回 null 并喊一声，
       宁可让管理员手输地址，也不能把名额发错人。 */
@@ -888,23 +921,199 @@ function create(opts) {
     };
   }
 
-  /* ---------------------------------------------------------------- 阶段（含后台切的那一份）
-     管理员在审核页切过的阶段存在状态文件里；没切过就跟 env 走。
-     **所有对外的判断都走 phaseNow()**，不要直接调模块级的 phaseAt() ——
-     那一个不认后台切的这一份，用错了的表现是「后台切了没反应」。 */
+  /* ---------------------------------------------------------------- 阶段（后台那一份落盘）
+     2026-09-19 用户拍板：阶段不该靠改 env 加重启。**有 .store/phase.json 就以它为准**，
+     没有才读 env —— env 只是第一次的默认值。
+
+     phase.json：{ phase, gtdOpenAt, fcfsOpenAt, publicOpenAt, warmupStart, warmupDays, updatedAt, by }
+       · phase 为 null = 「跟 env 走」，不是「预热期」。这两件事差得远。
+       · 四个时间字段为 null 的**逐个退回 env**，不是整份退回 ——
+         后台只改了公售时间时，另外三个仍然跟 env，不会被一次保存清空。
+
+     每次改都往 .store/phase-log.jsonl 追加一行（只追加，永不改写）：
+       { at, from, to, base, by, rollback, times, frozen, warnings }
+     往前一段切（回退）是允许的，但必须留痕 —— 放号这种事不能只剩一个当前值。
+
+     **所有对外的判断都走 phaseNow() / opensNow()**，不要直接调模块级的 phaseAt()、
+     opensIso() —— 那两个不认后台这一份，用错了的表现是「后台切了没反应」。 */
+  const phaseFile = o.phaseFile || path.join(storeDir, 'phase.json');
+  const phaseLogFile = o.phaseLogFile || path.join(storeDir, 'phase-log.jsonl');
+  const PHASE_TIME_FIELDS = ['gtdOpenAt', 'fcfsOpenAt', 'publicOpenAt', 'warmupStart'];
+  let phaseCache = null;             // { mtimeMs, size, rec }
+  /** 盘上那一份。没有文件就回 null（**不是空对象** —— 「没存过」和「存过但全空」要分得开）。 */
+  function phaseRec() {
+    let st = null;
+    try { st = fs.statSync(phaseFile); } catch (e) { /* 还没存过 */ }
+    if (!st) { phaseCache = null; return null; }
+    if (phaseCache && phaseCache.mtimeMs === st.mtimeMs && phaseCache.size === st.size) return phaseCache.rec;
+    let rec = null;
+    try {
+      const j = JSON.parse(fs.readFileSync(phaseFile, 'utf8'));
+      if (j && typeof j === 'object') {
+        rec = {
+          /* 认不出的阶段名当「跟 env 走」，不是崩 —— 手改坏一个字不该让整站放不了号。 */
+          phase: PHASES.indexOf(j.phase) >= 0 ? j.phase : null,
+          gtdOpenAt: isoOrNull(j.gtdOpenAt), fcfsOpenAt: isoOrNull(j.fcfsOpenAt),
+          publicOpenAt: isoOrNull(j.publicOpenAt), warmupStart: isoOrNull(j.warmupStart),
+          warmupDays: Number(j.warmupDays) > 0 ? Math.floor(Number(j.warmupDays)) : null,
+          updatedAt: j.updatedAt || null, by: j.by || null
+        };
+      }
+    } catch (e) { console.error('[allowlist] 阶段文件读不出来（当没存过，跟 env 走）：' + (e && e.message)); }
+    phaseCache = { mtimeMs: st.mtimeMs, size: st.size, rec };
+    return rec;
+  }
+  /** 传给 openTimes / warmupWindow 的覆盖。**只带非空字段**，空的那几格自己退回 env。 */
+  function phaseOverride() {
+    const r = phaseRec();
+    if (!r) return null;
+    const ov = {};
+    for (const k of PHASE_TIME_FIELDS) if (r[k] != null) ov[k] = r[k];
+    if (r.warmupDays != null) ov.warmupDays = r.warmupDays;
+    return ov;
+  }
   function phaseBase() {
+    const r = phaseRec();
+    if (r && PHASES.indexOf(r.phase) >= 0) return r.phase;
+    /* 老版本把后台切的阶段存在 allowlist-state.json 里。升级之后照旧认它，
+       不然升一次级线上就悄悄退回 env 那一段了。 */
     const b = state().phase;
     return PHASES.indexOf(b) >= 0 ? b : null;
   }
-  function phaseNow(now) { return phaseAt(now, phaseBase()); }
-  function nextOpenNow(now) { return nextOpen(now, phaseBase()); }
-  /** 后台切段。给空 / 'auto' 就清掉后台那一份，重新跟 env 走。 */
-  function setPhase(pRaw) {
-    const p = String(pRaw == null ? '' : pRaw).trim().toLowerCase();
-    if (p === '' || p === 'auto') { mutState((n) => { n.phase = null; }); return { ok: true, phase: phaseNow(), base: null }; }
-    if (PHASES.indexOf(p) < 0) return { ok: false, error: '阶段只能是 ' + PHASES.join(' / ') };
-    mutState((n) => { n.phase = p; });
-    return { ok: true, phase: phaseNow(), base: p };
+  function phaseNow(now) { return phaseAt(now, phaseBase(), phaseOverride()); }
+  function nextOpenNow(now) { return nextOpen(now, phaseBase(), phaseOverride()); }
+  function opensNow() { return opensIso(phaseOverride()); }
+  function warmupNow() { return warmupWindow(phaseOverride()); }
+  /** 干预日志：只追加。写不下去只报错，不把切段这件事一起带走。 */
+  function logPhase(entry) {
+    try {
+      fs.mkdirSync(path.dirname(phaseLogFile), { recursive: true });
+      fs.appendFileSync(phaseLogFile, JSON.stringify(entry) + '\n');
+    } catch (e) { console.error('[allowlist] 阶段日志写不下：' + (e && e.message)); }
+  }
+  /** 最近几条变更，**新的在前**（后台那张小表直接照这个顺序画）。 */
+  function phaseLog(n) {
+    const want = Math.max(1, Math.min(200, Math.floor(Number(n) || 10)));
+    let txt = '';
+    try { txt = fs.readFileSync(phaseLogFile, 'utf8'); } catch (e) { return []; }
+    return txt.split('\n').filter(Boolean).slice(-want)
+      .map((l) => { try { return JSON.parse(l); } catch (e) { return null; } })
+      .filter(Boolean).reverse();
+  }
+  /**
+   * 后台切段 / 改开放时间。
+   *
+   * @param pRaw  四个阶段之一；'auto' / '' = 清掉后台那一份重新跟 env 走；
+   *              **null / undefined = 不动阶段**，只改时间（后台单独保存时间时走这条）。
+   * @param opts  { gtdOpenAt, fcfsOpenAt, publicOpenAt, warmupStart, warmupDays, by }
+   *              给 '' 或 null = **清掉这一格**，退回 env；不给这个键 = 保持原样。
+   *
+   * 顺序：warmup 到 gtd 到 fcfs 到 public 可以前进，**也允许回退**（写错了要能收回来），
+   * 回退在日志里标 rollback:true。时间前后颠倒不拒绝，只回一句 warning ——
+   * 半填一半的中间态是后台里正常的一步，不该被一个校验卡死。
+   */
+  function setPhase(pRaw, opts) {
+    const q = opts || {};
+    const cur = phaseRec();
+    const from = phaseNow();
+    const warnings = [];
+
+    let base;
+    if (pRaw == null) base = cur ? cur.phase : phaseBase();       // 不动阶段，只改时间
+    else {
+      const p = String(pRaw).trim().toLowerCase();
+      if (p === '' || p === 'auto') base = null;
+      else if (PHASES.indexOf(p) < 0) return { ok: false, error: '阶段只能是 ' + PHASES.join(' / ') + '，或 auto（跟 env 走）' };
+      else base = p;
+    }
+
+    const rec = {
+      phase: base,
+      gtdOpenAt: null, fcfsOpenAt: null, publicOpenAt: null, warmupStart: null, warmupDays: null,
+      updatedAt: new Date().toISOString(),
+      by: String(q.by == null ? '' : q.by).trim().slice(0, 64) || 'admin'
+    };
+    for (const k of PHASE_TIME_FIELDS) {
+      if (!Object.prototype.hasOwnProperty.call(q, k)) { rec[k] = cur ? cur[k] : null; continue; }
+      const v = q[k];
+      if (v == null || String(v).trim() === '') { rec[k] = null; continue; }
+      const iso = isoOrNull(v);
+      if (iso == null) return { ok: false, error: k + ' 不是一个看得懂的时间：' + String(v).slice(0, 40) };
+      rec[k] = iso;
+    }
+    if (!Object.prototype.hasOwnProperty.call(q, 'warmupDays')) rec.warmupDays = cur ? cur.warmupDays : null;
+    else if (q.warmupDays == null || String(q.warmupDays).trim() === '') rec.warmupDays = null;
+    else {
+      const d = Math.floor(Number(q.warmupDays));
+      if (!Number.isFinite(d) || d <= 0 || d > 3650) return { ok: false, error: '预热天数要是 1 到 3650 之间的整数' };
+      rec.warmupDays = d;
+    }
+
+    fs.mkdirSync(path.dirname(phaseFile), { recursive: true });
+    writeAtomic(phaseFile, JSON.stringify(rec, null, 2) + '\n');
+    phaseCache = null;
+    /* 老那一份（状态文件里的 phase）就地清掉：一件事存两个地方，
+       迟早有一天它们不一样，而那一天没人说得清哪个算数。 */
+    if (PHASES.indexOf(state().phase) >= 0) mutState((n) => { n.phase = null; });
+
+    const to = phaseNow();
+    const op = opensNow();
+    const seq = [op.gtd, op.fcfs, op.public].map((x) => (x == null ? null : Date.parse(x)));
+    for (let i = 1; i < seq.length; i++) {
+      if (seq[i] != null && seq[i - 1] != null && seq[i] < seq[i - 1]) {
+        warnings.push('开放时间前后颠倒了：' + ['白名单', '先到先得', '公售'][i] + '早于它前面那一段。');
+      }
+    }
+    if (base != null && to !== base) {
+      warnings.push('已保存，但「' + base + '」后面那一段的开放时间已经到了，实际生效的是「' + to
+        + '」。开放时间是写在页面上给所有人看过的，后台按钮不会把它悄悄推翻 —— 真要回退，'
+        + '请把对应的开放时间一起清空或往后挪。');
+    }
+    if (to === 'gtd' && !isFrozen()) {
+      warnings.push('名单还没定格。白名单阶段的名单会随积分实时变，有人可能铸到一半被挤出名单 ——'
+        + '进白名单阶段之前请先点「定格榜单」。');
+    }
+    logPhase({
+      at: rec.updatedAt, from, to, base, by: rec.by,
+      rollback: rank(to) < rank(from),
+      times: { gtd: op.gtd, fcfs: op.fcfs, public: op.public, warmupStart: rec.warmupStart, warmupDays: rec.warmupDays },
+      frozen: isFrozen(),
+      warnings
+    });
+    return { ok: true, phase: to, base, opens: op, warnings };
+  }
+  /** 后台阶段卡要的那一份：现在哪一段、各段什么时候开、榜定没定格、名单多少人、最近改了什么。 */
+  function phaseInfo(now) {
+    const r = phaseRec();
+    const c = counts();
+    const L = list();
+    const w = warmupNow();
+    return {
+      ok: true,
+      phase: phaseNow(now),
+      base: phaseBase(),
+      envPhase: envPhase(),
+      /* 现在这一段从哪儿来的：后台落盘 / 老状态文件 / env。后台那张卡要照实说清楚。 */
+      source: (r && r.phase) ? 'file' : (PHASES.indexOf(state().phase) >= 0 ? 'state' : 'env'),
+      stored: r,
+      opens: opensNow(),
+      warmup: {
+        start: w.start == null ? null : new Date(w.start).toISOString(),
+        days: w.days,
+        end: w.end == null ? null : new Date(w.end).toISOString()
+      },
+      next: nextOpenNow(now),
+      frozen: isFrozen(),
+      frozenAt: L.frozenAt || null,
+      counts: { gtd: c.gtd, fcfs: c.fcfs, total: c.total },
+      tops: tops(),
+      boardSize: board(now).rows.length,
+      applied: appliedCount(),
+      phases: PHASES.slice(),
+      updatedAt: r ? r.updatedAt : null,
+      by: r ? r.by : null,
+      log: phaseLog(10)
+    };
   }
 
   /* ================================================================ 自动审核
@@ -2428,8 +2637,11 @@ function create(opts) {
   function appliedRows() {
     return Array.from(loadApplied().values()).map((r) => {
       const s = scoreOf(r.addr);
+      const xu = xUserOf(r.xId);
       return Object.assign({}, r, {
         x: xOf(r.addr),                       // 管理员修正过就用修正的
+        xCreatedAt: xu ? xu.createdAt : null,
+        xFollowers: xu ? xu.followers : null,
         followed: s.followed, reposted: s.reposted, liked: s.liked,
         verified: s.reposted,                 // 「核过了吗」在别处一律指转发那一项
         invites: s.invites,
@@ -2465,7 +2677,7 @@ function create(opts) {
     const head = [
       '名次', '层级', '总积分',
       '登记分', '关注分', '互动分', '邀请分', '里程碑分', '创作分', '引爆分', '广播分',
-      '地址', 'X 名', 'X 来源', '登记码', '邀请人码', '有效邀请', '邀请总数',
+      '地址', 'X 名', 'X 来源', 'X 注册日期', '粉丝数', '登记码', '邀请人码', '有效邀请', '邀请总数',
       '关注', '推文互动 已完成条数', '推文互动 总条数', '置顶推点赞', '置顶推转发', '置顶推评论',
       '创作通过', '引爆区块数', '广播次数', '广播天数',
       '登记时间', 'IP 前缀', '模拟数据'
@@ -2478,7 +2690,12 @@ function create(opts) {
         r.rank == null ? '' : r.rank, r.tier || '未获资格', r.points,
         pts.register || 0, pts.follow || 0, pts.engage || 0,
         pts.invite || 0, pts.milestone || 0, pts.post || 0, pts.bang || 0, pts.share || 0,
-        r.addr, r.x || '', rec.xSource || 'typed', r.code, r.ref || '',
+        /* 档案没抓到时这两格**留空**，不写 0 —— 导出去之后没人分得清
+           「粉丝 0」和「还没查」，而这张表的第一用途就是照它筛人。 */
+        r.addr, r.x || '', rec.xSource || 'typed',
+        (r.xCreatedAt ? String(r.xCreatedAt).slice(0, 10) : ''),
+        (r.xFollowers == null ? '' : r.xFollowers),
+        r.code, r.ref || '',
         r.validInvites, r.invites,
         r.followed ? '1' : '0', sc.engageDone || 0, (sc.engageRows || []).length,
         sc.liked ? '1' : '0', r.reposted ? '1' : '0', sc.commented ? '1' : '0',
@@ -2515,7 +2732,7 @@ function create(opts) {
       tasksDone: addr ? tasksDone(addr, now) : 0,
       listed: addr ? !!tierOf(addr) : false,
       freeLeft,                                    // 链上还剩几枚免费额度；null = 这一刻读不到
-      opens: opensIso(),
+      opens: opensNow(),
       next: nextOpenNow(now),
       /* **不承诺名额**：定格之前这里的数字全是 null（见 publicCounts 的说明）。 */
       counts: publicCounts(),
@@ -2597,7 +2814,7 @@ function create(opts) {
       postsThisWeek: addr ? postsThisWeek(addr, now) : 0,
       okPosts: s.okPosts, badPosts: s.badPosts, countedPosts: s.countedPosts,
       milestones: s.milestones,
-      warmup: (function () { const w = warmupWindow();
+      warmup: (function () { const w = warmupNow();
         return { start: w.start == null ? null : new Date(w.start).toISOString(),
           days: w.days, end: w.end == null ? null : new Date(w.end).toISOString() }; })(),
       gapToTop100: addr ? gapTo(addr, BOARD_PUBLIC_MAX) : null,
@@ -2629,10 +2846,17 @@ function create(opts) {
       const s = scoreOf(r.addr);
       const pf = proofOf(r.addr);
       const x = xOf(r.addr);
+      /* X 账号的公开档案。**抓不到就是 null，不是 0** —— 后台按「粉丝少于 10」筛的时候，
+         把「没抓到」算成 0 会把一整批正常账号误判成小号。 */
+      const xu = xUserOf(r.xId);
       return {
         addr: r.addr, short: shortAddr(r.addr), code: r.code, x,
         xId: r.xId || null, xSource: r.xSource || 'typed',
         xUrl: x ? 'https://x.com/' + x : null,
+        xCreatedAt: xu ? xu.createdAt : null,
+        xFollowers: xu ? xu.followers : null,
+        xFollowing: xu ? xu.following : null,
+        xTweets: xu ? xu.tweets : null,
         at: r.at, ip: r.ip, ipCount: perIp.get(r.ip) || 1,
         ref: r.ref || null, inviter: r.inviter || null,
         points: s.total, rank: rankOf(r.addr), tier: tierOf(r.addr),
@@ -2683,7 +2907,7 @@ function create(opts) {
    */
   function denyReason(minter, now) {
     const p = phaseNow(now);
-    const o = opensIso();
+    const o = opensNow();
     const nx = nextOpenNow(now);
     const when = (iso) => (iso ? '（' + iso + '）' : '（时间待定，看站上的倒计时）');
 
@@ -2746,7 +2970,10 @@ function create(opts) {
 
   return {
     // 阶段
-    phase: phaseAt, nextOpen, opens: opensIso, pinnedPost, PHASES, TIERS,
+    /* **这三个给的都是「认后台那一份」的版本**（phaseNow / nextOpenNow / opensNow）。
+       模块级的 phaseAt / nextOpen / opensIso 只认 env，那是给自检和纯函数用的。
+       曾经这里挂的是模块级那几个，表现是 /api/health 与启动日志里的阶段跟后台切的对不上。 */
+    phase: phaseNow, nextOpen: nextOpenNow, opens: opensNow, pinnedPost, PHASES, TIERS,
     // 积分与榜
     scoreOf, board, rankOf, topRows, boardView, gapTo, gapToPrev, nextStep,
     pointsTable, tops, inviteCount, validInviteCount, shareDaysOf, sharesOf, isVerified, hasCheck,
@@ -2761,14 +2988,14 @@ function create(opts) {
     // 自动核 / 信任
     submitProof, proofOf, checkProof, fetchTweet, runProofQueue, rejectProof,
     submitPost, postsOf, checkPost, runPostQueue, postsThisWeek,
-    warmupWindow, inviteMilestones,
+    warmupWindow: warmupNow, inviteMilestones,
     claim, claimOf, distrust, retrust, isDistrusted, checkBy, pinnedTweetId, syncApi,
     // 官方推文互动
     engagePosts, engagePostOf, engageAdd, engageRemove, engageStatus, engagePartsOf, isEngaged,
     engagePostsFile: postsFile,
-    setApiProbe, apiInfo, apiOn,
+    setApiProbe, apiInfo, apiOn, setXUsersProbe, xUserOf, xIds,
     // 后台切段
-    setPhase, phaseBase, phaseNow, nextOpenNow,
+    setPhase, phaseBase, phaseNow, nextOpenNow, opensNow, phaseInfo, phaseLog, phaseFile, phaseLogFile,
     appliedCount, appliedRows, appliedCsv, domain, seed, unseed,
     // 接口
     status, gate, denyReason, adminList,

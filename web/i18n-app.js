@@ -749,10 +749,10 @@
     '　·　下次引爆生效（当前 3D 视图不变）': '　·　takes effect on the next detonation (the current 3D view stays)',
     '想细看：这个宇宙的物理常数被推成了什么样': 'A closer look: where this universe\'s physical constants ended up',
     '不看就收下': 'Mint it unseen',
-    '不引爆、也不看结局，直接铸造成 NFT——留着以后自己炸开看':
-      'Mint it as an NFT without detonating it or seeing the outcome — keep it and crack it open later',
-    '进沙盒改这个宇宙的创世参数，看它会变成什么样——不花钱，不上链':
-      'Open the sandbox and change this universe\'s genesis parameters to see what it becomes — free, nothing on-chain',
+    '不引爆、不查看结局，直接铸造为 NFT，留待之后开启。':
+      'Mint it as an NFT without detonating it or seeing the outcome, and open it later.',
+    '在沙盒中调整该宇宙的创世参数并即时查看结果；不花费、不上链。':
+      'Adjust this universe\'s genesis parameters in the sandbox and see the result immediately. No cost, nothing on-chain.',
     '自己挑一个区块（最新 / 创世 / 随机 / 指定高度 / 直接粘哈希）':
       'Pick a block yourself (latest / genesis / random / by height / paste a hash)',
     '最新区块': 'Latest block',
@@ -782,13 +782,13 @@
     '正在取这条链的第一个区块…': 'Fetching the first block of this chain…',
     '取不到创世区块（{0}）—— 没从链上核实过就不给引爆。换个网络或稍后再试。':
       'Could not fetch the genesis block ({0}) — nothing goes off without on-chain verification. Switch networks or try again later.',
-    '节点没答复': 'the node did not answer',
+    '节点无响应': 'the node did not respond',
     '它派生出来的空间维数不是 3。': 'The spatial dimension it derives is not 3. ',
     '正在随机取一个区块…': 'Fetching a random block…',
     '核对通过：这是区块 {0}': 'Verified: this is block {0}',
-    '核对失败（节点没答复）：{0} —— 没核实之前不给引爆':
-      'Verification failed (the node did not answer): {0} — nothing goes off before it is verified',
-    '看不懂：既不是区块高度，也不是 64 位哈希': 'Cannot read that: neither a block height nor a 64-digit hash',
+    '核对失败（节点无响应）：{0}。未完成核实前不能引爆。':
+      'Verification failed (the node did not respond): {0}. A block must be verified before it can be detonated.',
+    '无法识别：既不是区块高度，也不是 64 位哈希。': 'Not recognised: neither a block height nor a 64-digit hash.',
     '正在取区块 {0}…': 'Fetching block {0}…',
     '取区块失败：{0}（稍后再试，或者展开下面的「自己挑一个区块」，直接粘一个 0x 开头的哈希）':
       'Could not fetch the block: {0} (try again later, or expand "Pick a block yourself" below and paste a 0x hash directly)',
@@ -798,7 +798,7 @@
       'That one did not compute: {0}. This is only the rate limit on computing parameter cards, not a cap on detonations; universes you already viewed are unaffected — wait a few seconds and try again.',
     '稍后再试': 'try again later',
     '服务端算不出来：{0}': 'The server could not compute it: {0}',
-    '没响应': 'no response',
+    '无响应': 'no response',
     /* 参数卡 */
     '空间维数 ': 'Spatial dimension ',
     /* 引爆结果卡上 D≠3 时跟在数字后面的括号注：给读者一个参照系 */
@@ -815,10 +815,10 @@
     /* 铸造入口与状态 */
     '（合约还没部署，暂时不能铸造；引爆和干预都不受影响）':
       '(The contract is not deployed yet, so minting is unavailable; detonation and the sandbox still work.)',
-    '这个宇宙已经被别人铸走了': 'Someone else already minted this universe',
-    '你已经收下它了': 'You already minted it',
-    '这个宇宙已经被别人铸走了，换一个区块吧': 'Someone else already minted this universe — pick another block',
-    '到市场看看': 'Have a look at the market',
+    '该宇宙已被其他地址铸造': 'This universe has already been minted by another address',
+    '你已铸造该宇宙': 'You have already minted this universe',
+    '该宇宙已被其他地址铸造，请换一个区块。': 'This universe has already been minted by another address. Pick another block.',
+    '到市场查看': 'View on the market',
     '广播这个宇宙': 'Broadcast this universe',
     '要铸造得先连接钱包（签名会绑定你的地址）': 'Connect a wallet before minting (the signature is bound to your address)',
     '下载参数卡图（PNG）': 'Download the parameter card (PNG)',
@@ -837,19 +837,19 @@
     '发送内容：帧耗时、卡住时所在的层级与参数、显卡与浏览器型号、页面路径。不含钱包地址，也不含任何私钥或签名。':
       'What is sent: frame times, the layer and parameters you were on when it stalled, GPU and browser model, and the page path. No wallet address, and no private key or signature of any kind.',
     '发送失败，可复制后发到 admin@arcbang.xyz': 'Sending failed — copy it and email admin@arcbang.xyz',
-    '这个宇宙超出了引擎能算的范围，铸不了；换一个区块试试':
-      'This universe is beyond what the engine can compute, so it cannot be minted; try another block',
-    '这个宇宙已经被铸走了（宇宙 #{0} · 链上 NFT #{1}）——还能看，但不能再铸造':
-      'This universe is already minted (Universe #{0} · NFT #{1} on-chain) — you can still look, but it cannot be minted again',
+    '该宇宙超出引擎的计算范围，无法铸造，请换一个区块。':
+      'This universe is beyond the engine\'s computable range and cannot be minted. Pick another block.',
+    '该宇宙已被铸造（宇宙 #{0} · 链上 NFT #{1}），仍可查看，但不能再次铸造。':
+      'This universe has already been minted (Universe #{0} · NFT #{1} on-chain). It can still be viewed, but not minted again.',
     '宇宙 #{0}（链上 NFT #{1}）': 'Universe #{0} (NFT #{1} on-chain)',
     '（算不出来）': '(cannot be computed)',
     '活了：': 'Alive: ',
     '死了：': 'Dead: ',
-    '进沙盒照提示推参数，不花钱、不上链、可撤销':
-      'Follow the hints and nudge parameters in the sandbox — free, off-chain, undoable',
-    '这个宇宙已经被铸走了（宇宙 #{0} · 链上 NFT #{1}）': 'This universe is already minted (Universe #{0} · NFT #{1} on-chain)',
-    '你刚刚已经把这个宇宙收下了': 'You just minted this universe',
-    '到市场看看它在不在卖': 'See if it is for sale on the market',
+    '在沙盒中按提示调整参数；不花费、不上链、可撤销。':
+      'Adjust the parameters in the sandbox as prompted. No cost, nothing on-chain, reversible.',
+    '该宇宙已被铸造（宇宙 #{0} · 链上 NFT #{1}）': 'This universe has already been minted (Universe #{0} · NFT #{1} on-chain)',
+    '该宇宙已由你铸造完成。': 'You have minted this universe.',
+    '到市场查看挂单': 'View its listing on the market',
     '铸造成 NFT': 'Mint as NFT',
     '铸造把哈希、结局和一张全链 SVG 写进 NFT。结局是你提交的声明值——谁都能拿同一个哈希离线复算来验证。':
       'Minting writes the hash, the outcome and a fully on-chain SVG into the NFT. The outcome is a claim you submit — anyone can recompute it offline from the same hash to verify it.',
@@ -882,7 +882,7 @@
     ' · 已干预': ' · intervened',
     '干预后的宇宙': 'A universe after intervention',
     '合约还没部署，暂时不能铸造。': 'The contract is not deployed yet — minting is unavailable.',
-    '这个宇宙已经被铸走了': 'This universe is already minted',
+    '该宇宙已被铸造': 'This universe is already minted',
     '刚刚铸造成功': 'just minted',
     '这个结局算不出来，铸不了': 'This outcome cannot be computed, so it cannot be minted',
     /* 价格行与钱包条。免费口 2026-08-21 起是每地址 10 次（freeMintCount 计数器）；
@@ -902,8 +902,9 @@
     '你取消了': 'You cancelled',
     '连接失败': 'connection failed',
     /* 铸造入口的钱包话术（不再点名小狐狸 —— 币安钱包同样是正路） */
-    '没检测到钱包扩展（MetaMask / 币安钱包 等）。装好扩展再来，手机上可以在 Binance App 里打开这一页 —— 或者继续免费看。':
-      'No wallet extension detected (MetaMask / Binance Wallet, etc.). Install one and come back — on a phone you can open this page inside the Binance App — or keep browsing for free.',
+    /* 这一句原来点名 Binance App —— ARCBANG 在 Arc 链上，那是抄过来忘了改的。 */
+    '未检测到钱包扩展。请安装浏览器钱包后重试；移动端可在钱包应用内打开本页。引爆与模拟器不受影响。':
+      'No wallet extension detected. Install a browser wallet and try again; on mobile, open this page inside your wallet app. Detonation and the simulator are unaffected.',
     /* 钱包选择器（web/wallet.js 的 pick，词条走 app 命名空间：app 页与市场页都载这一册） */
     '没检测到钱包': 'No wallet detected',
     '怎么连？': 'How do I connect?',

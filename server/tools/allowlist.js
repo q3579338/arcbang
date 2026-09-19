@@ -18,6 +18,9 @@
  *   node server/tools/allowlist.js posts add <推文URL> [--pts=20]  ← 官方发了新推就加一条
  *   node server/tools/allowlist.js posts remove <推文id|URL>
  *   node server/tools/allowlist.js setx <登记码|地址> <新X名>   ← **唯一**能改登记内容的路
+ *   node server/tools/allowlist.js phase                        ← 看现在哪一段、从哪儿来的
+ *   node server/tools/allowlist.js phase gtd [--gtd-open-at=…]  ← **切段，立刻生效，不用重启**
+ *   node server/tools/allowlist.js phase auto                   ← 清掉后台那一份，重新跟 env 走
  *   node server/tools/allowlist.js freeze                       ← **进 gtd 段前必跑**
  *   node server/tools/allowlist.js unfreeze                     ← 定格错了要重来
  *   node server/tools/allowlist.js add <地址…> [--tier=gtd]     ← 人工覆盖（永远赢）
@@ -28,6 +31,10 @@
  *   node server/tools/allowlist.js code <地址>                  ← 从地址现算登记码
  *   node server/tools/allowlist.js seed 120 [--seed=20260919]  ← 造模拟登记（排练站用，确定性）
  *   node server/tools/allowlist.js unseed                      ← 只删模拟登记，真实用户不动
+ *
+ * 阶段存在 .store/phase.json，**跟服务端是同一个文件** —— 这里改完，
+ * 跑着的服务端下一个请求就看得到，不用重启（env 里的 ARCBANG_PHASE 只是没这个文件时的默认值）。
+ * 每次改都往 .store/phase-log.jsonl 追加一行，谁在什么时候把哪一段推到哪一段都留着。
  *
  * 名单目录跟服务端同一份：ARCBANG_STORE（默认 server/.store）。
  * **登记码是从地址 + ARCBANG_ALLOWLIST_SALT 算出来的**，所以跑这个工具时
@@ -93,7 +100,9 @@ function main() {
       const c = AL.counts();
       const P = AL.pointsTable();
       const T = AL.tops();
-      console.log('阶段      ' + AL.phase() + (AL.isFrozen() ? '   名单已定格' : '   名单实时按榜算'));
+      const SRC0 = { file: '后台设的', state: '后台设的（老格式）', env: 'env 默认' };
+      console.log('阶段      ' + AL.phase() + '（' + (SRC0[AL.phaseInfo().source] || '') + '）'
+        + (AL.isFrozen() ? '   名单已定格' : '   名单实时按榜算'));
       const o = AL.opens();
       console.log('开放时间  保底 ' + (o.gtd || '待定') + ' · 先到先得 ' + (o.fcfs || '待定') + ' · 公售 ' + (o.public || '待定'));
       console.log('下一段    ' + JSON.stringify(AL.nextOpen()));
@@ -110,6 +119,51 @@ function main() {
       console.log('状态文件  ' + AL.stateFile);
       if (!AL.isFrozen() && AL.phase() !== 'warmup') {
         console.log('\n!! 已经不在预热期，名单却还没定格 —— 名单会随积分实时变，跑一次 freeze');
+      }
+      break;
+    }
+    /* ------------------------------------------------------------------ 阶段
+       不带参数看现状；带一个阶段名就切过去，**立刻生效**（服务端不用重启）。
+       往前切是允许的，回退也允许 —— 但两种都会写进 .store/phase-log.jsonl。
+       三个开放时间可以顺手一起改：--gtd-open-at= / --fcfs-open-at= / --public-open-at=，
+       给空串就是清掉那一格、退回 env。 */
+    case 'phase': {
+      const FLAGMAP = {
+        'gtd-open-at': 'gtdOpenAt', 'fcfs-open-at': 'fcfsOpenAt', 'public-open-at': 'publicOpenAt',
+        'warmup-start': 'warmupStart', 'warmup-days': 'warmupDays'
+      };
+      const opt = { by: 'cli' };
+      let touched = false;
+      for (const k in FLAGMAP) {
+        if (Object.prototype.hasOwnProperty.call(flags, k)) {
+          opt[FLAGMAP[k]] = flags[k] === true ? '' : flags[k];
+          touched = true;
+        }
+      }
+      if (args[0] || touched) {
+        const r = AL.setPhase(args[0] == null ? null : args[0], opt);
+        if (!r.ok) die(r.error);
+        console.log('✓ 现在是 ' + r.phase + '（后台设的：' + (r.base || 'auto，跟 env 走') + '）');
+        for (const w of r.warnings) console.log('  !! ' + w);
+      }
+      const pi = AL.phaseInfo();
+      const SRC = { file: '后台设的', state: '后台设的（老格式）', env: 'env 默认' };
+      console.log('阶段      ' + pi.phase + '（' + (SRC[pi.source] || pi.source) + '）'
+        + (pi.source === 'file' && pi.updatedAt ? '   ' + pi.updatedAt + ' by ' + (pi.by || '?') : ''));
+      console.log('开放时间  白名单 ' + (pi.opens.gtd || '待定') + ' · 先到先得 ' + (pi.opens.fcfs || '待定')
+        + ' · 公售 ' + (pi.opens.public || '待定'));
+      console.log('预热      ' + (pi.warmup.start || '（没配开始时间）') + ' + ' + pi.warmup.days + ' 天');
+      console.log('下一段    ' + (pi.next ? pi.next.phase + ' ' + (pi.next.at || '（时间待定）') : '已是最后一段'));
+      console.log('名单      ' + (pi.frozen ? '已定格 ' + (pi.frozenAt || '') : '实时按积分榜算')
+        + ' · 白名单 ' + pi.counts.gtd + ' · 先到先得 ' + pi.counts.fcfs + ' · 在榜 ' + pi.boardSize
+        + ' · 登记 ' + pi.applied);
+      console.log('阶段文件  ' + AL.phaseFile);
+      if (pi.phase === 'gtd' && !pi.frozen) console.log('\n!! 白名单阶段却没定格 —— 跑一次 freeze');
+      if (pi.log.length) {
+        console.log('\n最近的变更：');
+        for (const l of pi.log) {
+          console.log('  ' + l.at + '  ' + l.from + ' → ' + l.to + (l.rollback ? '（回退）' : '') + '  by ' + (l.by || '?'));
+        }
       }
       break;
     }

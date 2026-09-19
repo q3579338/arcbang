@@ -3445,6 +3445,101 @@ function call(method, url, body, headers) {
 
       if (savedPin === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = savedPin;
     }
+    /* ---- 阶段落盘（.store/phase.json）：后台切完立刻生效，不用改 env 重启 ----
+       2026-09-19 用户拍板。三条规矩钉在这儿：
+         1. 有文件就以文件为准，没有才读 env（env 只是第一次的默认值）；
+         2. 时间字段是**逐格**退回 env 的，不是整份退回 ——
+            只改一个公售时间不该把另外三个一起抹掉；
+         3. 每一次变更都要留痕，回退也允许、也留痕。 */
+    {
+      const pdir = path.join(TMP, 'phase1'); fs.mkdirSync(pdir, { recursive: true });
+      const PK = ['ARCBANG_PHASE', 'ARCBANG_GTD_OPEN_AT', 'ARCBANG_FCFS_OPEN_AT',
+        'ARCBANG_PUBLIC_OPEN_AT', 'ARCBANG_WARMUP_START', 'ARCBANG_WARMUP_DAYS'];
+      const sv = {};
+      for (const k of PK) { sv[k] = process.env[k]; delete process.env[k]; }
+      process.env.ARCBANG_PHASE = 'gtd';
+
+      const ALP = ALX.create({ storeDir: pdir });
+      ok('没有 phase.json 时跟 env 走（env 只是第一次的默认值）',
+        ALP.phaseNow() === 'gtd' && ALP.phaseBase() === null && ALP.phaseInfo().source === 'env');
+
+      const r1 = ALP.setPhase('public', { publicOpenAt: '2026-11-01T00:00:00Z', by: '0xab…1234' });
+      ok('setPhase 落盘，并且**立刻**生效（服务端不用重启）',
+        r1.ok === true && ALP.phaseNow() === 'public' && ALP.phaseInfo().source === 'file');
+      const rec = JSON.parse(fs.readFileSync(path.join(pdir, 'phase.json'), 'utf8'));
+      ok('盘上那一份八个字段齐全（phase / 三个开放时间 / 预热两项 / updatedAt / by）',
+        rec.phase === 'public' && rec.publicOpenAt === '2026-11-01T00:00:00.000Z'
+        && 'gtdOpenAt' in rec && 'fcfsOpenAt' in rec && 'warmupStart' in rec && 'warmupDays' in rec
+        && !!rec.updatedAt && rec.by === '0xab…1234', JSON.stringify(rec));
+
+      /* 另起一个实例 = 重启。读回来必须还是 public，不回头看 env 的 gtd。 */
+      const ALP2 = ALX.create({ storeDir: pdir });
+      ok('重启之后读回盘上那一份，不退回 env',
+        ALP2.phaseNow() === 'public' && ALP2.opensNow().public === '2026-11-01T00:00:00.000Z');
+
+      ALP.setPhase(null, { fcfsOpenAt: '2026-10-01T00:00:00Z' });
+      ok('不给 phase 时只改时间，阶段原样不动',
+        ALP.phaseBase() === 'public' && ALP.opensNow().fcfs === '2026-10-01T00:00:00.000Z');
+      ok('没提到的那几格保持原样 —— 一次保存不该把别的时间抹平',
+        ALP.opensNow().public === '2026-11-01T00:00:00.000Z');
+
+      process.env.ARCBANG_FCFS_OPEN_AT = '2026-09-09T00:00:00Z';
+      ALP.setPhase(null, { fcfsOpenAt: '' });
+      ok('清空某一格是**逐格**退回 env，不是整份退回',
+        ALP.opensNow().fcfs === '2026-09-09T00:00:00.000Z'
+        && ALP.opensNow().public === '2026-11-01T00:00:00.000Z');
+      delete process.env.ARCBANG_FCFS_OPEN_AT;
+
+      const r2 = ALP.setPhase('warmup', { publicOpenAt: '', by: 'cli' });
+      ok('回退（public → warmup）允许，日志里标 rollback',
+        r2.ok === true && ALP.phaseNow() === 'warmup'
+        && ALP.phaseLog(5)[0].rollback === true && ALP.phaseLog(5)[0].by === 'cli');
+      ok('干预日志只追加，最近的在前', ALP.phaseLog(10).length >= 4
+        && ALP.phaseLog(10)[0].to === 'warmup', String(ALP.phaseLog(10).length));
+
+      const r3 = ALP.setPhase('gtd');
+      ok('切到 gtd 而榜还没定格 → 回 warning，但**不拦**（后台按钮不替人做决定）',
+        r3.ok === true && r3.warnings.some((w) => /定格/.test(w)), JSON.stringify(r3.warnings));
+
+      ok('认不出的阶段名拒掉，不是静默接受', ALP.setPhase('nonsense').ok === false);
+      ok('看不懂的时间拒掉，不是静默当成没配', ALP.setPhase(null, { gtdOpenAt: '昨天下午' }).ok === false);
+
+      ALP.setPhase('auto');
+      ok('auto 清掉后台那一份，重新跟 env 走',
+        ALP.phaseBase() === null && ALP.phaseNow() === 'gtd' && ALP.phaseInfo().source === 'env');
+
+      fs.writeFileSync(path.join(pdir, 'phase.json'), '{ 这不是 json');
+      const ALP3 = ALX.create({ storeDir: pdir });
+      ok('phase.json 写坏了当没存过、跟 env 走，不是崩（手改坏一个字不该让全站放不了号）',
+        ALP3.phaseNow() === 'gtd' && ALP3.phaseBase() === null);
+
+      ok('phaseInfo 把后台那张卡要的都给齐：阶段 / 来源 / 开放时间 / 定格 / 名单数 / 日志',
+        (function () {
+          const i = ALP3.phaseInfo();
+          return typeof i.phase === 'string' && 'source' in i && i.opens && i.warmup
+            && 'frozen' in i && i.counts && Array.isArray(i.log) && Array.isArray(i.phases);
+        })());
+
+      for (const k of PK) { if (sv[k] === undefined) delete process.env[k]; else process.env[k] = sv[k]; }
+    }
+
+    /* ---- 阶段接口的鉴权：没带口令一律 401（GET 和 POST 都是） ---- */
+    {
+      const saved = process.env.ARCBANG_ADMIN_TOKEN;
+      process.env.ARCBANG_ADMIN_TOKEN = 'selftest-admin-token';
+      const g = await call('GET', '/api/allowlist/admin/phase');
+      ok('GET /api/allowlist/admin/phase 不带口令 → 401', g.status === 401, String(g.status));
+      const p = await call('POST', '/api/allowlist/admin/phase', { phase: 'public' });
+      ok('POST 同一条路不带口令 → 401（切段不可能从外面点得动）', p.status === 401, String(p.status));
+      const fz = await call('POST', '/api/allowlist/admin/unfreeze');
+      ok('unfreeze 也在同一道门后面', fz.status === 401, String(fz.status));
+      const bad = await call('GET', '/api/allowlist/admin/phase', null, { 'x-admin-token': 'wrong-token-here' });
+      ok('口令不对也是 401，不是 403（错口令和没口令对外没有区别）', bad.status === 401, String(bad.status));
+      const g2 = await call('GET', '/api/allowlist/admin/phase', null, { 'x-admin-token': 'selftest-admin-token' });
+      ok('带对口令拿得到阶段现状',
+        g2.status === 200 && typeof JSON.parse(g2.body).phase === 'string', String(g2.status));
+      if (saved === undefined) delete process.env.ARCBANG_ADMIN_TOKEN; else process.env.ARCBANG_ADMIN_TOKEN = saved;
+    }
     /* ---- 管理员口令：缺 / 错 → 401；没配 → 404 ---- */
     {
       const saved = process.env.ARCBANG_ADMIN_TOKEN;
@@ -3659,6 +3754,11 @@ function call(method, url, body, headers) {
       const AL6 = ALX5.create({ storeDir: vdir });
       const savedPin6 = process.env.ARCBANG_PINNED_POST_URL;
       process.env.ARCBANG_PINNED_POST_URL = 'https://x.com/arcbang_xyz/status/1234567890123';
+      /* 这一节按条数对账，所以先把「每轮补抓账号档案」关掉 —— 那是另一笔钱，
+         混在一起算的话这里的账单断言会随档案抓了几个人上下浮动。
+         档案那一路单独一节测（见下面的 fetchUsers）。 */
+      const savedUPR = process.env.ARCBANG_XV_USERS_PER_ROUND;
+      process.env.ARCBANG_XV_USERS_PER_ROUND = '0';
 
       /* 三个人，X id 分别是 1 / 2 / 3 */
       const who = {};
@@ -3788,6 +3888,100 @@ function call(method, url, body, headers) {
         XV9.configured() === false && (await XV9.runOnce()).ok === false && touched === 0);
 
       if (savedPin6 === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = savedPin6;
+      if (savedUPR === undefined) delete process.env.ARCBANG_XV_USERS_PER_ROUND; else process.env.ARCBANG_XV_USERS_PER_ROUND = savedUPR;
+    }
+
+    /* ---- X 账号筛查：注册日期 + 粉丝数（防多号农场） ----
+       2026-09-19 用户拍板：后台要一眼看出「这个号是上周才注册、粉丝 3 个的小号」。
+       GET /2/users?ids=… 一次最多 100 个，**每个账号只抓一次**（注册日期不会变），
+       计费和别处一样按读到的条数走。 */
+    {
+      const udir = path.join(TMP, 'xusers'); fs.mkdirSync(udir, { recursive: true });
+      const ALU = ALX5.create({ storeDir: udir });
+      const whoU = {};
+      ['a1', 'b2', 'c3'].forEach((h, i) => {
+        const w = new Wallet('0x' + h.repeat(32));
+        const sig = w.signMessageSync(ALX5.registerMessage(w.address));
+        ALU.register({ address: w.address, sig }, '8.8.8.8', { id: String(500 + i), handle: 'v' + i });
+        whoU[500 + i] = w.address.toLowerCase();
+      });
+      ok('xIds 只给用 X 登录进来的那些数字 id（手填的没有 id，抓不了档案）',
+        ALU.xIds().sort().join(',') === '500,501,502', ALU.xIds().join(','));
+
+      /* 假的 /2/users：500 是三年前的老号，501 是上周注册的小号，502 查不到（销号）。 */
+      const seenUrls = [];
+      const fakeUsers = async (u) => {
+        seenUrls.push(String(u));
+        return {
+          ok: true, status: 200,
+          text: async () => JSON.stringify({
+            data: [
+              { id: '500', username: 'v0', created_at: '2022-03-04T05:06:07.000Z',
+                public_metrics: { followers_count: 1820, following_count: 300, tweet_count: 4100 } },
+              { id: '501', username: 'v1', created_at: '2026-09-14T00:00:00.000Z',
+                public_metrics: { followers_count: 3, following_count: 512, tweet_count: 2 } }
+            ]
+          })
+        };
+      };
+      const XAU = XAUTH.create({ storeDir: udir, publicBase: 'https://arcbang.xyz' });
+      XAU.saveCred('consumerkey123', 'consumersecret456789012345', { bearer: 'BEARER-TOKEN-XYZ' });
+      const XVU = XVER.create({ storeDir: udir, xauth: XAU, allowlist: ALU, fetch: fakeUsers, handle: 'arcbang_xyz' });
+
+      const fu = await XVU.fetchUsers(['500', '501', '502']);
+      ok('fetchUsers 把注册日期和三个计数都解析出来',
+        fu.ok === true && fu.users['500'].createdAt === '2022-03-04T05:06:07.000Z'
+        && fu.users['500'].followers === 1820 && fu.users['500'].following === 300
+        && fu.users['500'].tweets === 4100, JSON.stringify(fu.users['500']));
+      ok('查不到的那个也记一条并标 missing —— 不然销号会把这个额度一直占着',
+        fu.missing.join(',') === '502' && fu.users['502'].missing === true
+        && fu.users['502'].createdAt === null);
+      ok('一次请求带上 created_at 与 public_metrics 两个字段',
+        seenUrls[0].indexOf('/2/users?ids=') >= 0
+        && /created_at/.test(decodeURIComponent(seenUrls[0]))
+        && /public_metrics/.test(decodeURIComponent(seenUrls[0])), seenUrls[0]);
+      ok('三个 id 一个请求就够（一次最多 100 个）', seenUrls.length === 1, String(seenUrls.length));
+      ok('不是数字的 id、重复的 id 先滤掉，不拿去问 X',
+        (await XVU.fetchUsers(['', null, 'not-an-id'])).requests === 0);
+
+      const sy = await XVU.syncUsers();
+      ok('syncUsers 把这一轮抓到的并进 .store/xusers.json',
+        sy.fetched === 3 && fs.existsSync(XVU.usersFile)
+        && JSON.parse(fs.readFileSync(XVU.usersFile, 'utf8'))['501'].followers === 3);
+      seenUrls.length = 0;
+      const sy2 = await XVU.syncUsers();
+      ok('**只抓没抓过的**：第二轮一个请求都不发（注册日期不会变，粉丝数不需要实时）',
+        sy2.fetched === 0 && seenUrls.length === 0);
+      process.env.ARCBANG_XV_USERS_PER_ROUND = '2';
+      ok('一轮的上限读 env，配 0 就整项不动（真要停可以随时停）',
+        (await XVER.create({ storeDir: udir, xauth: XAU, allowlist: ALU, fetch: fakeUsers })
+          .syncUsers()).fetched === 0);
+      delete process.env.ARCBANG_XV_USERS_PER_ROUND;
+
+      ALU.setXUsersProbe(() => XVU.users());
+      const rowsU = ALU.adminList().rows;
+      const r500 = rowsU.find((x) => x.xId === '500');
+      const r502 = rowsU.find((x) => x.xId === '502');
+      ok('后台列表多出「X 注册日期」「粉丝数」两列',
+        r500.xCreatedAt === '2022-03-04T05:06:07.000Z' && r500.xFollowers === 1820);
+      ok('查不到档案的那一行两列都是 null，**不是 0** —— 0 会被「粉丝少于 10」误判成小号',
+        r502.xCreatedAt === null && r502.xFollowers === null);
+      const csvU = ALU.appliedCsv(0).split('\n');
+      const headU = csvU[0].replace(/^\uFEFF/, '').split(',');
+      ok('CSV 也多出这两列，且列名说人话',
+        headU.indexOf('X 注册日期') >= 0 && headU.indexOf('粉丝数') >= 0, headU.join('|'));
+      ok('CSV 里档案没抓到的那两格留空，不写 0',
+        (function () {
+          const col = headU.indexOf('粉丝数');
+          const line = csvU.find((l) => l.indexOf(whoU[502]) >= 0);
+          return line != null && line.split(',')[col] === '';
+        })());
+      ok('后台页有这两列，也有「注册不足 30 天」「粉丝少于 10」两个筛子',
+        (function () {
+          const h = fs.readFileSync(path.join(__dirname, '..', 'web', 'admin-arc.html'), 'utf8');
+          return h.indexOf('注册不足 30 天') >= 0 && h.indexOf('粉丝少于 10') >= 0
+            && h.indexOf('xFollowers') >= 0 && h.indexOf('xCreatedAt') >= 0;
+        })());
     }
 
     /* ---- 「我关注了」在接了 API 之后不再算数 ----

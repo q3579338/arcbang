@@ -375,8 +375,6 @@
     /* 微信没有网页分享 API，能给的只有二维码。英文站也照样叫 WeChat */
     '微信': 'WeChat',
     '长按识别 / 扫码打开': 'Long-press to recognise, or scan to open',
-    '这条链接太长，二维码画不下 —— 直接复制下面的链接吧':
-      'This link is too long to fit in a QR code — copy the link below instead',
     '链接过长，无法生成二维码，请直接复制下方链接。': 'The link is too long for a QR code. Copy the link below instead.',
     '参数卡尚未读取完成，请稍后再广播': 'The parameter card is still loading. Try broadcasting again shortly.',
     '参数卡尚未读取完成，请稍后再试': 'The parameter card is still loading. Try again shortly.',

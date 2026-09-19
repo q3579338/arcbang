@@ -67,6 +67,17 @@ tr.dis td{background:#FBF1F1}
 .chk.trust{box-shadow:inset 0 -3px 0 #C9A227}
 .chks{display:flex;gap:6px}
 .why{display:block;margin-top:3px;color:var(--ab-warn)}
+
+/* 阶段卡：当前阶段一个大字，四个段各一颗按钮，在的那一颗实心 */
+.ph-now{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:14px}
+.ph-big{font-size:30px;font-weight:700;line-height:1.2}
+.ph-steps{display:flex;flex-wrap:wrap;gap:8px}
+.ph-steps .btn{flex:1 1 130px}
+.ph-steps .btn.on{background:var(--ab-ink);color:#fff;border-color:var(--ab-ink);cursor:default}
+.ph-grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
+.ph-grid label{display:flex;flex-direction:column;gap:5px;flex:1 1 200px;
+  font-size:var(--t-xs);color:var(--ab-graphite)}
+.ph-warn{color:var(--ab-warn);margin:6px 0 0;font-size:var(--t-xs)}
 .tag{display:inline-block;padding:1px 6px;border-radius:999px;border:1px solid currentColor;
   font-size:11px;color:var(--ab-graphite)}
 .tag.bad{color:var(--ab-bad)}
@@ -107,25 +118,55 @@ tr.dis td{background:#FBF1F1}
   </div>
 
   <div id="panel" hidden>
-    <!-- 运维：切阶段 / 定格 / 导出 -->
+    <!-- 阶段控制：放号走到哪一段、各段什么时候开、名单定没定格。
+         这一整张卡是 /api/allowlist/admin/phase 的正面 —— 改完立刻生效，服务端不用重启。 -->
+    <div class="card">
+      <h2>阶段控制</h2>
+      <div class="ph-now">
+        <span class="ph-big" id="phBig">读取中…</span>
+        <span class="dim" id="phSrc"></span>
+      </div>
+      <div class="ph-steps" id="phSteps">
+        <button class="btn" type="button" data-ph="warmup">预热期</button>
+        <button class="btn" type="button" data-ph="gtd">白名单</button>
+        <button class="btn" type="button" data-ph="fcfs">先到先得</button>
+        <button class="btn" type="button" data-ph="public">公售</button>
+      </div>
+      <p class="dim" style="margin-top:10px" id="phNext"></p>
+      <p class="ph-warn" id="phWarn" hidden></p>
+
+      <div class="ph-grid">
+        <label>白名单阶段开放<input class="in" type="datetime-local" id="phGtd"></label>
+        <label>先到先得阶段开放<input class="in" type="datetime-local" id="phFcfs"></label>
+        <label>公售开放<input class="in" type="datetime-local" id="phPub"></label>
+        <label>预热开始<input class="in" type="datetime-local" id="phWs"></label>
+        <label>预热天数<input class="in" type="number" min="1" max="3650" id="phWd" placeholder="14"></label>
+      </div>
+      <p class="dim" style="margin-top:8px">留空的那一格按服务端配置走。开放时间到了会把阶段自动往后推，不会往回拉。</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn pri" type="button" id="btnPhSave">保存开放时间</button>
+        <button class="btn" type="button" id="btnPhAuto">改回按服务端配置</button>
+        <button class="btn danger" type="button" id="btnFreeze">定格榜单</button>
+        <button class="btn" type="button" id="btnUnfreeze">解除定格</button>
+      </div>
+      <p class="dim" style="margin-top:10px" id="phList"></p>
+      <p class="msg" id="phMsg"></p>
+
+      <table style="margin-top:12px">
+        <thead><tr><th>时间</th><th>变更</th><th>操作人</th></tr></thead>
+        <tbody id="phLog"><tr><td colspan="3" class="dim">还没有变更记录</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- 运维：导出与会话 -->
     <div class="card">
       <h2>运维</h2>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <select class="in" id="phase">
-          <option value="">（跟 env 走）</option>
-          <option value="warmup">warmup 预热</option>
-          <option value="gtd">gtd 白名单</option>
-          <option value="fcfs">fcfs 先到先得</option>
-          <option value="public">public 公售</option>
-        </select>
-        <button class="btn" type="button" id="btnPhase">切阶段</button>
-        <button class="btn danger" type="button" id="btnFreeze">定格榜单</button>
         <a class="btn" id="btnCsv" href="#">导出 CSV</a>
         <a class="btn" id="btnCsvTop" href="#">导出 TOP 100</a>
         <button class="btn" type="button" id="btnReload">刷新</button>
         <button class="btn" type="button" id="btnOut">退出</button>
       </div>
-      <p class="dim" style="margin-top:10px">定格之后名单不再随积分变。进入白名单阶段之前必须定格一次。</p>
       <p class="msg" id="opMsg"></p>
     </div>
 
@@ -205,14 +246,17 @@ tr.dis td{background:#FBF1F1}
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
         <input class="in" id="q" type="search" placeholder="搜 X 名 / 码 / 地址" style="flex:1 1 220px">
         <label class="dim"><input type="checkbox" id="only" checked> 只看待审</label>
+        <!-- 多号农场的两个特征：号是刚注册的，粉丝少得不像真人。两个筛子都在本地过滤，不重拉。 -->
+        <label class="dim"><input type="checkbox" id="fNew"> 注册不足 30 天</label>
+        <label class="dim"><input type="checkbox" id="fLow"> 粉丝少于 10</label>
         <span class="dim" id="count"></span>
       </div>
       <table>
         <thead><tr>
-          <th>#</th><th>地址</th><th>X</th><th>码</th>
+          <th>#</th><th>地址</th><th>X</th><th>注册</th><th>粉丝</th><th>码</th>
           <th>关注 赞 转 评</th><th>互动</th><th>同段</th><th>分</th><th></th>
         </tr></thead>
-        <tbody id="rows"><tr><td colspan="9" class="dim">读取中…</td></tr></tbody>
+        <tbody id="rows"><tr><td colspan="11" class="dim">读取中…</td></tr></tbody>
       </table>
       <p class="msg" id="listMsg"></p>
     </div>
@@ -248,6 +292,18 @@ tr.dis td{background:#FBF1F1}
 
   function msg(id, t, cls) { var el = $(id); el.className = 'msg ' + (cls || ''); el.textContent = t; }
 
+  /* 段名的人话。**内部 key 一律还是 warmup / gtd / fcfs / public**，改的只是显示名 ——
+     和预热页、模拟器上用的是同一套说法，后台和前台不能各叫各的。 */
+  var PH_NAME = { warmup: '预热期', gtd: '白名单阶段', fcfs: '先到先得阶段', public: '公售' };
+
+  /** 注册到今天多少天。审核的人真正在看的是这个数，不是那个日期本身。 */
+  function ageDays(iso) {
+    var t = iso ? Date.parse(iso) : NaN;
+    if (!isFinite(t)) return '';
+    var d = Math.floor((Date.now() - t) / 86400000);
+    return d < 0 ? '' : (d < 30 ? '· ' + d + ' 天（新号）' : '· ' + d + ' 天');
+  }
+
   /* 原因是机读的枚举，这里翻成一句话。翻不出来的原样显示 —— 宁可露出枚举名，
      也不要吞掉一个我们还没见过的原因。 */
   var WHY = {
@@ -259,17 +315,38 @@ tr.dis td{background:#FBF1F1}
      后台多一个「已驳回」——那是管理员自己按下去的，跟用户看到的「未通过」是同一件事。 */
   var ST = { ok: '已完成', pending: '未通过', retry: '审核中', partial: '未通过', rejected: '已驳回', new: '审核中' };
 
+  var LAST = null;                        // 最后一次拉到的列表：两个筛子在它上面重画
   function render(d) {
-    $('top').innerHTML = '阶段 <b>' + esc(d.phase) + '</b>'
-      + (d.phaseBase ? '（后台设为 ' + esc(d.phaseBase) + '）' : '（跟 env）')
+    LAST = d;
+    $('top').innerHTML = '阶段 <b>' + esc(PH_NAME[d.phase] || d.phase) + '</b>'
       + ' · 名单 <b>' + (d.frozen ? '已定格' : '实时') + '</b>'
       + ' · 在榜 <b>' + d.boardSize + '</b>'
       + ' · 登记 <b>' + d.total + '</b>';
-    $('phase').value = d.phaseBase || '';
-    $('count').textContent = '共 ' + d.rows.length + ' 条';
+    /* 两个筛子在**本地**过滤：接口那一份已经拉回来了，勾一下不该再跑一趟服务端。
+       档案没抓到的行（xCreatedAt / xFollowers 为 null）**一律不算命中** ——
+       「没查到」不是「刚注册」，也不是「粉丝为零」，把它算进去等于冤枉一批正常账号。 */
+    var rows = d.rows;
+    if ($('fNew').checked) {
+      var line = Date.now() - 30 * 86400000;
+      rows = rows.filter(function (r) {
+        var t = r.xCreatedAt ? Date.parse(r.xCreatedAt) : NaN;
+        return isFinite(t) && t >= line;
+      });
+    }
+    if ($('fLow').checked) {
+      rows = rows.filter(function (r) { return typeof r.xFollowers === 'number' && r.xFollowers < 10; });
+    }
+    var filtered = rows.length !== d.rows.length;
+    $('count').textContent = '共 ' + d.rows.length + ' 条'
+      + (filtered ? '，筛出 ' + rows.length + ' 条' : '');
 
-    if (!d.rows.length) { $('rows').innerHTML = '<tr><td colspan="9" class="dim">没有符合的记录</td></tr>'; return; }
-    $('rows').innerHTML = d.rows.map(function (r) {
+    if (!rows.length) {
+      $('rows').innerHTML = '<tr><td colspan="11" class="dim">'
+        + (filtered ? '没有符合筛选条件的记录（未抓取到 X 档案的行不参与筛选）' : '没有符合的记录')
+        + '</td></tr>';
+      return;
+    }
+    $('rows').innerHTML = rows.map(function (r) {
       var pf = r.proof;
       var WHO = {
         auto: '贴链接自动核过，点一下撤销',
@@ -296,6 +373,15 @@ tr.dis td{background:#FBF1F1}
         /* 手填的 X 名是他自己写的，随时可能对不上人；oauth 那一列是 X 自己认的。 */
         + (r.xSource === 'oauth' ? ' <span class="tag">X 登录</span>' : ' <span class="tag bad">手填</span>')
         + (r.distrusted ? ' <span class="tag bad">不信任</span>' : '') + '</td>'
+        /* X 注册日期与粉丝数：自动核那一轮顺手抓的公开档案（每个号只抓一次）。
+           没抓到就写「未抓取」——**不写 0、不写 0 天**，那两个都会被当成结论。 */
+        + '<td data-k="注册" class="mono">' + (r.xCreatedAt
+          ? (esc(String(r.xCreatedAt).slice(0, 10))
+            + '<span class="dim"> ' + ageDays(r.xCreatedAt) + '</span>')
+          : '<span class="dim">未抓取</span>') + '</td>'
+        + '<td data-k="粉丝" class="mono">' + (typeof r.xFollowers === 'number'
+          ? (r.xFollowers < 10 ? '<span class="tag bad">' + r.xFollowers + '</span>' : String(r.xFollowers))
+          : '<span class="dim">未抓取</span>') + '</td>'
         + '<td data-k="码" class="mono">' + esc(r.code) + '</td>'
         + '<td data-k="关注与置顶推"><span class="chks">'
         + chk('follow', r.follow, r.by.follow) + chk('like', r.like, r.by.like)
@@ -321,7 +407,7 @@ tr.dis td{background:#FBF1F1}
       render(d);
       msg('listMsg', '');
       /* 这两块只在刚进后台时拉一次 —— 列表会被搜索框高频重拉，那两个接口不用跟着跑。 */
-      if (first) { loadXAuth(); loadXv(); loadEp(); }
+      if (first) { loadPhase(); loadXAuth(); loadXv(); loadEp(); }
     }, function (e) {
       if (e.status === 404) {
         $('login').hidden = false; $('panel').hidden = true;
@@ -388,6 +474,9 @@ tr.dis td{background:#FBF1F1}
   $('btnReload').addEventListener('click', function () { load(); });
   $('q').addEventListener('input', function () { clearTimeout(window.__t); window.__t = setTimeout(load, 300); });
   $('only').addEventListener('change', load);
+  /* 这两个只改本地过滤，拿现有那一份重画就够，不用再跑一趟服务端。 */
+  $('fNew').addEventListener('change', function () { if (LAST) render(LAST); });
+  $('fLow').addEventListener('change', function () { if (LAST) render(LAST); });
 
   /* 三个勾：点一下就即时生效。已经打上的再点一次是撤销；
      「用户自称」那两项撤销时连带标记不信任（distrust），不然他再点一次就回来了。 */
@@ -550,21 +639,137 @@ tr.dis td{background:#FBF1F1}
   $('btnXvRun').addEventListener('click', function () { runXv(false); });
   $('btnXvFull').addEventListener('click', function () { runXv(true); });
 
-  /* 切阶段与定格都要二次确认：这两件事一按下去所有人都看得见。 */
-  $('btnPhase').addEventListener('click', function () {
-    var v = $('phase').value;
-    if (!confirm('把阶段切到 ' + (v || '（跟 env 走）') + '？所有人立刻看得到。')) return;
-    api('/allowlist/admin/phase', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phase: v })
-    }).then(function (r) { msg('opMsg', '现在是 ' + r.phase, 'ok'); return load(); },
-      function (e) { msg('opMsg', e.message, 'err'); });
+  /* ---------------- 阶段控制 ----------------
+     切段和定格都要二次确认：这两件事一按下去所有人立刻看得见，而且
+     服务端下一张铸造签名就按新阶段签 —— 确认框里必须把这句话写出来。
+
+     时间输入框用 datetime-local，它读写的是**本地时间**；接口收发的一律是 ISO。
+     两边的转换只在这两个函数里做，别在别处再拼一次。 */
+  var PH_DESC = {
+    warmup: '预热期：不签任何铸造签名，页面只有倒计时、积分榜和登记入口。',
+    gtd: '白名单阶段：只有白名单地址可以铸造，走免费额度。',
+    fcfs: '先到先得阶段：名单内两档都可以铸造，免费额度用完为止。',
+    public: '公售：任何地址都可以铸造，默认按固定价付费。'
+  };
+  function toLocalInput(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+      + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function fromLocalInput(v) {
+    var t = String(v == null ? '' : v).trim();
+    if (!t) return '';                    // 空 = 清掉这一格，退回服务端配置
+    var d = new Date(t);                  // datetime-local 按本地时区解析
+    return isNaN(d.getTime()) ? '' : d.toISOString();
+  }
+  function whenText(iso) {
+    if (!iso) return '时间待定';
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? iso : d.toLocaleString();
+  }
+
+  var PH = null;                          // 上一次拉到的 /admin/phase
+  function renderPhase(d) {
+    PH = d;
+    $('phBig').textContent = PH_NAME[d.phase] || d.phase;
+    var SRC = { file: '后台设定', state: '后台设定', env: '服务端配置的默认值' };
+    $('phSrc').textContent = (SRC[d.source] || d.source)
+      + (d.source === 'file' && d.updatedAt ? ' · ' + whenText(d.updatedAt) + ' · ' + (d.by || '') : '')
+      + ' · ' + (PH_DESC[d.phase] || '');
+    var btns = $('phSteps').querySelectorAll('[data-ph]');
+    for (var i = 0; i < btns.length; i++) {
+      var on = btns[i].getAttribute('data-ph') === d.phase;
+      btns[i].className = 'btn' + (on ? ' on' : '');
+      btns[i].disabled = on;
+    }
+    $('phNext').textContent = d.next
+      ? ('下一段：' + (PH_NAME[d.next.phase] || d.next.phase) + ' · ' + whenText(d.next.at))
+      : '已经是最后一段。';
+    $('phGtd').value = toLocalInput(d.opens.gtd);
+    $('phFcfs').value = toLocalInput(d.opens.fcfs);
+    $('phPub').value = toLocalInput(d.opens.public);
+    $('phWs').value = toLocalInput(d.warmup.start);
+    $('phWd').value = d.warmup.days || '';
+    $('phList').textContent = '名单' + (d.frozen ? '已定格（' + whenText(d.frozenAt) + '）' : '仍在随积分榜实时变动')
+      + ' · 白名单 ' + d.counts.gtd + ' 个 · 先到先得 ' + d.counts.fcfs + ' 个'
+      + ' · 在榜 ' + d.boardSize + ' 人 · 登记 ' + d.applied + ' 条。';
+    /* 白名单阶段却没定格是真实故障：名单会随积分变，有人可能铸到一半被挤出名单。 */
+    var warn = (d.phase !== 'warmup' && !d.frozen)
+      ? '名单还没定格。当前阶段已经在放号，而名单仍随积分实时变动 —— 请先点「定格榜单」。' : '';
+    $('phWarn').textContent = warn;
+    $('phWarn').hidden = !warn;
+    $('btnFreeze').disabled = !!d.frozen;
+    $('btnUnfreeze').disabled = !d.frozen;
+    $('phLog').innerHTML = (d.log && d.log.length) ? d.log.map(function (l) {
+      return '<tr><td data-k="时间">' + esc(whenText(l.at)) + '</td>'
+        + '<td data-k="变更">' + esc((PH_NAME[l.from] || l.from) + ' → ' + (PH_NAME[l.to] || l.to))
+        + (l.rollback ? ' <span class="tag bad">回退</span>' : '') + '</td>'
+        + '<td data-k="操作人" class="mono">' + esc(l.by || '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="3" class="dim">还没有变更记录</td></tr>';
+  }
+  function loadPhase() {
+    return api('/allowlist/admin/phase').then(renderPhase, function (e) { msg('phMsg', e.message, 'err'); });
+  }
+  /** 保存之后把 warning 照实摆出来：服务端不拦的那几件事，人必须看得见。 */
+  function savePhase(body, okText) {
+    return api('/allowlist/admin/phase', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+    }).then(function (r) {
+      msg('phMsg', okText.replace('{0}', PH_NAME[r.phase] || r.phase)
+        + (r.warnings && r.warnings.length ? '  ' + r.warnings.join(' ') : ''),
+        (r.warnings && r.warnings.length) ? 'err' : 'ok');
+      if (r.info) renderPhase(r.info); else loadPhase();
+      return load();
+    }, function (e) { msg('phMsg', e.message, 'err'); });
+  }
+  /** 三个开放时间 + 预热窗口，一次全交（没填的那几格会被清掉，退回服务端配置）。 */
+  function timeBody() {
+    return {
+      gtdOpenAt: fromLocalInput($('phGtd').value),
+      fcfsOpenAt: fromLocalInput($('phFcfs').value),
+      publicOpenAt: fromLocalInput($('phPub').value),
+      warmupStart: fromLocalInput($('phWs').value),
+      warmupDays: String($('phWd').value || '').trim()
+    };
+  }
+  $('phSteps').addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-ph]') : null;
+    if (!b || b.disabled) return;
+    var v = b.getAttribute('data-ph');
+    if (!confirm('切换到「' + (PH_NAME[v] || v) + '」？\n\n'
+      + PH_DESC[v] + '\n\n切换后立即生效，服务端按新阶段签名，无需重启。')) return;
+    var body = timeBody();
+    body.phase = v;
+    savePhase(body, '已切换到{0}。');
+  });
+  $('btnPhSave').addEventListener('click', function () {
+    if (!confirm('保存开放时间？\n\n保存后立即生效：时间一到，服务端会自动进入对应阶段。')) return;
+    savePhase(timeBody(), '已保存，当前为{0}。');
+  });
+  $('btnPhAuto').addEventListener('click', function () {
+    if (!confirm('改回按服务端配置？\n\n后台设定的阶段与开放时间会被清除，重新按服务端配置文件生效。')) return;
+    savePhase({
+      phase: 'auto', gtdOpenAt: '', fcfsOpenAt: '', publicOpenAt: '', warmupStart: '', warmupDays: ''
+    }, '已改回服务端配置，当前为{0}。');
   });
   $('btnFreeze').addEventListener('click', function () {
-    if (!confirm('把当前榜单定格成名单？之后名单不再随积分变。')) return;
+    if (!confirm('把当前榜单定格为名单？\n\n定格后名单不再随积分变动。进入白名单阶段之前必须定格一次。')) return;
     api('/allowlist/admin/freeze', { method: 'POST' }).then(function (r) {
-      msg('opMsg', '已定格：白名单 ' + r.gtd + ' · 先到先得 ' + r.fcfs + ' · 合计 ' + r.total, 'ok');
+      msg('phMsg', '已定格：白名单 ' + r.gtd + ' 个 · 先到先得 ' + r.fcfs + ' 个 · 合计 ' + r.total + ' 个。', 'ok');
+      if (r.info) renderPhase(r.info);
       return load();
-    }, function (e) { msg('opMsg', e.message, 'err'); });
+    }, function (e) { msg('phMsg', e.message, 'err'); });
+  });
+  $('btnUnfreeze').addEventListener('click', function () {
+    if (!confirm('解除定格？\n\n名单将重新随积分榜实时变动，已有的人工指定条目保持不变。')) return;
+    api('/allowlist/admin/unfreeze', { method: 'POST' }).then(function (r) {
+      msg('phMsg', '已解除定格，名单重新按积分榜实时计算。', 'ok');
+      if (r.info) renderPhase(r.info);
+      return load();
+    }, function (e) { msg('phMsg', e.message, 'err'); });
   });
   /* CSV 要带口令头，<a href> 带不了 —— 取回来在内存里做个 blob 再存。
      导出的是**按名次排好的**全量表：各项积分分开成列，UTF-8 带 BOM（Excel 直接开不乱码）。 */

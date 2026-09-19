@@ -347,6 +347,14 @@ function adminSessionOk(token) {
   const v = ADMIN_SESSIONS.get(String(token || ''));
   return !!(v && Date.now() <= v.exp);
 }
+/** 「是谁动的」。钱包登录的记地址缩写，口令那条路只记 'token' ——
+   口令是共用的，写一个具体的人名进日志反而是编的。 */
+function adminWho(req) {
+  const got = String((req && req.headers && req.headers['x-admin-token']) || '');
+  const v = ADMIN_SESSIONS.get(got);
+  if (v && Date.now() <= v.exp && v.addr) return v.addr.slice(0, 6) + '…' + v.addr.slice(-4);
+  return 'token';
+}
 
 function adminAllowed(ip) {
   const allow = String(process.env.ARCBANG_ADMIN_IPS || '')
@@ -581,6 +589,9 @@ const XV = require('./xverify.js').create({ storeDir: STORE_DIR, xauth: XA, allo
    开着的时候「我关注了」不再直接算数，只把那一项推进「审核中」，等 API 去查。
    **后接而不是构造时传**：XV 依赖 AL，AL 再依赖 XV 就成环了。 */
 AL.setApiProbe(() => XV.info());
+/* X 账号的公开档案（注册日期 / 粉丝数）：后台那两列和 CSV 都从这儿取。
+   同样是后接 —— 构造时传会成环。 */
+AL.setXUsersProbe(() => XV.users());
 XV.start();
 /* 自动核推文的重试队列：每分钟推一次（取不到推文的那些 1/5/30 分钟后再试）。unref 让它不挡进程退出。 */
 if (typeof AL.runProofQueue === 'function') {
@@ -1113,16 +1124,42 @@ async function handle(req, res, u) {
       const r = AL.rejectProof(q.value.token, q.value.reason);
       return json(res, r.ok ? 200 : 400, r, { 'cache-control': 'no-store' });
     }
+    /* ---- 阶段控制台 ----
+       GET  现在哪一段、从哪儿来的（后台落盘 / env）、各段开放时间、榜定没定格、
+            名单人数、最近 10 条变更。后台那张「阶段控制」卡整张照它画。
+       POST { phase?, gtdOpenAt?, fcfsOpenAt?, publicOpenAt?, warmupStart?, warmupDays? }
+            **改完立刻生效，不用重启** —— 服务端下一张铸造签名就按新阶段签。
+            不给 phase 就只改时间；给 'auto' 是清掉后台那一份重新跟 env 走。
+            切到 gtd 时榜还没定格只回 warning，**不拦** —— 后台按钮不替人做决定，
+            但也不能让这件事悄无声息地过去。 */
+    if (p === '/allowlist/admin/phase' && (req.method === 'GET' || req.method === 'HEAD')) {
+      return json(res, 200, AL.phaseInfo(), { 'cache-control': 'no-store' });
+    }
     if (p === '/allowlist/admin/phase' && req.method === 'POST') {
       const rb = await bodyOf(req, res);
       if (rb === null) return;
       const q = parseJsonObject(rb);
-      if (q.error) return json(res, 400, { error: q.error }, NOSTORE);
-      const r = AL.setPhase(q.value.phase);
-      return json(res, r.ok ? 200 : 400, r, NOSTORE);
+      if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
+      const opt = { by: adminWho(req) };
+      /* **只把请求里真出现过的键往下传**：没出现 = 保持原样，出现但是空串 = 清掉。
+         全部无脑传下去的话，只改一个公售时间会把另外三个一起抹成 null。 */
+      for (const k of ['gtdOpenAt', 'fcfsOpenAt', 'publicOpenAt', 'warmupStart', 'warmupDays']) {
+        if (Object.prototype.hasOwnProperty.call(q.value, k)) opt[k] = q.value[k];
+      }
+      const r = AL.setPhase(Object.prototype.hasOwnProperty.call(q.value, 'phase') ? q.value.phase : null, opt);
+      if (!r.ok) return json(res, 400, r, { 'cache-control': 'no-store' });
+      return json(res, 200, Object.assign({}, r, { info: AL.phaseInfo() }), { 'cache-control': 'no-store' });
     }
     if (p === '/allowlist/admin/freeze' && req.method === 'POST') {
-      return json(res, 200, AL.freeze(), NOSTORE);
+      const r = AL.freeze();
+      console.log('[allowlist] 名单定格（' + adminWho(req) + '）：gtd ' + r.gtd + ' / fcfs ' + r.fcfs);
+      return json(res, 200, Object.assign({}, r, { info: AL.phaseInfo() }), { 'cache-control': 'no-store' });
+    }
+    /* 解除定格：写错了要能重来。名单条目原样留着，只是榜重新开始决定谁在名单里。 */
+    if (p === '/allowlist/admin/unfreeze' && req.method === 'POST') {
+      const r = AL.unfreeze();
+      console.log('[allowlist] 名单解除定格（' + adminWho(req) + '）');
+      return json(res, 200, Object.assign({}, r, { info: AL.phaseInfo() }), { 'cache-control': 'no-store' });
     }
     /* 官方推文表（推文互动任务的数据源）。加一条 = 多一个「一键三连」任务；
        置顶推来自 ARCBANG_PINNED_POST_URL，它不在这张表里，删不掉。 */
@@ -1867,7 +1904,12 @@ function start() {
       const c = AL.counts();
       const nx = AL.nextOpen();
       const T = AL.tops();
+      /* 阶段现在是**后台落盘的**（.store/phase.json）还是 env 的，日志里要说清楚：
+         这两者对不上时，改 env 重启是没有用的，而那一刻人最容易以为是自己改错了。 */
+      const pi = AL.phaseInfo();
+      const SRC = { file: '后台设的', state: '后台设的（老格式）', env: 'env 默认' };
       console.log('  阶段      ' + AL.phase()
+        + '（' + (SRC[pi.source] || pi.source) + (pi.source === 'file' && pi.updatedAt ? ' ' + pi.updatedAt : '') + '）'
         + (AL.phase() === 'warmup' ? '（预热：不签任何铸造签名）' : '')
         + (nx ? '   下一段 ' + nx.phase + ' ' + (nx.at || '（时间待定）') : '   已是最后一段'));
       console.log('  名单      保底 ' + c.gtd + ' · 先到先得 ' + c.fcfs

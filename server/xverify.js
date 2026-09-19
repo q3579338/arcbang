@@ -70,6 +70,14 @@ const MAX_PAGES = () => {
   const v = Number(process.env.ARCBANG_XV_MAX_PAGES);
   return Number.isFinite(v) && v >= 1 ? Math.floor(v) : 50;
 };
+/** 一轮最多抓几个**没抓过的**登记账号。X 那条接口一次最多 100 个 id，
+    所以这个数也就是「一轮最多几个请求」的闸：默认一轮一个请求、100 个人。 */
+const USERS_PER_ROUND = () => {
+  const v = Number(process.env.ARCBANG_XV_USERS_PER_ROUND);
+  return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 100;
+};
+/** GET /2/users?ids= 一次最多 100 个。这是 X 定的，不是我们调的。 */
+const USERS_MAX_IDS = 100;
 const TIMEOUT_MS = 12000;
 
 /** 各项各自从哪个接口来。key 与 allowlist 的 CHECKS 一一对应。 */
@@ -97,6 +105,10 @@ function create(opts) {
   const o = opts || {};
   const storeDir = o.storeDir || path.join(__dirname, '.store');
   const stateFile = o.stateFile || path.join(storeDir, 'xverify.json');
+  /* 登记账号的公开档案（注册日期 / 粉丝数）。**单独一个文件**：
+     它跟「谁打了勾」不是一回事，一个是查出来的事实，一个是我们的结账结果；
+     而且这份只增不减，混在状态文件里会让那个文件一直长。 */
+  const usersFile = o.usersFile || path.join(storeDir, 'xusers.json');
   const XA = o.xauth;
   const AL = o.allowlist;
   const fetchImpl = o.fetch || ((...a) => fetch(...a));
@@ -191,6 +203,106 @@ function create(opts) {
     } finally {
       clearTimeout(t);
     }
+  }
+
+  /* ---------------------------------------------------------------- 账号档案
+     2026-09-19 用户拍板：后台要看得见「这个 X 号是不是刚注册的小号」。
+     GET /2/users?ids=…&user.fields=created_at,public_metrics —— 一次最多 100 个，
+     计费与别处一样按**读到的条数**算（Owned Reads，$0.001 一条）。
+
+     **每个账号只抓一次**：注册日期永远不变，粉丝数是拿来筛小号的，不需要实时。
+     要重抓就删掉 .store/xusers.json 里那一条（或整份删掉）。 */
+  let usersCache = null;
+  function users() {
+    if (usersCache) return usersCache;
+    try {
+      const j = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+      usersCache = (j && typeof j === 'object') ? j : {};
+    } catch (e) { usersCache = {}; }
+    return usersCache;
+  }
+  function saveUsers() {
+    if (!usersCache) return;
+    try {
+      fs.mkdirSync(path.dirname(usersFile), { recursive: true });
+      const tmp = usersFile + '.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(usersCache, null, 2) + '\n');
+      fs.renameSync(tmp, usersFile);
+    } catch (e) { console.error('[xverify] 账号档案存不下：' + (e && e.message)); }
+  }
+  /**
+   * 抓一批账号的公开档案。**不写盘**（由调用方决定要不要并进去），
+   * 失败不抛 —— 这一项挂了不该把整轮带走。
+   * @param ids 数字 id 的数组；重复的、不是数字的一律先滤掉
+   * @returns { ok, users:{id:{createdAt,followers,following,tweets,fetchedAt}}, 
+   *            missing:[id…], records, requests, error? }
+   */
+  async function fetchUsers(ids) {
+    const want = [];
+    const seen = new Set();
+    for (const x of (Array.isArray(ids) ? ids : [])) {
+      const id = String(x == null ? '' : x).trim();
+      if (!/^\d{1,25}$/.test(id) || seen.has(id)) continue;
+      seen.add(id);
+      want.push(id);
+    }
+    const out = {};
+    if (!want.length) return { ok: true, users: out, missing: [], records: 0, requests: 0 };
+    let records = 0, requests = 0, err = null;
+    const at = new Date().toISOString();
+    for (let i = 0; i < want.length; i += USERS_MAX_IDS) {
+      const chunk = want.slice(i, i + USERS_MAX_IDS);
+      const url = API + '/2/users?ids=' + chunk.join(',')
+        + '&user.fields=' + encodeURIComponent('created_at,public_metrics');
+      const r = await get(url);
+      requests++;
+      if (!r.ok) { err = r.error; charge(0, 1); continue; }   // 这一批跳过，别的批照抓
+      const rows = (r.json && r.json.data) || [];
+      records += rows.length;
+      charge(rows.length, 1);
+      for (const u of rows) {
+        const id = u && u.id != null ? String(u.id) : null;
+        if (!id) continue;
+        const pm = u.public_metrics || {};
+        out[id] = {
+          createdAt: u.created_at || null,
+          followers: Number(pm.followers_count) || 0,
+          following: Number(pm.following_count) || 0,
+          tweets: Number(pm.tweet_count) || 0,
+          fetchedAt: at
+        };
+      }
+    }
+    /* 查不到的（销号 / 改私密 / id 写错）：**也记一条**，标 missing。
+       不记的话下一轮又会去查它，一个销号能把这个额度一直占着。 */
+    const missing = want.filter((id) => !out[id]);
+    for (const id of missing) {
+      out[id] = { createdAt: null, followers: null, following: null, tweets: null, fetchedAt: at, missing: true };
+    }
+    return { ok: !err || Object.keys(out).length > 0, users: out, missing, records, requests, error: err };
+  }
+  /** 这一轮补抓：只挑**还没抓过**的登记账号，最多 USERS_PER_ROUND 个。 */
+  async function syncUsers() {
+    const cap = USERS_PER_ROUND();
+    if (!cap) return { skipped: true, why: 'ARCBANG_XV_USERS_PER_ROUND=0' };
+    const known = users();
+    const all = (AL && AL.xIds) ? AL.xIds() : [];
+    const todo = [];
+    for (const id of all) {
+      if (known[id]) continue;
+      todo.push(id);
+      if (todo.length >= cap) break;
+    }
+    if (!todo.length) return { fetched: 0, total: Object.keys(known).length };
+    const r = await fetchUsers(todo);
+    Object.assign(known, r.users);
+    usersCache = known;
+    saveUsers();
+    return {
+      fetched: Object.keys(r.users).length, missing: r.missing.length,
+      records: r.records, requests: r.requests, error: r.error || undefined,
+      total: Object.keys(known).length, left: Math.max(0, all.length - Object.keys(known).length)
+    };
   }
 
   /** 记一笔账：读了多少条、发了几个请求、折合多少钱。 */
@@ -429,6 +541,9 @@ function create(opts) {
       for (const k of Object.keys(s.posts)) if (!live.has(k)) delete s.posts[k];
 
       const applied = (AL && AL.syncApi) ? AL.syncApi(sets, null, postSets) : { added: {}, removed: {}, seen: 0 };
+      /* 顺手补抓一批账号档案（注册日期 / 粉丝数），用来在后台筛多号农场。
+         **只抓没抓过的**，一轮最多 100 个 —— 一次请求、一分钱的量级。 */
+      detail.users = await syncUsers();
       s.rounds++;
       s.lastRunAt = new Date().toISOString();
       s.lastError = null;
@@ -500,6 +615,12 @@ function create(opts) {
          false 时互动卡上多出「贴回复链接」那一块，那是评论的退路。 */
       searchOk: s.searchOk !== false,
       searchError: s.searchError || null,
+      /* 账号档案抓到哪儿了（后台那两列的数据源） */
+      users: (function () {
+        const u = users();
+        const ids = Object.keys(u);
+        return { known: ids.length, missing: ids.filter((k) => u[k] && u[k].missing).length };
+      })(),
       /* 置顶推以外每条官方推文拉到哪儿了（后台看的） */
       posts: Object.keys(s.posts || {}).map((tid) => ({
         tweetId: tid,
@@ -528,9 +649,13 @@ function create(opts) {
   }
 
   /** 自检要用：把盘上的状态扔掉重读。 */
-  function _reload() { cache = null; }
+  function _reload() { cache = null; usersCache = null; }
 
-  return { configured, runOnce, start, stop, info, accountId, fetchList, stateFile, _reload, _state: load };
+  return {
+    configured, runOnce, start, stop, info, accountId, fetchList,
+    fetchUsers, users, syncUsers, usersFile,
+    stateFile, _reload, _state: load
+  };
 }
 
 module.exports = { create, SOURCES };
