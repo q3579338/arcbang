@@ -2745,18 +2745,18 @@ function call(method, url, body, headers) {
       for (const k of keys) delete process.env[k];
       const P0 = ALX.pointsTable();
       ok('默认分值：登记 10 / 关注 10 / 互动置顶推 50 / 其他官方推 20 / 邀请 10（上限 10 位）',
-        P0.register === 10 && P0.follow === 10 && P0.engage === 50 && P0.engagePost === 20
+        P0.register === 10 && P0.follow === 20 && P0.engage === 50 && P0.engagePost === 20
         && P0.invite === 10 && P0.inviteMax === 10, JSON.stringify(P0));
       /* 预热 14 天 × 每周 2 条 = 4 条。这两个数必须对得上 ——
          对不上的表现是卡上多一个永远点不亮的点（2026-09-19 用户指出）。 */
       ok('创作推文每周 2 条、共 4 条：总上限不超过预热期发得出来的条数',
-        P0.postPerWeek === 2 && P0.postMax === 4
+        P0.postPerWeek === 3 && P0.postMax === 6
         && P0.postMax <= Math.ceil(14 / 7) * P0.postPerWeek, JSON.stringify([P0.postPerWeek, P0.postMax]));
       ok('邀请这一项满打满算 160 分（10 分 × 10 位 + 里程碑 10/20/30）——**不再是最值钱的那一项**',
         P0.invite * P0.inviteMax + P0.milestones.reduce((s, m) => s + m.pts, 0) === 160,
         String(P0.invite * P0.inviteMax + P0.milestones.reduce((s, m) => s + m.pts, 0)));
       ok('引爆并广播：每次 5 分，每日 3 次，累计 15 次（2026-09-19 改口径）',
-        P0.share === 5 && P0.sharePerDay === 3 && P0.shareMax === 15, JSON.stringify(P0));
+        P0.share === 3 && P0.sharePerDay === 3 && P0.shareMax === 15, JSON.stringify(P0));
       ok('引爆计分：每次 1 分，每日 5 分封顶，两次之间至少隔 3 分钟',
         P0.bang === 1 && P0.bangPerDay === 5 && P0.bangMax === 50 && P0.bangIntervalMin === 3,
         JSON.stringify(P0));
@@ -2848,8 +2848,8 @@ function call(method, url, body, headers) {
         AL.verify(a1, { repost: true }).already === true && AL.scoreOf(a1).total === 10);
       ok('**verify 不发名额**：它只加分（名单由榜算，不是这里发的）',
         typeof AL.verify(a1).tier === 'undefined');
-      ok('不带参数的 verify 把四个勾一起打上 → 10 + 关注 10 + 互动 50 = 70',
-        AL.scoreOf(a1).total === 70 && AL.scoreOf(a1).engaged === true, String(AL.scoreOf(a1).total));
+      ok('不带参数的 verify 把四个勾一起打上 → 10 + 关注 20 + 互动 50 = 80',
+        AL.scoreOf(a1).total === 80 && AL.scoreOf(a1).engaged === true, String(AL.scoreOf(a1).total));
       AL.unverify(a1);
       ok('不带参数的 unverify 把勾一起撤掉 → 退回 10 分',
         AL.scoreOf(a1).total === 10 && AL.isVerified(a1) === false);
@@ -2893,20 +2893,20 @@ function call(method, url, body, headers) {
         AL.share({ address: a2, sig: signFor(A2), hash: 'nope' }, '1.1.1.1', day0).status === 400);
       const before = AL.scoreOf(a2).total;
       const s1 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'ab'.repeat(32) }, '1.1.1.1', day0);
-      ok('第一次分享 → +5 分', s1.status === 200 && AL.scoreOf(a2).total === before + 5);
+      ok('第一次分享 → +3 分', s1.status === 200 && AL.scoreOf(a2).total === before + 3);
       /* 2026-09-19 改口径：**每日 3 次、累计 15 次**，同一个区块只计一次。 */
       const sDup = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'ab'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
       ok('同一个区块再广播 → already，不再加分（一次引爆只算一次）',
-        sDup.body.already === true && AL.scoreOf(a2).total === before + 5);
+        sDup.body.already === true && AL.scoreOf(a2).total === before + 3);
       const s2 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cd'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
-      ok('同一天换个区块 → 又 +5（一天能做 3 次）',
-        s2.body.counted === true && AL.scoreOf(a2).total === before + 10);
+      ok('同一天换个区块 → 又 +3（一天能做 3 次）',
+        s2.body.counted === true && AL.scoreOf(a2).total === before + 6);
       AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'ce'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
       const s3 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cf'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
       ok('当天第 4 次 → capped:"day"，不再加分',
-        s3.body.capped === 'day' && AL.scoreOf(a2).total === before + 15);
+        s3.body.capped === 'day' && AL.scoreOf(a2).total === before + 9);
       AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'da'.repeat(32) }, '1.1.1.1', day0 + 86400e3);
-      ok('第二天能接着做 → 又 +5', AL.scoreOf(a2).total === before + 20 && AL.shareDaysOf(a2) === 2);
+      ok('第二天能接着做 → 又 +3', AL.scoreOf(a2).total === before + 12 && AL.shareDaysOf(a2) === 2);
       /* 总上限：把累计次数调成 4，第 5 次就不再加分也不再写盘 */
       const savedD = process.env.ARCBANG_PTS_SHARE_MAX;
       process.env.ARCBANG_PTS_SHARE_MAX = '4';
@@ -3243,19 +3243,19 @@ function call(method, url, body, headers) {
       ok('刚登记：一个勾都没打，只有登记那 10 分',
         AL.scoreOf(w).total === 10 && !AL.scoreOf(w).followed && !AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
       AL.verify(w, { follow: true });
-      ok('只打关注 → +10（互动那三项一分没给）',
-        AL.scoreOf(w).total === 20 && AL.scoreOf(w).followed === true
+      ok('只打关注 → +20（互动那三项一分没给）',
+        AL.scoreOf(w).total === 30 && AL.scoreOf(w).followed === true
         && AL.scoreOf(w).reposted === false && AL.scoreOf(w).liked === false);
       AL.verify(w, { like: true, repost: true });
       ok('点赞 + 转发但没评论 → **一分都不给**（互动是一体的）',
-        AL.scoreOf(w).total === 20 && AL.scoreOf(w).engaged === false, String(AL.scoreOf(w).total));
+        AL.scoreOf(w).total === 30 && AL.scoreOf(w).engaged === false, String(AL.scoreOf(w).total));
       AL.verify(w);
-      ok('四个勾都打上 → 10 + 关注 10 + 互动 50 = 70',
-        AL.scoreOf(w).total === 70 && AL.scoreOf(w).liked === true
+      ok('四个勾都打上 → 10 + 关注 20 + 互动 50 = 80',
+        AL.scoreOf(w).total === 80 && AL.scoreOf(w).liked === true
         && AL.scoreOf(w).commented === true, String(AL.scoreOf(w).total));
       AL.unverify(w, { like: true });
       ok('只撤点赞 → 互动那 50 分整个没了，只剩登记 + 关注',
-        AL.scoreOf(w).total === 20 && AL.scoreOf(w).followed && AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
+        AL.scoreOf(w).total === 30 && AL.scoreOf(w).followed && AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
       AL.verify(w, { like: true });
       ok('X 的三个入口都是纯 intent URL',
         AL.followUrl() === 'https://x.com/intent/follow?screen_name=' + AL.xHandle()
@@ -3370,11 +3370,11 @@ function call(method, url, body, headers) {
       const before = AL.scoreOf(u8.addr).total;
       ok('点「我关注了」就计分，记 by=trust',
         AL.claim({ address: u8.addr, sig: u8.sig, task: 'follow' }).status === 200
-        && AL.scoreOf(u8.addr).total === before + 10 && AL.checkBy(u8.addr, 'follow') === 'trust');
+        && AL.scoreOf(u8.addr).total === before + 20 && AL.checkBy(u8.addr, 'follow') === 'trust');
       ok('互动那一整项也能点「我做完了」→ 置顶推的三个勾一起打上（+50）',
         AL.claim({ address: u8.addr, sig: u8.sig, task: 'engage' }).status === 200
         && AL.scoreOf(u8.addr).engaged === true
-        && AL.scoreOf(u8.addr).total === before + 60, String(AL.scoreOf(u8.addr).total));
+        && AL.scoreOf(u8.addr).total === before + 70, String(AL.scoreOf(u8.addr).total));
       ok('认不出的任务名 → 400', AL.claim({ address: u8.addr, sig: u8.sig, task: 'nope' }).status === 400);
       ok('指一条表里没有的推文 → 400',
         AL.claim({ address: u8.addr, sig: u8.sig, task: 'engage', post: '123456789012' }).status === 400);

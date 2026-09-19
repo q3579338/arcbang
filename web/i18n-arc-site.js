@@ -278,7 +278,7 @@
     '邀请': 'Invite',
     '获取邀请链接': 'Get invite link',
     '引爆宇宙并广播': 'Detonate a universe and broadcast it',
-    '每日最多 3 次，累计 15 次，每次 5 分。': 'Up to 3 times a day, 15 in total, 5 points each.',
+    '每日最多 3 次，累计 15 次，每次 3 分。': 'Up to 3 times a day, 15 in total, 3 points each.',
     '每日最多 {0} 次，累计 {1} 次，每次 {2} 分。': 'Up to {0} times a day, {1} in total, {2} points each.',
     '每日最多 {0} 次，累计 {1} 次': 'Up to {0} a day, {1} in total',
     '今日 {0} / {1} · 累计 {2} / {3}': 'Today {0} / {1} · Total {2} / {3}',
@@ -579,10 +579,10 @@
     'ARCBANG 将 Arc 区块哈希解析为一套物理常数，并据此推演出一个完整宇宙。结果可铸造为 NFT：1,387 枚，永不增发。不发行代币。':
       'ARCBANG reads an Arc block hash as a set of physical constants and simulates a complete universe from it. The result can be minted as an NFT: 1,387 pieces, no further issuance, ever. There is no token.',
     '积分怎么算？': 'How are points calculated?',
-    '登记 10 分，关注 10 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 10 分（上限 10 位），累计 3 / 5 / 10 位另奖 10 / 20 / 30 分。创作推文每条 20 分，每周最多 2 条、共 4 条。引爆并广播每次 5 分（每日 3 次，累计 15 次），引爆每次 1 分。':
-      'Registration 10 points, follow 10. Post engagement: 50 for the pinned post, 20 for each other official post. Each valid invite is 10 points (up to 10 invites), with milestone bonuses of 10 / 20 / 30 at 3, 5 and 10. Each original post is 20 points, up to 2 a week and 4 in total. Detonating and broadcasting is 5 points a time (3 a day, 15 in total), detonating alone 1 point.',
-    '选择任意 Arc 区块生成宇宙。引爆并广播每次 5 分，每日最多 3 次。':
-      'Pick any Arc block to generate a universe. Detonating and broadcasting is 5 points a time, up to 3 a day.',
+    '登记 10 分，关注 20 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 10 分（上限 10 位），累计 3 / 5 / 10 位另奖 10 / 20 / 30 分。创作推文每条 20 分，每周最多 3 条、共 6 条。引爆并广播每次 3 分（每日 3 次，累计 15 次），引爆每次 1 分。':
+      'Registration 10 points, follow 20. Post engagement: 50 for the pinned post, 20 for each other official post. Each valid invite is 10 points (up to 10 invites), with milestone bonuses of 10 / 20 / 30 at 3, 5 and 10. Each original post is 20 points, up to 3 a week and 6 in total. Detonating and broadcasting is 3 points a time (3 a day, 15 in total), detonating alone 1 point.',
+    '选择任意 Arc 区块生成宇宙。引爆并广播每次 3 分，每日最多 3 次。':
+      'Pick any Arc block to generate a universe. Detonating and broadcasting is 3 points a time, up to 3 a day.',
     '什么时候开铸？': 'When does minting open?',
     '预热期共 14 天，结束后依次进入白名单、先到先得与公售三个阶段。具体时间以页面顶部倒计时为准。':
       'The warm-up runs for 14 days, followed by the whitelist, first-come and public sale phases. The countdown at the top of the page is authoritative.',

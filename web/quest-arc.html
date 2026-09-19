@@ -30,7 +30,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/quest.html">
 <meta property="og:title" content="ARCBANG 任务 · 积分榜与白名单">
-<meta property="og:description" content="白名单按积分榜排。登记 10 分、关注 10 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 5 分/次。免费名额从榜的前列产生，数量定格时公布。">
+<meta property="og:description" content="白名单按积分榜排。登记 10 分、关注 20 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 3 分/次。免费名额从榜的前列产生，数量定格时公布。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -38,7 +38,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ARCBANG 任务 · 积分榜与白名单">
-<meta name="twitter:description" content="白名单按积分榜排。登记 10 分、关注 10 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 5 分/次。免费名额从榜的前列产生，数量定格时公布。">
+<meta name="twitter:description" content="白名单按积分榜排。登记 10 分、关注 20 分、推文互动最高 50 分、每位有效邀请 10 分、引爆并广播 3 分/次。免费名额从榜的前列产生，数量定格时公布。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -519,7 +519,7 @@ button,input{font-family:inherit}
         <article class="ab-qr" data-task="follow">
           <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3l7.6 9.8L3.4 21h1.9l6.2-7.1 5.5 7.1H21l-8-10.3L20.3 3h-1.9l-6 6.8L7.2 3z" stroke="none" fill="currentColor"/></svg></span>
           <div class="ab-qr-mid">
-            <div class="ab-qr-hd"><h4 class="ab-qr-t">关注 @arcbang_xyz</h4><span class="ab-qr-p" data-pts>+10</span></div>
+            <div class="ab-qr-hd"><h4 class="ab-qr-t">关注 @arcbang_xyz</h4><span class="ab-qr-p" data-pts>+20</span></div>
             <p class="ab-qr-d" data-how>完成关注后提交，系统将通过 X 核验。</p>
             <button class="ab-chip" type="button" data-copy="@arcbang_xyz">@arcbang_xyz</button>
           </div>
@@ -602,7 +602,7 @@ button,input{font-family:inherit}
             <div class="ab-qr-hd"><h4 class="ab-qr-t">创作推文</h4><span class="ab-qr-p" data-pts>+20</span></div>
             <p class="ab-qr-d">发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。发布后提交链接。</p>
             <!-- 额度写成独立一行（和广播卡的 shareHow 对称）：两个上限是这张卡最常被问到的事。 -->
-            <p class="ab-qr-d" id="postHow">每周最多 2 条，共 4 条，每条 20 分。</p>
+            <p class="ab-qr-d" id="postHow">每周最多 3 条，共 6 条，每条 20 分。</p>
             <div class="ab-xline" id="xWhoPost" hidden></div>
             <button class="ab-chip" type="button" data-copy="#ARCBANG">#ARCBANG</button>
             <div class="ab-dots" id="postDots"></div>
@@ -637,7 +637,7 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙并广播</h4><span class="ab-qr-p" data-pts>+5</span></div>
-            <p class="ab-qr-d" id="shareHow">每日最多 3 次，累计 15 次，每次 5 分。</p>
+            <p class="ab-qr-d" id="shareHow">每日最多 3 次，累计 15 次，每次 3 分。</p>
             <div class="ab-dots" id="shareDots"></div>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
@@ -765,7 +765,7 @@ button,input{font-family:inherit}
 <section class="ab-sec">
   <div class="ab-wrap">
     <h2 class="ab-h2">模拟器</h2>
-    <p class="ab-say">选择任意 Arc 区块生成宇宙。引爆并广播每次 5 分，每日最多 3 次。</p>
+    <p class="ab-say">选择任意 Arc 区块生成宇宙。引爆并广播每次 3 分，每日最多 3 次。</p>
     <div class="ab-cta">
       <a class="ab-btn" href="app.html">进入模拟器</a>
     </div>
@@ -784,7 +784,7 @@ button,input{font-family:inherit}
       </details>
       <details>
         <summary>积分怎么算？</summary>
-        <p>登记 10 分，关注 10 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 10 分（上限 10 位），累计 3 / 5 / 10 位另奖 10 / 20 / 30 分。创作推文每条 20 分，每周最多 2 条、共 4 条。引爆并广播每次 5 分（每日 3 次，累计 15 次），引爆每次 1 分。</p>
+        <p>登记 10 分，关注 20 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 10 分（上限 10 位），累计 3 / 5 / 10 位另奖 10 / 20 / 30 分。创作推文每条 20 分，每周最多 3 条、共 6 条。引爆并广播每次 3 分（每日 3 次，累计 15 次），引爆每次 1 分。</p>
       </details>
       <details>
         <summary>什么时候开铸？</summary>

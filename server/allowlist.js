@@ -169,7 +169,7 @@ function pointsTable() {
   return {
     register: envInt('ARCBANG_PTS_REGISTER', 10),
     /* 关注单算一张卡：它跟具体某条推文无关，做一次管一辈子。 */
-    follow: envInt('ARCBANG_PTS_FOLLOW', 10),
+    follow: envInt('ARCBANG_PTS_FOLLOW', 20),
     /* **一条推文的点赞 + 转发 + 评论一体计分**。
        用户 2026-09-19 拍板：「点赞、转发、评论应该是一体的」——
        一张卡、一颗按钮、一个分值，三项都核到才给。
@@ -187,7 +187,7 @@ function pointsTable() {
     /* 引爆并广播：2026-09-19 用户拍板从「一天一次、共五天」改成
        **每日最多 3 次、累计 15 次**，每次 5 分。同一个区块只计一次。
        shareMaxDays 还留着，值等于累计次数上限 —— 老页面读它画进度条，别让它变成 undefined。 */
-    share: envInt('ARCBANG_PTS_SHARE', 5),
+    share: envInt('ARCBANG_PTS_SHARE', 3),
     sharePerDay: envInt('ARCBANG_PTS_SHARE_PER_DAY', 3),
     shareMax: envInt('ARCBANG_PTS_SHARE_MAX', 15),
     shareMaxDays: envInt('ARCBANG_PTS_SHARE_MAX', 15),
@@ -206,8 +206,8 @@ function pointsTable() {
        **4 而不是 5**（2026-09-19 用户指出）：预热期 14 天，每周 2 条最多也就发得出 4 条，
        写 5 等于在卡上摆一个永远点不亮的点。两个数要对得上。 */
     post: envInt('ARCBANG_PTS_POST', 20),
-    postPerWeek: envInt('ARCBANG_PTS_POST_PER_WEEK', 2),
-    postMax: envInt('ARCBANG_PTS_POST_MAX', 4),
+    postPerWeek: envInt('ARCBANG_PTS_POST_PER_WEEK', 3),
+    postMax: envInt('ARCBANG_PTS_POST_MAX', 6),
     milestones: inviteMilestones()
   };
 }
