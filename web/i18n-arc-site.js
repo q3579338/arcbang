@@ -204,99 +204,103 @@
     'ARC宇宙': 'ARCBANG',
     /* 页脚导航的 aria-label —— v1 漏收，英文版那里一直是中文，顺手补上 */
     '页脚': 'Footer',
-    '用区块哈希造宇宙。免费引爆，喜欢再铸。':
-      'Universes made out of block hashes. Free to detonate; mint the ones you like.',
+    '以区块哈希生成宇宙。引爆免费，铸造可选。':
+      'Universes generated from block hashes. Detonating is free; minting is optional.',
     '怎么运作': 'How it works',
     '自己验证': 'Verify it yourself',
 
     /* ======================================================================
        预热页（web/warmup-arc.html）
        ----------------------------------------------------------------------
-       文案是给**想拿白名单的玩家**看的，不是给评审或开发者看的。
-       三条规矩，改文案和翻译时都守住：
-         · 每段只说「你能得到什么、现在做什么」。不解释实现，不解释合约。
-         · 不承诺具体名额 —— 一句英文里都不许出现 "top 100 free" 这种。
-           只说「名额从榜的前列取，数量定格时公布，不超过 387」。
+       口吻是**成熟项目的活动页**：克制、准确、陈述句。四条规矩：
+         · 不用口语（「攒分」「拿分」「先玩一个」「回来点一下」），不用语气词，
+           不做反问，不用破折号串解释。
+         · 只写「规则是什么、现在做什么」，不解释实现，不解释合约。
+         · 不承诺具体名额。一句英文里都不许出现 "top 100 free" 这种。
+           只说「名额自积分榜前列产生，数量于定格时公布，不超过 387」。
            「榜只公布前 100 名」说的是页面行为，不是名额，可以讲。
-         · 句子短，动词开头。不用破折号串解释，不在括号里再补一层。
-
-       英文按中文重写成自然英文，不逐字。 */
-    'ARCBANG 预热 · 积分榜与白名单': 'ARCBANG warm-up · leaderboard and allowlist',
+         · 英文同样克制：Get started / View leaderboard / Submit for verification，
+           不逐字直译中文。 */
+    'ARCBANG 任务 · 积分榜与白名单': 'ARCBANG quests · leaderboard and allowlist',
     '现在是': 'Now in',
-    '预热期': 'warm-up',
-    '保底期': 'guaranteed round',
-    '先到先得期': 'first-come round',
-    '公售': 'public sale',
+    /* 四个阶段名首字母大写：它们既进表格第一列，也进句子（「{0} opens in」）。
+       表格里小写看着像没写完。 */
+    '预热期': 'Warm-up',
+    '保底期': 'Guaranteed round',
+    '先到先得期': 'First-come round',
+    '公售': 'Public sale',
 
     /* ---- 首屏 ---- */
-    '1,387 个宇宙，先到榜上的人免费领。': '1,387 universes. The names at the top of the board mint free.',
-    '关注、转发、拉朋友、引爆——攒分。排名靠前就有你的。':
-      'Follow, repost, bring friends, detonate. Score points. Rank high and one is yours.',
+    '1,387 个宇宙。积分榜前列获得免费铸造资格。':
+      '1,387 universes. The top of the leaderboard mints free.',
     '天': 'days', '时': 'hrs', '分': 'min', '秒': 'sec',
-    '正在读取开放时间…': 'Loading the schedule…',
-    '开始攒分': 'Start scoring',
-    '看榜': 'See the board',
-    '先玩一个宇宙': 'Play with a universe first',
+    '正在获取开放时间': 'Loading the schedule',
+    '开始任务': 'Get started',
+    '继续任务': 'Continue',
+    '查看积分榜': 'View leaderboard',
+    '进入模拟器': 'Enter the simulator',
 
     /* ---- 任务卡 ---- */
-    '攒分': 'Score points',
     '关注 @arcbang_xyz': 'Follow @arcbang_xyz',
-    '点一下去 X，关注完回来点「我关注了」。': 'Tap through to X, follow, then come back and tap Done.',
-    '去关注': 'Follow', '我关注了': 'Done',
-    '转发置顶推，回复你的码': 'Repost the pinned post, reply with your code',
-    '转发后在评论里贴你的码，再把回复的链接贴回来。':
-      'Repost it, reply with your code, then paste the link to that reply here.',
-    '你那条回复的链接': 'Link to your reply',
-    '提交链接': 'Submit',
+    '前往关注': 'Follow',
+    '已完成，提交核验': 'Submit for verification',
+    '重新提交核验': 'Resubmit for verification',
+    '转发置顶推文并回复登记码': 'Repost the pinned post and reply with your code',
+    '提交链接': 'Submit link',
     '点赞置顶推': 'Like the pinned post',
-    '点个赞，回来点「我点了」。': 'Like it, then come back and tap Done.',
-    '去点赞': 'Like it', '我点了': 'Done',
-    '邀请朋友': 'Invite friends',
-    '他登记并做完转发，你就拿分。': 'They sign up and repost, you score.',
-    '拿链接': 'Get link',
-    '引爆一个宇宙并广播': 'Detonate a universe and broadcast it',
-    '每天一次，连做五天。': 'Once a day, five days.',
-    '去引爆': 'Detonate',
-    '先登记': 'Sign up first',
-    '去转发': 'Repost',
-    /* 状态词全页统一成四个。「未核」那种内部行话用户看不懂 —— 问过一次了。 */
-    '未完成': 'Not done', '进行中': 'In progress', '审核中': 'Under review',
-    '已完成': 'Done', '未通过': 'Rejected',
-    '自动核对，通常几分钟': 'checked automatically, usually a few minutes',
-    '重新提交': 'Submit again',
-    '+{0} / 人，上限 {1} 人': '+{0} each, up to {1}',
-    '+{0} / 天，上限 {1} 天': '+{0} a day, {1} days',
-    '{0} 个': '{0} so far',
-    '{0} 天': '{0} days',
+    '前往点赞': 'Like',
+    '邀请': 'Invite',
+    '获取邀请链接': 'Get invite link',
+    '引爆宇宙并广播': 'Detonate a universe and broadcast it',
+    '每日一次，最多累计五天。': 'Once a day, up to five days.',
+    '前往引爆': 'Detonate',
+    '前往发布': 'Post',
+    '请先登记': 'Sign up first',
+    '前往转发': 'Repost',
+    '前往登记': 'Sign up',
+    /* 状态词全页统一成四个：未完成 / 核验中 / 已完成 / 未通过。 */
+    '未完成': 'Not started', '核验中': 'Verifying',
+    '已完成': 'Completed', '未通过': 'Not verified',
+    '系统核验中，通常数分钟': 'verification usually takes a few minutes',
+    '系统核验中，约 {0} 分钟后返回结果': 'verification result in about {0} min',
+    '系统核验中，最长 {0} 分钟': 'verification within {0} min',
+    '上次核验 {0}': 'Last verified {0}',
+    '重新提交': 'Resubmit',
+    '{0} 位': '{0}',
+    '已完成 {0} 天': '{0} days completed',
+    '已完成 {0} / {1} 天': '{0} of {1} days',
     '已提交：': 'Submitted: ',
     /* 待核的原因 */
-    '作者不符': 'not your account',
-    '回复里没找到你的码': 'your code is not in the reply',
+    '作者不符': 'author does not match',
+    '回复里没找到你的码': 'registration code not found in the reply',
     '不是回复置顶推': 'not a reply to the pinned post',
-    '在人工看了': 'with us for review',
-    '推文打不开': 'we cannot open that post',
-    '链接不对': 'bad link',
+    '在人工看了': 'in manual review',
+    '推文打不开': 'post could not be retrieved',
+    '链接不对': 'invalid link',
     '被驳回了': 'rejected',
 
     /* ---- 登记 ---- */
     '登记': 'Sign up',
-    '连钱包 → 填 X 名 → 签个名。不花 gas。': 'Connect a wallet, give your X handle, sign. No gas.',
+    '连接钱包并完成签名。签名不产生任何链上费用。':
+      'Connect a wallet and sign. Signing costs no gas.',
+    '登录 X 账号，连接钱包并完成签名。签名不产生任何链上费用。':
+      'Sign in with X, connect a wallet and sign. Signing costs no gas.',
+    '登录 X 账号，连接钱包并完成签名。': 'Sign in with X, connect a wallet and sign.',
+    '连接钱包，填写 X 用户名并完成签名。': 'Connect a wallet, enter your X handle and sign.',
     '连接钱包': 'Connect wallet',
-    '换一个钱包': 'Switch wallet',
+    '更换钱包': 'Change wallet',
     'X 用户名': 'X handle',
-    '邀请码（可选）': 'Invite code (optional)',
-    '6 位': '6 characters',
-    '提交后不能改。': 'You cannot change this later.',
+    '邀请码（选填）': 'Invite code (optional)',
+    '6 位字符': '6 characters',
+    '登记信息提交后不可修改。': 'Registration details cannot be changed after submission.',
     '签名并登记': 'Sign and register',
-    '已登记': 'Signed up',
-    '你的码': 'Your code',
-    '时间': 'When',
-    '转发并回复这个码': 'Repost and reply with this code',
+    '已登记': 'Registered',
+    '登记码': 'Registration code',
+    '登记时间': 'Registered at',
+    '返回任务列表': 'Back to quests',
     '邀请链接': 'Invite link',
     '复制': 'Copy',
     '已复制': 'Copied',
-    '朋友登记并做完转发，你拿分。': 'A friend signs up and reposts, you score.',
-    '朋友登记并做完转发，你 +{0} 分。最多 {1} 个。': '+{0} per friend who signs up and reposts. Up to {1}.',
     '你在保底那一档。榜定格前多攒一点更稳。':
       'You are in the guaranteed band. A few more points before the board freezes is safer.',
     '你在免费那一档。再 {0} 分够到保底。': 'You are in the free band. {0} more points reaches guaranteed.',
@@ -314,7 +318,8 @@
 
     /* ---- 榜 ---- */
     '积分榜': 'Leaderboard',
-    '前 100 名公开；免费名额从这里产生。': 'The top 100 are public. Free mints come off the front of this board.',
+    '公开展示前 100 名。免费名额自积分榜前列产生。':
+      'The top 100 are shown. Free mints come from the front of this leaderboard.',
     '名次': 'Rank', '积分': 'Points',
     '在榜人数': 'On the board', '免费上限': 'Free cap', '已放出': 'Issued',
     '还没有人上榜 —— 第一个登记的就是第一名。': 'Empty so far. First to sign up takes first place.',
@@ -332,147 +337,165 @@
     /* ---- 开放时间与规则 ---- */
     '开放时间': 'Schedule',
     '待定': 'TBA',
-    '榜首若干名先铸': 'Top of the board mints first',
-    '先到先得': 'First come',
-    '名单里的人抢免费额度': 'The list races for the free mints',
-    '人人都能买': 'Open to everyone',
-    '保底期一开，榜就定格。': 'The board freezes when the guaranteed round opens.',
+    '积分榜前列优先铸造': 'Top of the leaderboard mints first',
+    '先到先得': 'First-come round',
+    '名单内地址领取剩余免费名额': 'Listed addresses claim the remaining free mints',
+    '向所有地址开放': 'Open to every address',
+    '保底期开启时积分榜定格。': 'The leaderboard freezes when the guaranteed round opens.',
     '规则': 'Rules',
     '总量': 'Supply',
     '1,387 枚，不增发': '1,387. No more, ever.',
     '免费': 'Free',
-    '每地址 1 枚，名额从榜的前列取，数量定格时公布':
-      'One per address. Taken off the front of the board; how many is announced at the freeze.',
-    '1 USDC 一枚，每地址最多 3 枚': '1 USDC each, up to 3 per address',
+    '每地址 1 枚，名额自积分榜前列产生，数量于榜单定格时公布':
+      'One per address. Allocated from the front of the leaderboard; the count is announced at the freeze.',
+    '1 USDC / 枚，每地址上限 3 枚': '1 USDC each, up to 3 per address',
     '唯一': 'One of one',
-    '一个区块只能被铸一次': 'Each block can be minted once',
+    '每个区块仅可铸造一次': 'Each block can be minted once',
     '没有代币': 'No token',
-    '不发币，不预售': 'No token, no presale',
+    '不发行代币，不进行预售': 'No token, no presale',
 
     /* ---- 引爆那一节 ---- */
-    '先玩起来': 'Play first',
-    '随便挑一个 Arc 区块，看它长成什么样的宇宙。每天引爆一个、广播出去，+5 分。':
-      'Pick any Arc block and see what universe it grows into. Detonate one a day, broadcast it, +5.',
+    '模拟器': 'Simulator',
+    '选择任意 Arc 区块生成宇宙。每日引爆并广播一次，计 5 分。':
+      'Pick any Arc block to generate a universe. Detonate and broadcast once a day for 5 points.',
     '打开模拟器': 'Open the simulator',
     '怎么算的': 'How it works',
 
     /* ---- 动态那几句 ---- */
     '距离{0}开放': '{0} opens in',
-    '{0}的时间还没定，定了会写在这里；现在攒的分一样算数。':
-      'No date for the {0} yet. Points you score now count either way.',
-    '已经开到最后一段了，直接去模拟器铸造吧。': 'The last round is open. Head to the simulator.',
-    '时间到了，正在刷新状态…': 'Refreshing…',
+    '{0}的开放时间待定，确定后将在此公布。当前积分照常累积。':
+      'The {0} date is not set yet and will be announced here. Points continue to accrue.',
+    '已进入最后阶段，可直接在模拟器中铸造。': 'The final round is open. Mint from the simulator.',
+    '已到时间，正在刷新状态': 'Refreshing',
     '服务端这一刻问不到（{0}）。刷新试试；模拟器不受影响。':
       'Cannot reach the server right now ({0}). Try refreshing.',
-    '先连钱包': 'Connect a wallet first',
-    '先连钱包并登记': 'Connect a wallet and sign up first',
-    'X 用户名填 1–15 位字母、数字或下划线，不带 @': '1–15 letters, digits or underscores. No @.',
-    '邀请码是 6 位大写字母数字；没有就留空': 'Invite codes are 6 characters. Leave it empty if you have none.',
-    '正在问服务端要那句话…': 'Getting the line to sign…',
-    '服务端没给出要签的文案': 'No line to sign came back',
-    '请在钱包里签名（不花 gas，不动任何资产）': 'Sign in your wallet. No gas, nothing moves.',
-    '正在提交…': 'Submitting…',
-    '贴一条推文链接': 'Paste a post link',
-    '在核了…': 'Checking…',
-    '核过了，分已经加上。': 'Checked out. Points added.',
-    '收到了，人工看一眼。': 'Got it. We will take a look.',
+    '请先连接钱包': 'Connect a wallet first',
+    '请先连接钱包并完成登记': 'Connect a wallet and register first',
+    'X 用户名为 1–15 位字母、数字或下划线，不含 @': '1–15 letters, digits or underscores. No @.',
+    '邀请码为 6 位大写字母或数字，没有可留空':
+      'Invite codes are 6 characters. Leave it empty if you do not have one.',
+    '正在获取待签名文本': 'Requesting the message to sign',
+    '未获取到待签名文本，请稍后重试': 'No message to sign was returned. Please try again.',
+    '请在钱包中完成签名（不产生费用，不转移任何资产）':
+      'Sign in your wallet. No gas, no assets move.',
+    '正在提交': 'Submitting',
+    '请填写一条推文链接': 'Enter a post link',
+    '核验中': 'Verifying',
+    '核验通过，积分已计入。': 'Verified. Points have been added.',
+    '已提交，将进入人工复核。': 'Submitted for manual review.',
+    '本条未通过核验，请对照要求重新发布。':
+      'This post was not verified. Please review the requirements and post again.',
+    '该地址已完成登记，登记信息不可修改。':
+      'This address is already registered and cannot be edited.',
+    '登记完成，已计入登记积分。建议下一步完成转发任务，该项积分最高。':
+      'Registered. Registration points have been added. The repost quest is worth the most next.',
+    '已在钱包中取消': 'Cancelled in the wallet',
     /* '你在钱包里取消了' 在 i18n.js 的全局表里已经有了，这里不重收（值不一样会打架） */
-    '没检测到钱包扩展': 'No wallet extension found',
-    '没检测到钱包扩展（MetaMask / 币安钱包 等）': 'No wallet extension found (MetaMask, Binance Wallet, …)',
+    '未检测到钱包扩展': 'No wallet extension found',
+    '未检测到钱包扩展（MetaMask、币安钱包等）':
+      'No wallet extension found (MetaMask, Binance Wallet, and so on)',
 
-    /* ---- 攒分区重做（2026-09-18，结构参照任务站；配色仍是本站令牌）---- */
-    '关注、转发、拉朋友、引爆——攒分。积分榜决定大部分免费名额；另有一部分名额由我们直接给到早期支持者与合作伙伴。':
-      'Follow, repost, bring friends, detonate. Points decide most of the free mints; some go straight to early supporters and partners.',
-    '总积分': 'Points', '连钱包后显示': 'Connect to see',
-    '已完成任务': 'Quests done', '共 7 项': 'of 7',
-    '有效邀请': 'Valid invites', '每人 +20': '+20 each', '每人 +{0}': '+{0} each',
-    '前 100': 'Top 100', '按积分': 'by points',
-    '剩余天数': 'Days left',
-    '分数为临时结果，预热结束复核后确认最终名单。':
-      'Points are provisional. We review them when the warm-up ends, and that decides the list.',
+    /* ---- 任务区（2026-09-18 重做结构，2026-09-19 改成产品口吻）---- */
+    '完成关注、转发、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。':
+      'Complete the follow, repost, invite and detonate quests to earn points. Free mints are allocated by rank; a portion is reserved for early supporters and partners.',
+    '总积分': 'Points', '连接钱包后显示': 'Connect a wallet to view',
+    '已完成任务': 'Quests completed', '共 7 项': 'of 7',
+    '有效邀请': 'Valid invites', '每位 +20 分': '+20 each', '每位 +{0} 分': '+{0} each',
+    '前 100': 'Top 100', '按积分排名': 'by points',
+    '剩余天数': 'Days remaining',
+    '积分为实时统计结果，预热结束后经复核确定最终名单。':
+      'Points update in real time. The final list is confirmed after review at the end of the warm-up.',
     '任务': 'Quests', '我的记录': 'My record',
-    '入门': 'START', '进阶': 'GROW', '每日': 'DAILY',
-    '连钱包，填 X 名，签个名。': 'Connect a wallet, give your X handle, sign.',
-    '去登记': 'Sign up', '先登记': 'Sign up first',
-    '关注完回来点「我关注了」。': 'Follow, then come back and tap Done.',
-    '转发后在评论里贴你的码，再把回复链接交回来。':
-      'Repost it, reply with your code, then paste that reply link here.',
-    '登记码 ——': 'Code ——', '登记码': 'Code',
-    '创作推文': 'Write a post',
-    '发一条提到 @arcbang_xyz 并带 #ARCBANG 的推。内容随意。':
-      'Post anything that mentions @arcbang_xyz and tags #ARCBANG.',
-    '去写一条': 'Write one',
-    '连钱包后这里会显示你的记录。': 'Your record shows up here once you connect.',
-    '每日打卡': 'Daily check-ins',
+    '入门': 'BASICS', '进阶': 'ADVANCED', '每日': 'DAILY',
+    '完成关注后提交，系统将通过 X 核验。':
+      'Follow, then submit. We verify it through X.',
+    '完成点赞后提交，系统将通过 X 核验。':
+      'Like the post, then submit. We verify it through X.',
+    '完成关注后提交，复核阶段将在 X 核验。':
+      'Follow, then submit. It is verified on X during review.',
+    '完成点赞后提交，复核阶段将在 X 核验。':
+      'Like the post, then submit. It is verified on X during review.',
+    '转发置顶推文，在回复中附上登记码，然后提交该条回复的链接。':
+      'Repost the pinned post, reply with your registration code, then submit the link to that reply.',
+    '登记码 ——': 'Code ——',
+    '创作推文': 'Original post',
+    '发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。':
+      'Publish a post that mentions @arcbang_xyz and includes #ARCBANG. Content is up to you.',
+    '连接钱包后显示任务记录。': 'Connect a wallet to view your quest record.',
+    '每日引爆': 'Daily detonation',
     '+{0} / 人': '+{0} each', '+{0} / 条': '+{0} each', '+{0} / 天': '+{0} a day',
     '登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4}':
-      'sign-up {0} · X {1} · invites {2} · posts {3} · daily {4}',
-    '已进': 'In', '在前 100 内': 'inside the top 100',
-    '再拿这么多分进前 100': 'points to reach the top 100',
-    '再 {0} 分进前 100': '{0} points to the top 100',
-    '已通过 {0} · 未通过 {1}': '{0} passed · {1} rejected',
-    '已通过 {0} · 未通过 {1} · 每周最多 {2} 条': '{0} passed · {1} rejected · max {2} a week',
-    '每周最多 {0} 条，共 {1} 条': 'Max {0} a week, {1} in total',
-    '已打卡 {0} 天': '{0} days checked in',
+      'registration {0} · X {1} · invites {2} · posts {3} · daily {4}',
+    '已进入': 'Yes', '位于前 100 名': 'inside the top 100',
+    '{0} / {1} 天': '{0} of {1} days',
+    '距前 100 名所需积分': 'points needed to reach the top 100',
+    '已通过 {0} · 未通过 {1}': '{0} verified · {1} not verified',
+    '已通过 {0} · 未通过 {1} · 每周上限 {2} 条':
+      '{0} verified · {1} not verified · limit {2} per week',
+    '每周上限 {0} 条，预热期共 {1} 条': 'Limit {0} per week, {1} during the warm-up',
     '创作 #{0}': 'Post #{0}',
-    '{0} 人': '{0} people', '{0} 人 +{1}': '{0} → +{1}',
-    '还没有人上榜，第一个是你。': 'Nobody here yet. Be the first.',
-    '开始攒分': 'Start scoring', '继续': 'Continue',
-    '这一条没过，看看说明再发一条。': 'That one did not pass. Check the rules and post another.',
-    '转发不算创作': 'a repost is not a post of your own',
+    '{0} 人 +{1}': '{0} → +{1}',
+    '还没有人上榜，第一个是你。': 'No entries yet. Be the first.',
+    '转发不算创作': 'a repost does not count as an original post',
     '没提到 @arcbang_xyz': 'it does not mention @arcbang_xyz',
     '没带 #ARCBANG': 'it is missing #ARCBANG',
 
     /* ---- 用 X 登录 ---- */
-    '用 X 登录': 'Sign in with X', '退出': 'Sign out', '换一个 X 账号': 'Use another X account',
-    '还没连 X': 'X not connected', '任务按这个账号核对': 'Quests are checked against this account',
-    '还没绑地址': 'No wallet bound yet', '已绑 {0}': 'Bound to {0}',
-    '一个 X 账号只能绑一个地址。': 'One X account, one wallet.',
-    '一个 X 账号只能绑一个地址，绑了不能改。': 'One X account, one wallet. This cannot be changed later.',
-    '这个 X 已经绑了 {0}。一个 X 账号只能绑一个地址。':
-      'This X account is already bound to {0}. One X account, one wallet.',
-    '先用 X 登录。任务和推文都按这个账号核对。':
-      'Sign in with X first. Quests and posts are checked against that account.',
-    '用 X 登录 → 连钱包 → 签个名。不花 gas。':
-      'Sign in with X → connect a wallet → sign. No gas.',
-    '先用 X 登录': 'Sign in with X first',
-    '用 X 登录，连钱包，签个名。': 'Sign in with X, connect a wallet, sign.',
+    '用 X 登录': 'Sign in with X', '退出登录': 'Sign out', '更换 X 账号': 'Change X account',
+    '未连接 X 账号': 'X account not connected',
+    '任务以该账号核验': 'Quests are verified against this account',
+    '尚未绑定地址': 'No address bound', '已绑定 {0}': 'Bound to {0}',
+    '一个 X 账号仅可绑定一个地址。': 'One X account can be bound to one address.',
+    '一个 X 账号仅可绑定一个地址，绑定后不可更改。':
+      'One X account can be bound to one address. This cannot be changed afterwards.',
+    '该 X 账号已绑定 {0}。一个 X 账号仅可绑定一个地址。':
+      'This X account is already bound to {0}. One X account can be bound to one address.',
+    '请先登录 X 账号。任务与推文均以该账号核验。':
+      'Sign in with X first. Quests and posts are verified against that account.',
+    '请先登录 X 账号': 'Sign in with X first',
+    '经 X 登录绑定': 'bound via Sign in with X',
+    '以 @{0} 的推文进行核验': 'Verified against posts from @{0}',
+    'X 账号已连接。请继续连接钱包并完成签名登记。':
+      'X account connected. Next, connect a wallet and complete the signature.',
+    'X 登录未完成，请重试。': 'Sign in with X did not complete. Please try again.',
+    '已在 X 取消授权。': 'Authorisation was cancelled on X.',
+    '本次登录已过期，请重新发起 X 登录。':
+      'This sign-in has expired. Please start Sign in with X again.',
+    'X 未受理本次请求，请稍后重试。': 'X did not accept the request. Please try again shortly.',
 
     /* ---- 任务页：邀请宽卡 / 核验状态 ---- */
-    '你的邀请码': 'Your invite code', '邀请链接': 'Invite link',
+    '你的邀请码': 'Your invite code',
     '复制链接': 'Copy link', '分享到 X': 'Share on X',
-    '点一下复制': 'Tap to copy', '登记后生成': 'Created when you sign up',
-    '先登记，再把链接发出去。': 'Sign up first, then share the link.',
-    '每邀到一个 +{0} 分，最多 {1} 个。': '+{0} points each, up to {1}.',
-    '朋友用你的链接登记，并做完转发那一项，才算一个有效邀请。':
-      'An invite counts once your friend signs up through your link and finishes the repost quest.',
-    '我在 ARCBANG 攒分领免费宇宙，用我的链接登记：{0} @{1}':
-      'I am scoring points on ARCBANG for a free universe. Sign up with my link: {0} @{1}',
-    '回去做任务': 'Back to the quests',
-    'X 已核实': 'verified on X', '待复核': 'pending review', '自动核过': 'auto-checked',
-    'X 上没查到关注': 'no follow found on X',
-    'X 上没查到点赞': 'no like found on X',
-    'X 上没查到转发': 'no repost found on X',
-    '我关注了': 'I followed', '我点了': 'I liked',
-    '做好了，再核一次': 'Done — check again',
-    '关注完回来点一下，我们去 X 上核实。': 'Follow, then tap here. We verify it on X.',
-    '点完赞回来点一下，我们去 X 上核实。': 'Like it, then tap here. We verify it on X.',
-    '收到了，我们去 X 上核实你的关注。': 'Got it. We are checking the follow on X.',
-    '收到了，我们去 X 上核实你的赞。': 'Got it. We are checking the like on X.',
-    '在 X 上查到了你的关注。': 'Your follow was found on X.',
-    '在 X 上查到了你的赞。': 'Your like was found on X.',
-    '已记下，复核时会在 X 上对一遍。': 'Recorded. We will check it on X during review.',
-    '在 X 上没查到你的关注。做好了再点一次。': 'No follow found on X. Do it, then tap again.',
-    '在 X 上没查到你的赞。做好了再点一次。': 'No like found on X. Do it, then tap again.',
-    '自动核对，约 {0} 分钟后出结果': 'Auto-check, result in about {0} min',
-    '自动核对，最长 {0} 分钟': 'Auto-check, up to {0} min',
-    '上次核对 {0}': 'Last checked {0}',
+    '点击复制': 'Click to copy', '完成登记后生成': 'Available after registration',
+    '完成登记后生成邀请链接。': 'Your invite link is created once you register.',
+    '每位有效邀请 +{0} 分，上限 {1} 位。': '+{0} points per valid invite, up to {1}.',
+    '被邀请人完成登记并通过转发核验后，计为一位有效邀请。':
+      'An invite counts once the invitee registers and passes repost verification.',
+    '我正在参与 ARCBANG 预热，积分榜前列可免费铸造。通过此链接登记：{0} @{1}':
+      'I am taking part in the ARCBANG warm-up. The top of the leaderboard mints free. Register here: {0} @{1}',
+    'X 已核实': 'verified on X', '待复核': 'pending review', '已通过核验': 'verified',
+    '未核验到关注': 'follow not verified',
+    '未核验到点赞': 'like not verified',
+    '未核验到转发': 'repost not verified',
+    '未核验通过': 'not verified',
+    '已提交，系统正在通过 X 核验该关注。':
+      'Submitted. We are verifying the follow through X.',
+    '已提交，系统正在通过 X 核验该点赞。':
+      'Submitted. We are verifying the like through X.',
+    '已在 X 核验到该关注。': 'The follow has been verified on X.',
+    '已在 X 核验到该点赞。': 'The like has been verified on X.',
+    '已记录，复核阶段将在 X 核验。': 'Recorded. It will be verified on X during review.',
+    '未在 X 核验到该关注，完成后可重新提交。':
+      'The follow could not be verified on X. Complete it and submit again.',
+    '未在 X 核验到该点赞，完成后可重新提交。':
+      'The like could not be verified on X. Complete it and submit again.',
 
     /* ---- 首页预热横幅 ---- */
-    '预热进行中 · 剩 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人':
-      'Warm-up is on · <b>{0}</b> days left · <b>{1}</b> signed up',
-    '预热进行中 · 已登记 <b>{0}</b> 人': 'Warm-up is on · <b>{0}</b> signed up',
-    '去做任务攒分': 'Go score points',
+    '预热期进行中': 'Warm-up in progress',
+    '预热期进行中 · 剩余 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人':
+      'Warm-up in progress · <b>{0}</b> days remaining · <b>{1}</b> registered',
+    '预热期进行中 · 已登记 <b>{0}</b> 人': 'Warm-up in progress · <b>{0}</b> registered',
+    '前往任务页': 'View quests',
     '用 X 登录绑定': 'via Sign in with X',
     '核对 @{0} 发的那条': 'We check the post from @{0}',
     'X 连上了。接着连钱包，然后签名登记。':
@@ -483,31 +506,31 @@
     'X 那边没认这次请求，稍后再试。': 'X rejected the request. Try again in a moment.',
 
     /* ---- FAQ ---- */
-    '常见问题': 'Asked a lot',
+    '常见问题': 'FAQ',
     'ARCBANG 是什么？': 'What is ARCBANG?',
-    '把一个 Arc 区块哈希读成一套物理常数，跑出一个宇宙。合得来就铸成 NFT 留着。全网 1,387 枚，不发币。':
-      'An Arc block hash is read as a set of physical constants and run as a universe. Mint the one you like and keep it. 1,387 in all. No token.',
-    '积分怎么算？': 'How do points work?',
-    '登记 10 分。关注 10，点赞 10，转发并回复你的码 30。每个有效邀请 20，攒到 3 / 5 / 10 人还有额外奖励。创作推文一条 20。每天引爆并广播一次 5 分。':
-      'Signing up is 10. Follow 10, like 10, repost with your code 30. Every valid invite is 20, with bonuses at 3, 5 and 10. A post of your own is 20. Detonating and broadcasting is 5 a day.',
+    'ARCBANG 将 Arc 区块哈希解析为一套物理常数，并据此推演出一个完整宇宙。结果可铸造为 NFT，全网 1,387 枚，不发行代币。':
+      'ARCBANG reads an Arc block hash as a set of physical constants and simulates a complete universe from it. The result can be minted as an NFT. Supply is 1,387 and there is no token.',
+    '积分怎么算？': 'How are points calculated?',
+    '登记 10 分，关注 10 分，点赞 10 分，转发并回复登记码 30 分。每位有效邀请 20 分，累计 3 / 5 / 10 位另有奖励。创作推文每条 20 分。每日引爆并广播一次 5 分。':
+      'Registration 10 points, follow 10, like 10, repost with your registration code 30. Each valid invite is 20 points, with milestone bonuses at 3, 5 and 10. Each original post is 20 points. Detonating and broadcasting once a day is 5 points.',
     '什么时候开铸？': 'When does minting open?',
-    '预热 14 天，结束就进保底期，之后是先到先得，最后公售。页面顶上的倒计时是准的。':
-      'The warm-up runs 14 days, then the guaranteed round, then first-come, then the public sale. The countdown at the top is the real one.',
-    '免费名额怎么来？': 'Where do the free mints come from?',
-    '积分榜决定大部分免费名额。另有一部分由我们直接给到早期支持者与合作伙伴。具体数量在榜单定格时公布，不超过合约里的 387 枚。':
-      'Points decide most of them. Some go straight to early supporters and partners. How many there are is announced when the board freezes, and never more than the 387 the contract allows.',
+    '预热期共 14 天，结束后依次进入保底期、先到先得期与公售期。具体时间以页面顶部倒计时为准。':
+      'The warm-up runs for 14 days, followed by the guaranteed round, the first-come round and the public sale. The countdown at the top of the page is authoritative.',
+    '免费名额怎么来？': 'How are free mints allocated?',
+    '免费名额主要由积分榜产生，另有部分直接分配给早期支持者与合作伙伴。具体数量于榜单定格时公布，上限不超过合约中的 387 枚。':
+      'Most free mints are allocated from the leaderboard; a portion is reserved for early supporters and partners. The exact count is announced when the leaderboard freezes and never exceeds the 387 allowed by the contract.',
     '为什么在 Arc 上？': 'Why Arc?',
-    'Arc 的 gas 就是 USDC，一次铸造大约 0.003 USDC。不用先去买一种别的币才能玩。':
-      'Gas on Arc is USDC, about 0.003 of it per mint. You do not have to buy some other coin first.',
-    '引爆要钱吗？': 'Does detonating cost anything?',
-    '不要。引爆、看结局、广播都不花钱，也不用连钱包。只有铸成 NFT 才上链。':
-      'No. Detonating, reading the outcome and broadcasting are all free and need no wallet. Only minting touches the chain.',
-    '登记信息能改吗？': 'Can I edit my sign-up?',
-    '不能。X 用户名和邀请码提交后就定死了。填错了来信说一声，我们人工改。':
-      'No. The X handle and invite code are fixed once submitted. If you got it wrong, write to us and we will fix it.',
-    '分数为什么是临时的？': 'Why are points provisional?',
-    '预热结束我们会复核一遍，刷出来的会被扣掉。复核之后的那一份才是最终名单。':
-      'We review everything when the warm-up ends and take back anything farmed. What survives that review is the final list.',
+    'Arc 以 USDC 作为 gas，单次铸造约 0.003 USDC，无需先行持有其他代币。':
+      'Arc uses USDC for gas, about 0.003 USDC per mint, so no other token is required beforehand.',
+    '引爆要钱吗？': 'Is detonating free?',
+    '引爆、查看结局与广播均不收费，也无需连接钱包。仅铸造 NFT 时产生链上交易。':
+      'Detonating, viewing the outcome and broadcasting are free and require no wallet. Only minting creates an on-chain transaction.',
+    '登记信息能改吗？': 'Can registration details be changed?',
+    '不可修改。X 用户名与邀请码提交后即固定。如填写有误，请联系我们人工处理。':
+      'No. The X handle and invite code are fixed once submitted. If a detail is wrong, contact us and we will correct it manually.',
+    '积分为何是实时统计结果？': 'Why are points described as real-time?',
+    '预热结束后将进行复核，异常积分会被扣除。复核后的结果为最终名单。':
+      'A review is carried out after the warm-up and irregular points are removed. The reviewed result is the final list.',
   });
 
 })(typeof window !== 'undefined' ? window : this);

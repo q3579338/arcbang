@@ -624,9 +624,9 @@ a.cardc:hover code{color:var(--ab-signal)}
            读不到接口就一直不显示 —— 首页不该因为 API 抖一下多出一条空横幅。 -->
       <div class="ab-banner" id="warmBanner" hidden>
         <span class="ab-banner-dot" aria-hidden="true"></span>
-        <p class="ab-banner-t" id="warmText">预热进行中</p>
+        <p class="ab-banner-t" id="warmText">预热期进行中</p>
         <span class="ab-banner-sp"></span>
-        <a class="ab-btn" href="quest.html">去做任务攒分</a>
+        <a class="ab-btn" href="quest.html">前往任务页</a>
       </div>
     </div>
 
@@ -969,7 +969,7 @@ a.cardc:hover code{color:var(--ab-signal)}
       <!-- 联系方式：邮箱本身当链接，中英同形不进词典 -->
       <a class="ab-mail" href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
     </div>
-    <p class="ab-foot-tag">用区块哈希造宇宙。免费引爆，喜欢再铸。</p>
+    <p class="ab-foot-tag">以区块哈希生成宇宙。引爆免费，铸造可选。</p>
 <div class="ab-legal">
       <!-- 「测试资产无价值」只在 config.js 的 chain 块 isTestnet 为真时出现；
            主网（chainId 5042）上整条不渲染。默认 hidden，renderChainText() 才放出来。 -->
@@ -1401,8 +1401,8 @@ a.cardc:hover code{color:var(--ab-signal)}
       }
       var n = st.boardSize == null ? null : st.boardSize;
       var txt = days != null
-        ? TF('预热进行中 · 剩 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人', days, n == null ? '—' : grp(n))
-        : TF('预热进行中 · 已登记 <b>{0}</b> 人', n == null ? '—' : grp(n));
+        ? TF('预热期进行中 · 剩余 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人', days, n == null ? '—' : grp(n))
+        : TF('预热期进行中 · 已登记 <b>{0}</b> 人', n == null ? '—' : grp(n));
       $('warmText').innerHTML = txt;
       $('warmBanner').hidden = false;
     }
