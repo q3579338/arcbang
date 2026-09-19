@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 资格查询页（web/check-arc.html → dist-arc/check.html + en/check.html）
+     2026-09-19：用户要一个「有没有白名单和先到先得」的查询入口 —— 任务页那一块层级提示
+     只在**自己连上钱包并登记之后**才出现，别人想替朋友查、或者只想确认某个地址在不在名单里，
+     在任务页上没有入口。这一页就是那个入口：输入地址，读 /api/allowlist/status，完事。
+
+     三条口径，改这一页时别破：
+       1. **不显示名次、不显示积分数字**。这是一个谁都能输入任意地址的公开页面，
+          把别人的名次和分数摆在这里等于把整张榜按地址开放查询。层级、登记与否、
+          阶段与开放时间是公开规则，可以说；名次和分数属于那个地址自己，去任务页看。
+       2. **不承诺名额**。免费余量给的是链上读回来的实际剩余（服务端那一份缓存），
+          合约里 387 这个硬上限公开可查，可以写；「前 100 名」「还剩几个白名单」一律不写。
+       3. **只读，不签名**。「使用当前钱包」只调 eth_requestAccounts 取地址填进输入框，
+          一次签名都不要 —— 查一下资格不该弹出签名窗。
+
+     头部、令牌、导航与任务页（web/quest-arc.html）逐字一致：两页在同一条访问路径上，
+     色差和字号差一眼就看得出来。**改令牌请两页一起改。**
+
+     **文案里带换行的整段必须写成一行**：i18n 的词条 key 是「trim 之后逐字相等」，
+     源码里换行加缩进会把文本节点里塞进 \n 和一串空格，词典就再也命中不了。 -->
+<title>ARCBANG 资格查询 · 白名单与先到先得</title>
+<meta name="description" content="输入钱包地址，查看该地址在本轮的资格与阶段：白名单、先到先得还是未获资格，是否已登记，当前处在哪个阶段，以及该层级可铸造的阶段与开放时间。">
+<link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/check.html">
+<link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/check.html">
+<link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/check.html">
+<link rel="canonical" href="https://arcbang.xyz/check.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ARCBANG">
+<meta property="og:url" content="https://arcbang.xyz/check.html">
+<meta property="og:title" content="ARCBANG 资格查询 · 白名单与先到先得">
+<meta property="og:description" content="输入钱包地址，查看该地址在本轮的资格与阶段：白名单、先到先得还是未获资格，是否已登记，以及该层级可铸造的阶段与开放时间。">
+<meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ARCBANG 资格查询 · 白名单与先到先得">
+<meta name="twitter:description" content="输入钱包地址，查看该地址在本轮的资格与阶段：白名单、先到先得还是未获资格，是否已登记，以及该层级可铸造的阶段与开放时间。">
+<meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
+<link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ECEEF1">
+<script src="../ui/theme.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n-site.js"></script>
+<script src="i18n-market.js"></script>
+<script src="i18n-arc-site.js"></script>
+<link rel="stylesheet" href="tokens.css">
+<script src="wallet.js"></script>
+<script src="nav.js"></script>
+<style>
+/* 令牌与任务页 / 首页逐字相同（web/quest-arc.html 的 :root）。**不要在这里改值**。 */
+:root{
+  --ab-plate:#ECEEF1; --ab-plate2:#E3E6EB; --ab-ink:#13214A; --ab-graphite:#515B6E;
+  --ab-void:#000000; --ab-signal:#4A5BD4; --ab-hair:#D5D9E0;
+  --ab-ok:#16653C; --ab-wait:#8A5A00;
+  --t-xs:13px; --t-s:15px; --t-m:17px; --t-l:20px; --t-xl:27px; --t-2xl:36px;
+  --sp-1:24px; --sp-2:56px; --sp-3:112px;
+  --ab-max:1280px; --ab-pad:40px; --r:6px;
+  --ab-face:-apple-system,"Segoe UI Variable Text","Segoe UI",system-ui,
+    "PingFang SC","Microsoft YaHei","Noto Sans SC","Hiragino Sans GB",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+/* **必须有这一条**：结果卡、「前往登记」那条链接都靠 [hidden] 控制显隐，
+   而它们各自的类写了 display:flex / inline-flex —— 任何一条 display 都会盖掉
+   [hidden] 自带的 display:none，于是 el.hidden = true 一点用都没有。 */
+[hidden]{display:none !important}
+body :where(h1,h2,h3,h4,p,ul,ol,dl,dd,figure,figcaption,table){margin:0}
+body :where(ul,ol){padding:0;list-style:none}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;color:var(--ab-ink);font-family:var(--ab-face);font-size:var(--t-m);line-height:1.65;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  background-color:var(--ab-plate);
+  background-image:
+    linear-gradient(to right, rgba(19,33,74,.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(19,33,74,.045) 1px, transparent 1px);
+  background-size:72px 72px;background-position:-1px -1px;
+}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+a{color:inherit}
+button,input{font-family:inherit}
+:focus-visible{outline:2px solid var(--ab-signal);outline-offset:3px}
+.ab-wrap{max-width:var(--ab-max);margin:0 auto;
+  padding-left:max(var(--ab-pad),env(safe-area-inset-left));
+  padding-right:max(var(--ab-pad),env(safe-area-inset-right))}
+.ab-sec{padding:var(--sp-2) 0}
+.ab-say{margin-top:var(--sp-1);max-width:64ch;font-size:var(--t-m);line-height:1.7;color:var(--ab-graphite)}
+.ab-say a{color:var(--ab-signal);text-underline-offset:3px}
+.ab-skip{position:absolute;left:-9999px;top:0;z-index:200;background:var(--ab-ink);color:#fff;
+  padding:12px 18px;border-radius:0 0 var(--r) 0;font-size:var(--t-s);font-weight:600;text-decoration:none}
+.ab-skip:focus{left:0}
+
+.ab-btn,.ab-btn2{display:inline-flex;align-items:center;justify-content:center;min-height:52px;
+  padding:0 26px;border-radius:var(--r);font-size:var(--t-s);font-weight:600;text-decoration:none;
+  border:1px solid var(--ab-ink);cursor:pointer;touch-action:manipulation;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.ab-btn{background:var(--ab-ink);color:#fff}
+.ab-btn:hover{background:var(--ab-signal);border-color:var(--ab-signal)}
+.ab-btn2{background:transparent;color:var(--ab-ink);border-color:rgba(19,33,74,.28)}
+.ab-btn2:hover{border-color:var(--ab-ink);background:rgba(19,33,74,.05)}
+.ab-btn[disabled],.ab-btn2[disabled]{opacity:.45;cursor:not-allowed}
+/* 「前往登记」：结果卡里的第二步，降成文字按钮，不跟上面那颗「查询」抢分量。
+   仍然 44px 高，触控面积不打折。 */
+.ab-btn4{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 4px;
+  border:0;background:none;color:var(--ab-graphite);font-family:inherit;
+  font-size:var(--t-xs);font-weight:600;cursor:pointer;white-space:nowrap;
+  text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--ab-hair);
+  transition:color .15s ease,text-decoration-color .15s ease}
+.ab-btn4:hover{color:var(--ab-ink);text-decoration-color:var(--ab-ink)}
+
+/* ---- 首屏 ---- */
+.ab-hero{padding:var(--sp-2) 0 0}
+.ab-h1{font-size:clamp(40px,5.4vw,76px);line-height:1.02;letter-spacing:-.03em;font-weight:700;
+  max-width:16ch;text-wrap:balance}
+.ab-lede{margin-top:var(--sp-1);font-size:clamp(17px,1.3vw,20px);line-height:1.6;max-width:56ch}
+
+/* ---- 表：只用行线（与任务页「开放时间」那张表同一份） ---- */
+.ab-tbl{width:100%;border-collapse:collapse;margin-top:var(--sp-1);font-size:var(--t-s)}
+.ab-tbl th,.ab-tbl td{text-align:left;padding:14px 0;border-bottom:1px solid var(--ab-hair);vertical-align:top}
+.ab-tbl th{font-weight:600;width:11rem;color:var(--ab-graphite)}
+.ab-tbl td .sub{display:block;margin-top:4px;color:var(--ab-graphite);font-size:var(--t-xs)}
+
+/* ---- 卡 ---- */
+.ab-card{margin-top:var(--sp-1);padding:26px;background:#fff;border:1px solid var(--ab-hair);border-radius:var(--r);max-width:760px}
+.ab-card:first-of-type{margin-top:0}
+.ab-field{display:block}
+.ab-field span{display:block;font-size:var(--t-xs);color:var(--ab-graphite);margin-bottom:6px}
+.ab-in{width:100%;min-height:48px;padding:0 14px;font-size:var(--t-m);color:var(--ab-ink);
+  font-family:var(--mono);background:var(--ab-plate2);border:0;border-bottom:1px solid var(--ab-ink);
+  border-radius:var(--r) var(--r) 0 0}
+.ab-msg{margin-top:16px;font-size:var(--t-s);line-height:1.6;min-height:1.6em}
+.ab-msg.ok{color:var(--ab-ok)}
+.ab-msg.err{color:#9B1C1C}
+.ab-row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-top:18px}
+
+/* ---- 层级标签（白名单 / 先到先得 / 未获资格）----
+   与任务页同一套语义：绿=白名单、蓝=先到先得、灰=还没有。**样式逐字照抄**。 */
+.ab-tag{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;
+  font-size:11px;font-weight:600;white-space:nowrap;border:1px solid currentColor}
+.ab-tag.gtd{color:var(--ab-ok)}
+.ab-tag.fcfs{color:var(--ab-signal)}
+.ab-tag.none{color:var(--ab-graphite)}
+.ab-tag.on{color:var(--ab-ok)}
+/* 结果卡顶上那一条：层级 + 是否登记 + 「前往登记」 */
+.ab-tierbox{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:12px 16px;border-radius:var(--r);background:var(--ab-plate2)}
+.ab-verdict{margin-top:var(--sp-1);font-size:var(--t-m);line-height:1.7;max-width:60ch}
+.ab-note{margin-top:18px;padding-top:16px;border-top:1px solid var(--ab-hair);
+  font-size:var(--t-xs);line-height:1.6;color:var(--ab-graphite)}
+.ab-addr{margin-top:14px;font-family:var(--mono);font-size:var(--t-xs);color:var(--ab-graphite);
+  word-break:break-all}
+
+/* ---- 页脚（与任务页同一份结构） ---- */
+.ab-foot{padding:var(--sp-2) 0}
+.ab-foot-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:20px 40px}
+.ab-brand{font-size:var(--t-l);font-weight:700}
+.ab-foot-lnk{display:flex;flex-wrap:wrap;gap:4px 28px}
+.ab-foot-lnk a{display:inline-flex;align-items:center;min-height:44px;font-size:var(--t-s);
+  color:var(--ab-graphite);text-decoration:none}
+.ab-foot-lnk a:hover{color:var(--ab-ink)}
+.ab-foot-tag{margin-top:18px;font-size:var(--t-s);color:var(--ab-graphite);max-width:52ch}
+.ab-legal{margin-top:16px;font-size:var(--t-xs);color:var(--ab-graphite);display:flex;flex-wrap:wrap;gap:6px 18px}
+.ab-mail{font-size:var(--t-s);color:var(--ab-graphite);text-decoration:none}
+@media (prefers-reduced-motion:reduce){ *{transition-duration:.01ms !important} }
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+
+<a class="ab-skip" href="#main">跳到主要内容</a>
+
+<div id="siteNavMount"></div>
+<script>if (window.MirrorNav) MirrorNav.mount({ page: 'quest' });</script>
+
+<main id="main">
+
+<section class="ab-hero">
+  <div class="ab-wrap">
+    <h1 class="ab-h1">资格查询</h1>
+    <p class="ab-lede">输入钱包地址，查看该地址在本轮的资格与阶段。</p>
+  </div>
+</section>
+
+<section class="ab-sec">
+  <div class="ab-wrap">
+
+    <div class="ab-card">
+      <label class="ab-field" for="addrIn">
+        <span>钱包地址</span>
+        <input class="ab-in" id="addrIn" type="text" autocomplete="off" spellcheck="false"
+               autocapitalize="off" placeholder="0x…" aria-label="钱包地址">
+      </label>
+      <div class="ab-row">
+        <button class="ab-btn" type="button" id="btnQuery">查询</button>
+        <button class="ab-btn2" type="button" id="btnWallet">使用当前钱包</button>
+      </div>
+      <p class="ab-msg" id="msg" aria-live="polite"></p>
+    </div>
+
+    <!-- 结果卡：查过一次之后才出现。层级 / 登记 / 阶段 / 免费余量 / 一句结论。
+         **名次与积分不在这里**（见页头第 1 条口径）。 -->
+    <div class="ab-card" id="result" hidden aria-live="polite">
+      <div class="ab-tierbox">
+        <span class="ab-tag none" id="tierTag">未获资格</span>
+        <span class="ab-tag none" id="regTag">未登记</span>
+        <a class="ab-btn4" id="regGo" href="quest.html" hidden>前往登记</a>
+      </div>
+      <p class="ab-addr" id="rAddr" data-nolang></p>
+      <table class="ab-tbl">
+        <tbody>
+          <tr><th>当前阶段</th><td id="rPhase">—</td></tr>
+          <tr><th>可铸造阶段</th><td id="rOpen">—<span class="sub" id="rOpenSub"></span></td></tr>
+          <tr><th>免费剩余</th><td id="rFree">—</td></tr>
+        </tbody>
+      </table>
+      <p class="ab-verdict" id="rSay"></p>
+      <p class="ab-note" id="rFoot">查询结果为当前实时状态，预热结束定格榜单后为准。</p>
+    </div>
+
+  </div>
+</section>
+
+</main>
+
+<footer class="ab-foot">
+  <div class="ab-wrap">
+    <div class="ab-foot-top">
+      <div class="ab-brand">ARC宇宙</div>
+      <nav class="ab-foot-lnk" aria-label="页脚">
+        <a href="app.html">模拟器</a>
+        <a href="quest.html">任务</a>
+        <a href="how-it-works.html">怎么运作</a>
+        <a href="verify.html">自己验证</a>
+      </nav>
+      <a class="ab-mail" href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
+    </div>
+    <p class="ab-foot-tag">以区块哈希生成宇宙。引爆免费，铸造可选。</p>
+    <div class="ab-legal"><span data-nolang>© 2026 ARCBANG</span></div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================================
+ * 资格查询页的行为：读一个地址的 /api/allowlist/status，铺一张结果卡。
+ *
+ * 一个链上读数都没有，一次签名都不要。免费余量也是服务端从它自己的缓存里给的 ——
+ * 这一页不该因为公开 RPC 抖一下就变成半张白纸。
+ *
+ * **不显示名次、不显示积分**：接口回的 points / rank 一个都不读进 DOM。
+ * ========================================================================== */
+(function () {
+  'use strict';
+  var CFG = window.ARCBANG_CONFIG || {};
+  var BASE = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
+  var ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
+
+  function $(id) { return document.getElementById(id); }
+  function T(zh) { return window.MirrorI18n ? window.MirrorI18n.t(zh) : zh; }
+  function TF(zh) {
+    var a = Array.prototype.slice.call(arguments, 1);
+    return T(zh).replace(/\{(\d+)\}/g, function (m, i) { return a[i] == null ? m : a[i]; });
+  }
+  /* 阶段与层级的显示名与任务页逐字一致。**内部 key 不动**：
+     服务端、合约、状态文件里一律还是 warmup / gtd / fcfs / public。 */
+  var PHASE_CN = { warmup: '预热期', gtd: '白名单', fcfs: '先到先得', public: '公售' };
+  var TIER_CN = { gtd: '白名单', fcfs: '先到先得' };
+
+  function fmtWhen(iso) {
+    if (!iso) return T('时间待定');
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return T('时间待定');
+    /* 本地时间：访问者自己那一套时区与格式，比 UTC 串少一道心算。 */
+    try { return d.toLocaleString(); } catch (e) { return iso; }
+  }
+
+  function msg(text, cls) {
+    var el = $('msg');
+    el.className = 'ab-msg ' + (cls || '');
+    el.textContent = text || '';
+  }
+
+  function prov() { return (window.MirrorWallet && window.MirrorWallet.provider()) || window.ethereum || null; }
+
+  /* ---------------- 结果卡 ---------------- */
+  function render(addr, st) {
+    var t = st.tier;                              // 'gtd' / 'fcfs' / null
+    var k = (t === 'gtd' || t === 'fcfs') ? t : 'none';
+
+    var tag = $('tierTag');
+    tag.className = 'ab-tag ' + k;
+    tag.textContent = T(TIER_CN[t] || '未获资格');
+
+    var reg = $('regTag');
+    reg.className = 'ab-tag ' + (st.registered ? 'on' : 'none');
+    reg.textContent = st.registered ? T('已登记') : T('未登记');
+    $('regGo').hidden = !!st.registered;
+
+    $('rAddr').textContent = addr;
+    $('rPhase').textContent = T(PHASE_CN[st.phase] || st.phase || '');
+
+    /* 该层级能在哪一段铸：白名单 → 白名单阶段，先到先得 → 先到先得阶段，
+       未获资格 → 公售阶段。开放时间缺省就是「时间待定」（服务端还没配）。 */
+    var mine = t === 'gtd' ? 'gtd' : (t === 'fcfs' ? 'fcfs' : 'public');
+    var opens = st.opens || {};
+    var el = $('rOpen');
+    /* 只改第一个文本节点，说明性的 .sub 原样留着（整块 innerHTML 重写会把结构冲掉）。 */
+    if (el.firstChild && el.firstChild.nodeType === 3) el.firstChild.nodeValue = T(PHASE_CN[mine]);
+    $('rOpenSub').textContent = TF('开放时间：{0}', fmtWhen(opens[mine]));
+
+    /* 免费余量：链上还剩几枚。387 是合约里的硬上限，公开可查，写它不算承诺名额。 */
+    $('rFree').textContent = (st.freeLeft == null ? '—' : st.freeLeft) + ' / 387';
+
+    $('rSay').textContent = t === 'gtd'
+      ? T('该地址为白名单，可在白名单阶段免费铸造 1 枚。')
+      : t === 'fcfs'
+        ? T('该地址为先到先得，可在先到先得阶段按剩余额度免费铸造。')
+        : T('该地址未获资格，可在公售阶段付费铸造。');
+
+    var frozen = !!(st.counts && st.counts.frozen);
+    $('rFoot').textContent = frozen ? T('榜单已定格。')
+      : T('查询结果为当前实时状态，预热结束定格榜单后为准。');
+
+    $('result').hidden = false;
+  }
+
+  /* ---------------- 查询 ---------------- */
+  var busy = false;
+  function query(raw) {
+    var addr = String(raw == null ? '' : raw).trim();
+    if (!addr) { msg(T('请输入钱包地址'), 'err'); return; }
+    if (!ADDR_RE.test(addr)) { msg(T('地址格式不正确'), 'err'); return; }
+    if (busy) return;
+    busy = true;
+    $('btnQuery').disabled = true;
+    msg(T('正在查询…'));
+    fetch(BASE + '/allowlist/status?addr=' + encodeURIComponent(addr)).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (st) {
+      busy = false;
+      $('btnQuery').disabled = false;
+      msg('');
+      render(addr, st);
+    }, function () {
+      busy = false;
+      $('btnQuery').disabled = false;
+      $('result').hidden = true;
+      msg(T('查询失败，请稍后重试'), 'err');
+    });
+  }
+
+  $('btnQuery').addEventListener('click', function () { query($('addrIn').value); });
+  $('addrIn').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); query($('addrIn').value); }
+  });
+
+  /* 「使用当前钱包」：只取地址填进输入框，**不签名**。查一下资格不该弹签名窗。 */
+  $('btnWallet').addEventListener('click', function () {
+    var p = prov();
+    if (!p) { msg(T('未检测到钱包扩展'), 'err'); return; }
+    msg('');
+    p.request({ method: 'eth_requestAccounts' }).then(function (a) {
+      var one = a && a[0];
+      if (!one) { msg(T('未检测到钱包扩展'), 'err'); return; }
+      $('addrIn').value = one;
+      query(one);
+    }, function (er) {
+      msg(er && er.code === 4001 ? T('已在钱包中取消') : ((er && er.message) || String(er)), 'err');
+    });
+  });
+
+  /* ?addr=0x… 直接查：别人把结果链接发给你时，打开就是那一张卡。 */
+  (function () {
+    var m = /[?&]addr=([^&]+)/.exec(location.search);
+    if (!m) return;
+    var a = '';
+    try { a = decodeURIComponent(m[1]); } catch (e) { a = m[1]; }
+    a = a.trim();
+    if (!a) return;
+    $('addrIn').value = a;
+    query(a);
+  })();
+})();
+</script>
+
+</body>
+</html>

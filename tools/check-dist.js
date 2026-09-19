@@ -339,11 +339,13 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
   /* a. 该有的页都在 */
   /* quest.html 必须永远在：首页横幅、顶栏页签、app.html 的铸造面板（放号还没轮到时）
      都指着它，那个链接不能有「今天不存在」的时候。
-     warmup.html 是它的旧名，留一张跳转页 —— 发出去的邀请链接还带着旧路径。 */
+     warmup.html 是它的旧名，留一张跳转页 —— 发出去的邀请链接还带着旧路径。
+     check.html 是资格查询页（2026-09-19）：任务页首屏与页脚都指着它。 */
   var want = ['index.html', 'app.html', 'market.html', 'status.html', 'profile.html',
               'faq.html', 'how-it-works.html', 'verify.html', 'deploy.html', 'quest.html', 'warmup.html', 'admin.html',
+              'check.html',
               'en/index.html', 'en/faq.html', 'en/how-it-works.html', 'en/verify.html',
-              'en/quest.html', 'en/warmup.html',
+              'en/quest.html', 'en/warmup.html', 'en/check.html',
               'config.js', 'theme.js', 'nav.js', 'tokens.css', 'arc-doc.css'];
   var lack = want.filter(function (f) { return !fs.existsSync(path.join(dist, f)); });
   (lack.length ? bad : ok)('web/dist-arc 页面齐全（' + (want.length - lack.length) + '/' + want.length + '）'

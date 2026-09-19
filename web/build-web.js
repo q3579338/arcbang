@@ -54,6 +54,15 @@ const ST = {
     title: 'ARCBANG quests — leaderboard and allowlist',
     desc: 'The allowlist is ranked by points: the top 100 get a guaranteed slot and the top 387 mint free, one per address; everyone else buys at 1 USDC, up to 3 per address, and a block hash can only be minted once. Signing up scores, and so do reposts, invites and detonations you broadcast. Detonating and the simulator are free and open right now.'
   },
+  /* 资格查询页（web/check-arc.html → dist-arc/check.html + en/check.html）。
+     任务页那一块层级提示只在「自己连上钱包并登记之后」才出现；这一页是给任意地址用的
+     公开入口：输入地址，读 /api/allowlist/status，出层级、登记与否、阶段与开放时间。
+     **不显示名次与积分** —— 那两样属于地址本人，去任务页看。 */
+  checkPage: 'check-arc.html',
+  checkEn: {
+    title: 'ARCBANG eligibility check — whitelist and first-come',
+    desc: 'Enter a wallet address to see where it stands this round: whitelist, first-come or not eligible, whether it is registered, the current phase, and the phase it can mint in with the opening time.'
+  },
   /* 独立页：[源文件, 落盘名]。三份文档整篇是「Arc 链 · USDC · 没有代币」的口径；
      它们不引 doc.css，改引 web/arc-doc.css —— 那是首页「测绘板」那套版式的内页延续。
      deploy-arc.html → deploy.html：ARCBANG 的两合约部署向导（钱包签名，私钥不进 env）。
@@ -379,14 +388,21 @@ function prepHtml(srcPath) {
   h = h.replace(/src="\.\.\/ui\/theme\.js"/g, 'src="theme.js"');
   return stampAssets(siteify(h));
 }
-/* 英文页里指向三份文档的链接要改指 /en/：prerender-en 把相对链接绝对化成
-   /how-it-works.html，那是中文页。只改这三页，别的链接一个不动。 */
+/* 英文页里「确实有英文版」的那些链接要改指 /en/：prerender-en 把相对链接绝对化成
+   /how-it-works.html，那是中文页。改的只有这张名单上的页，别的链接一个不动
+   （app.html、market.html 这些没有英文版，改了就 404）。
+   名单 = 三份文档（ST.enPages）+ 词典预渲染的那一路页（APP_PAGES：quest / check）。
+   2026-09-19 加进 APP_PAGES：英文任务页上那条「资格查询」指向 /check.html 的话，
+   点过去就从英文掉回中文了。 */
 function enDocLinks(file) {
-  if (!ST.enPages || !ST.enPages.length || !fs.existsSync(file)) return 0;
+  if (!fs.existsSync(file)) return 0;
+  const list = (ST.enPages || []).map((p) => p[1])
+    .concat(APP_PAGES.filter((pg) => pg.src && appHtml[pg.out]).map((pg) => 'en/' + pg.out));
+  if (!list.length) return 0;
   let eh = fs.readFileSync(file, 'utf8'), n = 0;
-  ST.enPages.forEach((p) => {
-    const root = '/' + p[1].replace(/^en\//, '');
-    eh = eh.replace(new RegExp('href="' + root.replace(/[.]/g, '\\.') + '(["#?])', 'g'), (m, tail) => { n++; return 'href="/' + p[1] + tail; });
+  list.forEach((dst) => {
+    const root = '/' + dst.replace(/^en\//, '');
+    eh = eh.replace(new RegExp('href="' + root.replace(/[.]/g, '\\.') + '(["#?])', 'g'), (m, tail) => { n++; return 'href="/' + dst + tail; });
   });
   fs.writeFileSync(file, eh);
   return n;
@@ -403,25 +419,41 @@ function redirectStub(to, title) {
     + '<script>location.replace(' + JSON.stringify(to) + ' + location.search + location.hash);</scr' + 'ipt>'
     + '</head><body><p>已搬到 <a href="' + to + '">' + to + '</a></p></body></html>\n';
 }
-let questHtml = null;
-{
-  const wp = path.join(__dirname, ST.questPage || '');
-  if (ST.questPage && fs.existsSync(wp)) {
-    questHtml = prepHtml(wp);
-    fs.writeFileSync(path.join(outDir, 'quest.html'), questHtml);
-    console.log('  + ' + ST.questPage + ' → ' + ST.dist + '/quest.html（任务页）');
-    const enW = require('./prerender-en.js').build(questHtml, outDir,
-      { base: ST.base, page: 'quest.html', title: ST.warmupEn.title, desc: ST.warmupEn.desc, dicts: ST.enDicts });
-    const nW = enDocLinks(path.join(outDir, 'en', 'quest.html'));
-    console.log('  + ' + ST.questPage + ' → ' + ST.dist + '/en/quest.html（英文预渲染：命中 ' + enW.hits + ' 处，文档链接改指 /en/ ' + nW + ' 处）');
-    /* 旧名 /warmup.html：线上有 nginx 302，这两张页是没有 nginx 时的兜底。 */
-    fs.writeFileSync(path.join(outDir, 'warmup.html'), redirectStub('/quest.html', 'ARCBANG 任务'));
-    fs.mkdirSync(path.join(outDir, 'en'), { recursive: true });
-    fs.writeFileSync(path.join(outDir, 'en', 'warmup.html'), redirectStub('/en/quest.html', 'ARCBANG quests'));
-    console.log('  + warmup.html / en/warmup.html → 跳转到 quest.html（旧链接不落空）');
-  } else if (ST.questPage) {
-    console.log('  ○ ' + ST.questPage + '（缺席，跳过任务页）');
-  }
+/* 「中文落根 + 英文落 /en/」的那一路页面。从前这一段写死了 quest 一页，
+   2026-09-19 加资格查询页时泛化成一张表 —— 再加一页只要往 APP_PAGES 里添一行。
+   与上面 ST.pages 的区别：这一路页**另出一份词典预渲染的英文版**（/en/<页名>），
+   而 ST.pages 里的页只有中文（要英文版就各写一份源文件，走 ST.enPages）。 */
+const APP_PAGES = [
+  { src: ST.questPage, out: 'quest.html', label: '任务页', en: ST.warmupEn },
+  { src: ST.checkPage, out: 'check.html', label: '资格查询页', en: ST.checkEn }
+];
+const appHtml = {};          // 落盘名 → 中文版最终 HTML（首页换成任务页时还要用一次）
+APP_PAGES.forEach((pg) => {
+  if (!pg.src) return;
+  const wp = path.join(__dirname, pg.src);
+  if (!fs.existsSync(wp)) { console.log('  ○ ' + pg.src + '（缺席，跳过' + pg.label + '）'); return; }
+  const h = prepHtml(wp);
+  appHtml[pg.out] = h;
+  fs.writeFileSync(path.join(outDir, pg.out), h);
+  console.log('  + ' + pg.src + ' → ' + ST.dist + '/' + pg.out + '（' + pg.label + '）');
+  const enW = require('./prerender-en.js').build(h, outDir,
+    { base: ST.base, page: pg.out, title: pg.en.title, desc: pg.en.desc, dicts: ST.enDicts });
+  pg.enHits = enW.hits;
+});
+/* 链接改指 /en/ 放在**全部落盘之后**再走一遍：enDocLinks 的名单要等这一路页
+   都进了 appHtml 才算数，边落边改的话先落的那一页看不见后落的那一页。 */
+APP_PAGES.forEach((pg) => {
+  if (!pg.src || !appHtml[pg.out]) return;
+  const nW = enDocLinks(path.join(outDir, 'en', pg.out));
+  console.log('  + ' + pg.src + ' → ' + ST.dist + '/en/' + pg.out + '（英文预渲染：命中 ' + pg.enHits + ' 处，文档链接改指 /en/ ' + nW + ' 处）');
+});
+const questHtml = appHtml['quest.html'] || null;
+if (questHtml) {
+  /* 旧名 /warmup.html：线上有 nginx 302，这两张页是没有 nginx 时的兜底。 */
+  fs.writeFileSync(path.join(outDir, 'warmup.html'), redirectStub('/quest.html', 'ARCBANG 任务'));
+  fs.mkdirSync(path.join(outDir, 'en'), { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'en', 'warmup.html'), redirectStub('/en/quest.html', 'ARCBANG quests'));
+  console.log('  + warmup.html / en/warmup.html → 跳转到 quest.html（旧链接不落空）');
 }
 
 /* 首页：web/landing-arc.html 落盘成 dist-arc/index.html。

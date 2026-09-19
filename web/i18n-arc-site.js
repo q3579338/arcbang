@@ -601,6 +601,36 @@
     '积分为何是实时统计结果？': 'Why are points described as real-time?',
     '预热结束后将进行复核，异常积分会被扣除。复核后的结果为最终名单。':
       'A review is carried out after the warm-up and irregular points are removed. The reviewed result is the final list.',
+
+    /* ---- 资格查询页（web/check-arc.html → check.html / en/check.html）----
+       2026-09-19 新增。层级名（白名单 / 先到先得 / 未获资格）、阶段名（预热期 / 公售）、
+       「已登记」「前往登记」「时间待定」「免费剩余」「未检测到钱包扩展」「已在钱包中取消」
+       都已经在别处收过了，**这里不重复收** —— 重复一次值不一样就会触发「全局词条被改写」。 */
+    'ARCBANG 资格查询 · 白名单与先到先得': 'ARCBANG eligibility check · whitelist and first-come',
+    '资格查询': 'Check eligibility',
+    '输入钱包地址，查看该地址在本轮的资格与阶段。':
+      'Enter a wallet address to see its eligibility and phase for this round.',
+    '钱包地址': 'Wallet address',
+    '查询': 'Check',
+    '使用当前钱包': 'Use connected wallet',
+    '未登记': 'Not registered',
+    '当前阶段': 'Current phase',
+    '可铸造阶段': 'Eligible phase',
+    /* {0} = 本地时间串（浏览器 toLocaleString），没配开放时间时是「时间待定」。 */
+    '开放时间：{0}': 'Opens {0}',
+    '请输入钱包地址': 'Enter a wallet address',
+    '地址格式不正确': 'That address is not valid',
+    '正在查询…': 'Checking…',
+    '查询失败，请稍后重试': 'The check failed. Please try again shortly.',
+    '该地址为白名单，可在白名单阶段免费铸造 1 枚。':
+      'This address is on the whitelist and can mint 1 free during the whitelist phase.',
+    '该地址为先到先得，可在先到先得阶段按剩余额度免费铸造。':
+      'This address is first-come and can mint free during the first-come phase while free mints remain.',
+    '该地址未获资格，可在公售阶段付费铸造。':
+      'This address is not eligible for a free mint and can buy during the public sale.',
+    '查询结果为当前实时状态，预热结束定格榜单后为准。':
+      'This reflects the current live state; the leaderboard is authoritative once it freezes at the end of the warm-up.',
+    '榜单已定格。': 'The leaderboard is frozen.',
   });
 
 })(typeof window !== 'undefined' ? window : this);
