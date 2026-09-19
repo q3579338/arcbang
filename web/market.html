@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG</title>
-<meta name="description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
+<meta name="description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。市场不收手续费，成交只按 ERC-2981 支付 5% 版税。">
 <link rel="canonical" href="https://arcbang.xyz/market.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/market.html">
 <meta property="og:title" content="镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG">
-<meta property="og:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
+<meta property="og:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。市场不收手续费，成交只按 ERC-2981 支付 5% 版税。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -19,7 +19,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="镜像宇宙市场 · 买卖宇宙 NFT · ARCBANG">
-<meta name="twitter:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。挂单手续费 1%，合约上限 10%。">
+<meta name="twitter:description" content="ARCBANG 内置市场：挂单、购买、按结局与稀有度筛选宇宙 NFT。市场不收手续费，成交只按 ERC-2981 支付 5% 版税。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -345,6 +345,8 @@ footer a{color:var(--cyan)}
    图标钮：与 .sm 同高，方形，SVG 描边用 currentColor 跟主题走 */
 button.sm.icon{width:30px;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
 img.uthumb[data-view]{cursor:zoom-in}
+.uthumb.ph[data-retry]{cursor:pointer}
+.uthumb.ph[data-retry]:hover{color:var(--cyan);border-color:var(--cyan-line)}
 
 /* 灯箱：点卡片图片看大图。z 压过顶栏(85)与命名弹窗(120) */
 .lbox{position:fixed;inset:0;z-index:150;display:flex;flex-direction:column;align-items:center;
@@ -483,6 +485,15 @@ img.uthumb[data-view]{cursor:zoom-in}
   list-style:revert;user-select:none}
 .fbar .fadv>summary:hover{color:var(--cyan)}
 .fbar .fadvbody{display:flex;gap:8px 10px;flex-wrap:wrap;align-items:center;margin:8px 0 0}
+/* 交易记录那一条「只看我的」。观感跟着 .fbar 走，只补一个对齐 */
+.fbar .ck{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.fbar .ck input{margin:0;accent-color:var(--cyan)}
+/* 事件那一列的小标签：挂单 / 改价 / 撤单 / 成交，各一个颜色 */
+.evt{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11.5px;font-weight:600;
+  border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.evt.sold{border-color:var(--cyan);background:var(--cyan-bg);color:var(--cyan)}
+.evt.listed{border-color:var(--line);color:var(--ink2)}
+.evt.cancelled{color:var(--dim2)}
 /* 页身那条 input/select 通则是 width:100%（挂单表单要的），筛选条里的下拉因此每个独占一行。
    外面那几个原样不动（那是这条筛选条一直以来的样子），**只把进阶这一栏收窄** ——
    它自己是一组，一组里三四个控件排成一行才看得出是一组。 */
@@ -543,6 +554,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     <button class="tab on" type="button" data-sec="mine">我的宇宙</button>
     <button class="tab" type="button" data-sec="uni">宇宙市场</button>
     <button class="tab" type="button" data-sec="list">挂单</button>
+    <button class="tab" type="button" data-sec="hist">交易记录</button>
   </nav>
 
   <!-- ============================ 1. 我的宇宙 ============================ -->
@@ -589,8 +601,9 @@ img.uthumb[data-view]{cursor:zoom-in}
         </div>
         <div class="field">
           <label for="fCur">计价</label>
-          <!-- ARCBANG 只有一种计价：native，在 Arc 上就是 USDC。成交时先按 ERC-2981 付版税
-               （ArcUniverse 默认 5%，市场侧截断在 10%），再抽 1% 手续费，其余归卖家。
+          <!-- ARCBANG 只有一种计价：native，在 Arc 上就是 USDC。成交时按 ERC-2981 付
+               5% 版税（ArcUniverse 默认值，市场侧截断在 10%），其余全部归卖家 ——
+               **市场自己不抽成**。
                这一项的文字由 renderChainText() 按 config.arc.js 的 chain.currency 填。 -->
           <select id="fCur">
             <option value="bnb" id="fCurNative" data-nolang></option>
@@ -607,7 +620,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         </div>
         <div id="listMsg" class="msg"></div>
         <div class="notice plain">
-          成交时先按 ERC-2981 支付版税（5%），再收取成交价 1% 的手续费，均由买家支付的金额中扣除。<br>
+          成交时按 ERC-2981 支付 5% 版税，其余全部归卖家，市场不收手续费。<br>
           挂单前需一次性授权市场合约；成交前 NFT 始终留在你的钱包。仅支持带参数卡的宇宙上架。
         </div>
       </div>
@@ -615,6 +628,24 @@ img.uthumb[data-view]{cursor:zoom-in}
     <div class="card">
       <div class="cardhead"><h2>我挂着的单</h2><span class="dim tiny" id="myListNote"></span></div>
       <div id="myListings"></div>
+    </div>
+  </section>
+
+  <!-- ============================ 4. 交易记录 ============================
+       服务端索引（/api/market/history）出的一条时间线：挂单 / 改价 / 撤单 / 成交。
+       链上直读没有这条退路 —— 公开节点普遍不让查全量日志，所以索引读不到时
+       这里就是「暂无记录」，不假装从链上补一份出来。 -->
+  <section id="sec-hist" hidden>
+    <div class="block">
+      <div class="cardhead">
+        <h2>交易记录</h2>
+        <span class="dim tiny" id="histNote"></span>
+      </div>
+      <div class="fbar">
+        <label class="ck"><input type="checkbox" id="histMine"> <span id="histMineLab">只看我的</span></label>
+      </div>
+      <div id="histNotice"></div>
+      <div id="histList"></div>
     </div>
   </section>
 
@@ -1155,14 +1186,28 @@ img.uthumb[data-view]{cursor:zoom-in}
     });
   }
 
+  /* 元数据取失败（自家 /api/token 与 tokenURI 两条路都没出图）时**不长期缓存**。
+     从前那一版把 img=null 的结果永久留在 S.meta 里，于是一次网络抖动就让那张卡
+     此后一直显示「图片未读取到」，刷新都救不回来 —— 而图本身是好的。
+     现在失败结果只算 META_RETRY_MS，过期自动重取；占位块还带 data-retry，
+     点一下立刻重来（见 thumb / retryThumb）。
+     链上那两个字段（结局 / 区块号）照旧留着：图没出来不代表链上也没读到。 */
+  var META_RETRY_MS = 30000;
+  var metaPend = {};                            // 正在取的那一发，别并发打两次
+  function metaUsable(m) {
+    return !!m && (!!m.img || (!!m.failedAt && Date.now() - m.failedAt < META_RETRY_MS));
+  }
   function loadMeta(id) {                       // 缩略图 + 结局
-    if (S.meta[id]) return Promise.resolve(S.meta[id]);
-    return Promise.all([
+    if (metaUsable(S.meta[id])) return Promise.resolve(S.meta[id]);
+    if (metaPend[id]) return metaPend[id];
+    var p = Promise.all([
       ethCall(ADDR.universe, SEL.tokenURI + encUint(id)),
       ethCall(ADDR.universe, SEL.universeOf + encUint(id))
     ]).then(function (r) {
       var m = { img: null, outcome: null, blockHash: null, blockNumber: null,
                 minter: null, verified: null, rarity: null, dim: null };
+      /* 落缓存的唯一入口：没出图的盖一个 failedAt，metaUsable 据它判过期。 */
+      function keep(mm) { mm.failedAt = mm.img ? 0 : Date.now(); S.meta[id] = mm; return mm; }
       /* universeOf →
          (bytes32 blockHash, uint64 blockNumber, uint64 mintedAt, address minter,
           uint8 outcome, bool verified, uint8 rarity)
@@ -1208,14 +1253,14 @@ img.uthumb[data-view]{cursor:zoom-in}
       /* 自家 API 优先：合约里的 baseURI 可能指向别的域名（正式域名维护中、或排练站的合约
          填的是正式域名），同一份元数据本站 /api/token/<id> 也出得来。取不到再按 tokenURI 走。 */
       function fromUri() {
-        if (!r[0]) { S.meta[id] = m; return m; }
+        if (!r[0]) { keep(m); return m; }
         var uri = decString(r[0]), pre = 'data:application/json;base64,';
 
         if (uri.indexOf(pre) === 0) {
           // 老合约把整份元数据内联在 tokenURI 里
           try { absorb(JSON.parse(atob(uri.slice(pre.length)))); }
           catch (e) { /* 元数据坏了不影响别的：图就空着 */ }
-          S.meta[id] = m;
+          keep(m);
           return m;
         }
 
@@ -1228,24 +1273,27 @@ img.uthumb[data-view]{cursor:zoom-in}
             return resp.json();
           }).then(function (j) {
             absorb(j);
-            S.meta[id] = m;
+            keep(m);
             return m;
           }).catch(function () {
             // 取不到就让缩略图空着，别把整张卡连同链上数据一起废掉
-            S.meta[id] = m;
+            keep(m);
             return m;
           });
         }
 
-        S.meta[id] = m;
+        keep(m);
         return m;
       }
       var own = (CFG.apiBase || '/api') + '/token/' + id;
       return fetch(own, { headers: { accept: 'application/json' } })
         .then(function (resp) { if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.json(); })
-        .then(function (j) { absorb(j); S.meta[id] = m; return m; })
+        .then(function (j) { absorb(j); keep(m); return m; })
         .catch(function () { return fromUri(); });
     });
+    metaPend[id] = p;
+    return p.then(function (mm) { delete metaPend[id]; return mm; },
+      function (e) { delete metaPend[id]; throw e; });
   }
 
   /* 价值锚：这枚 token 烧掉多少 BANG、有没有被救活过。
@@ -1569,13 +1617,49 @@ img.uthumb[data-view]{cursor:zoom-in}
     return '<b>' + TF('{0}合约还没部署。', T(which)) + '</b> '
       + T('该合约尚未接入，页面其余功能不受影响。');
   }
-  function thumb(m) {
+  /* 缩略图。取不到图时给一个**可重试**的占位块：点一下立刻再取，另有最多两次自动重试。
+     从前这里是一块死掉的「图片未读取到」，加上失败结果被永久缓存，一次网络抖动
+     就让这张卡这一整趟会话都没有图 —— 而图本身一直是好的（两个端点都是 200）。 */
+  function thumb(m, id) {
     if (m && m.img) {
       /* data-view = 去掉 ?t=1 的原图 URL —— 点图开灯箱看大图 */
       return '<img class="uthumb" alt="' + esc(T('宇宙缩略图')) + '" src="' + esc(m.img)
         + '" data-view="' + esc(fullImg(m.img)) + '">';
     }
-    return '<div class="uthumb ph">' + esc(T('图片未读取到')) + '</div>';
+    var n = Number(id);
+    if (!isFinite(n) || n <= 0) return '<div class="uthumb ph">' + esc(T('图片未读取到')) + '</div>';
+    scheduleThumbRetry(n);
+    return '<div class="uthumb ph" data-retry="' + n + '" role="button" tabindex="0" title="'
+      + esc(T('点击重新读取图片')) + '">' + esc(T('图片未读取到')) + '</div>';
+  }
+  /* 自动重试：占位块画出来 3 秒后再要一次，最多两次；用户自己点的那一下不计入次数。
+     重取到图**只重画这一张缩略图**，不整页重渲染 —— 整页重画会把正在填的表单、
+     正在开的浮层一起冲掉。 */
+  var THUMB_RETRY_MS = 3000, THUMB_RETRY_MAX = 2;
+  var thumbTries = {}, thumbTimers = {};
+  function scheduleThumbRetry(id) {
+    if (typeof setTimeout !== 'function') return;
+    if (thumbTimers[id] || (thumbTries[id] || 0) >= THUMB_RETRY_MAX) return;
+    thumbTimers[id] = setTimeout(function () {
+      thumbTimers[id] = null;
+      thumbTries[id] = (thumbTries[id] || 0) + 1;
+      retryThumb(id);
+    }, THUMB_RETRY_MS);
+  }
+  function retryThumb(id) {
+    var n = Number(id);
+    if (!isFinite(n) || n <= 0) return Promise.resolve(null);
+    var m = S.meta[n];
+    if (m) m.failedAt = 0;                        // 让那条失败缓存立刻过期，强制重取
+    return loadMeta(n)
+      .then(function (mm) { paintThumb(n, mm); return mm; })
+      .catch(function () { return null; /* 还是取不到：占位块留着，可以再点 */ });
+  }
+  /** 把页面上这一枚的占位块换成真图（同一枚可能同时出现在好几个列表里） */
+  function paintThumb(id, m) {
+    if (!m || !m.img) return;
+    var list = document.querySelectorAll('.uthumb.ph[data-retry="' + Number(id) + '"]');
+    for (var i = 0; i < list.length; i++) list[i].outerHTML = thumb(m, id);
   }
   /** 缩略图 URL → 原图 URL：把 t=1 摘掉，其余参数原样保留 */
   function fullImg(u) {
@@ -1702,7 +1786,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   function uCard(id, extraRows, btns) {
     var m = S.meta[id] || {}, v = S.value[id] || {}, nm = S.name[id];
     btns = (btns || '') + cardActBtns('n', id);      // 每张卡都有：引爆 + 广播（§二）
-    return '<div class="ucard' + (v.rescuedAt ? ' rescued' : '') + '">' + thumb(m)
+    return '<div class="ucard' + (v.rescuedAt ? ' rescued' : '') + '">' + thumb(m, id)
       /* 命名过的：名字单独占一行当主标题，编号缩成它下面那一行的次要信息。
          编号不删 —— 名字可以改，区块号不能，出问题时要靠它对回链上。 */
       + (nm ? '<div class="unamerow"><span class="uname" title="'
@@ -2140,6 +2224,179 @@ img.uthumb[data-view]{cursor:zoom-in}
     $('btnList').disabled = !a || !ADDR.market;
     el.className = 'tiny ' + (ok === true ? 'ok' : 'dim');
     el.textContent = !a ? '' : (ok === true ? T('已授权') : (ok === false ? T('尚未授权') : T('未读到授权状态')));
+  }
+
+  /* ============================================================ 4. 交易记录
+
+     只有一个数据源：服务端索引 /api/market/history（挂单 / 改价 / 撤单 / 成交
+     合成的一条时间线，按区块倒序）。**链上直读没有这条退路** —— 公开节点普遍
+     不让查全量日志（整页的列表都走 totalSupply 枚举而不是 eth_getLogs，正是这个
+     原因），所以索引读不到时这里就老实写「暂无记录」，不从别处编一份出来。 */
+  var HIST_LIMIT = 100;
+  var H = { items: null, stale: false, loading: false, failed: false, seq: 0 };
+  var EVT_LABEL = { listed: '挂单', priceChanged: '改价', cancelled: '撤单', sold: '成交' };
+  var EVT_CLASS = { listed: 'listed', priceChanged: 'priced', cancelled: 'cancelled', sold: 'sold' };
+  /* 事件这一列的英文**就近覆盖**，走的是 TV 那条路（见本页 i18n 那一段）：
+     '挂单' / '撤单' / '改价' 三个 key 在核心词典里是**按钮**的意思
+     （Listings / Cancel listing / Change price），而这一列说的是**已经发生的事**
+     （Listed / Cancelled / Price changed）。中文一个字不变，只在英文下换，
+     **不去改全局那三个 key** —— 改了就把挂单标签页和撤单按钮一起带歪。 */
+  var EVT_EN = { listed: 'Listed', priceChanged: 'Price changed', cancelled: 'Cancelled', sold: 'Sold' };
+  function evtLabel(k) {
+    if (isEn() && EVT_EN[k]) return EVT_EN[k];
+    return T(EVT_LABEL[k] || '事件');
+  }
+  var histMineTouched = false;      // 用户自己动过那个勾没有（动过就不再跟着钱包走）
+
+  /* 「只看我的」默认值：连了钱包就勾上，没连就取消勾 —— 但用户自己点过之后
+     这个自动同步就停手，不跟用户抢方向盘。 */
+  function syncHistMine() {
+    var ck = $('histMine');
+    if (!ck) return;
+    ck.disabled = !S.account;
+    if (!histMineTouched) ck.checked = !!S.account;
+    if (!S.account) ck.checked = false;
+  }
+  function loadHistory() {
+    syncHistMine();
+    var seq = ++H.seq;
+    var mineOnly = !!($('histMine') && $('histMine').checked) && !!S.account;
+    var url = (CFG.apiBase || '/api') + '/market/history?limit=' + HIST_LIMIT
+      + (mineOnly ? '&addr=' + encodeURIComponent(S.account) : '');
+    H.loading = true;
+    H.failed = false;
+    renderHistory();
+    return fetch(url, { headers: { accept: 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        if (seq !== H.seq) return;        // 期间又切了一次开关：这一发的答复作废
+        H.loading = false;
+        H.items = (j && j.items) || [];
+        H.stale = !!(j && j.stale);
+        ensureHistMeta(H.items);
+        renderHistory();
+      })
+      .catch(function () {
+        if (seq !== H.seq) return;
+        H.loading = false;
+        H.failed = true;
+        H.items = null;
+        renderHistory();
+      });
+  }
+  /* 编号那一列要的是**区块号**，而区块号在元数据里（universeOf），索引不给。
+     这一批里缺的补一遍，补到了再重画一次；补不到就退回 token #id，不编一个区块号。
+     每枚只问一次：问不到也不再问，免得一直重画。 */
+  var histMetaAsked = {};
+  function ensureHistMeta(items) {
+    var need = [];
+    (items || []).forEach(function (it) {
+      var tid = histTokenId(it);
+      if (tid == null || histMetaAsked[tid]) return;
+      var m = S.meta[tid];
+      if (m && m.blockNumber != null) return;
+      histMetaAsked[tid] = 1;
+      need.push(tid);
+    });
+    if (!need.length) return;
+    mapLimit(need, 4, loadMeta)
+      .then(function () { renderHistory(); })
+      .catch(function () { /* 补不到就照旧显示 token #id */ });
+  }
+  /** 只有原生宇宙才有区块号当编号：造物的 tokenId 是另一个编号空间，别张冠李戴 */
+  function histTokenId(it) {
+    if (!it || it.tokenId == null) return null;
+    if (ADDR.universe && it.token && String(it.token).toLowerCase() !== ADDR.universe) return null;
+    var n = Number(it.tokenId);
+    return (isFinite(n) && n > 0) ? n : null;
+  }
+  /** 时间：有区块时间戳就显示本地时间，没有就退回区块号 —— 绝不拿「现在」冒充 */
+  function histTime(it) {
+    if (it && it.at) {
+      var d = new Date(Number(it.at) * 1000);
+      if (!isNaN(d.getTime())) return d.toLocaleString();
+    }
+    return (it && it.blockNo != null) ? TF('区块 {0}', it.blockNo) : '—';
+  }
+  function histAsset(it) {
+    var tid = histTokenId(it);
+    if (tid != null) {
+      var m = S.meta[tid];
+      if (m && m.blockNumber != null) return esc(uniNo(tid));
+      return esc(TF('token #{0}', it.tokenId));
+    }
+    if (it.tokenId == null) return '—';
+    if (ADDR.crafted && it.token && String(it.token).toLowerCase() === ADDR.crafted) {
+      return esc(TF('造物宇宙 #{0}', it.tokenId));
+    }
+    return esc(TF('token #{0}', it.tokenId));
+  }
+  /** 地址一列：缩写 + 自己的标「我」。没有买家（撤单、或成交流水已滚出窗口）写 — */
+  function histAddr(a) {
+    if (!a) return '<span class="dim">—</span>';
+    return '<span class="mono">' + esc(shortAddr(a)) + '</span>'
+      + (isMine(a) ? '<span class="dim"> · ' + esc(T('我')) + '</span>' : '');
+  }
+  function histPrice(it) {
+    if (!it || it.price == null) return '<span class="dim">—</span>';
+    try { return esc(fmtBNB(it.price) + ' ' + CUR); }
+    catch (e) { return '<span class="dim">—</span>'; }
+  }
+  /* 交易那一列：ArcMarket 的事件索引里没有 tx hash（索引只留区块高度），
+     所以链接指向**那个区块**，不是那笔交易。链接文字写 #区块号，不写「查看交易」——
+     点进去看到的是一个区块，文案得对得上。 */
+  function histLink(it) {
+    if (!it || it.blockNo == null || !CHAIN.explorer) return '<span class="dim">—</span>';
+    return '<a href="' + esc(CHAIN.explorer + '/block/' + it.blockNo) + '" target="_blank"'
+      + ' rel="noopener noreferrer" referrerpolicy="no-referrer" title="'
+      + esc(T('在区块浏览器里打开该区块')) + '">#' + esc(String(it.blockNo)) + '</a>';
+  }
+  function renderHistory() {
+    var box = $('histList');
+    if (!box) return;
+    var note = $('histNote');
+    if (H.loading && !H.items) {
+      if (note) note.textContent = '';
+      elNotice('histNotice', '');
+      box.innerHTML = '<div class="empty">' + esc(T('正在读取…')) + '</div>';
+      return;
+    }
+    if (H.failed) {
+      if (note) note.textContent = '';
+      elNotice('histNotice', T('未读到服务端交易记录，稍后再试。'), 'warn');
+      box.innerHTML = '<div class="empty">' + esc(T('暂无记录。')) + '</div>';
+      return;
+    }
+    var items = H.items || [];
+    if (note) note.textContent = items.length ? TF('{0} 条', items.length) : '';
+    elNotice('histNotice', H.stale ? T('索引正在重建，最新记录可能尚未收录。') : '');
+    if (!items.length) {
+      box.innerHTML = '<div class="empty">' + esc(T('暂无记录。')) + '</div>';
+      return;
+    }
+    /* 数字列右对齐 + tabular-nums（.num.r），与「我挂着的单」同一套。
+       窄屏靠 .tablewrap 自己横滚，页面本身不横向滚动。 */
+    box.innerHTML = '<div class="tablewrap"><table><thead><tr>'
+      + '<th>' + esc(T('时间')) + '</th><th>' + esc(T('事件')) + '</th>'
+      + '<th>' + esc(T('宇宙')) + '</th><th class="r">' + esc(T('价格')) + '</th>'
+      + '<th>' + esc(T('卖方')) + '</th><th>' + esc(T('买方')) + '</th>'
+      + '<th class="r">' + esc(T('交易')) + '</th></tr></thead><tbody>'
+      + items.map(function (it) {
+        var k = it && it.kind;
+        return '<tr><td class="dim">' + esc(histTime(it)) + '</td>'
+          + '<td><span class="evt ' + (EVT_CLASS[k] || '') + '">' + esc(evtLabel(k)) + '</span></td>'
+          + '<td>' + histAsset(it) + '</td>'
+          + '<td class="num r">' + histPrice(it) + '</td>'
+          + '<td>' + histAddr(it.seller) + '</td>'
+          + '<td>' + histAddr(k === 'sold' ? it.buyer : null) + '</td>'
+          + '<td class="r">' + histLink(it) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  if ($('histMine')) {
+    $('histMine').addEventListener('change', function () {
+      histMineTouched = true;
+      loadHistory();
+    });
   }
 
   /* ============================================================ BANG 数字条 */
@@ -3016,7 +3273,18 @@ img.uthumb[data-view]{cursor:zoom-in}
   // 点卡片图片 → 灯箱看大图。图不是按钮，走单独的委托
   document.addEventListener('click', function (ev) {
     var img = ev.target.closest ? ev.target.closest('img.uthumb[data-view]') : null;
-    if (img) openLightbox(img.getAttribute('data-view'));
+    if (img) { openLightbox(img.getAttribute('data-view')); return; }
+    // 点「图片未读取到」那块占位 → 立刻重取一次（自动重试的两次之外）
+    var ph = ev.target.closest ? ev.target.closest('.uthumb.ph[data-retry]') : null;
+    if (ph) retryThumb(ph.getAttribute('data-retry'));
+  });
+  // 占位块是 role=button，键盘也得能触发
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    var ph = ev.target && ev.target.closest ? ev.target.closest('.uthumb.ph[data-retry]') : null;
+    if (!ph) return;
+    ev.preventDefault();
+    retryThumb(ph.getAttribute('data-retry'));
   });
   function gotoOrigin(idSpec) {
     var d = shareDataOf(idSpec);
@@ -3867,13 +4135,16 @@ img.uthumb[data-view]{cursor:zoom-in}
     renderUniverses();
   });
   function showSec(name) {
-    ['mine', 'uni', 'list'].forEach(function (s) {
+    ['mine', 'uni', 'list', 'hist'].forEach(function (s) {
       $('sec-' + s).hidden = (s !== name);
     });
     var all = tabs.querySelectorAll('.tab');
     for (var i = 0; i < all.length; i++) {
       all[i].className = 'tab' + (all[i].getAttribute('data-sec') === name ? ' on' : '');
     }
+    /* 交易记录是服务端索引出的，跟链上那三块不是同一趟数据 ——
+       切过去时单独拉一次（页面首屏不拉：没人看的那一页不该占首屏的带宽）。 */
+    if (name === 'hist') loadHistory();
   }
 
   /* ============================================================ 装配 */
@@ -3906,6 +4177,10 @@ img.uthumb[data-view]{cursor:zoom-in}
     renderMine();
     renderUniverses();
     renderListForm();
+    /* 交易记录：钱包连上/断开时那个勾要跟着变，「我」的标记也要重标。
+       没拉过记录就什么都不画（切到那一页才第一次拉）。 */
+    syncHistMine();
+    if (H.items) renderHistory();
   }
 
   /* 一次完整刷新。任何一步失败都只让对应的块显示"读不到"，不把整页拖垮。
@@ -3914,6 +4189,8 @@ img.uthumb[data-view]{cursor:zoom-in}
      BSC 0.45 秒一个块，公开节点只让查几千块 ≈ 37 分钟，靠日志列 NFT 的话
      列表几乎永远是空的。日志在这里只用来补稀有度那一个徽标。 */
   function refresh() {
+    // 交易记录这一页正开着才刷它：藏着的那一页刷了也没人看，白打一次请求
+    if ($('sec-hist') && !$('sec-hist').hidden) loadHistory();
     S.card = {};         // cardOf 会被干预改写，每次刷新重读
     S.value = {};        // burnedOn / rescueOf 同理
     S.name = {};         // 名字会被改名改写，同理

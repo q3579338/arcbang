@@ -1872,6 +1872,138 @@ function recentSales(n) {
   return st.sales.slice(-k).reverse();
 }
 
+/* 时间线上同一块里的先后：挂 → 改价 → 收尾（撤/成交）。倒序输出时反过来读。 */
+const HIST_RANK = { listed: 0, priceChanged: 1, cancelled: 2, sold: 2 };
+
+/**
+ * GET /api/market/history?addr=&limit= 的实现 —— 把四种事件合成一条时间线。
+ *
+ * 数据全部来自索引已经有的两张表，**一次 RPC 都不打**：
+ *   挂单 / 撤单   ← state.listings（listedAt 是区块时间戳，endedAt/endedBy 是收尾那一下）
+ *   成交          ← state.sales（只留最近 maxSales 笔。更早的成交靠挂单上的
+ *                   endedBy === 'Sold' 补一条，**买家留 null** —— 那条流水已经滚出
+ *                   窗口了，宁可说「不知道买家是谁」，也不编一个）
+ *   改价          ← 没有。PriceChanged 只把 listings[id].price 改掉、不留流水
+ *                   （理由见 applyOne 里那段注释），所以这里**跳过**它。
+ *                   哪天索引开始留 state.priceChanges，下面那一段会自动把它合进来。
+ *
+ * 残桩（Listed 发生在索引起点之前）不出「挂单」那一条：它的 blockNo 记的是收尾事件的
+ * 高度，拿它当上架时间是假的。
+ *
+ * 与 listingsPage 同一条规矩：**不抛**。真出了 bug 回空 + stale，
+ * 市场页显示「暂无记录」，而不是 500。
+ *
+ * @param {object} q addr（可选，只留它当卖家或买家的）/ limit（默认 100，上限 500）
+ */
+function historyOf(q) {
+  q = q || {};
+  const addr = lc(q.addr);
+  const limit = Math.min(500, Math.max(1, Number(q.limit) || 100));
+  const out = { stale: isStale(), limit, total: 0, items: [] };
+  if (addr) out.addr = addr;
+  try {
+    const L = st.listings || {};
+    const items = [];
+    // 给了地址就只留跟他有关的那几条（卖方或买方）；没给就全都要
+    const mine = (seller, buyer) => !addr || lc(seller) === addr || lc(buyer) === addr;
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+    /* 成交先从 sales 出 —— 买家只有这张表里有 */
+    const soldIds = new Set();
+    for (const s of st.sales || []) {
+      const id = String(s.listingId);
+      soldIds.add(id);
+      if (!mine(s.seller, s.buyer)) continue;
+      const l = L[id];
+      items.push({
+        kind: 'sold',
+        listingId: id,
+        token: s.token != null ? s.token : (l ? l.token : null),
+        tokenId: s.tokenId != null ? s.tokenId : (l ? l.id : null),
+        price: s.price != null ? s.price : (l ? l.price : null),
+        seller: s.seller || (l ? l.seller : null),
+        buyer: s.buyer || null,
+        blockNo: s.blockNo,
+        at: s.at != null ? s.at : null
+      });
+    }
+
+    for (const id in L) {
+      const l = L[id];
+      if (!l || !mine(l.seller, null)) continue;
+      if (!l.partial && l.token != null) {
+        items.push({
+          kind: 'listed',
+          listingId: String(id),
+          token: l.token,
+          tokenId: l.id,
+          price: l.price,
+          seller: l.seller,
+          blockNo: l.blockNo,
+          at: l.listedAt != null ? l.listedAt : null
+        });
+      }
+      if (l.active === false && l.endedBy === 'Cancelled') {
+        items.push({
+          kind: 'cancelled',
+          listingId: String(id),
+          token: l.token,
+          tokenId: l.id,
+          price: l.price,
+          seller: l.seller,
+          blockNo: l.endedAt != null ? l.endedAt : l.blockNo,
+          at: null
+        });
+      }
+      /* 滚出 sales 窗口的老成交：补一条，买家留 null */
+      if (l.active === false && l.endedBy === 'Sold' && !soldIds.has(String(id))) {
+        items.push({
+          kind: 'sold',
+          listingId: String(id),
+          token: l.token,
+          tokenId: l.id,
+          price: l.price,
+          seller: l.seller,
+          buyer: null,
+          blockNo: l.endedAt != null ? l.endedAt : l.blockNo,
+          at: null
+        });
+      }
+    }
+
+    /* 改价：索引现在不留流水，这一段是空转（见上面那段注释）。
+       留着是为了「哪天开始留」时不用再回来改这里一次。 */
+    for (const c of st.priceChanges || []) {
+      const l = L[String(c.listingId)];
+      const seller = c.seller || (l ? l.seller : null);
+      if (!mine(seller, null)) continue;
+      items.push({
+        kind: 'priceChanged',
+        listingId: String(c.listingId),
+        token: c.token != null ? c.token : (l ? l.token : null),
+        tokenId: c.tokenId != null ? c.tokenId : (l ? l.id : null),
+        price: c.price != null ? c.price : (l ? l.price : null),
+        seller,
+        blockNo: c.blockNo,
+        at: c.at != null ? c.at : null
+      });
+    }
+
+    items.sort((a, b) => (num(b.blockNo) - num(a.blockNo))
+      || ((HIST_RANK[b.kind] || 0) - (HIST_RANK[a.kind] || 0))
+      || (num(b.listingId) - num(a.listingId)));
+    out.total = items.length;
+    out.items = items.slice(0, limit);
+    return out;
+  } catch (e) {
+    console.error('[marketindex] historyOf 出错：' + (e && e.message));
+    out.stale = true;
+    out.error = '索引查询出错';
+    out.items = [];
+    return out;
+  }
+}
+
 /* ============================================================ 后台补元数据
 
    每轮扫描之后顺手补几个还没缓存的活跃挂单。摊薄的是「第一个打开筛选的人」
@@ -1988,6 +2120,8 @@ module.exports = {
   startIndexer, stopIndexer, scanOnce,
   // 三条 API 的实现
   listingsPage, ownedOf, statusOf, recentSales,
+  // 市场页「交易记录」：挂单 / 改价 / 撤单 / 成交合成的一条时间线
+  historyOf,
   // 状态机与分片（marketindex-test.js 拿假 log 直接测这些）
   applyLogs, applyOne, decodeLog, chunkRanges, emptyState, seqOf, tokenKey,
   parseCraftedCard, parseCraftedEvent,

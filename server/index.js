@@ -1690,6 +1690,22 @@ async function handle(req, res, u) {
     }
   }
 
+  /* GET /api/market/history?addr=&limit= —— 市场页的「交易记录」。
+     挂单 / 改价 / 撤单 / 成交合成一条按区块倒序的时间线；addr 给了就只留跟他有关的。
+     与 owned 同一条规矩：地址不合法报 400（调用方给错了），索引没起来回 stale + 空表。 */
+  if (p === '/market/history' && req.method === 'GET') {
+    try {
+      const addr = String(u.searchParams.get('addr') || '');
+      if (addr && !/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+        return json(res, 400, { error: 'addr 不是一个地址' }, NOSTORE);
+      }
+      return json(res, 200, MI.historyOf({ addr: addr || null, limit: u.searchParams.get('limit') }), NOSTORE);
+    } catch (e) {
+      console.error('[market/history]', e);
+      return json(res, 200, { stale: true, total: 0, items: [], error: '索引暂时读不了' }, NOSTORE);
+    }
+  }
+
   // GET /api/market/status —— 索引落后多少、是不是旧的。前端靠 stale 决定要不要显示那行黄字
   if (p === '/market/status' && req.method === 'GET') {
     try { return json(res, 200, MI.statusOf(), NOSTORE); }

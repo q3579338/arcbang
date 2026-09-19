@@ -227,8 +227,11 @@
       "\"Verified\" means this NFT's parameters were recomputed and signed by the server, with the fingerprint written into the contract.",
     '这里的一切都不是投资建议，也不构成任何价值承诺。':
       'Nothing here is investment advice, and nothing here promises any value.',
-    '成交时先按 ERC-2981 支付版税（5%），再收取成交价 1% 的手续费，均由买家支付的金额中扣除。':
-      'At settlement an ERC-2981 royalty (5%) is paid first, then a 1% marketplace fee. Both are deducted from the amount the buyer pays.',
+    /* 2026-09-19 改定：**自家市场不收手续费**，成交只走 ERC-2981 的 5% 版税。
+       旧那条「再收 1% 手续费」的词条随中文原文一起删掉 —— 留着就是留一处
+       会被人当真的旧口径。 */
+    '成交时按 ERC-2981 支付 5% 版税，其余全部归卖家，市场不收手续费。':
+      'At settlement a 5% ERC-2981 royalty is paid; the rest goes to the seller. The market charges no fee.',
     '挂单前需一次性授权市场合约；成交前 NFT 始终留在你的钱包。仅支持带参数卡的宇宙上架。':
       'Listing requires a one-time approval of the marketplace contract. The NFT stays in your wallet until the sale settles, and only universes with a parameter card can be listed.',
     /* 唯一性口径 2026-08-21 改定：**不是全站唯一，是本系列内唯一** ——
@@ -449,6 +452,38 @@
     '未读到服务端物理索引，维度、常数与偏离度暂时无法筛选。点击「清空筛选」查看全部。':
       'The server physics index could not be read, so dimension, constants and deviation cannot be filtered right now. Use "Clear filters" to see all of them.',
     '没有符合这些物理条件的宇宙。可更换维度档位，或点击「清空筛选」查看全部。':
-      'No universe matches these physical conditions. Try another dimension tier, or use "Clear filters" to see all of them.'
+      'No universe matches these physical conditions. Try another dimension tier, or use "Clear filters" to see all of them.',
+
+    /* ---------------- 交易记录（第四个标签页） ----------------
+       数据来自服务端索引 /api/market/history：挂单 / 改价 / 撤单 / 成交一条时间线。
+
+       **事件那一列的四个词不在这里** —— 它们是 market.html 里的 EVT_EN：
+         挂单 → Listed   改价 → Price changed   撤单 → Cancelled   成交 → Sold
+       因为「挂单 / 撤单 / 改价」这三个 key 在核心词典（web/i18n.js）里已经是
+       **按钮**的意思（Listings / Cancel listing / Change price）。同一个 key 两种
+       译法只能就近覆盖（与 TV 同一条路子），收进词典就会把挂单标签页和
+       撤单按钮一起带歪。 */
+    '交易记录': 'Trade history',
+    '只看我的': 'Only mine',
+    '暂无记录。': 'No records yet.',
+    '正在读取…': 'Loading…',
+    '时间': 'Time',
+    '事件': 'Event',
+    '卖方': 'Seller',
+    '买方': 'Buyer',
+    '交易': 'Transaction',
+    '我': 'Me',
+    '{0} 条': '{0} records',
+    '区块 {0}': 'Block {0}',
+    /* 'token #{0}' 两种语言一个样（token 是合约里的字段名，不翻），
+       但还是收一条：漏收的句子会退回中文原文，而这一条原文就是它自己。
+       '造物宇宙 #{0}' 上面已经收过了，不再收第二遍。 */
+    'token #{0}': 'token #{0}',
+    '在区块浏览器里打开该区块': 'Open this block in the block explorer',
+    '未读到服务端交易记录，稍后再试。': 'The trade history could not be read from the server. Try again shortly.',
+    '索引正在重建，最新记录可能尚未收录。': 'The index is being rebuilt, so the newest records may not be included yet.',
+    /* 缩略图取不到时那块占位的提示。图本身没问题时（两个端点都是 200）
+       点一下就回来了，所以这句要写成「可以再试」，不是「失败了」。 */
+    '点击重新读取图片': 'Tap to load the image again'
   }, 'market');
 })(typeof window !== 'undefined' ? window : this);

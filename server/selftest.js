@@ -2605,6 +2605,55 @@ function call(method, url, body, headers) {
     ok('分片跨度 ≤ 5,000，远在 Arc 的 20,000 块上限之内',
       MI3._internals.CFG.chunk <= 5000
       && MI3.chunkRanges(1, 45000, MI3._internals.CFG.chunk).every(([a, b]) => b - a + 1 <= 20000));
+
+    /* ---- 交易记录（historyOf）：拿假 state 直接测，不打一次 RPC ----
+       市场页第四个标签页就靠这一条。它读的是索引已经有的两张表
+       （listings + sales），把四种事件合成一条按区块倒序的时间线。 */
+    {
+      const stSaved = MI3._internals.getState();
+      const stH = MI3.emptyState();
+      // #1：挂在 100 块、104 块成交（买家只有 sales 那张表里有）
+      stH.listings['1'] = {
+        seller: SELLER, token: UNI, id: '11', price: PRICE.toString(), inBang: false,
+        is1155: false, active: false, listedAt: 1700000000, blockNo: 100, seq: 1,
+        endedAt: 104, endedBy: 'Sold'
+      };
+      // #2：挂在 101 块、102 块被撤
+      stH.listings['2'] = {
+        seller: SELLER, token: UNI, id: '22', price: PRICE.toString(), inBang: false,
+        is1155: false, active: false, listedAt: 1700000100, blockNo: 101, seq: 2,
+        endedAt: 102, endedBy: 'Cancelled'
+      };
+      stH.sales.push({
+        listingId: '1', price: PRICE.toString(), inBang: false, buyer: BUYER, seller: SELLER,
+        token: UNI, tokenId: '11', blockNo: 104, at: 1700000400
+      });
+      MI3._internals.setState(stH);
+
+      const h = MI3.historyOf({});
+      ok('四种事件合成一条时间线，按区块倒序：成交 104 → 撤单 102 → 挂单 101 → 挂单 100',
+        h.total === 4
+        && h.items.map((i) => i.kind + '@' + i.blockNo).join(' ')
+           === 'sold@104 cancelled@102 listed@101 listed@100'
+        && h.items[0].buyer === BUYER && h.items[0].tokenId === '11'
+        && h.items[0].at === 1700000400 && h.items[3].at === 1700000000,
+        h.items.map((i) => i.kind + '@' + i.blockNo).join(' '));
+
+      const hb = MI3.historyOf({ addr: BUYER.toUpperCase() });
+      const hs = MI3.historyOf({ addr: SELLER });
+      ok('给了 addr 只留跟他有关的（买家看得到那一笔成交，卖家四条都看得到；地址不分大小写）',
+        hb.total === 1 && hb.items[0].kind === 'sold' && hb.items[0].buyer === BUYER
+        && hs.total === 4 && MI3.historyOf({ addr: PASSER }).total === 0);
+
+      /* 索引没起来（空 state、env 也没配）：回 stale + 空表，**不抛** ——
+         与 listingsPage 同一条规矩，市场页据此显示「暂无记录」而不是白屏。 */
+      MI3._internals.setState(MI3.emptyState());
+      const h0 = MI3.historyOf({ limit: 9999 });
+      ok('索引没起来回 {stale:true, items:[]}，不抛错；limit 夹在 1…500',
+        h0.stale === true && Array.isArray(h0.items) && h0.items.length === 0
+        && h0.limit === 500 && MI3.historyOf({ limit: 0 }).limit === 100);
+      MI3._internals.setState(stSaved);
+    }
   }
   {
     /* ==================================================================
@@ -4434,8 +4483,13 @@ function call(method, url, body, headers) {
       ok('配了钱包地址也算后台开着（两条路一条都没配才回 404）',
         /adminTokenConfigured[\s\S]{0,220}adminWalletConfigured\(\)/.test(idx));
       const adm = fs.readFileSync(path.join(__dirname, '..', 'web', 'admin-arc.html'), 'utf8');
-      ok('管理员页有「用钱包登录」，口令那条路保留',
-        adm.indexOf('btnWallet') > 0 && adm.indexOf('btnLogin') > 0 && adm.indexOf('/admin/nonce') > 0);
+      /* 2026-09-18 「后台只留钱包签名登录：去掉口令入口」之后，btnLogin 这个 id
+         在页面上已经没有了 —— 这一条断言当时忘了跟着改，从那以后一直红着。
+         口径改成现在这个：钱包那条路在，**口令入口不许回来**（回来就是又开了一扇
+         只靠一串字符串的后台门）。 */
+      ok('管理员页只留钱包签名登录：btnWallet + /admin/nonce 在，口令入口不在',
+        adm.indexOf('btnWallet') > 0 && adm.indexOf('/admin/nonce') > 0
+        && adm.indexOf('btnLogin') < 0);
       ok('管理员页有「导出 TOP 100」', adm.indexOf('btnCsvTop') > 0 && adm.indexOf("downloadCsv(100)") > 0);
     }
 
