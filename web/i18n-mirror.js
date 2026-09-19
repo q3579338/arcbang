@@ -213,15 +213,15 @@
     '时间轴回到现在': 'Timeline back to now',
     '时间轴已经停在"现在"': 'The timeline is already at “now”',
     '一个玩笑式的演示，不是计算结果': 'A joke of a demo, not a computed result',
-    '彩蛋（致敬）': 'Easter egg (homage)',
-    '彩蛋（致敬） — Stack overflow': 'Easter egg (homage) — Stack overflow',
-    '彩蛋（致敬）：把“模拟宇宙里再模拟一个宇宙”一路递归下去，每一层都要把上一层的现场压入堆栈，没有终止条件，堆栈迟早耗尽——这是个玩笑式的演示，不是本程序的计算结果。限制在别处：未来不可计算——混沌系统对初始条件敏感（Lorenz 1963），量子测量结果本身随机。':
-      'Easter egg (homage): recurse “simulate a universe inside the simulated universe” all the way down, and every level has to push the caller’s state onto the stack. With no termination condition the stack runs out sooner or later — a joke of a demo, not a result this program computed. The limit is elsewhere: the future cannot be computed, because chaotic systems are sensitive to initial conditions (Lorenz 1963) and quantum measurement outcomes are random in themselves.',
+    '彩蛋': 'Easter egg',
+    '彩蛋 — Stack overflow': 'Easter egg — Stack overflow',
+    '彩蛋：把“模拟宇宙里再模拟一个宇宙”一路递归下去，每一层都要把上一层的现场压入堆栈，没有终止条件，堆栈迟早耗尽——这是个玩笑式的演示，不是本程序的计算结果。限制在别处：未来不可计算——混沌系统对初始条件敏感（Lorenz 1963），量子测量结果本身随机。':
+      'Easter egg: recurse “simulate a universe inside the simulated universe” all the way down, and every level has to push the caller’s state onto the stack. With no termination condition the stack runs out sooner or later — a joke of a demo, not a result this program computed. The limit is elsewhere: the future cannot be computed, because chaotic systems are sensitive to initial conditions (Lorenz 1963) and quantum measurement outcomes are random in themselves.',
     '看一眼递归': 'Watch the recursion',
     '确定': 'OK',
     ' 层 · Stack overflow': ' levels down · Stack overflow',
-    '彩蛋（致敬）：每一层都在模拟下一层，每次调用都要把上层现场压入堆栈——没有终止条件，堆栈迟早耗尽。':
-      'Easter egg (homage): every level simulates the next, and every call pushes the caller’s state onto the stack — with no termination condition the stack runs out sooner or later.',
+    '彩蛋：每一层都在模拟下一层，每次调用都要把上层现场压入堆栈——没有终止条件，堆栈迟早耗尽。':
+      'Easter egg: every level simulates the next, and every call pushes the caller’s state onto the stack — with no termination condition the stack runs out sooner or later.',
     '限制在别处：未来不可计算——混沌对初始条件敏感（Lorenz 1963），量子测量结果本身随机。':
       'The limit is elsewhere: the future cannot be computed — chaos is sensitive to initial conditions (Lorenz 1963), and quantum measurement outcomes are random in themselves.',
     '按 Esc / 点击 结束跟踪': 'Esc or click to stop the trace',
@@ -697,8 +697,8 @@
     '模拟给出的是"像我们的宇宙"，不可能复现我们这一个宇宙': 'What the simulation gives is "a universe like ours"; reproducing this particular universe is impossible',
     '相同参数一定得到相同结果（决定论：参数哈希即随机种子），但那是同一套统计规律下的另一次实现，不是我们这一个宇宙的历史。':
       'The same parameters always give the same result (determinism: the parameter hash is the random seed), but that is another realisation under the same statistical laws — not the history of our own universe.',
-    '界面与文案致敬刘慈欣《镜子》的"创世游戏 / 镜像"体验。小说只提供界面与文案的参考，不提供物理；物理部分全部是真实计算，参数取物理学界公认的测量值。':
-      'The interface and its wording are an homage to the "creation game / mirror" experience in Liu Cixin’s Mirror. The novel is a reference for the interface and the wording only, never for the physics: everything physical here is really computed, from measured values that physics accepts.',
+    '界面采用「创世游戏」式的交互：选一个区块，引爆，进入这个宇宙。物理推演由引擎完成，界面只负责呈现。':
+      'The interface follows a creation-game pattern: pick a block, detonate it, enter that universe. The physics is computed by the engine; the interface only presents it.',
     '有量纲常数（光速 c、引力常数 G、普朗克常数 ħ、电子电量 e）在不同宇宙里可以给出数值，但数值取决于单位约定：固定哪三个量、让哪两个随 α 与 α_G 变，是约定不是物理。分析面板可在约定 A（固定 e、ħ、m_p）/ B（固定 c、e、m_p）/ C（固定 c、ħ、m_p）之间切换，同一个宇宙会得到不同的 c、G、ħ、e。跨宇宙真正不变的物理内容是无量纲量 α=e²/(4πε₀ħc) 与 α_G=Gm_p²/(ħc)（Duff 2002；Albrecht & Magueijo 1999）。':
       'Dimensional constants (the speed of light c, the gravitational constant G, the Planck constant ħ, the electron charge e) can be given numerical values in another universe, but those values depend on the choice of units: which three quantities you hold fixed, and which two you let vary with α and α_G, is a convention rather than physics. The analysis panel switches between convention A (fix e, ħ, m_p), B (fix c, e, m_p) and C (fix c, ħ, m_p), and one and the same universe then comes out with different values of c, G, ħ and e. What is genuinely invariant across universes is the dimensionless content: α=e²/(4πε₀ħc) and α_G=Gm_p²/(ħc) (Duff 2002; Albrecht & Magueijo 1999).',
     /* 标签图例 */

@@ -3107,10 +3107,17 @@
     if (!S.anDeferred) {
       S.anDeferred = true;
       var anb = $('anBody'); if (anb && !anb.innerHTML) anb.innerHTML = '<div class="rp-legend">' + esc(T('正在生成计算报告…')) + '</div>';
-      (window.requestAnimationFrame || setTimeout)(function () {
+      /* rAF 在后台标签页、被翻译插件改写 DOM、或某些卡顿帧里可能迟迟不来（2026-09-20 用户：面板一直停在
+         「正在生成计算报告」）。再挂一个 setTimeout 兜底，谁先到谁跑，只跑一次。 */
+      var ran = false;
+      var run = function () {
+        if (ran) return;
+        ran = true;
         S.anDeferred = false;
         if (S.analysisOpen && S.sim === sim) openAnalysis();
-      });
+      };
+      (window.requestAnimationFrame || setTimeout)(run);
+      setTimeout(run, 150);
       return;
     }
     $('anSub').textContent = (sim.idLabel || '') + ' · seed ' + ('00000000' + sim.seed.toString(16)).slice(-8).toUpperCase() + T(' · 计算报告');

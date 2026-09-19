@@ -2978,8 +2978,8 @@
        只刷一半的话按钮会按上一个地址的资格显示。 */
     if ((W.addr || null) !== PH.addr) phaseLoad();
     if (!W.addr || !C.contract()) { W.fc = null; W.pc = null; W.usedFree = null; walletSync(); return; }
-    if (C.paidStatus) C.paidStatus(a).then(function (st) { if (W.addr === a) { W.pc = st; walletSync(); } }, function () { });
     var a = W.addr;
+    if (C.paidStatus) C.paidStatus(a).then(function (st) { if (W.addr === a) { W.pc = st; walletSync(); } }, function () { });
     C.freeStatus(a).then(function (st) {
       if (W.addr !== a) return;                             // 问的过程中又换了地址就作废
       W.fc = st;

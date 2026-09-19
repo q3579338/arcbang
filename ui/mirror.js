@@ -568,11 +568,11 @@
       '<label class="mb-scale">' + TR('比例') + ' <select id="mbScale" aria-label="' + esc(TR('时间比例')) + '"></select></label>' +
       '<button type="button" id="mbExtend" class="mb-btn" aria-pressed="false">' + TR('拉出未来时段') + '</button>' +
       '<span class="mb-tlabel" id="mbTLabel"></span>' +
-      '<span class="mb-tstep"><button type="button" class="mb-btn" id="mbBack" aria-label="' + esc(TR('时间后退')) + '">◀</button><button type="button" class="mb-btn" id="mbFwd" aria-label="' + esc(TR('时间前进')) + '">▶</button><button type="button" class="mb-btn" id="mbNow">' + TR('回到现在') + '</button><button type="button" class="mb-btn mb-egg" id="mbEgg" title="' + esc(TR('一个玩笑式的演示，不是计算结果')) + '">' + TR('彩蛋（致敬）') + '</button></span>' +
+      '<span class="mb-tstep"><button type="button" class="mb-btn" id="mbBack" aria-label="' + esc(TR('时间后退')) + '">◀</button><button type="button" class="mb-btn" id="mbFwd" aria-label="' + esc(TR('时间前进')) + '">▶</button><button type="button" class="mb-btn" id="mbNow">' + TR('回到现在') + '</button><button type="button" class="mb-btn mb-egg" id="mbEgg" title="' + esc(TR('一个玩笑式的演示，不是计算结果')) + '">' + TR('彩蛋') + '</button></span>' +
       '</div>' +
       '<div class="mb-track"><div class="mb-future" id="mbFuture" hidden></div><div class="mb-zero" id="mbZero"><span>' + TR('零时标') + '</span></div><input type="range" id="mbRange" min="0" max="100000" step="1" value="100000" aria-label="' + esc(TR('时间滚动条')) + '"><div class="mb-endnote">' + TR('零时标之后：未来不可计算——混沌与量子随机') + '</div></div>';
     var soDlg = el('div', 'win-dialog'); soDlg.setAttribute('role', 'alertdialog'); soDlg.setAttribute('aria-modal', 'true'); soDlg.setAttribute('aria-labelledby', 'soTitle'); soDlg.hidden = true;
-    soDlg.innerHTML = '<div class="win-title" id="soTitle"><span class="win-icon">!</span>' + TR('彩蛋（致敬） — Stack overflow') + '</div><div class="win-body"><div class="win-x">✕</div><div class="win-msg"><b>Stack overflow</b><br><span class="win-sub">' + TR('彩蛋（致敬）：把“模拟宇宙里再模拟一个宇宙”一路递归下去，每一层都要把上一层的现场压入堆栈，没有终止条件，堆栈迟早耗尽——这是个玩笑式的演示，不是本程序的计算结果。限制在别处：未来不可计算——混沌系统对初始条件敏感（Lorenz 1963），量子测量结果本身随机。') + '</span></div><div class="win-btns"><button type="button" class="win-btn" id="soTrace">' + TR('看一眼递归') + '</button><button type="button" class="win-btn" id="soOK">' + TR('确定') + '</button></div></div>';
+    soDlg.innerHTML = '<div class="win-title" id="soTitle"><span class="win-icon">!</span>' + TR('彩蛋 — Stack overflow') + '</div><div class="win-body"><div class="win-x">✕</div><div class="win-msg"><b>Stack overflow</b><br><span class="win-sub">' + TR('彩蛋：把“模拟宇宙里再模拟一个宇宙”一路递归下去，每一层都要把上一层的现场压入堆栈，没有终止条件，堆栈迟早耗尽——这是个玩笑式的演示，不是本程序的计算结果。限制在别处：未来不可计算——混沌系统对初始条件敏感（Lorenz 1963），量子测量结果本身随机。') + '</span></div><div class="win-btns"><button type="button" class="win-btn" id="soTrace">' + TR('看一眼递归') + '</button><button type="button" class="win-btn" id="soOK">' + TR('确定') + '</button></div></div>';
     var bannerEl = null;
     if (BANNER_FULL) {
       bannerEl = el('div', 'mb-banner');
@@ -2156,7 +2156,7 @@
       }
       ctx.restore();
       ctx.fillStyle = '#E9E6F5'; ctx.font = '14px ' + SANS; ctx.textAlign = 'center';
-      ctx.fillText(TR('彩蛋（致敬）：每一层都在模拟下一层，每次调用都要把上层现场压入堆栈——没有终止条件，堆栈迟早耗尽。'), W / 2, H - 120);
+      ctx.fillText(TR('彩蛋：每一层都在模拟下一层，每次调用都要把上层现场压入堆栈——没有终止条件，堆栈迟早耗尽。'), W / 2, H - 120);
       ctx.fillText(TR('限制在别处：未来不可计算——混沌对初始条件敏感（Lorenz 1963），量子测量结果本身随机。'), W / 2, H - 96);
       ctx.fillStyle = '#8B8FA8'; ctx.font = '12px ' + SANS; ctx.fillText(TR('按 Esc / 点击 结束跟踪'), W / 2, H - 72);
       ctx.textAlign = 'left';
