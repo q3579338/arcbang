@@ -101,7 +101,7 @@ tr.dis td{background:#FBF1F1}
   <!-- 没登录时只有这一块 -->
   <div class="card" id="login">
     <h2>登录</h2>
-    <p class="dim">两条路任选一条。会话存在这台机器的浏览器里。</p>
+    <p class="dim">仅支持管理员钱包签名登录。会话存在这台机器的浏览器里，切换钱包账户即退出。</p>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
       <button class="btn pri" type="button" id="btnWallet">用钱包登录</button>
@@ -109,11 +109,6 @@ tr.dis td{background:#FBF1F1}
     </div>
     <p class="msg" id="walletMsg"></p>
 
-    <p class="dim" style="margin-top:18px">或者用口令（服务端 <span class="mono">ARCBANG_ADMIN_TOKEN</span> 里那一串）：</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-      <input class="in mono" id="tok" type="password" autocomplete="off" placeholder="口令" style="flex:1 1 260px">
-      <button class="btn" type="button" id="btnLogin">进去</button>
-    </div>
     <p class="msg" id="loginMsg"></p>
   </div>
 
@@ -411,10 +406,10 @@ tr.dis td{background:#FBF1F1}
     }, function (e) {
       if (e.status === 404) {
         $('login').hidden = false; $('panel').hidden = true;
-        msg('loginMsg', '后台没开：服务端没配 ARCBANG_ADMIN_TOKEN。', 'err');
+        msg('loginMsg', '后台未启用：服务端未配置管理员钱包地址（ARCBANG_ADMIN_ADDRS）。', 'err');
       } else if (e.status === 401) {
         $('login').hidden = false; $('panel').hidden = true;
-        msg('loginMsg', '口令不对。', 'err');
+        if (tok()) msg('loginMsg', '会话已失效，请重新用钱包登录。', 'err');
       } else {
         msg('listMsg', (e && e.message) || String(e), 'err');
       }
@@ -457,6 +452,7 @@ tr.dis td{background:#FBF1F1}
       });
     }).then(function (j) {
       setTok(j.token);
+      try { localStorage.setItem(KEY + ':addr', String(j.addr).toLowerCase()); } catch (e) { }
       msg('walletMsg', '已登录：' + j.addr.slice(0, 6) + '…' + j.addr.slice(-4), 'ok');
       return load();
     }).catch(function (e) {
@@ -464,11 +460,22 @@ tr.dis td{background:#FBF1F1}
     }).then(function () { btn.disabled = false; });
   });
 
-  $('btnLogin').addEventListener('click', function () {
-    setTok($('tok').value.trim());
-    msg('loginMsg', '');
-    load();
-  });
+  /* 钱包账户一换就退出：会话是登录那一刻那把钱包签出来的，换了账户还留着会话等于把后台留给下一个人。 */
+  (function watchAccount() {
+    var p = prov();
+    if (!p || !p.on) return;
+    p.on('accountsChanged', function (a) {
+      var now = (a && a[0]) ? String(a[0]).toLowerCase() : '';
+      var mine = ''; try { mine = localStorage.getItem(KEY + ':addr') || ''; } catch (e) { }
+      if (!tok()) return;
+      if (now !== mine) {
+        setTok('');
+        try { localStorage.removeItem(KEY + ':addr'); } catch (e) { }
+        $('login').hidden = false; $('panel').hidden = true;
+        msg('loginMsg', '钱包账户已切换，会话已退出。请用管理员钱包重新登录。', 'err');
+      }
+    });
+  })();
   $('tok').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') $('btnLogin').click(); });
   $('btnOut').addEventListener('click', function () { setTok(''); location.reload(); });
   $('btnReload').addEventListener('click', function () { load(); });

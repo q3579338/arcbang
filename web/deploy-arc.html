@@ -1117,8 +1117,15 @@ function fmtUsdc(hex) {
 function wdBalance() {
   var c = wdContract();
   if (!c) { msg($('msg8'), '先填 ArcUniverse 合约地址。', 'err'); return Promise.reject(new Error('no contract')); }
+  if (!S.prov || !S.acct) { msg($('msg8'), '先在第 1 步连接钱包并切到 ' + NET().label + '。', 'err'); return Promise.reject(new Error('no wallet')); }
   $('inWdContract').value = c;
-  return Promise.all([req('eth_getBalance', [c, 'latest']), readAddr(c, 'owner()')]).then(function (r) {
+  /* 先核链：钱包停在别的链上时 eth_call 回 0x，看起来像「合约没有 owner」，其实是问错了链。 */
+  return req('eth_chainId', []).then(function (id) {
+    if (String(id).toLowerCase() !== NET().hex) {
+      throw new Error('钱包当前在 chainId ' + parseInt(id, 16) + '，不是 ' + NET().label + '（' + NET().id + '）。请先在第 1 步切链。');
+    }
+    return Promise.all([req('eth_getBalance', [c, 'latest']), readAddr(c, 'owner()')]);
+  }).then(function (r) {
     $('tbl8').hidden = false;
     $('v8bal').textContent = fmtUsdc(r[0]);
     $('v8owner').textContent = r[1] || '—';
