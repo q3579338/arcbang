@@ -2695,9 +2695,14 @@ function call(method, url, body, headers) {
       for (const k of keys) save[k] = process.env[k];
       for (const k of keys) delete process.env[k];
       const P0 = ALX.pointsTable();
-      ok('默认分值：登记 10 / 转发 30 / 邀请 20（上限 20 人）/ 分享 5（上限 5 天）',
-        P0.register === 10 && P0.repost === 30 && P0.invite === 20 && P0.inviteMax === 20
-        && P0.share === 5 && P0.shareMaxDays === 5, JSON.stringify(P0));
+      ok('默认分值：登记 10 / 关注 10 / 互动置顶推 50 / 其他官方推 20 / 邀请 20（上限 20 人）',
+        P0.register === 10 && P0.follow === 10 && P0.engage === 50 && P0.engagePost === 20
+        && P0.invite === 20 && P0.inviteMax === 20, JSON.stringify(P0));
+      ok('引爆并广播：每次 5 分，每日 3 次，累计 15 次（2026-09-19 改口径）',
+        P0.share === 5 && P0.sharePerDay === 3 && P0.shareMax === 15, JSON.stringify(P0));
+      ok('引爆计分：每次 1 分，每日 5 分封顶，两次之间至少隔 3 分钟',
+        P0.bang === 1 && P0.bangPerDay === 5 && P0.bangMax === 50 && P0.bangIntervalMin === 3,
+        JSON.stringify(P0));
       /* 2026-09-19 改口径：先到先得不再看名次（FREE_TOP 默认 0 = 不限），
          只看「除登记外至少完成一项任务」。白名单那道线还在。 */
       ok('默认名额线：TOP 100 进白名单；先到先得不限名次（看有没有做任务）',
@@ -2772,19 +2777,24 @@ function call(method, url, body, headers) {
     /* ---- 积分：四项各算各的，未核的一分不给 ---- */
     {
       const s1 = AL.scoreOf(a1);
-      ok('刚登记 = 10 分（登记那一项），其余三项都是 0',
-        s1.total === 10 && s1.pts.register === 10 && s1.pts.repost === 0
-        && s1.pts.invite === 0 && s1.pts.share === 0, JSON.stringify(s1.pts));
+      ok('刚登记 = 10 分（登记那一项），其余几项都是 0',
+        s1.total === 10 && s1.pts.register === 10 && s1.pts.engage === 0
+        && s1.pts.follow === 0 && s1.pts.invite === 0 && s1.pts.share === 0, JSON.stringify(s1.pts));
       ok('没登记过的地址不上榜、0 分', AL.scoreOf(a3).registered === false && AL.scoreOf(a3).total === 0);
       AL.verify(AL.codeOf(a1), { repost: true });
-      ok('只打转发勾 → +30 分（40 分）', AL.scoreOf(a1).total === 40 && AL.isVerified(a1) === true);
-      ok('verify 幂等：同一个勾再打一次还是 40 分',
-        AL.verify(a1, { repost: true }).already === true && AL.scoreOf(a1).total === 40);
+      /* 2026-09-19：点赞 / 转发 / 评论**一体计分** —— 只打转发勾一分不给，
+         分是整条推文的（置顶推 50），三项到齐才算。 */
+      ok('只打转发勾 → 还是 10 分（互动要三项到齐才给分）',
+        AL.scoreOf(a1).total === 10 && AL.isVerified(a1) === true
+        && AL.scoreOf(a1).engaged === false, String(AL.scoreOf(a1).total));
+      ok('verify 幂等：同一个勾再打一次还是 10 分',
+        AL.verify(a1, { repost: true }).already === true && AL.scoreOf(a1).total === 10);
       ok('**verify 不发名额**：它只加分（名单由榜算，不是这里发的）',
         typeof AL.verify(a1).tier === 'undefined');
-      ok('不带参数的 verify 把三连一起打上 → 10+10+30+10 = 60', AL.scoreOf(a1).total === 60);
+      ok('不带参数的 verify 把四个勾一起打上 → 10 + 关注 10 + 互动 50 = 70',
+        AL.scoreOf(a1).total === 70 && AL.scoreOf(a1).engaged === true, String(AL.scoreOf(a1).total));
       AL.unverify(a1);
-      ok('不带参数的 unverify 把三连一起撤掉 → 退回 10 分',
+      ok('不带参数的 unverify 把勾一起撤掉 → 退回 10 分',
         AL.scoreOf(a1).total === 10 && AL.isVerified(a1) === false);
       AL.verify(a1, { repost: true });
     }
@@ -2798,7 +2808,7 @@ function call(method, url, body, headers) {
       AL.verify(AL.codeOf(a2));
       ok('被邀请人核过之后才算有效邀请 → 邀请人 +20 分',
         AL.validInviteCount(a1) === 1 && AL.scoreOf(a1).pts.invite === 20
-        && AL.scoreOf(a1).total === AL.scoreOf(a1).pts.register + AL.scoreOf(a1).pts.repost + 20);
+        && AL.scoreOf(a1).total === AL.scoreOf(a1).pts.register + AL.scoreOf(a1).pts.engage + 20);
       /* 上限：把 inviteMax 调成 1，再拉一个人进来也不再加分 */
       const savedMax = process.env.ARCBANG_PTS_INVITE_MAX;
       process.env.ARCBANG_PTS_INVITE_MAX = '1';
@@ -2827,18 +2837,26 @@ function call(method, url, body, headers) {
       const before = AL.scoreOf(a2).total;
       const s1 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'ab'.repeat(32) }, '1.1.1.1', day0);
       ok('第一次分享 → +5 分', s1.status === 200 && AL.scoreOf(a2).total === before + 5);
+      /* 2026-09-19 改口径：**每日 3 次、累计 15 次**，同一个区块只计一次。 */
+      const sDup = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'ab'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
+      ok('同一个区块再广播 → already，不再加分（一次引爆只算一次）',
+        sDup.body.already === true && AL.scoreOf(a2).total === before + 5);
       const s2 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cd'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
-      ok('同一天第二次（换个哈希也一样）→ already，不再加分',
-        s2.body.already === true && AL.scoreOf(a2).total === before + 5);
-      AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cd'.repeat(32) }, '1.1.1.1', day0 + 86400e3);
-      ok('第二天再分享 → 又 +5', AL.scoreOf(a2).total === before + 10 && AL.shareDaysOf(a2) === 2);
-      /* 上限：把 shareMaxDays 调成 2，第三天就不再加分也不再写盘 */
-      const savedD = process.env.ARCBANG_PTS_SHARE_MAX_DAYS;
-      process.env.ARCBANG_PTS_SHARE_MAX_DAYS = '2';
-      const s4 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cd'.repeat(32) }, '1.1.1.1', day0 + 2 * 86400e3);
-      ok('到上限之后 → capped，天数不再增长（也不白写盘）',
-        s4.body.capped === true && AL.shareDaysOf(a2) === 2);
-      if (savedD === undefined) delete process.env.ARCBANG_PTS_SHARE_MAX_DAYS; else process.env.ARCBANG_PTS_SHARE_MAX_DAYS = savedD;
+      ok('同一天换个区块 → 又 +5（一天能做 3 次）',
+        s2.body.counted === true && AL.scoreOf(a2).total === before + 10);
+      AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'ce'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
+      const s3 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'cf'.repeat(32) }, '1.1.1.1', day0 + 3600e3);
+      ok('当天第 4 次 → capped:"day"，不再加分',
+        s3.body.capped === 'day' && AL.scoreOf(a2).total === before + 15);
+      AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'da'.repeat(32) }, '1.1.1.1', day0 + 86400e3);
+      ok('第二天能接着做 → 又 +5', AL.scoreOf(a2).total === before + 20 && AL.shareDaysOf(a2) === 2);
+      /* 总上限：把累计次数调成 4，第 5 次就不再加分也不再写盘 */
+      const savedD = process.env.ARCBANG_PTS_SHARE_MAX;
+      process.env.ARCBANG_PTS_SHARE_MAX = '4';
+      const s4 = AL.share({ address: a2, sig: signFor(A2), hash: '0x' + 'db'.repeat(32) }, '1.1.1.1', day0 + 2 * 86400e3);
+      ok('累计到顶 → capped:"total"，次数不再增长（也不白写盘）',
+        s4.body.capped === 'total' && AL.sharesOf(a2).counted === 4);
+      if (savedD === undefined) delete process.env.ARCBANG_PTS_SHARE_MAX; else process.env.ARCBANG_PTS_SHARE_MAX = savedD;
       ok('分享的「天」按 UTC 算（服务器换时区不会多送一天）',
         ALX.dayOf(Date.parse('2026-10-01T23:59:59Z')) === '2026-10-01'
         && ALX.dayOf(Date.parse('2026-10-02T00:00:01Z')) === '2026-10-02');
@@ -2848,8 +2866,10 @@ function call(method, url, body, headers) {
     {
       const rows = AL.board().rows;
       ok('榜上只有登记过的人', rows.length === 3);
-      ok('积分降序：邀请了两个人的 a1 排第一',
-        rows[0].addr === a1 && AL.rankOf(a1) === 1, JSON.stringify(rows.map((r) => [r.short, r.points])));
+      ok('积分降序：分最高的排第一，名次和榜的顺序对得上',
+        rows[0].points >= rows[1].points && rows[1].points >= rows[2].points
+        && AL.rankOf(rows[0].addr) === 1 && AL.rankOf(rows[2].addr) === 3,
+        JSON.stringify(rows.map((r) => [r.short, r.points])));
       /* 同分并列：a3 和另一个同分的人，先登记的在前。造一个同分的新人来对比。 */
       const A4 = new Wallet('0x' + '34'.repeat(32));
       const a4 = A4.address.toLowerCase();
@@ -2943,25 +2963,30 @@ function call(method, url, body, headers) {
       const A9 = new Wallet('0x' + '39'.repeat(32));
       ok('没登记的人：下一步是登记', AL.nextStep(A9.address).key === 'register');
       AL.register({ address: A9.address, xHandle: 'eve', sig: A9.signMessageSync(ALX.registerMessage(A9.address)) }, '5.5.5.5');
-      ok('登记完三连一个没核：下一步是关注（三连按 关注 → 转发 → 点赞 排）',
+      ok('登记完什么都没核：下一步是关注',
         AL.nextStep(A9.address).key === 'follow');
       AL.verify(A9.address.toLowerCase(), { follow: true });
-      ok('关注核过了：下一步是转发', AL.nextStep(A9.address).key === 'repost');
+      ok('关注核过了：下一步是推文互动（一条推文一张卡，指第一条没做完的）',
+        AL.nextStep(A9.address).key === 'engage', JSON.stringify(AL.nextStep(A9.address)));
       AL.verify(A9.address.toLowerCase());
-      ok('三连都核过了：下一步是邀请', AL.nextStep(A9.address).key === 'invite');
+      ok('互动也核过了：下一步是邀请', AL.nextStep(A9.address).key === 'invite');
     }
 
     /* ---- CSV 导出：人工比对 X 评论要用 ---- */
     {
       const csv = AL.appliedCsv().trim().split('\n');
       /* 2026-09-19 重做导出：中文表头、按名次、各项积分分列、UTF-8 BOM。 */
-      ok('CSV 表头：名次 / 层级 / 总积分 + 各项积分分列 + 三连分列',
+      ok('CSV 表头：名次 / 层级 / 总积分 + 各项积分分列 + 推文互动条数',
         csv[0].indexOf('名次') >= 0 && csv[0].indexOf('层级') >= 0 && csv[0].indexOf('总积分') >= 0
-        && csv[0].indexOf('引爆分') >= 0 && csv[0].indexOf('里程碑分') >= 0
-        && csv[0].indexOf('关注') >= 0 && csv[0].indexOf('转发') >= 0 && csv[0].indexOf('点赞') >= 0
-        && csv[0].indexOf('有效邀请') >= 0 && csv[0].indexOf('打卡天数') >= 0, csv[0].slice(0, 70));
+        && csv[0].indexOf('引爆分') >= 0 && csv[0].indexOf('里程碑分') >= 0 && csv[0].indexOf('互动分') >= 0
+        && csv[0].indexOf('关注') >= 0 && csv[0].indexOf('推文互动 已完成条数') >= 0
+        && csv[0].indexOf('有效邀请') >= 0 && csv[0].indexOf('广播次数') >= 0, csv[0].slice(0, 70));
+      /* 第 3 列（下标 2）是总积分。**按表头找列**，不按下标猜 —— 列增删过好几次了。 */
+      const head = csv[0].replace(/^\uFEFF/, '').split(',');
+      const ptCol = head.indexOf('总积分');
       ok('CSV 按积分从高到低排（审核时一眼看得出谁在前面）',
-        Number(csv[1].split(',')[4]) >= Number(csv[2].split(',')[4]));
+        ptCol >= 0 && Number(csv[1].split(',')[ptCol]) >= Number(csv[2].split(',')[ptCol]),
+        ptCol + ':' + csv[1].split(',')[ptCol] + '/' + csv[2].split(',')[ptCol]);
     }
 
     /* ---- 闸：四个阶段 × 在不在名单 × 链上还给不给免费 ---- */
@@ -3150,30 +3175,38 @@ function call(method, url, body, headers) {
       const w = W.address.toLowerCase();
       const wsig = W.signMessageSync(ALX.registerMessage(W.address));
       AL.register({ address: W.address, xHandle: 'zoe', sig: wsig }, '8.8.8.8');
-      ok('刚登记：三连都没打，只有登记那 10 分',
+      ok('刚登记：一个勾都没打，只有登记那 10 分',
         AL.scoreOf(w).total === 10 && !AL.scoreOf(w).followed && !AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
       AL.verify(w, { follow: true });
-      ok('只打关注 → +10（转发和点赞一分没给）',
+      ok('只打关注 → +10（互动那三项一分没给）',
         AL.scoreOf(w).total === 20 && AL.scoreOf(w).followed === true
         && AL.scoreOf(w).reposted === false && AL.scoreOf(w).liked === false);
+      AL.verify(w, { like: true, repost: true });
+      ok('点赞 + 转发但没评论 → **一分都不给**（互动是一体的）',
+        AL.scoreOf(w).total === 20 && AL.scoreOf(w).engaged === false, String(AL.scoreOf(w).total));
       AL.verify(w);
-      ok('不带参数的 verify 把三个勾一起打上 → 10+10+30+10 = 60',
-        AL.scoreOf(w).total === 60 && AL.scoreOf(w).liked === true, String(AL.scoreOf(w).total));
+      ok('四个勾都打上 → 10 + 关注 10 + 互动 50 = 70',
+        AL.scoreOf(w).total === 70 && AL.scoreOf(w).liked === true
+        && AL.scoreOf(w).commented === true, String(AL.scoreOf(w).total));
       AL.unverify(w, { like: true });
-      ok('只撤点赞 → 回到 50，关注和转发还在',
-        AL.scoreOf(w).total === 50 && AL.scoreOf(w).followed && AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
+      ok('只撤点赞 → 互动那 50 分整个没了，只剩登记 + 关注',
+        AL.scoreOf(w).total === 20 && AL.scoreOf(w).followed && AL.scoreOf(w).reposted && !AL.scoreOf(w).liked);
+      AL.verify(w, { like: true });
       ok('X 的三个入口都是纯 intent URL',
         AL.followUrl() === 'https://x.com/intent/follow?screen_name=' + AL.xHandle()
         && AL.likeUrl() === 'https://x.com/intent/like?tweet_id=1999888777666'
         && AL.pinnedTweetId() === '1999888777666');
       const csv = AL.appliedCsv().trim().split('\n');
-      ok('CSV 把三连拆成三列（合成一列就没法只补其中一项）',
-        csv[0].indexOf('关注') >= 0 && csv[0].indexOf('转发') >= 0 && csv[0].indexOf('点赞') >= 0, csv[0].slice(0, 70));
+      ok('CSV 把置顶推那三项拆成三列（合成一列就没法只补其中一项）',
+        csv[0].indexOf('置顶推点赞') >= 0 && csv[0].indexOf('置顶推转发') >= 0
+        && csv[0].indexOf('置顶推评论') >= 0, csv[0].slice(0, 70));
       const line = csv.find((l) => l.indexOf(w) >= 0);
       const col = (name) => csv[0].split(',').indexOf(name);
-      ok('CSV 那一行里三连分别是 1/1/0（按表头找列，不按下标猜）',
-        line && [line.split(',')[col('关注')], line.split(',')[col('点赞')], line.split(',')[col('转发')]].join('') === '101',
-        line && [line.split(',')[col('关注')], line.split(',')[col('点赞')], line.split(',')[col('转发')]].join(''));
+      ok('CSV 那一行里四项都是 1（按表头找列，不按下标猜）',
+        line && [line.split(',')[col('关注')], line.split(',')[col('置顶推点赞')],
+          line.split(',')[col('置顶推转发')], line.split(',')[col('置顶推评论')]].join('') === '1111',
+        line && [line.split(',')[col('关注')], line.split(',')[col('置顶推点赞')],
+          line.split(',')[col('置顶推转发')], line.split(',')[col('置顶推评论')]].join(''));
       if (save === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = save;
     }
 
@@ -3273,11 +3306,18 @@ function call(method, url, body, headers) {
       ok('点「我关注了」就计分，记 by=trust',
         AL.claim({ address: u8.addr, sig: u8.sig, task: 'follow' }).status === 200
         && AL.scoreOf(u8.addr).total === before + 10 && AL.checkBy(u8.addr, 'follow') === 'trust');
-      ok('转发那一项不能自己声称（它要贴链接自动核）',
-        AL.claim({ address: u8.addr, sig: u8.sig, task: 'repost' }).status === 400);
-      AL.distrust(u8.code, { follow: true });
+      ok('互动那一整项也能点「我做完了」→ 置顶推的三个勾一起打上（+50）',
+        AL.claim({ address: u8.addr, sig: u8.sig, task: 'engage' }).status === 200
+        && AL.scoreOf(u8.addr).engaged === true
+        && AL.scoreOf(u8.addr).total === before + 60, String(AL.scoreOf(u8.addr).total));
+      ok('认不出的任务名 → 400', AL.claim({ address: u8.addr, sig: u8.sig, task: 'nope' }).status === 400);
+      ok('指一条表里没有的推文 → 400',
+        AL.claim({ address: u8.addr, sig: u8.sig, task: 'engage', post: '123456789012' }).status === 400);
+      /* 撤销是**四个勾一起撤**（2026-09-19：转发不再有例外，它也是 X 名单查出来的）。 */
+      AL.distrust(u8.code);
       ok('抽查撤销 → 扣分并标记不信任',
-        AL.scoreOf(u8.addr).total === before && AL.isDistrusted(u8.addr) === true);
+        AL.scoreOf(u8.addr).total === before && AL.isDistrusted(u8.addr) === true,
+        String(AL.scoreOf(u8.addr).total));
       ok('被撤过的地址再点一次也不给（不然那道撤销等于没有）',
         AL.claim({ address: u8.addr, sig: u8.sig, task: 'follow' }).status === 403);
       AL.retrust(u8.code);
@@ -3668,8 +3708,12 @@ function call(method, url, body, headers) {
       ok('不在名单里的人没有勾', AL6.hasCheck(who[3], 'follow') === false);
       ok('X 名单里那些没登记的 id 一概不理（9 和 7 不是我们的人）',
         r1.applied.added.follow === 2);
-      ok('账单按条算：这一轮读了多少条、折合多少钱',
-        r1.cost.records === 1 + 4 + 2 + 1 && r1.cost.usd === +(r1.cost.records * 0.001).toFixed(4),
+      /* 名单按 $0.001 一条，评论那一路（recent search）按 $0.005 —— 两个档要分开算，
+         一律乘 0.001 的话账会少报五倍。 */
+      ok('账单按条算，且评论那一路单独一个单价',
+        r1.cost.records === 1 + 4 + 2 + 1 + r1.cost.searchRecords
+        && r1.cost.usd === +(((r1.cost.records - r1.cost.searchRecords) * 0.001
+          + r1.cost.searchRecords * 0.005).toFixed(4)),
         JSON.stringify(r1.cost));
 
       /* 增量：第一页全是老人就停，不翻第二页 */
@@ -3725,8 +3769,11 @@ function call(method, url, body, headers) {
       const info = XV8.info();
       ok('info 把账单摊开给管理员页：累计条数、请求数、折合美元、今天多少',
         info.configured === true && info.cost.records > 0
-        && info.cost.usd === +(info.cost.records * info.price).toFixed(4)
+        && info.cost.usd === +(((info.cost.records - info.cost.searchRecords) * info.price
+          + info.cost.searchRecords * info.searchPrice).toFixed(4))
         && info.cost.today.records > 0, JSON.stringify(info.cost).slice(0, 160));
+      ok('info 说得出评论那一路通不通（任务页据此决定要不要放出「贴回复链接」）',
+        typeof info.searchOk === 'boolean' && Array.isArray(info.posts), String(info.searchOk));
 
       /* 没配凭证 → 退回信任模式，一次请求都不发 */
       const vdir2 = path.join(TMP, 'xv5b'); fs.mkdirSync(vdir2, { recursive: true });
@@ -3867,28 +3914,42 @@ function call(method, url, body, headers) {
       const readBlock = async (h) => (/^0x0{62}[0-9][0-9]$/.test(h) && h !== H(0)) ? { hash: h } : null;
       const base = AL6.scoreOf(a).total;
 
-      let r = await AL6.bang({ address: a, hash: H(1), sig }, '4.4.4.4', Date.now(), readBlock);
+      /* 2026-09-19：两次**计分**之间至少隔 ARCBANG_BANG_INTERVAL_MIN 分钟。
+         所以这一段每调一次都把 now 往前拨够，否则第二次起会被间隔闸挡成 capped:'interval'。 */
+      const GAP = 4 * 60 * 1000;
+      let tb = Date.now();
+      let r = await AL6.bang({ address: a, hash: H(1), sig }, '4.4.4.4', tb, readBlock);
       ok('引爆一个真实区块 → +1 分', r.status === 200 && r.body.counted === true
         && AL6.scoreOf(a).total === base + 1, JSON.stringify(r.body));
 
-      r = await AL6.bang({ address: a, hash: H(1), sig }, '4.4.4.4', Date.now(), readBlock);
+      r = await AL6.bang({ address: a, hash: H(1), sig }, '4.4.4.4', tb, readBlock);
       ok('**同一个区块再引爆不重复计分**（不然对着一个块点一百下就是一百分）',
         r.body.already === true && AL6.scoreOf(a).total === base + 1);
 
-      r = await AL6.bang({ address: a, hash: '0x' + 'ab'.repeat(32), sig }, '4.4.4.4', Date.now(), readBlock);
+      /* 紧挨着上一次计分（才过 1 分钟）：间隔闸拦下，不加分也不读链。 */
+      r = await AL6.bang({ address: a, hash: H(2), sig }, '4.4.4.4', tb + 60000, readBlock);
+      ok('离上一次计分不够间隔 → 200 + capped:"interval"，不写盘也不读链',
+        r.status === 200 && r.body.capped === 'interval' && AL6.scoreOf(a).total === base + 1,
+        JSON.stringify(r.body));
+
+      r = await AL6.bang({ address: a, hash: '0x' + 'ab'.repeat(32), sig }, '4.4.4.4', tb += GAP, readBlock);
       ok('链上查不到的哈希 → 拒绝计分（自己编一个 64 位十六进制串是最省事的刷法）',
         r.status === 400 && AL6.scoreOf(a).total === base + 1, JSON.stringify(r.body));
 
-      r = await AL6.bang({ address: a, hash: 'not-a-hash', sig }, '4.4.4.4', Date.now(), readBlock);
+      r = await AL6.bang({ address: a, hash: 'not-a-hash', sig }, '4.4.4.4', tb, readBlock);
       ok('形状就不对的哈希 → 400', r.status === 400);
 
-      /* 频率闸：每地址每分钟 3 次。上面已经用掉 1 次（重复那次没到闸就返回了）。 */
+      /* 频率闸：每地址每分钟 3 次。**它拦的是写盘频率**，所以这里把 now 拨开让间隔闸放行，
+         并把每日上限临时放开 —— 不然 5 分那道顶会先把人挡住，测到的就不是这一道闸。 */
+      const svPerDay = process.env.ARCBANG_PTS_BANG_PER_DAY;
+      process.env.ARCBANG_PTS_BANG_PER_DAY = '50';
       hits.clear();
-      const t0 = Date.now();
       const outs = [];
       for (let k = 2; k <= 6; k++) {
-        outs.push(await AL6.bang({ address: a, hash: H(k), sig }, '4.4.4.4', t0, readBlock));
+        outs.push(await AL6.bang({ address: a, hash: H(k), sig }, '4.4.4.4', tb += GAP, readBlock));
       }
+      if (svPerDay === undefined) delete process.env.ARCBANG_PTS_BANG_PER_DAY;
+      else process.env.ARCBANG_PTS_BANG_PER_DAY = svPerDay;
       ok('每地址每分钟最多入账 3 次，第 4 次起 429（拦的是写盘频率，不是分数）',
         outs.filter((x) => x.status === 200).length === 3 && outs.filter((x) => x.status === 429).length === 2,
         outs.map((x) => x.status).join(','));
@@ -3909,25 +3970,25 @@ function call(method, url, body, headers) {
       const a2 = W2.address.toLowerCase();
       const DAY1 = Date.parse('2026-09-19T10:00:00Z');
       for (let k = 1; k <= 9; k++) {
-        await AL7.bang({ address: a2, hash: H(k), sig: sig2 }, '4.4.4.5', DAY1, readBlock);
+        await AL7.bang({ address: a2, hash: H(k), sig: sig2 }, '4.4.4.5', DAY1 + k * 4 * 60000, readBlock);
       }
       ok('每日上限按**分**封顶：一天炸九个也只拿 5 分',
         AL7.bangsOf(a2, DAY1).points === 5, String(AL7.bangsOf(a2, DAY1).points));
-      const capped = await AL7.bang({ address: a2, hash: H(20), sig: sig2 }, '4.4.4.5', DAY1, readBlock);
+      const capped = await AL7.bang({ address: a2, hash: H(20), sig: sig2 }, '4.4.4.5', DAY1 + 60 * 60000, readBlock);
       ok('到顶之后回 200 + capped:"day"（对用户这不是错误，页面照常显示进度）',
         capped.status === 200 && capped.body.capped === 'day');
 
       /* 隔一天接着拿，但总上限 8 分把它按住 */
       const DAY2 = DAY1 + 26 * 3600 * 1000;
       for (let k = 30; k <= 38; k++) {
-        await AL7.bang({ address: a2, hash: H(k), sig: sig2 }, '4.4.4.5', DAY2, readBlock);
+        await AL7.bang({ address: a2, hash: H(k), sig: sig2 }, '4.4.4.5', DAY2 + (k - 30) * 4 * 60000, readBlock);
       }
       ok('第二天能接着拿，但预热期总上限把总分按在 8',
         AL7.bangsOf(a2, DAY2).points === 8, String(AL7.bangsOf(a2, DAY2).points));
-      const capped2 = await AL7.bang({ address: a2, hash: H(50), sig: sig2 }, '4.4.4.5', DAY2, readBlock);
+      const capped2 = await AL7.bang({ address: a2, hash: H(50), sig: sig2 }, '4.4.4.5', DAY2 + 60 * 60000, readBlock);
       ok('总量到顶 → capped:"total"，且不再往盘上写',
         capped2.body.capped === 'total');
-      const st6 = await AL7.status(a2, DAY2);
+      const st6 = await AL7.status(a2, DAY2 + 60 * 60000);
       ok('status 带出引爆进度（今日分 / 累计分 / 算过几个区块）',
         st6.bangPts === 8 && st6.breakdown.bang === 8 && st6.bangs === 8,
         JSON.stringify([st6.bangPts, st6.bangToday, st6.bangs]));
@@ -3996,12 +4057,16 @@ function call(method, url, body, headers) {
     /* ---- 排练数据：seed / unseed ---- */
     {
       const sdir = path.join(TMP, 'seed6'); fs.mkdirSync(sdir, { recursive: true });
+      /* 名额线调小，好让三种层级在同一张榜上都露面（默认 100 名比造出来的人还多）。 */
+      const svSeedTop = process.env.ARCBANG_GTD_TOP;
+      process.env.ARCBANG_GTD_TOP = '20';
       const AL9 = ALX6.create({ storeDir: sdir, take: () => ({ ok: true }) });
       const r1 = AL9.seed(30, 12345);
       const n1 = AL9.board().rows.length;
       ok('seed 造出一批模拟登记（连带下线，所以榜比 n 长）', r1.added === 30 && n1 >= 30, String(n1));
       const tiers = { gtd: 0, fcfs: 0, none: 0 };
       AL9.board().rows.forEach((r) => { tiers[AL9.tierOf(r.addr) || 'none']++; });
+      if (svSeedTop === undefined) delete process.env.ARCBANG_GTD_TOP; else process.env.ARCBANG_GTD_TOP = svSeedTop;
       ok('三种层级都造得出来（排练站要看得到「未获资格」那一档）',
         tiers.gtd > 0 && tiers.fcfs > 0 && tiers.none > 0, JSON.stringify(tiers));
 
@@ -4025,6 +4090,70 @@ function call(method, url, body, headers) {
     }
 
     /* ---- 导出 CSV：按名次、各项分列、带 BOM ---- */
+    /* ---- 推文互动：一条推文一个任务（2026-09-19 用户拍板）----
+       官方每发一条新推就多一张卡，旧的不下线、不过期；一条推文的点赞 + 转发 + 评论
+       三项都核到才给那条的分。置顶推是天然的第一条，值 ARCBANG_PTS_ENGAGE。 */
+    {
+      const edir = path.join(TMP, 'engage6'); fs.mkdirSync(edir, { recursive: true });
+      const svPin = process.env.ARCBANG_PINNED_POST_URL;
+      process.env.ARCBANG_PINNED_POST_URL = 'https://x.com/arcbang_xyz/status/1999888777666';
+      const ALE = ALX6.create({ storeDir: edir, take: () => ({ ok: true }) });
+      const WE = new Wallet('0x' + '7e'.repeat(32));
+      const sigE = WE.signMessageSync(ALX6.registerMessage(WE.address));
+      ALE.register({ address: WE.address, xHandle: 'engage_one', sig: sigE }, '7.7.7.7');
+      const ae = WE.address.toLowerCase();
+
+      ok('置顶推自动是第一条，值 ARCBANG_PTS_ENGAGE（50）',
+        ALE.engagePosts().length === 1 && ALE.engagePosts()[0].pinned === true
+        && ALE.engagePosts()[0].pts === 50 && ALE.engagePosts()[0].tweetId === '1999888777666',
+        JSON.stringify(ALE.engagePosts()));
+      ok('置顶推删不掉（它来自 ARCBANG_PINNED_POST_URL）',
+        ALE.engageRemove('1999888777666').ok === false);
+      ok('不是推文链接 → 加不进去', ALE.engageAdd('https://example.com/x').ok === false);
+      ok('再加一条官方推文 → 默认 ARCBANG_PTS_ENGAGE_POST（20）分',
+        ALE.engageAdd('https://x.com/arcbang_xyz/status/2100000000001').ok === true
+        && ALE.engagePostOf('2100000000001').pts === 20);
+      ok('同一条不会重复加', ALE.engageAdd('https://x.com/arcbang_xyz/status/2100000000001').ok === false);
+      ok('--pts 能给单条定分',
+        ALE.engageAdd('https://x.com/arcbang_xyz/status/2100000000002', { pts: 35 }).ok === true
+        && ALE.engagePostOf('2100000000002').pts === 35);
+
+      ALE.verify(ae, { like: true });
+      ok('置顶推只点了赞：**一分都不给**（三项到齐才算）',
+        ALE.scoreOf(ae).pts.engage === 0 && ALE.engageStatus(ae).done === 0,
+        String(ALE.scoreOf(ae).pts.engage));
+      ALE.verify(ae, { repost: true, comment: true });
+      ok('三项到齐 → 拿到置顶推那 50 分',
+        ALE.scoreOf(ae).pts.engage === 50 && ALE.engageStatus(ae).done === 1);
+
+      const cE = ALE.claim({ address: ae, sig: sigE, task: 'engage', post: '2100000000002' });
+      ok('claim 按推文走：点第 3 张卡只打那一条的勾（没接 API 时按信任计分）',
+        cE.status === 200 && ALE.isEngaged(ae, '2100000000002') === true
+        && ALE.isEngaged(ae, '2100000000001') === false
+        && ALE.scoreOf(ae).pts.engage === 85, String(ALE.scoreOf(ae).pts.engage));
+      ok('每条各算各的：做完两条 = 50 + 35', ALE.engageStatus(ae).points === 85);
+      ok('表里没有的推文不能 claim（不然谁都能给自己随便一条推刷分）',
+        ALE.claim({ address: ae, sig: sigE, task: 'engage', post: '9900000000009' }).status === 400);
+      ok('不给 post 就当置顶推（老页面只有那一张卡）',
+        ALE.claim({ address: ae, sig: sigE, task: 'engage' }).body.already === true);
+
+      /* 删掉一条推文任务：**已经拿到的分不退** —— 那些人确实做过。 */
+      ALE.engageRemove('2100000000002');
+      ok('删掉那条推文之后它不再计分（任务没了，分也跟着走）',
+        ALE.engagePosts().length === 2 && ALE.scoreOf(ae).pts.engage === 50);
+
+      const stE = await ALE.status(ae);
+      ok('status 把每条推文的三项状态给页面（卡上三行子状态读的就是它）',
+        Array.isArray(stE.engagePosts) && stE.engagePosts.length === 2
+        && stE.engagePosts[0].pinned === true && stE.engagePosts[0].ok === true
+        && stE.engagePosts[0].like === true && stE.engagePosts[0].comment === true
+        && stE.engagePosts[1].ok === false && stE.engageDone === 1,
+        JSON.stringify(stE.engagePosts.map((r) => [r.tweetId, r.pts, r.ok])));
+      ok('评论能自动核时不放出「贴回复链接」那条退路（commentFallback=false）',
+        stE.commentFallback === false);
+      if (svPin === undefined) delete process.env.ARCBANG_PINNED_POST_URL; else process.env.ARCBANG_PINNED_POST_URL = svPin;
+    }
+
     {
       const cdir = path.join(TMP, 'csv6'); fs.mkdirSync(cdir, { recursive: true });
       const AL11 = ALX6.create({ storeDir: cdir, take: () => ({ ok: true }) });

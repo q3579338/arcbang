@@ -238,6 +238,12 @@
     '继续任务': 'Continue',
     '查看积分榜': 'View leaderboard',
     '进入模拟器': 'Enter the simulator',
+    '+{0} / 次': '+{0} each',
+    '被邀请人完成登记并通过核验后，计为一位有效邀请。':
+      'An invite counts once the invitee has signed up and passed verification.',
+    '此 X 账号已绑定 {0}，请切换到该钱包。': 'This X account is bound to {0}; switch to that wallet.',
+    '登记 {0} · 关注与互动 {1} · 邀请 {2} · 创作 {3} · 每日 {4} · 引爆 {5}':
+      'Sign-up {0} · Follow & engage {1} · Invites {2} · Posts {3} · Daily {4} · Detonations {5}',
 
     /* ---- 任务卡 ---- */
     '关注 @arcbang_xyz': 'Follow @arcbang_xyz',
@@ -248,10 +254,36 @@
     '提交链接': 'Submit link',
     '点赞置顶推': 'Like the pinned post',
     '前往点赞': 'Like',
+    /* ---- 推文互动（2026-09-19：点赞 / 转发 / 评论合成一张卡，一条推文一个任务）---- */
+    '推文互动': 'Post engagement',
+    '前往互动': 'Open post',
+    '前往发推': 'Compose on X',
+    '置顶推文': 'Pinned post',
+    '官方推文 #{0}': 'Official post #{0}',
+    '点赞': 'Like',
+    '转发': 'Repost',
+    '评论': 'Reply',
+    '还没有可互动的推文，过一会儿再来。': 'No posts to engage with yet. Check back later.',
+    '未核验到互动': 'engagement not found on X',
+    '已在 X 核验到该互动。': 'Engagement verified on X.',
+    '已提交，系统正在通过 X 核验该互动。': 'Submitted. Verifying the engagement through X.',
+    '未在 X 核验到该互动，完成后可重新提交。':
+      'Engagement not found on X. Complete it, then submit again.',
+    '点赞、转发、评论都完成后提交，系统将通过 X 核验。':
+      'Like, repost and reply, then submit. We verify all three through X.',
+    '点赞、转发、评论都完成后提交，复核阶段将在 X 核验。':
+      'Like, repost and reply, then submit. All three are verified on X during review.',
+    '已完成 {0} / {1} 条': '{0} of {1} done',
+    '已完成 +{0}': 'Done +{0}',
     '邀请': 'Invite',
     '获取邀请链接': 'Get invite link',
     '引爆宇宙并广播': 'Detonate a universe and broadcast it',
-    '每日一次，最多累计五天。': 'Once a day, up to five days.',
+    '每日最多 3 次，累计 15 次，每次 5 分。': 'Up to 3 times a day, 15 in total, 5 points each.',
+    '每日最多 {0} 次，累计 {1} 次，每次 {2} 分。': 'Up to {0} times a day, {1} in total, {2} points each.',
+    '每日最多 {0} 次，累计 {1} 次': 'Up to {0} a day, {1} in total',
+    '今日 {0} / {1} · 累计 {2} / {3}': 'Today {0} / {1} · Total {2} / {3}',
+    '引爆并广播': 'Detonate and broadcast',
+    '今日 {0} 次 · 累计 {1} 次': 'Today {0} · Total {1}',
     '前往引爆': 'Detonate',
     '前往发布': 'Post',
     '请先登记': 'Sign up first',
@@ -390,6 +422,10 @@
       'This post was not verified. Please review the requirements and post again.',
     '该地址已完成登记，登记信息不可修改。':
       'This address is already registered and cannot be edited.',
+    '登记完成，已计入登记积分。下一步：推文互动，单项分值最高。':
+      'Registered. Registration points are in. Next: post engagement, the highest single task.',
+    '完成关注、推文互动、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。':
+      'Earn points by following, engaging with posts, inviting others and detonating universes. Free mints are allocated by rank. Some are also assigned directly to early supporters and partners.',
     '登记完成，已计入登记积分。建议下一步完成转发任务，该项积分最高。':
       'Registered. Registration points have been added. The repost quest is worth the most next.',
     '已在钱包中取消': 'Cancelled in the wallet',
@@ -422,8 +458,12 @@
       'Repost the pinned post, reply with your registration code, then submit the link to that reply.',
     '登记码 ——': 'Code ——',
     '创作推文': 'Original post',
-    '发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。':
-      'Publish a post that mentions @arcbang_xyz and includes #ARCBANG. Content is up to you.',
+    '发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。发布后提交链接。':
+      'Publish a post that mentions @arcbang_xyz and includes #ARCBANG. Content is up to you. Submit the link afterwards.',
+    '在模拟器中引爆任意 Arc 区块，每次计 1 分。同一区块只计一次，每日 5 次。':
+      'Detonate any Arc block in the simulator: 1 point each. One point per block, up to 5 a day.',
+    '在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次，每日 {1} 次。':
+      'Detonate any Arc block in the simulator: {0} point(s) each. One point per block, up to {1} a day.',
     '连接钱包后显示任务记录。': 'Connect a wallet to view your quest record.',
     '每日引爆': 'Daily detonation',
     /* ---- 引爆计分（2026-09-19）---- */
@@ -536,8 +576,10 @@
     'ARCBANG 将 Arc 区块哈希解析为一套物理常数，并据此推演出一个完整宇宙。结果可铸造为 NFT：1,387 枚，永不增发。不发行代币。':
       'ARCBANG reads an Arc block hash as a set of physical constants and simulates a complete universe from it. The result can be minted as an NFT: 1,387 pieces, no further issuance, ever. There is no token.',
     '积分怎么算？': 'How are points calculated?',
-    '登记 10 分，关注 10 分，点赞 10 分，转发并回复登记码 30 分。每位有效邀请 20 分，累计 3 / 5 / 10 位另有奖励。创作推文每条 20 分。每日引爆并广播一次 5 分。':
-      'Registration 10 points, follow 10, like 10, repost with your registration code 30. Each valid invite is 20 points, with milestone bonuses at 3, 5 and 10. Each original post is 20 points. Detonating and broadcasting once a day is 5 points.',
+    '登记 10 分，关注 10 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 20 分，累计 3 / 5 / 10 位另有奖励。创作推文每条 20 分。引爆并广播每次 5 分（每日 3 次，累计 15 次），引爆每次 1 分。':
+      'Registration 10 points, follow 10. Post engagement: 50 for the pinned post, 20 for each other official post. Each valid invite is 20 points, with milestone bonuses at 3, 5 and 10. Each original post is 20 points. Detonating and broadcasting is 5 points a time (3 a day, 15 in total), detonating alone 1 point.',
+    '选择任意 Arc 区块生成宇宙。引爆并广播每次 5 分，每日最多 3 次。':
+      'Pick any Arc block to generate a universe. Detonating and broadcasting is 5 points a time, up to 3 a day.',
     '什么时候开铸？': 'When does minting open?',
     '预热期共 14 天，结束后依次进入白名单、先到先得与公售三个阶段。具体时间以页面顶部倒计时为准。':
       'The warm-up runs for 14 days, followed by the whitelist, first-come and public sale phases. The countdown at the top of the page is authoritative.',

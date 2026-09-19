@@ -14,6 +14,9 @@
  *   node server/tools/allowlist.js verify <登记码|地址…>        ← 打转发勾（+分）
  *   node server/tools/allowlist.js unverify <登记码|地址…>      ← 核错了撤回
  *   node server/tools/allowlist.js who <登记码|地址>            ← 看某人的积分明细
+ *   node server/tools/allowlist.js posts list                   ← 官方推文表（推文互动任务）
+ *   node server/tools/allowlist.js posts add <推文URL> [--pts=20]  ← 官方发了新推就加一条
+ *   node server/tools/allowlist.js posts remove <推文id|URL>
  *   node server/tools/allowlist.js setx <登记码|地址> <新X名>   ← **唯一**能改登记内容的路
  *   node server/tools/allowlist.js freeze                       ← **进 gtd 段前必跑**
  *   node server/tools/allowlist.js unfreeze                     ← 定格错了要重来
@@ -68,7 +71,14 @@ function showOne(a) {
   console.log('名次      #' + (AL.rankOf(a) || '—') + '   层 ' + (AL.tierOf(a) || '不在名单'));
   console.log('积分      ' + s.total);
   console.log('  登记    ' + padL(s.pts.register, 4));
-  console.log('  转发    ' + padL(s.pts.repost, 4) + (s.verified ? '   已核' : '   未核（跑 verify）'));
+  console.log('  关注    ' + padL(s.pts.follow, 4) + (s.followed ? '   已核' : ''));
+  console.log('  互动    ' + padL(s.pts.engage, 4) + '   ' + (s.engageDone || 0) + ' / ' + ((s.engageRows || []).length) + ' 条推文');
+  for (const r of (s.engageRows || [])) {
+    console.log('          ' + pad('#' + r.n + (r.pinned ? ' 置顶' : ''), 10)
+      + pad(r.tweetId, 22) + padL(r.pts, 4) + ' 分  '
+      + (r.like ? '赞' : '·') + (r.repost ? '转' : '·') + (r.comment ? '评' : '·')
+      + (r.ok ? '  已完成' : ''));
+  }
   console.log('  邀请    ' + padL(s.pts.invite, 4) + '   有效 ' + s.validInvites + '/' + s.invites
     + '（计 ' + s.countedInvites + '，上限 ' + P.inviteMax + '）');
   console.log('  分享    ' + padL(s.pts.share, 4) + '   ' + s.shareDays + ' 天（计 ' + s.countedShareDays + '，上限 ' + P.shareMaxDays + '）');
@@ -90,9 +100,11 @@ function main() {
       console.log('榜        ' + AL.board().rows.length + ' 人在榜（登记 ' + AL.appliedCount() + ' 条）');
       console.log('名额      前 ' + T.gtd + ' 名保底 · 前 ' + T.free + ' 名免费');
       console.log('名单      gtd ' + c.gtd + ' · fcfs ' + c.fcfs + ' · 合计 ' + c.total);
-      console.log('分值      登记 ' + P.register + ' · 转发 ' + P.repost + ' · 邀请 ' + P.invite + '/人（上限 ' + P.inviteMax
+      console.log('分值      登记 ' + P.register + ' · 关注 ' + P.follow + ' · 互动置顶推 ' + P.engage
+        + ' · 其他官方推 ' + P.engagePost + '/条 · 邀请 ' + P.invite + '/人（上限 ' + P.inviteMax
         + ' 人）· 分享 ' + P.share + '/天（上限 ' + P.shareMaxDays + ' 天）');
       console.log('置顶推    ' + (AL.pinnedPost() || '（没配 ARCBANG_PINNED_POST_URL）'));
+      console.log('推文互动  ' + AL.engagePosts().length + ' 条（posts list 看详情）');
       console.log('名单文件  ' + AL.listFile);
       console.log('登记流水  ' + AL.appliedFile);
       console.log('状态文件  ' + AL.stateFile);
@@ -150,6 +162,41 @@ function main() {
         const r = AL.unverify(t);
         console.log((r.ok ? (r.already ? '○ ' : '✓ ') : '✗ ') + t + ' ' + (r.error || r.addr || ''));
       }
+      break;
+    }
+    /* 官方推文表 —— 推文互动任务的数据源。
+       官方每发一条新推就 `posts add` 一条，任务页上立刻多一张卡；
+       置顶推（ARCBANG_PINNED_POST_URL）自动是第一条，不在文件里，也删不掉。 */
+    case 'posts': {
+      const sub = (args.shift() || 'list').toLowerCase();
+      if (sub === 'list') {
+        const rows = AL.engagePosts();
+        if (!rows.length) { console.log('（一条都没有：置顶推也没配）'); break; }
+        for (const r of rows) {
+          console.log(padL('#' + r.n, 5) + '  ' + pad(r.tweetId, 22) + padL(r.pts, 5) + ' 分  '
+            + (r.pinned ? '置顶推' : pad((r.at || '').slice(0, 10), 11)) + '  ' + r.url);
+        }
+        console.log('— 共 ' + rows.length + ' 条 —');
+        break;
+      }
+      if (sub === 'add') {
+        if (!args.length) die('要给一条推文链接');
+        const r = AL.engageAdd(args[0], { pts: flags.pts, note: flags.note });
+        if (!r.ok) die(r.error);
+        console.log('✓ 加上了 #' + r.post.n + '  ' + r.post.tweetId + '  ' + r.post.pts + ' 分');
+        console.log('  ' + r.post.url);
+        console.log('  下一轮自动核（最多 ' + (Number(process.env.ARCBANG_XV_EVERY_MIN) || 10) + ' 分钟）就会开始拉这条的点赞 / 转发 / 评论。');
+        break;
+      }
+      if (sub === 'remove' || sub === 'rm') {
+        if (!args.length) die('要给推文 id 或链接');
+        const r = AL.engageRemove(args[0]);
+        if (!r.ok) die(r.error);
+        console.log('✓ 删掉了 ' + r.removed + ' 条，还剩 ' + r.total + ' 条');
+        console.log('  **已经拿到的分不会退** —— 那些人确实做过，撤分是在罚他们。');
+        break;
+      }
+      die('posts 只认 list / add / remove');
       break;
     }
     case 'who': {

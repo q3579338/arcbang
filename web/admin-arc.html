@@ -163,7 +163,26 @@ tr.dis td{background:#FBF1F1}
       <p class="msg" id="xMsg"></p>
     </div>
 
-    <!-- 自动核：读 X 的关注 / 点赞 / 转发名单，自动打勾也自动掉勾。按条计费。 -->
+    <!-- 官方推文：推文互动任务的数据源。加一条 = 任务页上多一张卡。 -->
+    <div class="card">
+      <h2>官方推文</h2>
+      <p class="dim">每加一条，任务页的「推文互动」就多一个任务：点赞 + 转发 + 评论三项都核到才给分。
+        置顶推来自 ARCBANG_PINNED_POST_URL，自动是第一条，不在这里删。</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px">
+        <input class="in mono" id="epUrl" type="url" autocomplete="off" spellcheck="false"
+               placeholder="https://x.com/arcbang_xyz/status/…" style="flex:1 1 320px">
+        <input class="in mono" id="epPts" type="number" min="0" step="1" placeholder="分值" style="width:100px">
+        <input class="in" id="epNote" type="text" autocomplete="off" placeholder="卡片标题（可空）" style="flex:1 1 200px">
+        <button class="btn pri" type="button" id="btnEpAdd">加一条</button>
+      </div>
+      <table style="margin-top:10px">
+        <thead><tr><th>#</th><th>推文</th><th>分</th><th>加入时间</th><th></th></tr></thead>
+        <tbody id="epRows"><tr><td colspan="5" class="dim">读取中…</td></tr></tbody>
+      </table>
+      <p class="msg" id="epMsg"></p>
+    </div>
+
+    <!-- 自动核：读 X 的关注 / 点赞 / 转发 / 评论名单，自动打勾也自动掉勾。按条计费。 -->
     <div class="card">
       <h2>自动核任务</h2>
       <p class="dim" id="xvState">读取中…</p>
@@ -191,7 +210,7 @@ tr.dis td{background:#FBF1F1}
       <table>
         <thead><tr>
           <th>#</th><th>地址</th><th>X</th><th>码</th>
-          <th>关注 转发 点赞</th><th>自动核</th><th>同段</th><th>分</th><th></th>
+          <th>关注 赞 转 评</th><th>互动</th><th>同段</th><th>分</th><th></th>
         </tr></thead>
         <tbody id="rows"><tr><td colspan="9" class="dim">读取中…</td></tr></tbody>
       </table>
@@ -278,10 +297,13 @@ tr.dis td{background:#FBF1F1}
         + (r.xSource === 'oauth' ? ' <span class="tag">X 登录</span>' : ' <span class="tag bad">手填</span>')
         + (r.distrusted ? ' <span class="tag bad">不信任</span>' : '') + '</td>'
         + '<td data-k="码" class="mono">' + esc(r.code) + '</td>'
-        + '<td data-k="三连"><span class="chks">'
-        + chk('follow', r.follow, r.by.follow) + chk('repost', r.repost, r.by.repost) + chk('like', r.like, r.by.like)
+        + '<td data-k="关注与置顶推"><span class="chks">'
+        + chk('follow', r.follow, r.by.follow) + chk('like', r.like, r.by.like)
+        + chk('repost', r.repost, r.by.repost) + chk('comment', r.comment, r.by.comment)
         + '</span></td>'
-        + '<td data-k="自动核">' + pfCell + '</td>'
+        /* 互动这一列：**几条推文做完了**（置顶推算第一条），后面跟贴过的那条回复链接。 */
+        + '<td data-k="互动"><span class="mono">' + (r.engageDone || 0) + ' / ' + (r.engageTotal || 0) + '</span> '
+        + pfCell + '</td>'
         + '<td data-k="同段" class="mono">' + r.ipCount + '<span class="dim"> ' + esc(r.ip || '') + '</span></td>'
         + '<td data-k="分" class="mono">' + r.points + '</td>'
         + '<td data-k="">' + (pf && pf.status !== 'ok' && !pf.rejected
@@ -299,7 +321,7 @@ tr.dis td{background:#FBF1F1}
       render(d);
       msg('listMsg', '');
       /* 这两块只在刚进后台时拉一次 —— 列表会被搜索框高频重拉，那两个接口不用跟着跑。 */
-      if (first) { loadXAuth(); loadXv(); }
+      if (first) { loadXAuth(); loadXv(); loadEp(); }
     }, function (e) {
       if (e.status === 404) {
         $('login').hidden = false; $('panel').hidden = true;
@@ -433,7 +455,7 @@ tr.dis td{background:#FBF1F1}
 
   /* ---------------- 自动核 ----------------
      账单写在明面上：这一套每读一条记录都要钱，看不见花销的功能迟早被关掉。 */
-  var XV_NAME = { follow: '关注者', like: '点赞', repost: '转发' };
+  var XV_NAME = { follow: '关注者', like: '点赞（置顶推）', repost: '转发（置顶推）', comment: '评论（置顶推）' };
   function loadXv() {
     return api('/admin/xverify').then(function (j) {
       $('xvState').textContent = j.configured
@@ -441,7 +463,12 @@ tr.dis td{background:#FBF1F1}
           + ' · 已跑 ' + j.rounds + ' 轮'
           + (j.lastRunAt ? ' · 上次 ' + new Date(j.lastRunAt).toLocaleString() : '')
           + (j.lastError ? ' · 上次报错：' + j.lastError : ''))
-        : '没开：没配 Bearer 或 Access Token。关注和点赞退回「用户自己点一下」的信任模式。';
+        : '没开：没配 Bearer 或 Access Token。互动退回「用户自己点一下」的信任模式。';
+      /* 评论走的是 recent search，跟另外两条不是一个计费档，也不是所有账号都开。
+         被拒时任务页会自动放出「贴回复链接」那条退路 —— 这里要说清楚。 */
+      if (j.configured && j.searchOk === false) {
+        $('xvState').textContent += ' · 评论那一路被拒了（' + (j.searchError || '未知') + '），任务页已退回贴回复链接';
+      }
       var rows = Object.keys(XV_NAME).map(function (k) {
         var s = j.sets && j.sets[k];
         return '<tr><td data-k="名单">' + XV_NAME[k] + '</td>'
@@ -451,13 +478,62 @@ tr.dis td{background:#FBF1F1}
       }).join('');
       $('xvRows').innerHTML = rows;
       var c = j.cost || {};
-      $('xvCost').textContent = '今天读了 ' + ((c.today && c.today.records) || 0) + ' 条 ≈ $'
-        + ((c.today && c.today.usd) || 0).toFixed(3)
+      $('xvCost').textContent = '今天读了 ' + ((c.today && c.today.records) || 0) + ' 条（搜 '
+        + ((c.today && c.today.searchRecords) || 0) + '）≈ $' + ((c.today && c.today.usd) || 0).toFixed(3)
         + ' · 累计 ' + (c.records || 0) + ' 条 / ' + (c.requests || 0) + ' 个请求 ≈ $'
         + (c.usd || 0).toFixed(3)
-        + '（按 $' + j.price + ' 一条算）';
+        + '（名单 $' + j.price + ' 一条，评论搜索 $' + j.searchPrice + ' 一条）'
+        + (j.posts && j.posts.length ? ' · 另有 ' + j.posts.length + ' 条官方推文在拉' : '');
     }, function (e) { $('xvState').textContent = e.message; });
   }
+  /* ---------------- 官方推文表 ---------------- */
+  function loadEp() {
+    return api('/allowlist/admin/posts').then(function (j) {
+      renderEp(j.posts || []);
+    }, function (e) {
+      $('epRows').innerHTML = '<tr><td colspan="5" class="dim">' + esc(e.message) + '</td></tr>';
+    });
+  }
+  function renderEp(rows) {
+    if (!rows.length) { $('epRows').innerHTML = '<tr><td colspan="5" class="dim">一条都没有（置顶推也没配）</td></tr>'; return; }
+    $('epRows').innerHTML = rows.map(function (r) {
+      return '<tr>'
+        + '<td data-k="#" class="mono">' + r.n + (r.pinned ? ' <span class="tag">置顶</span>' : '') + '</td>'
+        + '<td data-k="推文"><a href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" class="mono">'
+        + esc(r.tweetId) + '</a>' + (r.note ? ' <span class="dim">' + esc(r.note) + '</span>' : '') + '</td>'
+        + '<td data-k="分" class="mono">' + r.pts + '</td>'
+        + '<td data-k="加入时间">' + (r.at ? new Date(r.at).toLocaleString() : '—') + '</td>'
+        + '<td data-k="">' + (r.pinned ? '' : '<button class="btn danger" type="button" data-ep-del="'
+          + esc(r.tweetId) + '">删</button>') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+  function epPost(body, okWord) {
+    msg('epMsg', '在改了…');
+    return api('/allowlist/admin/posts', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+    }).then(function (r) {
+      renderEp(r.posts || []);
+      msg('epMsg', okWord, 'ok');
+      return load();
+    }, function (e) { msg('epMsg', e.message, 'err'); });
+  }
+  $('btnEpAdd').addEventListener('click', function () {
+    var url = String($('epUrl').value || '').trim();
+    if (!url) { msg('epMsg', '要给一条推文链接。', 'err'); return; }
+    var pts = String($('epPts').value || '').trim();
+    epPost({ url: url, pts: pts === '' ? undefined : pts, note: String($('epNote').value || '').trim() || undefined },
+      '加上了。下一轮自动核就会开始拉这条的点赞 / 转发 / 评论。').then(function () {
+      $('epUrl').value = ''; $('epPts').value = ''; $('epNote').value = '';
+    });
+  });
+  $('epRows').addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-ep-del]') : null;
+    if (!b) return;
+    if (!confirm('删掉这条推文任务？已经拿到的分不会退。')) return;
+    epPost({ remove: b.getAttribute('data-ep-del') }, '删掉了。');
+  });
+
   function runXv(full) {
     if (full && !confirm('全量拉一轮？要翻到底，读的条数最多，花钱也最多。')) return;
     msg('xvMsg', '在拉了…');

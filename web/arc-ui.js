@@ -2004,7 +2004,9 @@
     if (!sig || !API || !API.allowlistBang || !hash) return;
     try {
       API.allowlistBang(addr, sig, hash).then(function (r) {
-        /* 真加上分了才去刷榜：到顶 / 重复的那些回的也是 200，刷了也白刷。 */
+        /* 真加上分了才去刷榜：到顶 / 重复 / 离上一次不够间隔（capped:'interval'）
+           回的也都是 200，刷了也白刷。这几种情况**一律静默** ——
+           那颗按钮本来就随便点，弹一句「太快了」只会让人以为自己做错了什么。 */
         if (r && r.counted) phaseLoad();
       }, function () { /* 没登记 / 频率闸 / 网络不通：都不该打断引爆 */ });
     } catch (e) { /* 同上 */ }

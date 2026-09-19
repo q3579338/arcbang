@@ -150,28 +150,55 @@ function envInt(name, def) {
   const n = Math.floor(Number(process.env[name]));
   return Number.isFinite(n) && n >= 0 ? n : def;
 }
-/** X 三连的三个勾。顺序就是页面上三张卡的顺序。 */
-const CHECKS = ['follow', 'repost', 'like'];
+/** X 那几个勾。**这四张表存的是置顶推那一条**（外加与推文无关的关注）。
+    2026-09-19 用户拍板：**点赞 / 转发 / 评论是一体的** —— 页面上一条推文一张卡，
+    三项都核到才给那条的分。这里仍然三项各记各的：
+    「三项到齐没有」是算分时的判断，不是存储格式；分开记才看得出他卡在哪一项。
+    其余官方推文的三个勾存在 state().engage 里（addr → {tweetId: {...}}）。 */
+const CHECKS = ['follow', 'repost', 'like', 'comment'];
+/** 互动这一整项由哪几个勾组成。少一个都不给分。 */
+const ENGAGE_PARTS = ['like', 'repost', 'comment'];
+/** 没配置顶推 URL 时，第一条互动任务的占位 id。它读写的还是老的三张表。 */
+const PINNED_KEY = 'pinned';
+/** 能自己点「我做完了」的任务。互动卡一条推文一颗按钮，claim 时带上 post=<推文id>。 */
+const CLAIM_TASKS = ['follow', 'engage'];
 /** 积分表。**每次现读**：自检要在同一进程里换着分值跑。 */
 function pointsTable() {
   return {
     register: envInt('ARCBANG_PTS_REGISTER', 10),
-    /* X 三连：关注 10 / 转发并回登记码 30 / 点赞 10。
-       转发那一项贵得多 —— 它是三项里唯一要在评论里回登记码的，
-       也是唯一能把一个 X 账号和一个钱包地址对上的。 */
+    /* 关注单算一张卡：它跟具体某条推文无关，做一次管一辈子。 */
     follow: envInt('ARCBANG_PTS_FOLLOW', 10),
+    /* **一条推文的点赞 + 转发 + 评论一体计分**。
+       用户 2026-09-19 拍板：「点赞、转发、评论应该是一体的」——
+       一张卡、一颗按钮、一个分值，三项都核到才给。
+       engage     = 置顶推那一条值多少（默认 50）
+       engagePost = 之后每条官方推文的默认分值（默认 20，加的时候可以 --pts 单独定）
+       **没有每日上限、旧推文不过期**：官方每发一条就多一个任务，来晚的人补得回来。 */
+    engage: envInt('ARCBANG_PTS_ENGAGE', 50),
+    engagePost: envInt('ARCBANG_PTS_ENGAGE_POST', 20),
+    /* 老的两个分值**保留但不再计入总分**：状态文件里还有按它们算过的旧数据，
+       导出和后台仍然读得到；UI 上不再单列。别删这两行。 */
     repost: envInt('ARCBANG_PTS_REPOST', 30),
     like: envInt('ARCBANG_PTS_LIKE', 10),
     invite: envInt('ARCBANG_PTS_INVITE', 20),
     inviteMax: envInt('ARCBANG_PTS_INVITE_MAX', 20),
+    /* 引爆并广播：2026-09-19 用户拍板从「一天一次、共五天」改成
+       **每日最多 3 次、累计 15 次**，每次 5 分。同一个区块只计一次。
+       shareMaxDays 还留着，值等于累计次数上限 —— 老页面读它画进度条，别让它变成 undefined。 */
     share: envInt('ARCBANG_PTS_SHARE', 5),
-    shareMaxDays: envInt('ARCBANG_PTS_SHARE_MAX_DAYS', 5),
+    sharePerDay: envInt('ARCBANG_PTS_SHARE_PER_DAY', 3),
+    shareMax: envInt('ARCBANG_PTS_SHARE_MAX', 15),
+    shareMaxDays: envInt('ARCBANG_PTS_SHARE_MAX', 15),
     /* 引爆计分：每引爆一个真实 Arc 区块 +1，每天封顶、整个预热期再封一次顶。
        两道顶都是**分**不是次数：改了单次分值，两个上限的含义不用跟着改。
        这一项比别的都便宜，因为它零成本 —— 不封顶的话一个脚本能把榜刷穿。 */
     bang: envInt('ARCBANG_PTS_BANG', 1),
-    bangPerDay: envInt('ARCBANG_PTS_BANG_PER_DAY', 10),
+    /* 2026-09-19 用户拍板：每日 5 次（原来 10），两次计分之间至少隔 3 分钟。
+       间隔那一条**只在服务端生效、页面上一个字都不写** —— 写出来等于教人踩点刷，
+       而正常玩的人本来也碰不到它。 */
+    bangPerDay: envInt('ARCBANG_PTS_BANG_PER_DAY', 5),
     bangMax: envInt('ARCBANG_PTS_BANG_MAX', 50),
+    bangIntervalMin: envInt('ARCBANG_BANG_INTERVAL_MIN', 3),
     /* 创作推文：自己发一条提到本站并带 #ARCBANG 的推，过了就计分。
        限每周 2 条、预热期共 5 条 —— 不限的话这一项会变成刷帖机。 */
     post: envInt('ARCBANG_PTS_POST', 20),
@@ -403,9 +430,12 @@ function create(opts) {
       return {
         configured: !!j.configured,
         lastRunAt: j.lastRunAt || null,
-        everyMin: Number(j.everyMin) || null
+        everyMin: Number(j.everyMin) || null,
+        /* 评论那一路走的是 recent search，它要单独的计费档；被拒时（402/403）
+           页面要退回「贴回复链接」那条老路，所以这个标志必须一直传到前端。 */
+        searchOk: j.searchOk !== false
       };
-    } catch (e) { return { configured: false, lastRunAt: null, everyMin: null }; }
+    } catch (e) { return { configured: false, lastRunAt: null, everyMin: null, searchOk: false }; }
   }
   /** 接了 X API 之后，关注 / 点赞 / 转发**不再接受用户自称**。 */
   function apiOn() { return apiInfo().configured; }
@@ -521,8 +551,12 @@ function create(opts) {
   let stateCache = null;             // { mtimeMs, size, follow/repost/like:Map, shares:Map, xfix:Map }
   const EMPTY_STATE = () => ({
     mtimeMs: -1, size: -1,
-    follow: new Map(), repost: new Map(), like: new Map(),
+    follow: new Map(), repost: new Map(), like: new Map(), comment: new Map(),
     shares: new Map(), xfix: new Map(), proof: new Map(), posts: new Map(),
+    /* 官方推文的互动（**不含置顶推**，它还在上面那三张表里）：
+       addr → { tweetId: { like:ISO, repost:ISO, comment:ISO } }。
+       按推文 id 记：官方每发一条就多一个任务，旧的不过期、补得回来。 */
+    engage: new Map(),
     /* 引爆记账：addr → { h: [算过分的区块哈希…], d: { 'YYYY-MM-DD': 次数 } }
        哈希列表是**去重的依据**（同一个区块引爆一百次也只算一次），
        它的长度被总上限夹着，不会无限长。 */
@@ -554,11 +588,23 @@ function create(opts) {
         const a = normAddr(k);
         if (a && !next.repost.has(a)) next.repost.set(a, j.verified[k] || true);
       }
+      /* 老格式是 ['2026-09-18', …]（一天一次），新格式是 { d:{天:次数}, h:[哈希] }。
+         老的读进来当每天各 1 次 —— 它记录的就是这个意思，分也一个不差。 */
       for (const k in (j && j.shares) || {}) {
         const a = normAddr(k);
-        if (!a) continue;
-        const days = Array.isArray(j.shares[k]) ? j.shares[k].filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)) : [];
-        if (days.length) next.shares.set(a, Array.from(new Set(days)).sort());
+        const v = j.shares[k];
+        if (!a || !v) continue;
+        const d = {};
+        if (Array.isArray(v)) {
+          for (const x of v) if (/^\d{4}-\d{2}-\d{2}$/.test(x)) d[x] = 1;
+          if (Object.keys(d).length) next.shares.set(a, { d, h: [] });
+          continue;
+        }
+        for (const day in (v.d || {})) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number(v.d[day]) > 0) d[day] = Math.floor(Number(v.d[day]));
+        }
+        const h = Array.isArray(v.h) ? v.h.filter((x) => HASH_RE.test(String(x))).map((x) => String(x).toLowerCase()) : [];
+        if (Object.keys(d).length || h.length) next.shares.set(a, { d, h: Array.from(new Set(h)) });
       }
       for (const k in (j && j.xfix) || {}) {
         const a = normAddr(k);
@@ -597,20 +643,39 @@ function create(opts) {
         for (const d in (v.d || {})) {
           if (/^\d{4}-\d{2}-\d{2}$/.test(d) && Number(v.d[d]) > 0) ds[d] = Math.floor(Number(v.d[d]));
         }
-        if (hs.length || Object.keys(ds).length) next.bangs.set(a, { h: Array.from(new Set(hs)), d: ds });
+        /* last = 上一次**被计分**的时刻（毫秒）。老数据没有这个字段，当 0 处理：
+              升级之后第一次引爆一定放行，不会因为读不到时间就把人卡住。 */
+        const last = Number(v.last) || 0;
+        if (hs.length || Object.keys(ds).length) next.bangs.set(a, { h: Array.from(new Set(hs)), d: ds, last });
       }
       for (const k in (j && j.claims) || {}) {
         const v = j.claims[k];
         const i = String(k).indexOf('|');
         const a = i > 0 ? normAddr(String(k).slice(0, i)) : null;
         const t = i > 0 ? String(k).slice(i + 1) : '';
-        if (a && CHECKS.indexOf(t) >= 0 && v) {
+        /* 老数据里 claims 的任务名是 CHECKS 里的（follow/like/repost）；
+           新的是 follow / engage:<推文id>。两套都读得回来，
+           因为 syncApi 只按 CLAIM_TASKS 结账，读回来的旧键下一轮自然被清掉。 */
+        if (a && (CLAIM_TASKS.indexOf(t) >= 0 || CHECKS.indexOf(t) >= 0 || /^engage:\d{5,25}$/.test(t)) && v) {
           next.claims.set(a + '|' + t, {
             at: v.at || null,
             status: v.status === 'failed' ? 'failed' : 'pending',
             checkedAt: v.checkedAt || null
           });
         }
+      }
+      for (const k in (j && j.engage) || {}) {
+        const a = normAddr(k);
+        const v = j.engage[k];
+        if (!a || !v || typeof v !== 'object') continue;
+        const byTweet = {};
+        for (const tid in v) {
+          if (!/^\d{5,25}$/.test(tid) || !v[tid]) continue;
+          byTweet[tid] = {
+            like: v[tid].like || null, repost: v[tid].repost || null, comment: v[tid].comment || null
+          };
+        }
+        if (Object.keys(byTweet).length) next.engage.set(a, byTweet);
       }
       for (const k in (j && j.distrust) || {}) {
         const a = normAddr(k);
@@ -643,6 +708,8 @@ function create(opts) {
     for (const [k, v] of (s.bangs || new Map())) out.bangs[k] = v;
     out.claims = {};
     for (const [k, v] of (s.claims || new Map())) out.claims[k] = v;
+    out.engage = {};
+    for (const [k, v] of (s.engage || new Map())) out.engage[k] = v;
     out.distrust = {};
     for (const [k, v] of (s.distrust || new Map())) out.distrust[k] = v;
     out.phase = s.phase || null;
@@ -656,15 +723,169 @@ function create(opts) {
     const s = state();
     const next = { shares: new Map(s.shares), xfix: new Map(s.xfix), proof: new Map(s.proof),
       posts: new Map(s.posts), bangs: new Map(s.bangs), claims: new Map(s.claims),
-      distrust: new Map(s.distrust), phase: s.phase || null };
+      engage: new Map(s.engage), distrust: new Map(s.distrust), phase: s.phase || null };
     for (const key of CHECKS) next[key] = new Map(s[key]);
     fn(next);
     saveState(next);
   }
-  /** X 三连的某一项核过没有 */
+  /** X 那几个勾的某一项核过没有 */
   function hasCheck(addr, key) {
     const a = normAddr(addr);
     return !!a && CHECKS.indexOf(key) >= 0 && state()[key].has(a);
+  }
+  /** 互动置顶推那一整项：**点赞 + 转发 + 评论都到齐**才算。少一个就不给那 50 分。 */
+  function isEngaged(addr, tweetId) {
+    const a = normAddr(addr);
+    if (!a) return false;
+    const pin = pinnedTweetId();
+    const tid = tweetId == null ? (pin || PINNED_KEY) : String(tweetId);
+    if (tid === PINNED_KEY || (pin && tid === pin)) return ENGAGE_PARTS.every((k) => state()[k].has(a));
+    const rec = (state().engage.get(a) || {})[tid] || {};
+    return ENGAGE_PARTS.every((k) => !!rec[k]);
+  }
+
+  /* ---------------------------------------------------------------- 官方推文表
+     2026-09-19 用户拍板：**官方每发一条新推文，就多出一个新的「一键三连」任务**。
+     旧的不下线、不过期、没有每日上限 —— 来晚的人照样能把前面几条补做。
+
+     置顶推（ARCBANG_PINNED_POST_URL）是这张表里天然的第一条，值 ARCBANG_PTS_ENGAGE（50）；
+     后面每条默认 ARCBANG_PTS_ENGAGE_POST（20），加的时候可以 --pts 单独定。
+
+     置顶推那一条的三个勾**仍然存在老的 like/repost/comment 三张表里**
+     （状态文件里已经有按它们算过的数据，动了就等于把所有人的分清零）；
+     其余每条存在新的 engage 表里：addr → { tweetId: {like, repost, comment} }。
+
+     推文表单独一个文件（.store/engage-posts.json）：这是管理员维护的**内容**，
+     跟用户的计分状态不是一回事，往线上搬时也只想搬这一个文件。 */
+  const postsFile = o.engagePostsFile || path.join(storeDir, 'engage-posts.json');
+  let postsCache = null;
+  /** 文件里那几条（不含置顶推）。按加入时间升序。 */
+  function engageFileRows() {
+    let st = null;
+    try { st = fs.statSync(postsFile); } catch (e) { /* 还没有 */ }
+    if (!st) { postsCache = { mtimeMs: -1, size: -1, rows: [] }; return postsCache.rows; }
+    if (postsCache && st.mtimeMs === postsCache.mtimeMs && st.size === postsCache.size) return postsCache.rows;
+    let rows = [];
+    try {
+      const j = JSON.parse(fs.readFileSync(postsFile, 'utf8'));
+      const arr = Array.isArray(j) ? j : ((j && j.posts) || []);
+      const seen = new Set();
+      rows = arr.map((r) => {
+        if (!r || typeof r.url !== 'string') return null;
+        const m = PROOF_RE.exec(r.url);
+        if (!m || seen.has(m[2])) return null;
+        seen.add(m[2]);
+        /* **null / 空串要还原成 null**（= 用默认分值）。直接 Number(null) 是 0，
+           那会让「没单独定分」的推文一律变成 0 分的任务。 */
+        const pts = (r.pts == null || r.pts === '') ? NaN : Math.floor(Number(r.pts));
+        return {
+          id: m[2], tweetId: m[2], url: 'https://x.com/' + m[1] + '/status/' + m[2],
+          pts: Number.isFinite(pts) && pts >= 0 ? pts : null,
+          at: r.at || null, note: r.note == null ? null : String(r.note).slice(0, 160)
+        };
+      }).filter(Boolean);
+    } catch (e) { console.error('[allowlist] 官方推文表读不出来：' + (e && e.message)); }
+    rows.sort((a, b) => String(a.at || '') < String(b.at || '') ? -1 : 1);
+    postsCache = { mtimeMs: st.mtimeMs, size: st.size, rows };
+    return rows;
+  }
+  function saveEngagePosts(rows) {
+    fs.mkdirSync(path.dirname(postsFile), { recursive: true });
+    writeAtomic(postsFile, JSON.stringify({ updatedAt: new Date().toISOString(), posts: rows }, null, 2) + '\n');
+    postsCache = null;
+    boardCache = null;
+  }
+  /**
+   * 全部互动任务的推文，**置顶推排第一**。
+   * @returns [{id, tweetId, url, pts, at, note, pinned:boolean, n:number}]
+   */
+  function engagePosts() {
+    const P = pointsTable();
+    const pin = pinnedTweetId();
+    const out = [{
+      id: pin || PINNED_KEY, tweetId: pin || PINNED_KEY, url: pinnedPost(), pts: P.engage,
+      at: null, note: null, pinned: true
+    }];
+    for (const r of engageFileRows()) {
+      if (pin && r.tweetId === pin) continue;        // 置顶推被重复加进文件：以上面那条为准
+      out.push({
+        id: r.id, tweetId: r.tweetId, url: r.url,
+        pts: r.pts == null ? P.engagePost : r.pts,
+        at: r.at, note: r.note, pinned: false
+      });
+    }
+    out.forEach((r, i) => { r.n = i + 1; });
+    return out;
+  }
+  function engagePostOf(tweetIdOrUrl) {
+    const s = String(tweetIdOrUrl == null ? '' : tweetIdOrUrl).trim();
+    if (!s) return null;
+    const m = PROOF_RE.exec(s);
+    const tid = m ? m[2] : s;
+    return engagePosts().find((r) => r.tweetId === tid) || null;
+  }
+  /** 加一条官方推文。@param opts.pts 这条值多少分（不给就用 ARCBANG_PTS_ENGAGE_POST） */
+  function engageAdd(url, opts) {
+    const b = opts || {};
+    const m = PROOF_RE.exec(String(url || '').trim());
+    if (!m) return { ok: false, error: '这不是一条推文链接（要 https://x.com/xxx/status/123…）' };
+    if (pinnedTweetId() && m[2] === pinnedTweetId()) {
+      return { ok: false, error: '这就是置顶推，它已经自动是第一条了' };
+    }
+    const rows = engageFileRows().slice();
+    if (rows.some((r) => r.tweetId === m[2])) return { ok: false, error: '这条已经在表里了' };
+    const pts = b.pts == null || b.pts === '' ? null : Math.floor(Number(b.pts));
+    if (pts != null && !(Number.isFinite(pts) && pts >= 0)) return { ok: false, error: '分值要是非负整数' };
+    const row = {
+      id: m[2], tweetId: m[2], url: 'https://x.com/' + m[1] + '/status/' + m[2],
+      pts, at: b.at ? new Date(b.at).toISOString() : new Date().toISOString(),
+      note: b.note == null ? null : String(b.note).slice(0, 160)
+    };
+    rows.push(row);
+    saveEngagePosts(rows);
+    return { ok: true, post: engagePostOf(row.tweetId), total: engagePosts().length };
+  }
+  function engageRemove(idOrUrl) {
+    const s = String(idOrUrl || '').trim();
+    if (!s) return { ok: false, error: '要给推文 id 或链接' };
+    const m = PROOF_RE.exec(s);
+    const tid = m ? m[2] : s;
+    if (pinnedTweetId() && tid === pinnedTweetId()) {
+      return { ok: false, error: '置顶推来自 ARCBANG_PINNED_POST_URL，要改改那个环境变量' };
+    }
+    const rows = engageFileRows();
+    const keep = rows.filter((r) => r.tweetId !== tid);
+    if (keep.length === rows.length) return { ok: false, error: '表里没有这一条：' + s };
+    saveEngagePosts(keep);
+    return { ok: true, removed: rows.length - keep.length, total: engagePosts().length };
+  }
+  /** 某个地址在某条推文上的三个勾。置顶推读老的三张表，其余读 engage 表。 */
+  function engagePartsOf(addr, tweetId) {
+    const a = normAddr(addr);
+    if (!a) return { like: false, repost: false, comment: false };
+    const pin = pinnedTweetId();
+    const tid = String(tweetId);
+    if (tid === PINNED_KEY || (pin && tid === pin)) {
+      return { like: state().like.has(a), repost: state().repost.has(a), comment: state().comment.has(a) };
+    }
+    const rec = (state().engage.get(a) || {})[tid] || {};
+    return { like: !!rec.like, repost: !!rec.repost, comment: !!rec.comment };
+  }
+  /**
+   * 这个地址在每条官方推文上的进度。
+   * @returns {{rows:Array, done:number, points:number}}
+   */
+  function engageStatus(addr) {
+    const rows = engagePosts().map((p) => {
+      const q = engagePartsOf(addr, p.tweetId);
+      const ok = q.like && q.repost && q.comment;
+      return Object.assign({}, p, { like: q.like, repost: q.repost, comment: q.comment, ok });
+    });
+    return {
+      rows,
+      done: rows.filter((r) => r.ok).length,
+      points: rows.reduce((s, r) => s + (r.ok ? r.pts : 0), 0)
+    };
   }
 
   /* ---------------------------------------------------------------- 阶段（含后台切的那一份）
@@ -870,7 +1091,7 @@ function create(opts) {
       return { status: 409, body: { error: '你已经提交过一条链接了，提交之后不能改。', already: true, proof: old } };
     }
     if (old && (old.submits || 1) >= PROOF_MAX_SUBMITS) {
-      return { status: 409, body: { error: '提交次数用完了（最多 ' + PROOF_MAX_SUBMITS + ' 次）。来信说一声，我们人工看。', proof: old } };
+      return { status: 409, body: { error: '提交次数已用完（最多 ' + PROOF_MAX_SUBMITS + ' 次），将转人工复核。', proof: old } };
     }
     const url = String(b.url == null ? '' : b.url).trim();
     const m = PROOF_RE.exec(url);
@@ -1078,17 +1299,28 @@ function create(opts) {
      不然撤了他再点一次就回来了，那道撤销等于没有。 */
   function isDistrusted(addr) { const a = normAddr(addr); return !!a && state().distrust.has(a); }
   /**
-   * POST /api/allowlist/claim {address, sig, task}
-   * task 只认 'follow' / 'like'（转发那一项要提交链接自动核，不能自己声称）。
+   * POST /api/allowlist/claim {address, sig, task, post?}
+   * task 认 'follow'，或 'engage' + post=<推文 id 或链接>（点赞 + 转发 + 评论一体）。
+   * 老的 'like' / 'repost' / 'comment' 一律折进 'engage' —— 页面上早就只剩一颗按钮了，
+   * 但排练站上可能还有旧页面在跑，让它别 400；不带 post 就当置顶推那一条。
    */
   function claim(input, now) {
     const b = input && typeof input === 'object' ? input : {};
     const addr = normAddr(b.address);
     if (!addr) return { status: 400, body: { error: '地址不对' } };
-    const task = String(b.task || '').trim().toLowerCase();
-    if (task !== 'follow' && task !== 'like') {
-      return { status: 400, body: { error: '这一项不能自己声称（转发那一项要贴回复链接，服务端会自动核）' } };
+    const raw = String(b.task || '').trim().toLowerCase();
+    const task = ENGAGE_PARTS.indexOf(raw) >= 0 ? 'engage' : raw;
+    if (CLAIM_TASKS.indexOf(task) < 0) {
+      return { status: 400, body: { error: '这一项不能自己声称（认 follow / engage）' } };
     }
+    /* 互动是**按推文**的：没指明就当置顶推（老页面只有那一张卡）。
+       指了一条表里没有的推文直接拒 —— 不然谁都能给自己随便一条推刷分。 */
+    let post = null;
+    if (task === 'engage') {
+      post = b.post == null || b.post === '' ? (engagePosts()[0] || null) : engagePostOf(b.post);
+      if (!post) return { status: 400, body: { error: '没有这条官方推文' } };
+    }
+    const key = task === 'engage' ? (addr + '|engage:' + post.tweetId) : (addr + '|' + task);
     const sig = String(b.sig == null ? '' : b.sig).trim();
     if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return { status: 400, body: { error: '签名格式不对' } };
     let who = null;
@@ -1097,62 +1329,81 @@ function create(opts) {
     if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
     if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，先去登记' } };
     if (isDistrusted(addr)) {
-      return { status: 403, body: { error: '这个地址被抽查撤销过，关注和点赞要人工核。来信说一声。' } };
-    }
-    if (hasCheck(addr, task)) {
-      return { status: 200, body: { ok: true, already: true, task, points: scoreOf(addr).total } };
+      return { status: 403, body: { error: '该地址已被抽查撤销，互动需人工复核。' } };
     }
     const iso = new Date(now == null ? Date.now() : now).toISOString();
+    /* 已经做完的就别再收一次 claim：互动看这条推文的三项到齐没有。 */
+    if (task === 'engage' ? isEngaged(addr, post.tweetId) : hasCheck(addr, task)) {
+      return { status: 200, body: { ok: true, already: true, task, post: post && post.tweetId, points: scoreOf(addr, now).total } };
+    }
     /* **接了 X API 就不认自称**（2026-09-18 用户反馈：「这里没做核验」）。
        点这一下只把这一项推进「审核中」，真正的勾要等下一轮去 X 上查到人。
-       查不到就 failed，页面写「X 上没查到关注」，他改完再点一次。
+       查不到就 failed，页面写「X 上没查到」，他改完再点一次。
 
        为什么不干脆把按钮拿掉：**用户需要一个「我做完了」的动作**。
        没有它的话，从关注到打勾中间最多隔十分钟，那十分钟里页面上什么都没发生，
        看着就像点了没用 —— 而这正是这次反馈的由来。 */
     if (apiOn()) {
-      const key = addr + '|' + task;
-      const cur = claimOf(addr, task);
+      const cur = state().claims.get(key) || null;
       if (cur && cur.status === 'pending') {
-        return { status: 200, body: { ok: true, pending: true, task, claim: cur, points: scoreOf(addr).total } };
+        return { status: 200, body: { ok: true, pending: true, task, post: post && post.tweetId, claim: cur, points: scoreOf(addr).total } };
       }
       mutState((n) => { n.claims.set(key, { at: iso, status: 'pending' }); });
       return {
         status: 200,
-        body: { ok: true, pending: true, task, claim: { at: iso, status: 'pending' }, points: scoreOf(addr).total }
+        body: { ok: true, pending: true, task, post: post && post.tweetId, claim: { at: iso, status: 'pending' }, points: scoreOf(addr).total }
       };
     }
-    mutState((n) => { n[task].set(addr, { at: iso, by: 'trust' }); });
-    return { status: 200, body: { ok: true, task, points: scoreOf(addr).total } };
+    /* 没接 API 时的老样子：点一下就算，记 by:'trust'，管理员可抽查撤销。
+       互动那一项是三个勾一起打（页面上本来就只有一颗按钮）。 */
+    mutState((n) => {
+      if (task !== 'engage') { if (!n[task].has(addr)) n[task].set(addr, { at: iso, by: 'trust' }); return; }
+      const pin = pinnedTweetId();
+      if (post.tweetId === PINNED_KEY || (pin && post.tweetId === pin)) {
+        for (const k of ENGAGE_PARTS) if (!n[k].has(addr)) n[k].set(addr, { at: iso, by: 'trust' });
+        return;
+      }
+      const rec = Object.assign({}, n.engage.get(addr) || {});
+      const cur = Object.assign({}, rec[post.tweetId] || {});
+      for (const k of ENGAGE_PARTS) if (!cur[k]) cur[k] = iso;
+      rec[post.tweetId] = cur;
+      n.engage.set(addr, rec);
+    });
+    return { status: 200, body: { ok: true, task, post: post && post.tweetId, points: scoreOf(addr, now).total } };
   }
-  /** 这个地址在这一项上自称过没有，结果如何。 */
+  /** 这个地址在这一项上自称过没有，结果如何。task 可以是 'follow' 或 'engage:<推文id>'。 */
   function claimOf(addr, task) {
     const a = normAddr(addr);
-    if (!a || CHECKS.indexOf(task) < 0) return null;
-    return state().claims.get(a + '|' + task) || null;
+    if (!a) return null;
+    const t = String(task || '');
+    if (CLAIM_TASKS.indexOf(t) < 0 && CHECKS.indexOf(t) < 0 && !/^engage:\d{5,25}$/.test(t)) return null;
+    return state().claims.get(a + '|' + t) || null;
   }
   /**
    * X API 那一轮拉回来的结果，一次性写进来（server/xverify.js 每 10 分钟调一次）。
    *
-   * @param sets {{follow?:Set<string>, like?:Set<string>, repost?:Set<string>}}
-   *        每一项是**X 的数字 id 集合**（followers / liking_users / retweeted_by 里的人）。
-   *        没给的那一项整项跳过 —— 比如置顶推没配时，点赞和转发就不该被当成「全空」而清光。
-   * @returns {{added:object, removed:object, seen:number}}
+   * @param sets {{follow?:Set<string>, like?:Set<string>, repost?:Set<string>, comment?:Set<string>}}
+   *        每一项是**X 的数字 id 集合**（followers / liking_users / retweeted_by /
+   *        conversation_id 搜出来的回复作者）。点赞 / 转发 / 评论这三项指的是**置顶推**。
+   *        没给的那一项整项跳过 —— 比如置顶推没配时，它们就不该被当成「全空」而清光。
+   * @param postSets {{ '<推文id>': {like?:Set, repost?:Set, comment?:Set} }}
+   *        置顶推**以外**那几条官方推文各自的三个名单。同样是「没给就跳过」。
+   * @returns {{added:object, removed:object, seen:number, posts:object}}
    *
-   * 两条规矩：
+   * 三条规矩：
    *   1. **只认得出有 xId 的人**。手填 X 名的老记录没有 xId，API 说不了话，一律不动。
    *   2. **只撤自己打的勾**（by === 'api'）。管理员手打的、贴链接自动核过的、
-   *      用户自称的，都不归这一轮管 —— 尤其是转发那一项：有人只回了评论没点转发，
-   *      他的 30 分是 proof 给的，不能因为 retweeted_by 里没有他就抹掉。
+   *      用户自称的，都不归这一轮管。
    *   3. 整轮只落一次盘。逐个人调 mutState 的话，一千个人就是一千次全量重写。
    *
    * 被标成不信任的地址照样能被 API 打勾 —— 不信任挡的是「他自己说他做了」，
    * 而 X 的名单里有没有他不是他说了算的。
    */
-  function syncApi(sets, now) {
+  function syncApi(sets, now, postSets) {
     loadApplied();
     const iso = new Date(now == null ? Date.now() : now).toISOString();
     const added = {}, removed = {};
+    const postStat = {};
     let seen = 0;
     mutState((n) => {
       for (const k of CHECKS) {
@@ -1166,29 +1417,81 @@ function create(opts) {
           const by = cur ? ((typeof cur === 'object' && cur.by) ? cur.by : 'admin') : null;
           if (on && !cur) { n[k].set(addr, { at: iso, by: 'api' }); added[k]++; }
           else if (!on && by === 'api') { n[k].delete(addr); removed[k]++; }
-          /* 他点过「我关注了」的那一项，这一轮给个交代：
-             查到了就把自称记录清掉（勾已经打上了），查不到就标 failed ——
-             页面据此写「未通过 · X 上没查到关注」，他修好再点一次。
-             **不清掉 failed 的话页面永远停在「审核中」**，那比没有反馈还糟。 */
-          const ck = addr + '|' + k;
-          if (n.claims.has(ck)) {
-            if (on || n[k].has(addr)) n.claims.delete(ck);
-            else if (n.claims.get(ck).status !== 'failed') {
-              n.claims.set(ck, { at: n.claims.get(ck).at, status: 'failed', checkedAt: iso });
-            }
-          }
         }
+      }
+      /* ---- 置顶推以外的官方推文 ----
+         每条推文的三个名单各自写进那条推文的记录里。这里**只加不撤**：
+         这几条是「做过就算」的一次性任务，旧推文的名单也不保证每轮都拉得到
+         （增量拉的是新的那几页），按「没在名单里就撤」会把老数据一轮轮抹掉。 */
+      for (const tid in (postSets || {})) {
+        const d = postSets[tid];
+        if (!d) continue;
+        postStat[tid] = 0;
+        for (const [xId, addr] of byXid) {
+          if (!applied.has(addr)) continue;
+          const id = String(xId);
+          const hit = {};
+          let any = false;
+          for (const k of ENGAGE_PARTS) { hit[k] = d[k] ? d[k].has(id) : false; if (hit[k]) any = true; }
+          if (!any) continue;
+          const rec = Object.assign({}, n.engage.get(addr) || {});
+          const cur = Object.assign({}, rec[tid] || {});
+          const was = ENGAGE_PARTS.every((k) => !!cur[k]);
+          for (const k of ENGAGE_PARTS) if (hit[k] && !cur[k]) cur[k] = iso;
+          rec[tid] = cur;
+          n.engage.set(addr, rec);
+          if (!was && ENGAGE_PARTS.every((k) => !!cur[k])) postStat[tid]++;
+        }
+      }
+      /* ---- 自称的那些「我做完了」，这一轮给个交代 ----
+         做到了就把自称记录清掉（勾已经打上了），没做到就标 failed ——
+         页面据此写「未通过 · X 上没查到…」，他修好再点一次。
+         **不清掉 failed 的话页面永远停在「审核中」**，那比没有反馈还糟。
+         判据和页面是同一套：那条推文的点赞 + 转发 + 评论三项到齐。 */
+      const pin = pinnedTweetId();
+      const pinnedChecked = ENGAGE_PARTS.some((k) => sets && sets[k]);
+      /* **只结有 xId 的人**。手填 X 名的老记录 API 说不了话，把他标成 failed
+         等于告诉他「你没做」，而其实是我们查不了 —— 那些人留给管理员。 */
+      const known = new Set();
+      for (const [, addr] of byXid) known.add(addr);
+      for (const [ck, v] of n.claims) {
+        const i = ck.indexOf('|');
+        const addr = i > 0 ? ck.slice(0, i) : null;
+        const t = i > 0 ? ck.slice(i + 1) : '';
+        if (!addr || !applied.has(addr)) { n.claims.delete(ck); continue; }
+        if (!known.has(addr)) continue;
+        /* 老键（like / repost / comment / engage）都指置顶推那一条。 */
+        const m = /^engage:(\d{5,25})$/.exec(t);
+        const tid = m ? m[1] : ((t === 'engage' || ENGAGE_PARTS.indexOf(t) >= 0) ? (pin || PINNED_KEY) : null);
+        if (tid == null && t !== 'follow') continue;
+        let checked, done;
+        if (t === 'follow') {
+          checked = !!(sets && sets.follow);
+          done = n.follow.has(addr);
+        } else if (tid === PINNED_KEY || (pin && tid === pin)) {
+          checked = pinnedChecked;
+          done = ENGAGE_PARTS.every((k) => n[k].has(addr));
+        } else {
+          checked = !!(postSets && postSets[tid]);
+          const rec = (n.engage.get(addr) || {})[tid] || {};
+          done = ENGAGE_PARTS.every((k) => !!rec[k]);
+        }
+        if (!checked) continue;
+        if (done) n.claims.delete(ck);
+        else if (v.status !== 'failed') n.claims.set(ck, { at: v.at, status: 'failed', checkedAt: iso });
       }
       seen = byXid.size;
     });
-    return { added, removed, seen };
+    return { added, removed, seen, posts: postStat };
   }
 
-  /** 管理员抽查撤销：撤掉那一项，并把这个地址标成不再信任。 */
+  /** 管理员抽查撤销：撤掉那几项，并把这个地址标成不再信任。
+      2026-09-19：转发那一项不再有例外 —— 它已经不靠「回复里的登记码」认人了，
+      跟点赞一样是 X 名单里查出来的，该一起撤。 */
   function distrust(token, which) {
     const a = normAddr(token) || addrOfCode(token);
     if (!a) return { ok: false, error: '认不出这个登记码或地址' };
-    const want = checksOf(which).filter((k) => k !== 'repost');
+    const want = checksOf(which);
     mutState((n) => {
       for (const k of want) n[k].delete(a);
       n.distrust.set(a, new Date().toISOString());
@@ -1229,21 +1532,53 @@ function create(opts) {
     const rec = (a && state().bangs.get(a)) || null;
     const days = (rec && rec.d) || {};
     const hashes = (rec && rec.h) || [];
+    const last = Number(rec && rec.last) || 0;
     const day = dayOf(now);
     const today = Number(days[day]) || 0;
     const per = (n) => Math.min(n * P.bang, P.bangPerDay);
     let sum = 0;
     for (const d in days) sum += per(Number(days[d]) || 0);
     const points = Math.min(sum, P.bangMax);
+    const gapMs = P.bangIntervalMin * 60 * 1000;
+    const t = now == null ? Date.now() : now;
     return {
-      hashes, days, day,
+      hashes, days, day, last,
+      /* 下一次能计分的时刻。last 是 0（老数据 / 从没引爆过）时立刻就能。 */
+      nextAt: last ? last + gapMs : 0,
+      tooSoon: !!last && (t - last) < gapMs,
       today, count: hashes.length,
       todayPts: per(today), points,
       dayFull: per(today) >= P.bangPerDay,
       full: points >= P.bangMax
     };
   }
-  function shareDaysOf(addr) { const a = normAddr(addr); const d = a ? state().shares.get(a) : null; return d ? d.length : 0; }
+  /**
+   * 引爆并广播的账。**按次算，不按天** —— 每日 sharePerDay 次、累计 shareMax 次。
+   * @returns {{days:object, hashes:string[], today:number, count:number,
+   *            countedToday:number, counted:number, dayFull:boolean, full:boolean}}
+   */
+  function sharesOf(addr, now) {
+    const a = normAddr(addr);
+    const P = pointsTable();
+    const rec = (a && state().shares.get(a)) || null;
+    const days = (rec && rec.d) || {};
+    const hashes = (rec && rec.h) || [];
+    const day = dayOf(now);
+    const today = Number(days[day]) || 0;
+    /* 每天先各自封顶，再一起封总顶。两道顶都是**次数**。 */
+    let sum = 0;
+    for (const d in days) sum += Math.min(Number(days[d]) || 0, P.sharePerDay);
+    const counted = Math.min(sum, P.shareMax);
+    const countedToday = Math.min(today, P.sharePerDay);
+    return {
+      days, hashes, day, today, count: hashes.length,
+      countedToday, counted,
+      dayFull: countedToday >= P.sharePerDay,
+      full: counted >= P.shareMax
+    };
+  }
+  /** 记过分的**天数**。老字段，榜和导出里还在用。 */
+  function shareDaysOf(addr) { return Object.keys(sharesOf(addr).days).length; }
   /** 这个地址算数的 X 用户名：管理员修正过就用修正的，否则用登记时那一份。 */
   function xOf(addr) {
     const a = normAddr(addr);
@@ -1300,24 +1635,33 @@ function create(opts) {
     const a = normAddr(addrRaw);
     const P = pointsTable();
     const zero = {
-      registered: false, verified: false, followed: false, reposted: false, liked: false,
+      shares: 0, sharesToday: 0,
+      registered: false, verified: false, followed: false,
+      reposted: false, liked: false, commented: false, engaged: false,
+      engagePosts: 0, engageDone: 0, engageRows: [],
       invites: 0, validInvites: 0, countedInvites: 0, shareDays: 0, countedShareDays: 0,
       milestones: P.milestones.map((m) => ({ at: m.at, pts: m.pts, hit: false })),
       posts: 0, okPosts: 0, countedPosts: 0, badPosts: 0,
       bangs: 0, bangToday: 0, bangTodayPts: 0,
-      pts: { register: 0, follow: 0, repost: 0, like: 0, invite: 0, milestone: 0, post: 0, share: 0, bang: 0 },
+      pts: { register: 0, follow: 0, engage: 0, invite: 0, milestone: 0, post: 0, share: 0, bang: 0 },
       total: 0
     };
     if (!a || !loadApplied().has(a)) return zero;
-    /* X 三连各记各的：只做了关注就只拿关注那 10 分。 */
+    /* 关注单算；点赞 / 转发 / 评论仍然各记各的勾，但**合起来才给分**。 */
     const followed = hasCheck(a, 'follow');
     const reposted = hasCheck(a, 'repost');
     const liked = hasCheck(a, 'like');
+    const commented = hasCheck(a, 'comment');
+    const engaged = liked && reposted && commented;
+    /* 推文互动：**每条官方推文各算各的**，一条推文的三项到齐就拿那条的分。
+       没有每日上限、旧推文不过期 —— 官方每发一条就多一个任务。 */
+    const eng = engageStatus(a);
     const invites = inviteCount(a);
     const valid = validInviteCount(a);
     const countedInv = Math.min(valid, P.inviteMax);
-    const days = shareDaysOf(a);
-    const countedDays = Math.min(days, P.shareMaxDays);
+    const sh = sharesOf(a, now);
+    const days = Object.keys(sh.days).length;
+    const countedDays = sh.counted;
     /* 邀请里程碑：在每人 20 分之外，攒到 3/5/10 人再各奖一笔，一档档累加。 */
     const hitMs = P.milestones.filter((m) => valid >= m.at);
     const msPts = hitMs.reduce((s2, m) => s2 + m.pts, 0);
@@ -1328,8 +1672,8 @@ function create(opts) {
     const pts = {
       register: P.register,
       follow: followed ? P.follow : 0,
-      repost: reposted ? P.repost : 0,
-      like: liked ? P.like : 0,
+      /* 一体计分：一条推文的点赞 + 转发 + 评论三项到齐才有，缺一项那条就是 0。 */
+      engage: eng.points,
       invite: countedInv * P.invite,
       milestone: msPts,
       post: countedPosts * P.post,
@@ -1337,14 +1681,16 @@ function create(opts) {
       bang: bg.points
     };
     return {
-      registered: true, verified: reposted, followed, reposted, liked,
+      registered: true, verified: reposted, followed, reposted, liked, commented, engaged,
+      engagePosts: eng.rows.length, engageDone: eng.done, engageRows: eng.rows,
       invites, validInvites: valid, countedInvites: countedInv,
       milestones: P.milestones.map((m) => ({ at: m.at, pts: m.pts, hit: valid >= m.at })),
       posts: posts.length, okPosts, countedPosts,
       badPosts: posts.filter((x) => x.status !== 'ok' && x.status !== 'retry' && x.status !== 'new').length,
       shareDays: days, countedShareDays: countedDays,
+      shares: sh.counted, sharesToday: sh.countedToday, shareRaw: sh,
       bangs: bg.count, bangToday: bg.today, bangTodayPts: bg.todayPts,
-      pts, total: pts.register + pts.follow + pts.repost + pts.like
+      pts, total: pts.register + pts.follow + pts.engage
         + pts.invite + pts.milestone + pts.post + pts.share + pts.bang
     };
   }
@@ -1435,8 +1781,7 @@ function create(opts) {
     const s = scoreOf(a, now);
     let n = 0;
     if (s.followed) n++;
-    if (s.reposted) n++;
-    if (s.liked) n++;
+    if ((s.engageDone || 0) > 0 || s.liked || s.reposted || s.commented) n++;
     if ((s.validInvites || 0) > 0) n++;
     if ((s.okPosts || 0) > 0) n++;
     if ((s.shareDays || 0) > 0) n++;
@@ -1521,8 +1866,9 @@ function create(opts) {
     const P = pointsTable();
     if (!s.registered) return { key: 'register', pts: P.register };
     if (!s.followed) return { key: 'follow', pts: P.follow };
-    if (!s.reposted) return { key: 'repost', pts: P.repost };
-    if (!s.liked) return { key: 'like', pts: P.like };
+    /* 推文互动：还有没做完的官方推文就指第一条没做完的那张卡。 */
+    const und = (s.engageRows || []).find((r) => !r.ok);
+    if (und) return { key: 'engage', pts: und.pts, post: und.tweetId };
     if (s.validInvites < P.inviteMax) return { key: 'invite', pts: P.invite };
     if (s.okPosts < P.postMax) return { key: 'post', pts: P.post };
     if (s.shareDays < P.shareMaxDays) return { key: 'share', pts: P.share };
@@ -1774,25 +2120,37 @@ function create(opts) {
     if (String(who).toLowerCase() !== addr) return { status: 400, body: { error: '签名和地址对不上' } };
     if (!loadApplied().has(addr)) return { status: 403, body: { error: '这个地址还没登记，先去登记白名单' } };
 
-    const P = pointsTable();
-    const day = dayOf(now);
-    const s = state();
-    const days = (s.shares.get(addr) || []).slice();
-    if (days.indexOf(day) >= 0) {
-      return { status: 200, body: { ok: true, already: true, day, shareDays: days.length, points: scoreOf(addr).total } };
-    }
+    const cur = sharesOf(addr, now);
+    const day = cur.day;
+    const low = hash.toLowerCase();
+    const out = (extra) => ({
+      status: 200,
+      body: Object.assign({
+        ok: true, day, shares: cur.counted, today: cur.countedToday,
+        shareDays: Object.keys(cur.days).length, points: scoreOf(addr, now).total
+      }, extra || {})
+    });
+    /* 同一个区块只计一次：不然对着同一次引爆点三下广播就是三次分。 */
+    if (cur.hashes.indexOf(low) >= 0) return out({ already: true });
     /* 到顶之后就不再写盘了：写下去也不加分，只是让文件白白变长。 */
-    if (days.length >= P.shareMaxDays) {
-      return { status: 200, body: { ok: true, capped: true, day, shareDays: days.length, points: scoreOf(addr).total } };
-    }
-    days.push(day);
-    days.sort();
-    try { mutState((n) => { n.shares.set(addr, days); }); }
+    if (cur.full) return out({ capped: 'total' });
+    if (cur.dayFull) return out({ capped: 'day' });
+    const nextRec = { d: Object.assign({}, cur.days), h: cur.hashes.concat([low]) };
+    nextRec.d[day] = (Number(nextRec.d[day]) || 0) + 1;
+    try { mutState((n) => { n.shares.set(addr, nextRec); }); }
     catch (e) {
-      console.error('[allowlist] 分享记不下去：' + (e && e.message));
+      console.error('[allowlist] 广播记不下去：' + (e && e.message));
       return { status: 500, body: { error: '暂时存不下，稍后再试' } };
     }
-    return { status: 200, body: { ok: true, day, shareDays: days.length, points: scoreOf(addr).total } };
+    const after = sharesOf(addr, now);
+    return {
+      status: 200,
+      body: {
+        ok: true, counted: true, day, hash: low,
+        shares: after.counted, today: after.countedToday,
+        shareDays: Object.keys(after.days).length, points: scoreOf(addr, now).total
+      }
+    };
   }
 
   /**
@@ -1842,6 +2200,14 @@ function create(opts) {
       return { status: 200, body: { ok: true, capped: 'day', bangs: cur.count, today: cur.today,
         todayPts: cur.todayPts, points: scoreOf(addr, now).total } };
     }
+    /* 两次计分之间的最短间隔。**不写盘、不读链、页面静默** ——
+       它跟「这个区块已经算过」一样是状态不是错误：那颗按钮本来就随便点，
+       弹一句「太快了」只会让正常玩的人以为自己做错了什么。 */
+    if (cur.tooSoon) {
+      return { status: 200, body: { ok: true, capped: 'interval',
+        nextAt: new Date(cur.nextAt).toISOString(),
+        bangs: cur.count, today: cur.today, todayPts: cur.todayPts, points: scoreOf(addr, now).total } };
+    }
     /* 频率闸放在「确定要写盘」之前、链上校验之前：读链是要花时间的，
        别让一个刷子把我们的 RPC 也一起拖下水。 */
     if (typeof take === 'function') {
@@ -1861,7 +2227,8 @@ function create(opts) {
     }
 
     const day = cur.day;
-    const nextRec = { h: cur.hashes.concat([hash]), d: Object.assign({}, cur.days) };
+    const nextRec = { h: cur.hashes.concat([hash]), d: Object.assign({}, cur.days),
+      last: now == null ? Date.now() : now };
     nextRec.d[day] = (Number(nextRec.d[day]) || 0) + 1;
     try { mutState((n) => { n.bangs.set(addr, nextRec); }); }
     catch (e) {
@@ -1931,14 +2298,16 @@ function create(opts) {
         at, seed: true
       };
       lines.push(JSON.stringify(rec));
-      /* 完成度随机：三连各自掷一次，邀请 / 创作 / 引爆 / 打卡各掷一个数。
-         **有意让一部分人一件事都不做** —— 那一档正是「未获资格」，排练时要看得到。 */
+      /* 完成度随机：关注与置顶推那三项各自掷一次，邀请 / 创作 / 引爆 / 广播各掷一个数。
+         **有意让一部分人一件事都不做** —— 那一档正是「未获资格」，排练时要看得到。
+         互动是一体计分的：只有三项都掷中的人才拿得到那 50 分，这正是要摆出来的样子。 */
       const idle = rnd() < 0.18;
       todo.push({
         addr, at,
         follow: !idle && rnd() < 0.72,
         like: !idle && rnd() < 0.62,
         repost: !idle && rnd() < 0.45,
+        comment: !idle && rnd() < 0.40,
         invites: idle ? 0 : Math.floor(Math.pow(rnd(), 2.4) * 12),
         posts: idle ? 0 : Math.floor(Math.pow(rnd(), 3) * 4),
         bangs: idle ? 0 : Math.floor(Math.pow(rnd(), 1.6) * (P.bangMax + 6)),
@@ -1957,10 +2326,11 @@ function create(opts) {
         if (t.follow) st.follow.set(t.addr, { at: t.at, by: 'seed' });
         if (t.like) st.like.set(t.addr, { at: t.at, by: 'seed' });
         if (t.repost) st.repost.set(t.addr, { at: t.at, by: 'seed' });
+        if (t.comment) st.comment.set(t.addr, { at: t.at, by: 'seed' });
         if (t.shareDays > 0) {
-          const days = [];
-          for (let d = 0; d < t.shareDays; d++) days.push(dayOf(now - d * DAY));
-          st.shares.set(t.addr, Array.from(new Set(days)).sort());
+          const d = {};
+          for (let i2 = 0; i2 < t.shareDays; i2++) d[dayOf(now - i2 * DAY)] = 1;
+          st.shares.set(t.addr, { d, h: [] });
         }
         if (t.posts > 0) {
           const arr = [];
@@ -2094,9 +2464,10 @@ function create(opts) {
     };
     const head = [
       '名次', '层级', '总积分',
-      '登记分', '关注分', '点赞分', '转发分', '邀请分', '里程碑分', '创作分', '引爆分', '打卡分',
+      '登记分', '关注分', '互动分', '邀请分', '里程碑分', '创作分', '引爆分', '广播分',
       '地址', 'X 名', 'X 来源', '登记码', '邀请人码', '有效邀请', '邀请总数',
-      '关注', '点赞', '转发', '创作通过', '引爆区块数', '打卡天数',
+      '关注', '推文互动 已完成条数', '推文互动 总条数', '置顶推点赞', '置顶推转发', '置顶推评论',
+      '创作通过', '引爆区块数', '广播次数', '广播天数',
       '登记时间', 'IP 前缀', '模拟数据'
     ].join(',');
     const body = rows.map((r) => {
@@ -2105,12 +2476,13 @@ function create(opts) {
       const rec = appliedOf(r.addr) || {};
       return [
         r.rank == null ? '' : r.rank, r.tier || '未获资格', r.points,
-        pts.register || 0, pts.follow || 0, pts.like || 0, pts.repost || 0,
+        pts.register || 0, pts.follow || 0, pts.engage || 0,
         pts.invite || 0, pts.milestone || 0, pts.post || 0, pts.bang || 0, pts.share || 0,
         r.addr, r.x || '', rec.xSource || 'typed', r.code, r.ref || '',
         r.validInvites, r.invites,
-        r.followed ? '1' : '0', sc.liked ? '1' : '0', r.reposted ? '1' : '0',
-        sc.okPosts || 0, sc.bangs || 0, r.shareDays,
+        r.followed ? '1' : '0', sc.engageDone || 0, (sc.engageRows || []).length,
+        sc.liked ? '1' : '0', r.reposted ? '1' : '0', sc.commented ? '1' : '0',
+        sc.okPosts || 0, sc.bangs || 0, sc.shares || 0, r.shareDays,
         r.at || '', r.ip || '', rec.seed ? '1' : '0'
       ].map(q).join(',');
     }).join('\n');
@@ -2153,20 +2525,38 @@ function create(opts) {
       boardPublicMax: BOARD_PUBLIC_MAX,            // 榜只公布前这么多名
       /* ---- 本人那一份 ---- */
       registered: s.registered,
-      /* X 三连三个勾分开报：任务卡要分别显示未做 / 待核 / 已完成。 */
-      followed: s.followed, reposted: s.reposted, liked: s.liked,
+      /* 置顶推那三个勾仍然分开报（老页面还在读），但计分看的是下面的 engage。 */
+      followed: s.followed, reposted: s.reposted, liked: s.liked, commented: s.commented,
+      engaged: s.engaged,
       verified: s.reposted,                        // 老字段：指转发那一项
       xHandle: xHandle(), followUrl: followUrl(), likeUrl: likeUrl(),
+      /* ---- 推文互动 ----
+         一条官方推文一张卡：三行子状态（点赞 / 转发 / 评论）都核到才给这条的分。
+         置顶推是第一条；官方每发一条新的就多一张卡，旧的不过期。
+         claim 里那一项是 'engage:<推文id>'，页面按 tweetId 取。 */
+      engagePosts: addr
+        ? s.engageRows.map((r) => Object.assign({}, r, {
+          claim: claimOf(addr, 'engage:' + r.tweetId),
+          by: (pinnedTweetId() && r.tweetId === pinnedTweetId()) ? checkBy(addr, 'repost') : null
+        }))
+        : engagePosts().map((r) => Object.assign({}, r, {
+          like: false, repost: false, comment: false, ok: false, claim: null, by: null
+        })),
+      engageDone: s.engageDone || 0,
+      /* 评论核不了（recent search 被拒）时，页面把「贴回复链接」那一块放出来。 */
+      commentFallback: API.configured ? !API.searchOk : false,
       /* 自动核的现场：页面靠它把转发那张卡分成「未做 / 待核 / 已完成」并写出原因。 */
       proof: addr ? proofOf(addr) : null,
       distrusted: addr ? isDistrusted(addr) : false,
-      checkBy: addr ? { follow: checkBy(addr, 'follow'), repost: checkBy(addr, 'repost'), like: checkBy(addr, 'like') } : null,
+      checkBy: addr ? { follow: checkBy(addr, 'follow'), repost: checkBy(addr, 'repost'), like: checkBy(addr, 'like'), comment: checkBy(addr, 'comment') } : null,
       /* 这一项是**谁**核的：'api'（X 上查到的）/ 'auto'（贴链接自动核的）/
          'trust'（用户自称，待复核）/ 'admin'（人工打的）。页面拿它写胶囊上那半句。 */
-      verifiedBy: addr ? { follow: checkBy(addr, 'follow'), repost: checkBy(addr, 'repost'), like: checkBy(addr, 'like') } : null,
+      verifiedBy: addr ? { follow: checkBy(addr, 'follow'), repost: checkBy(addr, 'repost'), like: checkBy(addr, 'like'), comment: checkBy(addr, 'comment') } : null,
       /* 自称过但还没被 API 认下来的那些：{status:'pending'|'failed'} */
       claims: addr ? {
-        follow: claimOf(addr, 'follow'), repost: claimOf(addr, 'repost'), like: claimOf(addr, 'like')
+        follow: claimOf(addr, 'follow'),
+        /* 老键还留着（排练站上可能有旧页面在读），互动的现场看 engagePosts[].claim。 */
+        repost: claimOf(addr, 'repost'), like: claimOf(addr, 'like')
       } : null,
       /* X 自动核的现场：开没开、上次什么时候拉的、下一次大概什么时候。
          页面把它写进「审核中」那个胶囊里 —— 不写的话那十分钟等待看着就像卡住了。 */
@@ -2190,6 +2580,9 @@ function create(opts) {
       countedInvites: s.countedInvites,
       shareDays: s.shareDays,
       countedShareDays: s.countedShareDays,
+      /* 引爆并广播：**按次**（每日 sharePerDay 次、累计 shareMax 次）。
+         shareDays 是老字段（记过分的天数），榜和导出里还在用。 */
+      shares: s.shares, sharesToday: s.sharesToday,
       /* 引爆计分的进度：今天拿了几分、一共拿了几分。两道上限在 pts 里（bangPerDay / bangMax），
          页面上「今日 x / 10 分 · 累计 y / 50 分」读的就是这几个数。 */
       bangs: s.bangs,
@@ -2243,27 +2636,30 @@ function create(opts) {
         at: r.at, ip: r.ip, ipCount: perIp.get(r.ip) || 1,
         ref: r.ref || null, inviter: r.inviter || null,
         points: s.total, rank: rankOf(r.addr), tier: tierOf(r.addr),
-        follow: s.followed, repost: s.reposted, like: s.liked,
-        by: { follow: checkBy(r.addr, 'follow'), repost: checkBy(r.addr, 'repost'), like: checkBy(r.addr, 'like') },
+        follow: s.followed, repost: s.reposted, like: s.liked, comment: s.commented,
+        engaged: s.engaged, engageDone: s.engageDone || 0, engageTotal: (s.engageRows || []).length,
+        by: { follow: checkBy(r.addr, 'follow'), repost: checkBy(r.addr, 'repost'),
+          like: checkBy(r.addr, 'like'), comment: checkBy(r.addr, 'comment') },
         distrusted: isDistrusted(r.addr),
         proof: pf ? {
           url: pf.url, status: pf.status, reason: pf.reason, tries: pf.tries,
           via: pf.via, at: pf.at, submits: pf.submits, rejected: !!pf.rejected
         } : null,
-        invites: s.invites, validInvites: s.validInvites, shareDays: s.shareDays
+        invites: s.invites, validInvites: s.validInvites, shareDays: s.shareDays, shares: s.shares || 0
       };
     });
     if (kw) {
       rows = rows.filter((r) => (r.x && r.x.toLowerCase().indexOf(kw) >= 0)
         || r.code.toLowerCase().indexOf(kw) >= 0 || r.addr.indexOf(kw) >= 0);
     }
-    if (String(only || '') === 'pending') rows = rows.filter((r) => !(r.follow && r.repost && r.like));
+    if (String(only || '') === 'pending') rows = rows.filter((r) => !(r.follow && r.engaged));
     rows.sort((a, b) => (b.points - a.points) || (String(a.at) < String(b.at) ? -1 : 1));
     const c = counts();
     return {
       rows: rows.slice(0, 500), total: rows.length,
       phase: phaseNow(), phaseBase: phaseBase(), frozen: isFrozen(),
       counts: c, pts: pointsTable(), pinnedPost: pinnedPost(), xHandle: xHandle(),
+      engagePosts: engagePosts(),
       boardSize: board().rows.length
     };
   }
@@ -2353,7 +2749,7 @@ function create(opts) {
     phase: phaseAt, nextOpen, opens: opensIso, pinnedPost, PHASES, TIERS,
     // 积分与榜
     scoreOf, board, rankOf, topRows, boardView, gapTo, gapToPrev, nextStep,
-    pointsTable, tops, inviteCount, validInviteCount, shareDaysOf, isVerified, hasCheck,
+    pointsTable, tops, inviteCount, validInviteCount, shareDaysOf, sharesOf, isVerified, hasCheck,
     xHandle, followUrl, likeUrl, CHECKS,
     // 名单
     tierOf, tasksDone, counts, publicCounts, isFrozen, freeze, unfreeze,
@@ -2367,6 +2763,9 @@ function create(opts) {
     submitPost, postsOf, checkPost, runPostQueue, postsThisWeek,
     warmupWindow, inviteMilestones,
     claim, claimOf, distrust, retrust, isDistrusted, checkBy, pinnedTweetId, syncApi,
+    // 官方推文互动
+    engagePosts, engagePostOf, engageAdd, engageRemove, engageStatus, engagePartsOf, isEngaged,
+    engagePostsFile: postsFile,
     setApiProbe, apiInfo, apiOn,
     // 后台切段
     setPhase, phaseBase, phaseNow, nextOpenNow,

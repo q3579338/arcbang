@@ -28,11 +28,15 @@
  *   - OAuth 1.0a 用户上下文（consumer key/secret + 本账号的 Access Token 对）
  *   一个都没配 → configured() 是 false，整套退回原来的信任模式，一分钱不花。
  *
- * 转发那一项的口径（用户 2026-09-18 拍板）：
- *   **转发这个事实以 retweeted_by 为准**；「转发并在评论里回登记码」那条
- *   仍然走 syndication 核回复（server/allowlist.js 的 submitProof）。
- *   两条路都能把 repost 打上勾，而这里**只撤自己打的那种**（by === 'api'）——
- *   有人只回了评论没点转发，他的分是 proof 给的，不归这一轮管。
+ * 互动的口径（用户 2026-09-19 拍板）：
+ *   **点赞 / 转发 / 评论是一体的**，一条推文的三项都核到才给那条的分。
+ *     点赞 = liking_users，转发 = retweeted_by，评论 = recent search conversation_id:<id>。
+ *   **官方每发一条新推文就多一个任务**，旧的不下线、不过期：所以这里除了置顶推，
+ *   还要把 allowlist 的官方推文表（engagePosts）里每一条都各拉一遍。
+ *
+ *   评论那一路（recent search）跟另外两条不是一个计费档：$0.005 一条，
+ *   而且不是所有账号档位都开。被拒（402 / 403）时记下 searchOk=false，
+ *   页面据此把「贴回复链接」那条老路（submitProof）放出来。
  */
 'use strict';
 const fs = require('fs');
@@ -45,6 +49,11 @@ const API = 'https://api.x.com';
 const PRICE = () => {
   const v = Number(process.env.ARCBANG_XV_PRICE);
   return Number.isFinite(v) && v >= 0 ? v : 0.001;
+};
+/** recent search 一条多少钱。它跟 Owned Reads 不是一个档（默认 $0.005）。 */
+const SEARCH_PRICE = () => {
+  const v = Number(process.env.ARCBANG_XV_SEARCH_PRICE);
+  return Number.isFinite(v) && v >= 0 ? v : 0.005;
 };
 /** 多久拉一轮（分钟）。 */
 const EVERY_MIN = () => {
@@ -63,12 +72,16 @@ const MAX_PAGES = () => {
 };
 const TIMEOUT_MS = 12000;
 
-/** 三项各自从哪个接口来。key 与 allowlist 的 CHECKS 一一对应。 */
+/** 各项各自从哪个接口来。key 与 allowlist 的 CHECKS 一一对应。 */
 const SOURCES = {
   follow: { kind: 'followers', max: 1000 },
   like: { kind: 'liking_users', max: 100 },
-  repost: { kind: 'retweeted_by', max: 100 }
+  repost: { kind: 'retweeted_by', max: 100 },
+  /* 评论：recent search，按 conversation_id 找这条推下面的所有回复，按 author_id 对人。 */
+  comment: { kind: 'search', max: 100 }
 };
+/** 一条推文上要拉的那三个名单（关注不在里面：它跟具体推文无关）。 */
+const POST_KINDS = { like: 'liking_users', repost: 'retweeted_by', comment: 'search' };
 
 function nowSec() { return Math.floor(Date.now() / 1000); }
 function nonce() { return crypto.randomBytes(16).toString('hex'); }
@@ -94,9 +107,14 @@ function create(opts) {
 
   const EMPTY = () => ({
     accountId: null, tweetId: null,
-    sets: {},                       // key → { ids:[…], at, full:boolean }
+    sets: {},                       // key → { ids:[…], at, full:boolean }（置顶推 + 关注）
+    /* 置顶推**以外**每条官方推文的三个名单：tweetId → { like/repost/comment: {ids, at, since} } */
+    posts: {},
+    /* 评论那一路能不能用。X 那边拒过一次就记下来，页面据此退回「贴回复链接」。
+       **不是永久的**：下一轮还会再试一次，额度加开之后自己会恢复。 */
+    searchOk: true, searchError: null,
     rounds: 0, lastRunAt: null, lastError: null, running: false,
-    cost: { records: 0, requests: 0, byDay: {} }
+    cost: { records: 0, requests: 0, searchRecords: 0, byDay: {} }
   });
 
   function load() {
@@ -105,7 +123,9 @@ function create(opts) {
       const j = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
       cache = Object.assign(EMPTY(), j || {});
       cache.sets = cache.sets || {};
-      cache.cost = Object.assign({ records: 0, requests: 0, byDay: {} }, cache.cost || {});
+      cache.posts = cache.posts || {};
+      cache.searchOk = cache.searchOk !== false;
+      cache.cost = Object.assign({ records: 0, requests: 0, searchRecords: 0, byDay: {} }, cache.cost || {});
       cache.running = false;         // 上次是被 kill 掉的，别把标志留成 true
     } catch (e) {
       cache = EMPTY();
@@ -174,14 +194,16 @@ function create(opts) {
   }
 
   /** 记一笔账：读了多少条、发了几个请求、折合多少钱。 */
-  function charge(records, requests, now) {
+  function charge(records, requests, now, search) {
     const s = load();
     const d = dayOf(now == null ? Date.now() : now);
     s.cost.records += records;
     s.cost.requests += requests;
-    s.cost.byDay[d] = s.cost.byDay[d] || { records: 0, requests: 0 };
+    if (search) s.cost.searchRecords = (s.cost.searchRecords || 0) + records;
+    s.cost.byDay[d] = s.cost.byDay[d] || { records: 0, requests: 0, searchRecords: 0 };
     s.cost.byDay[d].records += records;
     s.cost.byDay[d].requests += requests;
+    if (search) s.cost.byDay[d].searchRecords = (s.cost.byDay[d].searchRecords || 0) + records;
     /* 只留最近 30 天，不然这个文件会一直长。 */
     const keys = Object.keys(s.cost.byDay).sort();
     while (keys.length > 30) delete s.cost.byDay[keys.shift()];
@@ -210,6 +232,7 @@ function create(opts) {
    * @returns {{ok:boolean, ids?:Set<string>, pages:number, records:number, error?:string}}
    */
   async function fetchList(kind, id, known, full) {
+    if (kind === 'search') return fetchRepliers(id, known, full);
     const src = SOURCES[Object.keys(SOURCES).find((k) => SOURCES[k].kind === kind)];
     const max = (src && src.max) || 100;
     const root = kind === 'followers'
@@ -246,7 +269,95 @@ function create(opts) {
   }
 
   /**
-   * 拉一轮，把三项写回名单。
+   * 谁在这条推下面回过帖 —— recent search，按 conversation_id 找，取 author_id。
+   *
+   * 三件跟上面那个不一样的事：
+   *   1. **单价不同**（$0.005），所以账单里单记一笔 searchRecords；
+   *   2. 增量靠 **since_id**：上一轮见过的最新那条回复的 id，下一轮只要比它新的；
+   *   3. **被拒不是错误而是状态**：402（没开这个档）/ 403（这个 token 没权限）
+   *      说明这条路这个账号走不通，记 searchOk=false，页面退回「贴回复链接」。
+   *
+   * recent search 只回最近 7 天 —— 老推文的评论翻不到。所以已经见过的人
+   * **只并不减**（调用方 merge），不会因为搜不到就把勾撤掉。
+   *
+   * @returns {{ok, ids?:Set, pages, records, sinceId?:string, denied?:boolean}}
+   */
+  async function fetchRepliers(tweetId, known, since) {
+    const max = SOURCES.comment.max;
+    const q = 'conversation_id:' + tweetId;
+    const root = API + '/2/tweets/search/recent?query=' + encodeURIComponent(q)
+      + '&max_results=' + max + '&tweet.fields=author_id'
+      + (since ? '&since_id=' + encodeURIComponent(since) : '');
+    const out = new Set();
+    const cap = MAX_PAGES();
+    let token = null, pages = 0, records = 0, newest = since || null;
+    while (pages < cap) {
+      const r = await get(root + (token ? '&next_token=' + encodeURIComponent(token) : ''));
+      pages++;
+      if (!r.ok) {
+        charge(records, pages, null, true);
+        const denied = r.status === 402 || r.status === 403;
+        return { ok: false, pages, records, error: r.error, status: r.status, denied };
+      }
+      const rows = (r.json && r.json.data) || [];
+      for (const t of rows) {
+        const uid = t && t.author_id != null ? String(t.author_id) : null;
+        if (uid) out.add(uid);
+        const tid = t && t.id != null ? String(t.id) : null;
+        /* id 是雪花号：位数一样时字典序就是时间序，位数不一样时长的更新。 */
+        if (tid && (!newest || tid.length > newest.length || (tid.length === newest.length && tid > newest))) newest = tid;
+      }
+      records += rows.length;
+      token = (r.json && r.json.meta && r.json.meta.next_token) || null;
+      if (!token) break;
+    }
+    charge(records, pages, null, true);
+    return { ok: true, ids: out, pages, records, sinceId: newest };
+  }
+
+  /**
+   * 拉一条推文的三个名单（点赞 / 转发 / 评论）。
+   * @param slot 盘上存这条推的那一格（{like/repost/comment: {ids, at, since}}），**会被就地改**
+   * @returns {{sets:{like?:Set,repost?:Set,comment?:Set}, detail:object}}
+   */
+  async function fetchPost(tweetId, slot, full) {
+    const sets = {}, detail = {};
+    const s = load();
+    for (const key of Object.keys(POST_KINDS)) {
+      const kind = POST_KINDS[key];
+      if (kind === 'search' && !s.searchOk) { detail[key] = { skipped: true, why: '评论那一路被拒过' }; continue; }
+      const cell = slot[key] || {};
+      const known = new Set((cell.ids || []).map(String));
+      const doFull = full || !slot[key];
+      const r = kind === 'search'
+        ? await fetchRepliers(tweetId, known, cell.since || null)
+        : await fetchList(kind, tweetId, known, doFull);
+      if (!r.ok) {
+        if (r.denied) {
+          s.searchOk = false;
+          s.searchError = r.error || ('X 回了 ' + r.status);
+          console.error('[xverify] 评论那一路被拒（' + r.status + '）：退回贴回复链接。' + s.searchError);
+        }
+        detail[key] = { error: r.error, pages: r.pages, records: r.records };
+        continue;                    // 这一项这一轮不动名单 —— 拉失败不等于没人
+      }
+      if (kind === 'search') s.searchOk = true;
+      /* 点赞 / 转发做全量时整份替换（能发现取消），评论**只并不减**
+         （recent search 只回 7 天，老回复翻不到，减了等于把勾抹掉）。 */
+      const merged = (kind !== 'search' && doFull) ? r.ids : new Set([...known, ...r.ids]);
+      slot[key] = {
+        ids: [...merged], at: new Date().toISOString(),
+        full: kind === 'search' ? false : doFull,
+        since: kind === 'search' ? (r.sinceId || cell.since || null) : undefined
+      };
+      sets[key] = merged;
+      detail[key] = { pages: r.pages, records: r.records, total: merged.size };
+    }
+    return { sets, detail };
+  }
+
+  /**
+   * 拉一轮，把各项写回名单。
    * @param opt.full  强制这一轮做全量
    * @returns 这一轮的账单与打勾结果
    */
@@ -256,7 +367,7 @@ function create(opts) {
     if (!configured()) return { ok: false, error: '还没配自动核用的凭证（Bearer 或 Access Token）' };
     s.running = true;
     const started = Date.now();
-    const before = { records: s.cost.records, requests: s.cost.requests };
+    const before = { records: s.cost.records, requests: s.cost.requests, search: s.cost.searchRecords || 0 };
     const detail = {};
     try {
       const acc = await accountId();
@@ -272,36 +383,68 @@ function create(opts) {
           detail[key] = { skipped: true, why: kind === 'followers' ? (acc.error || '没拿到账号 id') : '没配置顶推' };
           continue;
         }
+        if (kind === 'search' && !s.searchOk) { detail[key] = { skipped: true, why: '评论那一路被拒过' }; continue; }
         const old = (s.sets[key] && s.sets[key].ids) || [];
         const known = new Set(old.map(String));
         /* 第一次跑（从没存过这一项）一律全量：没有底子的话，
            「这一页全是老人」永远不成立，反而会一路翻到底还多花钱。 */
         const doFull = full || !s.sets[key];
-        const r = await fetchList(kind, target, known, doFull);
+        const r = kind === 'search'
+          ? await fetchRepliers(target, known, (s.sets[key] && s.sets[key].since) || null)
+          : await fetchList(kind, target, known, doFull);
         if (!r.ok) {
+          if (r.denied) { s.searchOk = false; s.searchError = r.error || ('X 回了 ' + r.status); }
           detail[key] = { error: r.error, pages: r.pages, records: r.records };
           continue;                  // 这一项这一轮不动名单 —— 拉失败不等于没人
         }
-        const merged = doFull ? r.ids : new Set([...known, ...r.ids]);
-        s.sets[key] = { ids: [...merged], at: new Date().toISOString(), full: doFull };
+        if (kind === 'search') s.searchOk = true;
+        const merged = (kind !== 'search' && doFull) ? r.ids : new Set([...known, ...r.ids]);
+        s.sets[key] = {
+          ids: [...merged], at: new Date().toISOString(), full: kind === 'search' ? false : doFull,
+          since: kind === 'search' ? (r.sinceId || (s.sets[key] && s.sets[key].since) || null) : undefined
+        };
         sets[key] = merged;
         detail[key] = { full: doFull, pages: r.pages, records: r.records, total: merged.size };
       }
 
-      const applied = (AL && AL.syncApi) ? AL.syncApi(sets) : { added: {}, removed: {}, seen: 0 };
+      /* ---- 置顶推以外的官方推文，每条各拉一遍 ----
+         官方每发一条就多一个任务，旧的不下线：所以这里是**整张表**，不是只看最新那条。
+         一条推三个请求，表长了就是线性增长的钱 —— 增量在 fetchPost 里（点赞 / 转发
+         翻到「这一页全是老人」就停，评论走 since_id），所以旧推文实际上几乎不花钱。 */
+      const postSets = {};
+      const allPosts = (AL && AL.engagePosts) ? AL.engagePosts() : [];
+      s.posts = s.posts || {};
+      for (const post of allPosts) {
+        if (tid && post.tweetId === tid) continue;      // 置顶推上面已经拉过
+        /* 没配置顶推 URL 时表里第一条是个占位（tweetId 不是数字），它没有推文可拉。 */
+        if (!/^\d{5,25}$/.test(String(post.tweetId))) continue;
+        const slot = s.posts[post.tweetId] || {};
+        const r = await fetchPost(post.tweetId, slot, full);
+        s.posts[post.tweetId] = slot;
+        if (Object.keys(r.sets).length) postSets[post.tweetId] = r.sets;
+        detail['post:' + post.tweetId] = r.detail;
+      }
+      /* 表里删掉的推文，盘上那一格也跟着清 —— 不然这个文件只增不减。 */
+      const live = new Set(allPosts.map((x) => x.tweetId));
+      for (const k of Object.keys(s.posts)) if (!live.has(k)) delete s.posts[k];
+
+      const applied = (AL && AL.syncApi) ? AL.syncApi(sets, null, postSets) : { added: {}, removed: {}, seen: 0 };
       s.rounds++;
       s.lastRunAt = new Date().toISOString();
       s.lastError = null;
       const records = s.cost.records - before.records;
       const requests = s.cost.requests - before.requests;
+      const searchRecords = (s.cost.searchRecords || 0) - before.search;
       save();
-      const line = Object.keys(detail).map((k) => k + (detail[k].error ? '✗' : '=' + (detail[k].total == null ? '跳过' : detail[k].total))).join(' ');
+      const line = Object.keys(SOURCES).map((k) => k + (!detail[k] ? '—' : (detail[k].error ? '✗' : '=' + (detail[k].total == null ? '跳过' : detail[k].total)))).join(' ');
+      const usd = (records - searchRecords) * PRICE() + searchRecords * SEARCH_PRICE();
       console.log('[xverify] 第 ' + s.rounds + ' 轮：' + line
-        + ' · 读 ' + records + ' 条 ≈ $' + (records * PRICE()).toFixed(3)
+        + ' · 推文 ' + allPosts.length + ' 条'
+        + ' · 读 ' + records + ' 条（搜 ' + searchRecords + '）≈ $' + usd.toFixed(3)
         + ' · ' + (Date.now() - started) + 'ms');
       return {
         ok: true, rounds: s.rounds, detail, applied,
-        cost: { records, requests, usd: +(records * PRICE()).toFixed(4) }
+        cost: { records, requests, searchRecords, usd: +usd.toFixed(4) }
       };
     } catch (e) {
       s.lastError = (e && e.message) || String(e);
@@ -353,11 +496,32 @@ function create(opts) {
       lastError: s.lastError,
       running: !!s.running,
       sets: sizes,
+      /* 评论那一路（recent search）通不通。allowlist 的 status 把它传给页面：
+         false 时互动卡上多出「贴回复链接」那一块，那是评论的退路。 */
+      searchOk: s.searchOk !== false,
+      searchError: s.searchError || null,
+      /* 置顶推以外每条官方推文拉到哪儿了（后台看的） */
+      posts: Object.keys(s.posts || {}).map((tid) => ({
+        tweetId: tid,
+        like: s.posts[tid].like ? s.posts[tid].like.ids.length : null,
+        repost: s.posts[tid].repost ? s.posts[tid].repost.ids.length : null,
+        comment: s.posts[tid].comment ? s.posts[tid].comment.ids.length : null,
+        at: (s.posts[tid].like || s.posts[tid].repost || s.posts[tid].comment || {}).at || null
+      })),
       price,
+      searchPrice: SEARCH_PRICE(),
       cost: {
         records: s.cost.records, requests: s.cost.requests,
-        usd: +(s.cost.records * price).toFixed(4),
-        today: { records: today.records, requests: today.requests, usd: +(today.records * price).toFixed(4) },
+        searchRecords: s.cost.searchRecords || 0,
+        /* 搜索那部分按它自己的单价算，别一律乘 0.001 —— 那会把账少报五倍。 */
+        usd: +(((s.cost.records - (s.cost.searchRecords || 0)) * price
+          + (s.cost.searchRecords || 0) * SEARCH_PRICE()).toFixed(4)),
+        today: {
+          records: today.records, requests: today.requests,
+          searchRecords: today.searchRecords || 0,
+          usd: +(((today.records - (today.searchRecords || 0)) * price
+            + (today.searchRecords || 0) * SEARCH_PRICE()).toFixed(4))
+        },
         byDay: s.cost.byDay
       }
     };

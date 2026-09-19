@@ -998,6 +998,26 @@ async function handle(req, res, u) {
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
   }
 
+  /* 引爆计分那一路专用的读块：**查不到就隔 1.5 秒再试，最多 4 次**。
+     为什么只在这里重试：用户刚在模拟器里引爆过这个块，它一定是真的；
+     查不到通常是这一刻挑中的那个 RPC 节点还没同步到，而不是哈希是假的。
+     不重试的表现是「明明引爆成功了却没加分」，而且看不出原因。
+     取块本身带缓存，所以正常那一次根本走不到重试。 */
+  async function bangReadBlock(hash) {
+    for (let i = 0; i < 4; i++) {
+      let blk = null;
+      try { blk = await blockByHash(hash); }
+      catch (e) {
+        /* RPC 抛了：最后一次才把错往上抛（allowlist 会回 503），中间的照样重试。 */
+        if (i === 3) throw e;
+        blk = null;
+      }
+      if (blk) return blk;
+      if (i < 3) await new Promise((r) => setTimeout(r, 1500));
+    }
+    return null;
+  }
+
   /* POST /api/allowlist/bang {address, hash, sig}
      在模拟器里真引爆一次就 +1 分（每日与预热期各有上限，见 server/allowlist.js）。
      **区块哈希回头找链验一次** —— 自己编一个 64 位十六进制串是最省事的刷法。
@@ -1007,7 +1027,15 @@ async function handle(req, res, u) {
     if (rb === null) return;
     const parsedBg = parseJsonObject(rb);
     if (parsedBg.error) return json(res, 400, { error: parsedBg.error }, { 'cache-control': 'no-store' });
-    const r = await AL.bang(parsedBg.value, RL.ipOf(req), Date.now(), blockByHash);
+    const r = await AL.bang(parsedBg.value, RL.ipOf(req), Date.now(), bangReadBlock);
+    /* 没过的那些**在服务端留一行**。用户那边只看到一句「查不到」，
+       而排查要的是哪个地址、哪个哈希、第几次 —— 排练站上手打过同样的补丁，
+       所以它必须进仓库，不然下次部署又把它盖掉。 */
+    if (r.status !== 200) {
+      console.log('[bang] ' + r.status + ' ' + ((r.body && r.body.error) || '')
+        + ' ' + String((parsedBg.value && parsedBg.value.address) || '?')
+        + ' ' + String((parsedBg.value && parsedBg.value.hash) || '?'));
+    }
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
   }
 
@@ -1036,9 +1064,11 @@ async function handle(req, res, u) {
     return json(res, r.status, r.body, { 'cache-control': 'no-store' });
   }
 
-  /* POST /api/allowlist/claim {address, sig, task:'follow'|'like'}
-     关注与点赞在 X 上没有免 key 的办法能查，所以**默认信任**：点一下就计分。
-     管理员抽查撤销之后这个地址整个失去信任（见 allowlist.js 的 distrust）。 */
+  /* POST /api/allowlist/claim {address, sig, task:'follow'|'engage', post?}
+     「我做完了」那一下。接了 X API 时它只把这一项推进「审核中」，
+     真正的勾等下一轮去 X 上查（见 allowlist.js 的 claim / syncApi）；
+     没接 API 时点一下就计分，管理员抽查撤销之后这个地址整个失去信任。
+     task='engage' 时 post 是那条官方推文的 id（不给就是置顶推）。 */
   if (p === '/allowlist/claim' && req.method === 'POST') {
     const rb = await bodyOf(req, res);
     if (rb === null) return;
@@ -1069,7 +1099,7 @@ async function handle(req, res, u) {
       const q = parseJsonObject(rb);
       if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
       const which = {};
-      for (const k of ['follow', 'repost', 'like']) if (q.value[k]) which[k] = true;
+      for (const k of ['follow', 'repost', 'like', 'comment']) if (q.value[k]) which[k] = true;
       const r = q.value.on === false
         ? (q.value.distrust ? AL.distrust(q.value.token, which) : AL.unverify(q.value.token, which))
         : AL.verify(q.value.token, which);
@@ -1093,6 +1123,21 @@ async function handle(req, res, u) {
     }
     if (p === '/allowlist/admin/freeze' && req.method === 'POST') {
       return json(res, 200, AL.freeze(), NOSTORE);
+    }
+    /* 官方推文表（推文互动任务的数据源）。加一条 = 多一个「一键三连」任务；
+       置顶推来自 ARCBANG_PINNED_POST_URL，它不在这张表里，删不掉。 */
+    if (p === '/allowlist/admin/posts' && (req.method === 'GET' || req.method === 'HEAD')) {
+      return json(res, 200, { ok: true, posts: AL.engagePosts(), pts: AL.pointsTable() }, { 'cache-control': 'no-store' });
+    }
+    if (p === '/allowlist/admin/posts' && req.method === 'POST') {
+      const rb = await bodyOf(req, res);
+      if (rb === null) return;
+      const q = parseJsonObject(rb);
+      if (q.error) return json(res, 400, { error: q.error }, { 'cache-control': 'no-store' });
+      const r = q.value.remove
+        ? AL.engageRemove(q.value.remove)
+        : AL.engageAdd(q.value.url, { pts: q.value.pts, note: q.value.note });
+      return json(res, r.ok ? 200 : 400, Object.assign({ posts: AL.engagePosts() }, r), { 'cache-control': 'no-store' });
     }
     /* ?top=100 只导前 100 名（管理员页那颗「导出 TOP 100」）。不带就是全量。 */
     if (p === '/allowlist/admin/csv' && (req.method === 'GET' || req.method === 'HEAD')) {

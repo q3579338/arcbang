@@ -279,7 +279,19 @@ button,input{font-family:inherit}
 .ab-st.bad{color:var(--ab-bad)}
 @keyframes ab-pulse{0%,100%{opacity:1}50%{opacity:.25}}
 
-/* 进度点（每日打卡 / 创作推文） */
+/* 进度点（引爆并广播 / 创作推文） */
+/* 互动卡里的三行子状态（点赞 / 转发 / 评论）。**一行一项，各自打勾** ——
+   分值是一体的，但卡在哪一项上必须看得见，否则「未完成」三个字什么也没说。 */
+.ab-sub{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px}
+.ab-sub li{display:inline-flex;align-items:center;gap:7px;font-size:var(--t-xs);color:var(--ab-graphite)}
+.ab-sub i{width:15px;height:15px;border-radius:50%;flex:0 0 auto;border:1px solid var(--ab-hair);
+  background:var(--ab-plate2);display:inline-flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:10px;line-height:1;color:transparent}
+.ab-sub li.on{color:var(--ab-ink)}
+.ab-sub li.on i{background:var(--ab-ok);border-color:var(--ab-ok);color:#fff}
+.ab-sub li.on i::before{content:"✓"}
+/* 分组下面那句小字（「官方每发一条新推文就多一个任务」之类） */
+.ab-group-d{margin:-4px 0 10px;font-size:var(--t-xs);line-height:1.6;color:var(--ab-graphite)}
 .ab-dots{display:flex;gap:5px;margin-top:10px;align-items:center;flex-wrap:wrap}
 .ab-dots i{width:9px;height:9px;border-radius:50%;background:var(--ab-plate2);
   border:1px solid var(--ab-hair);transition:background-color .2s ease}
@@ -410,7 +422,7 @@ button,input{font-family:inherit}
   <div class="ab-wrap">
     <p class="ab-phase" id="phaseChip" hidden>现在是 <b id="phaseName">预热期</b></p>
     <h1 class="ab-h1">1,387 个宇宙。积分榜前列获得免费铸造资格。</h1>
-    <p class="ab-lede">完成关注、转发、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。</p>
+    <p class="ab-lede">完成关注、推文互动、邀请与引爆任务累积积分，按排名分配免费名额。另有部分名额直接分配给早期支持者与合作伙伴。</p>
 
     <div class="ab-cd" id="cd" aria-live="polite">
       <div class="ab-cd-i"><b class="ab-cd-v" id="cdD">—</b><span class="ab-cd-k">天</span></div>
@@ -515,37 +527,34 @@ button,input{font-family:inherit}
             <button class="ab-btn4" type="button" data-claim="follow" hidden>已完成，提交核验</button></div>
         </article>
 
-        <article class="ab-qr" data-task="like">
-          <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
-          <div class="ab-qr-mid">
-            <div class="ab-qr-hd"><h4 class="ab-qr-t">点赞置顶推</h4><span class="ab-qr-p" data-pts>+10</span></div>
-            <p class="ab-qr-d" data-how>完成点赞后提交，系统将通过 X 核验。</p>
-          </div>
-          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
-            <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">前往点赞</a>
-            <button class="ab-btn4" type="button" data-claim="like" hidden>已完成，提交核验</button></div>
-        </article>
+      </div>
 
-        <article class="ab-qr" data-task="repost">
-          <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
-          <div class="ab-qr-mid">
-            <div class="ab-qr-hd"><h4 class="ab-qr-t">转发置顶推文并回复登记码</h4><span class="ab-qr-p" data-pts>+30</span></div>
-            <p class="ab-qr-d">转发置顶推文，在回复中附上登记码，然后提交该条回复的链接。</p>
-            <div class="ab-xline" id="xWhoRepost" hidden></div>
-            <button class="ab-chip" type="button" id="chipCode" data-copy="" hidden>登记码 ——</button>
-            <div id="proofBox" hidden>
-              <div class="ab-inline">
-                <input class="ab-in mono" id="inProof" type="url" inputmode="url" autocomplete="off"
-                       spellcheck="false" placeholder="https://x.com/…/status/…">
-                <button class="ab-btn3" type="button" id="btnProof">提交链接</button>
-              </div>
-              <p class="ab-msg" id="proofMsg"></p>
-            </div>
-            <p class="ab-qr-d" id="proofDone" hidden></p>
+      <!-- ================= 推文互动 =================
+           2026-09-19 用户拍板两件事：
+             1. **点赞、转发、评论是一体的** —— 一条推文一张卡、一颗按钮、一个分值，
+                三项都核到才给分。分开成三张卡的时候，做了两项的人看到两个「已完成」
+                和一个「未完成」，会以为分已经拿到手了一大半。
+             2. **官方每发一条新推文就多一个任务**，旧的不下线、不过期 ——
+                来晚的人照样能把前面几条补做。
+           所以这一组的卡是**服务端给什么就画什么**（st.engagePosts），不是写死的。 -->
+      <h3 class="ab-group">推文互动</h3>
+      <div class="ab-rows" id="engageRows"></div>
+      <p class="ab-group-d" id="engageEmpty" hidden>还没有可互动的推文，过一会儿再来。</p>
+
+      <!-- 评论那一项平时由 X 自动核。核不了的时候（搜索档位被拒）这一块会被
+           搬进置顶推那张卡里，退回「贴一条回复链接」的老路。平时它不在页面上。 -->
+      <div id="proofSlot" hidden>
+        <div class="ab-xline" id="xWhoRepost" hidden></div>
+        <button class="ab-chip" type="button" id="chipCode" data-copy="" hidden>登记码 ——</button>
+        <div id="proofBox" hidden>
+          <div class="ab-inline">
+            <input class="ab-in mono" id="inProof" type="url" inputmode="url" autocomplete="off"
+                   spellcheck="false" placeholder="https://x.com/…/status/…">
+            <button class="ab-btn3" type="button" id="btnProof">提交链接</button>
           </div>
-          <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
-            <a class="ab-btn3" href="#join" data-act target="_blank" rel="noopener noreferrer">前往转发</a></div>
-        </article>
+          <p class="ab-msg" id="proofMsg"></p>
+        </div>
+        <p class="ab-qr-d" id="proofDone" hidden></p>
       </div>
 
       <h3 class="ab-group">进阶</h3>
@@ -582,7 +591,7 @@ button,input{font-family:inherit}
           </div>
 
         </div>
-        <p class="ab-invc-foot" id="inviteHint">被邀请人完成登记并通过转发核验后，计为一位有效邀请。</p>
+        <p class="ab-invc-foot" id="inviteHint">被邀请人完成登记并通过核验后，计为一位有效邀请。</p>
       </section>
 
       <div class="ab-rows">
@@ -590,7 +599,7 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">创作推文</h4><span class="ab-qr-p" data-pts>+20</span></div>
-            <p class="ab-qr-d">发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。</p>
+            <p class="ab-qr-d">发布一条提及 @arcbang_xyz 并包含 #ARCBANG 的推文，内容不限。发布后提交链接。</p>
             <div class="ab-xline" id="xWhoPost" hidden></div>
             <button class="ab-chip" type="button" data-copy="#ARCBANG">#ARCBANG</button>
             <div class="ab-dots" id="postDots"></div>
@@ -604,7 +613,7 @@ button,input{font-family:inherit}
             </div>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
-            <a class="ab-btn3" href="app.html" data-act>前往发布</a></div>
+            <a class="ab-btn3" id="btnCompose" target="_blank" rel="noopener noreferrer" href="https://x.com/intent/post">前往发推</a></div>
         </article>
       </div>
 
@@ -614,7 +623,7 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙</h4><span class="ab-qr-p" data-pts>+1 / 次</span></div>
-            <p class="ab-qr-d" id="bangHow">在模拟器中引爆任意 Arc 区块，每次计 1 分。</p>
+            <p class="ab-qr-d" id="bangHow">在模拟器中引爆任意 Arc 区块，每次计 1 分。同一区块只计一次，每日 5 次。</p>
             <div class="ab-dots" id="bangDots"></div>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
@@ -625,7 +634,7 @@ button,input{font-family:inherit}
           <span class="ab-qr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></span>
           <div class="ab-qr-mid">
             <div class="ab-qr-hd"><h4 class="ab-qr-t">引爆宇宙并广播</h4><span class="ab-qr-p" data-pts>+5</span></div>
-            <p class="ab-qr-d">每日一次，最多累计五天。</p>
+            <p class="ab-qr-d" id="shareHow">每日最多 3 次，累计 15 次，每次 5 分。</p>
             <div class="ab-dots" id="shareDots"></div>
           </div>
           <div class="ab-qr-act"><span class="ab-st todo" data-st>未完成</span>
@@ -680,10 +689,13 @@ button,input{font-family:inherit}
         <p class="ab-qr-d" id="xHint">一个 X 账号仅可绑定一个地址。</p>
       </div>
 
-      <div class="ab-row">
+      <div class="ab-row" id="walletRow">
         <button class="ab-btn" type="button" id="btnConnect">连接钱包</button>
         <span class="mono" id="whoAddr"></span>
       </div>
+      <!-- 连着的钱包和这个 X 账号绑的不是同一个：说清楚该切到哪个地址。
+           「更换钱包」只是切浏览器里连的钱包，**换不了绑定** —— 所以登记完就不再显示它。 -->
+      <p class="ab-msg err" id="walletWarn" hidden></p>
 
       <div id="joinForm">
         <label class="ab-field" id="xField"><span>X 用户名</span>
@@ -750,7 +762,7 @@ button,input{font-family:inherit}
 <section class="ab-sec">
   <div class="ab-wrap">
     <h2 class="ab-h2">模拟器</h2>
-    <p class="ab-say">选择任意 Arc 区块生成宇宙。每日引爆并广播一次，计 5 分。</p>
+    <p class="ab-say">选择任意 Arc 区块生成宇宙。引爆并广播每次 5 分，每日最多 3 次。</p>
     <div class="ab-cta">
       <a class="ab-btn" href="app.html">进入模拟器</a>
     </div>
@@ -769,7 +781,7 @@ button,input{font-family:inherit}
       </details>
       <details>
         <summary>积分怎么算？</summary>
-        <p>登记 10 分，关注 10 分，点赞 10 分，转发并回复登记码 30 分。每位有效邀请 20 分，累计 3 / 5 / 10 位另有奖励。创作推文每条 20 分。每日引爆并广播一次 5 分。</p>
+        <p>登记 10 分，关注 10 分。推文互动：置顶推 50 分，其他官方推文每条 20 分。每位有效邀请 20 分，累计 3 / 5 / 10 位另有奖励。创作推文每条 20 分。引爆并广播每次 5 分（每日 3 次，累计 15 次），引爆每次 1 分。</p>
       </details>
       <details>
         <summary>什么时候开铸？</summary>
@@ -955,24 +967,17 @@ button,input{font-family:inherit}
     };
     if (P.register != null) setPts('register', '+' + P.register);
     if (P.follow != null) setPts('follow', '+' + P.follow);
-    if (P.repost != null) setPts('repost', '+' + P.repost);
-    if (P.like != null) setPts('like', '+' + P.like);
+    /* 互动那几张卡的分值各不相同（置顶推 50，其余每条自己定），
+       所以它们的 +N 写在 renderEngage 里，不走这里。 */
     if (P.invite != null) setPts('invite', TF('+{0} / 人', P.invite));
     if (P.post != null) setPts('post', TF('+{0} / 条', P.post));
-    if (P.share != null) setPts('share', TF('+{0} / 天', P.share));
+    if (P.share != null) setPts('share', TF('+{0} / 次', P.share));
     if (P.bang != null) setPts('bang', TF('+{0} / 次', P.bang));
-
-    /* 转发置顶推的一键链接：正文预填登记码，url 带上置顶推本身。
-       env 没配 ARCBANG_PINNED_POST_URL 就是 null —— 转发那张卡的按钮跟着消失，
-       给一个点了没反应的按钮比没有按钮糟。 */
-    var pin = st.pinnedPost;
-    var intent = (pin && st.code)
-      ? 'https://x.com/intent/post?text=' + encodeURIComponent('ARCBANG 登记码 ' + st.code) + '&url=' + encodeURIComponent(pin)
-      : null;
 
     renderStats(st);
     renderTier(st);
-    renderTasks(st, intent);
+    renderTasks(st);
+    renderEngage(st);
     renderForm(st);
     renderMine(st);
     renderRecord(st);
@@ -1014,7 +1019,7 @@ button,input{font-family:inherit}
     }, function (e) {
       /* 404 = 功能没开；别的错（断网、500）也一样退回手填 —— 至少还能登记。 */
       XL = { configured: false, login: false, handle: null, id: null, bound: null };
-    }).then(renderX);
+    }).then(function () { renderX(); renderWallet(ST); });
   }
   function renderX() {
     var loginUrl = BASE + '/x/login';
@@ -1073,6 +1078,119 @@ button,input{font-family:inherit}
         + esc(TF('以 @{0} 的推文进行核验', who)) + '</span>';
     });
   }
+  /* ================= 推文互动 =================
+     服务端给一张推文清单（st.engagePosts），这里**一条画一张卡**。
+     卡是现画的而不是写死的 —— 官方每发一条新推就多一张，页面不用改。
+
+     一张卡里三行子状态（点赞 / 转发 / 评论）各自打勾，但**分是一体的**：
+     三项到齐才给这条的分。分开给分的话，只点了赞的人会停在那儿不再往下做。 */
+
+  /** 卡片标题：管理员写了备注就用备注，否则「置顶推文」/「官方推文 #n」+ 日期。 */
+  function engageTitle(p2) {
+    if (p2.note) return p2.note;
+    if (p2.pinned) return T('置顶推文');
+    var d = p2.at ? String(p2.at).slice(0, 10) : '';
+    return TF('官方推文 #{0}', p2.n) + (d ? ' · ' + d : '');
+  }
+  /** 这张卡上那三行。on 的那几行打勾、变深。 */
+  function subRows(p2) {
+    return '<ul class="ab-sub">'
+      + [['like', '点赞'], ['repost', '转发'], ['comment', '评论']].map(function (k) {
+        return '<li class="' + (p2[k[0]] ? 'on' : '') + '"><i></i>' + esc(T(k[1])) + '</li>';
+      }).join('') + '</ul>';
+  }
+  var ENGAGE_ICO = '<span class="ab-qr-ico xmark" aria-hidden="true"><svg viewBox="0 0 24 24">'
+    + '<path d="M3 3l7.6 9.8L3.4 21h1.9l6.2-7.1 5.5 7.1H21l-8-10.3L20.3 3h-1.9l-6 6.8L7.2 3z" stroke="none" fill="currentColor"/>'
+    + '</svg></span>';
+  /** 上一次画的是哪几条。清单没变就不重建 DOM —— 每 30 秒重建一次会把输入框和焦点冲掉。 */
+  var engageKey = null;
+  function renderEngage(st) {
+    var rows = st.engagePosts || [];
+    var host = $('engageRows');
+    if (!host) return;
+    $('engageEmpty').hidden = rows.length > 0;
+    var key = rows.map(function (r) { return r.tweetId + ':' + r.pts; }).join('|');
+    if (key !== engageKey) {
+      engageKey = key;
+      host.innerHTML = rows.map(function (r) {
+        return '<article class="ab-qr wide" data-engage="' + esc(r.tweetId) + '">'
+          + ENGAGE_ICO
+          + '<div class="ab-qr-mid">'
+          + '<div class="ab-qr-hd"><h4 class="ab-qr-t" data-t></h4><span class="ab-qr-p">+' + esc(r.pts) + '</span></div>'
+          + '<p class="ab-qr-d" data-how></p>'
+          + '<div data-sub></div>'
+          + '<div data-slot></div>'
+          + '</div>'
+          + '<div class="ab-qr-act"><span class="ab-st todo" data-st>' + esc(T('未完成')) + '</span>'
+          + '<a class="ab-btn3" data-act target="_blank" rel="noopener noreferrer">' + esc(T('前往互动')) + '</a>'
+          + '<button class="ab-btn4" type="button" data-claim="engage" data-post="' + esc(r.tweetId) + '" hidden>'
+          + esc(T('已完成，提交核验')) + '</button>'
+          + '</div></article>';
+      }).join('');
+    }
+    var reg = !!st.registered;
+    rows.forEach(function (r) {
+      var c = host.querySelector('[data-engage="' + r.tweetId + '"]');
+      if (!c) return;
+      /* 自称记录只在**接着 API** 的时候算数（同 trio 里的道理）。 */
+      var cl = (st.apiOn && r.claim) || null;
+      var state = r.ok ? 'ok' : (cl && cl.status === 'pending' ? 'wait'
+        : (cl && cl.status === 'failed' ? 'bad' : 'todo'));
+      if (r.ok && lastDone['engage:' + r.tweetId] === false && !reduceMotion()) {
+        c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+      }
+      lastDone['engage:' + r.tweetId] = !!r.ok;
+      c.classList.toggle('done', !!r.ok);
+      c.querySelector('[data-t]').textContent = engageTitle(r);
+      c.querySelector('[data-sub]').innerHTML = subRows(r);
+
+      var tail = r.ok ? T(r.by === 'api' ? 'X 已核实' : (r.by === 'trust' ? '待复核' : ''))
+        : (state === 'wait' ? engageWait(st)
+          : (state === 'bad' ? T('未核验到互动') : ''));
+      var stEl = c.querySelector('[data-st]');
+      stEl.className = 'ab-st ' + state;
+      stEl.textContent = T({ todo: '未完成', wait: '核验中', ok: '已完成', bad: '未通过' }[state]) + (tail ? ' · ' + tail : '');
+      if (st.apiOn && st.lastCheckAt) {
+        stEl.title = TF('上次核验 {0}', new Date(st.lastCheckAt).toLocaleString());
+      } else stEl.removeAttribute('title');
+
+      c.querySelector('[data-how]').textContent = r.ok
+        ? T('已在 X 核验到该互动。')
+        : (state === 'wait' ? T('已提交，系统正在通过 X 核验该互动。')
+          : (state === 'bad' ? T('未在 X 核验到该互动，完成后可重新提交。')
+            : (st.apiOn ? T('点赞、转发、评论都完成后提交，系统将通过 X 核验。')
+              : T('点赞、转发、评论都完成后提交，复核阶段将在 X 核验。'))));
+
+      /* **做完就把动作按钮收起来**，一行只剩一颗胶囊。 */
+      var a = c.querySelector('[data-act]');
+      a.hidden = !!r.ok || !r.url;
+      if (r.url) a.href = r.url;
+      var cb = c.querySelector('[data-claim]');
+      cb.hidden = !(reg && !st.distrusted) || !!r.ok;
+      cb.textContent = T(state === 'bad' ? '重新提交核验' : '已完成，提交核验');
+    });
+    /* 评论核不了时，把「贴回复链接」那一块搬进**置顶推**那张卡里。
+       它在页面上只有一份（那条老路本来就只核置顶推下面的回复）。 */
+    var slotHost = null;
+    if (st.commentFallback && rows.length) {
+      var pinRow = rows.filter(function (r) { return r.pinned; })[0] || rows[0];
+      var pc = host.querySelector('[data-engage="' + pinRow.tweetId + '"]');
+      slotHost = pc ? pc.querySelector('[data-slot]') : null;
+    }
+    var slot = $('proofSlot');
+    /* 只在需要时搬一次。退路关掉时它已经被 renderTasks 设成 hidden，
+       留在原地不占位，不必再搬回来 —— 搬来搬去会把输入框里打了一半的字冲掉。 */
+    if (slotHost && slot.parentNode !== slotHost) slotHost.appendChild(slot);
+  }
+  /** 「审核中」那句等待说明（和 renderTasks 里的 waitNote 同一套话）。 */
+  function engageWait(st) {
+    var every = st.checkEveryMin || 10;
+    var nx = st.nextCheckAt ? new Date(st.nextCheckAt).getTime() - Date.now() : null;
+    var mins = (nx != null && nx > 0) ? Math.max(1, Math.ceil(nx / 60000)) : null;
+    if (mins != null) return TF('系统核验中，约 {0} 分钟后返回结果', mins);
+    return TF('系统核验中，最长 {0} 分钟', every);
+  }
+
   /** 「签名并登记」什么时候能点：钱包连上了，而且（开通了 X 登录的话）X 也登了。 */
   function syncJoinBtn() {
     $('btnJoin').disabled = !ADDR || (XL.configured && !XL.login);
@@ -1184,25 +1302,26 @@ button,input{font-family:inherit}
     var connected = !!(ADDR && st.registered);
     setNum('stPoints', connected ? (st.points || 0) : null);
     $('stPointsSub').textContent = connected
-      ? TF('登记 {0} · 三连 {1} · 邀请 {2} · 创作 {3} · 每日 {4} · 引爆 {5}',
+      ? TF('登记 {0} · 关注与互动 {1} · 邀请 {2} · 创作 {3} · 每日 {4} · 引爆 {5}',
         (st.breakdown && st.breakdown.register) || 0,
-        ((st.breakdown && st.breakdown.follow) || 0) + ((st.breakdown && st.breakdown.repost) || 0) + ((st.breakdown && st.breakdown.like) || 0),
+        ((st.breakdown && st.breakdown.follow) || 0) + ((st.breakdown && st.breakdown.engage) || 0),
         ((st.breakdown && st.breakdown.invite) || 0) + ((st.breakdown && st.breakdown.milestone) || 0),
         (st.breakdown && st.breakdown.post) || 0,
         (st.breakdown && st.breakdown.share) || 0,
         (st.breakdown && st.breakdown.bang) || 0)
       : T('连接钱包后显示');
 
+    /* 七项任务：登记 / 关注 / 推文互动 / 邀请 / 创作 / 每日广播 / 引爆。
+       推文互动**做完一条就算做过这一项** —— 它是一组卡，不是一张。 */
     var done = 0;
     if ((st.bangPts || 0) > 0) done++;
     if (st.registered) done++;
     if (st.followed) done++;
-    if (st.reposted) done++;
-    if (st.liked) done++;
+    if ((st.engageDone || 0) > 0) done++;
     if ((st.validInvites || 0) > 0) done++;
     if ((st.okPosts || 0) > 0) done++;
-    if ((st.shareDays || 0) > 0) done++;
-    $('stDone').textContent = connected ? (done + ' / 8') : '—';
+    if ((st.shares || 0) > 0) done++;
+    $('stDone').textContent = connected ? (done + ' / 7') : '—';
 
     $('stInv').textContent = connected ? ((st.validInvites || 0) + ' / ' + (P.inviteMax || 20)) : '—';
     $('stInvSub').textContent = TF('每位 +{0} 分', P.invite || 20);
@@ -1236,20 +1355,32 @@ button,input{font-family:inherit}
       if (isNaN(d.getTime())) return '—';
       try { return d.toLocaleString(); } catch (e) { return v; }
     };
+    var eps = st.engagePosts || [];
     var rows = [
       [T('登记'), when(st.registeredAt)],
       [T('关注'), st.followed ? T('已完成') : T('未完成')],
-      [T('转发'), st.reposted ? T('已完成') : (st.proof ? T('核验中') : T('未完成'))],
-      [T('点赞'), st.liked ? T('已完成') : T('未完成')],
+      [T('推文互动'), TF('已完成 {0} / {1} 条', st.engageDone || 0, eps.length)],
       [T('有效邀请'), (st.validInvites || 0) + ' / ' + (st.invites || 0)],
       [T('创作推文'), TF('已通过 {0} · 未通过 {1}', st.okPosts || 0, st.badPosts || 0)],
-      [T('每日引爆'), TF('已完成 {0} 天', st.shareDays || 0)],
-      [T('引爆计分'), TF('今日 {0} 分 · 累计 {1} 分 · 共 {2} 个区块',
+      [T('引爆并广播'), TF('今日 {0} 次 · 累计 {1} 次', st.sharesToday || 0, st.shares || 0)],
+      [T('引爆宇宙'), TF('今日 {0} 分 · 累计 {1} 分 · 共 {2} 个区块',
         st.bangTodayPts || 0, st.bangPts || 0, st.bangs || 0)]
     ];
     var html = rows.map(function (r) {
       return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>';
     }).join('');
+    /* 每条官方推文单独一行，三项各自写出来 —— 「已完成 1 / 3 条」只说了个总数，
+       卡在哪一项、哪一条上，要在这儿看得见。 */
+    eps.forEach(function (x) {
+      var part = [
+        T('点赞') + (x.like ? ' ✓' : ' ✗'),
+        T('转发') + (x.repost ? ' ✓' : ' ✗'),
+        T('评论') + (x.comment ? ' ✓' : ' ✗')
+      ].join(' · ');
+      html += '<tr><th>' + esc(engageTitle(x)) + '</th><td><a href="' + esc(x.url)
+        + '" target="_blank" rel="noopener noreferrer">' + esc(x.url.replace('https://x.com/', '')) + '</a> '
+        + '<span class="ab-qr-d">' + esc(part + ' · ' + (x.ok ? TF('已完成 +{0}', x.pts) : T('未完成'))) + '</span></td></tr>';
+    });
     /* 提交过的链接列出来，点得开 —— 自己交了什么，自己要看得见。 */
     (st.postList || []).forEach(function (x, i) {
       html += '<tr><th>' + esc(TF('创作 #{0}', i + 1)) + '</th><td><a href="' + esc(x.url)
@@ -1261,7 +1392,7 @@ button,input{font-family:inherit}
 
   /** 任务行：状态四态 + 主动作。**已完成的那一瞬间**才弹一下，刷新不弹。 */
   var lastDone = {};
-  function renderTasks(st, intent) {
+  function renderTasks(st) {
     var P = st.pts || {};
     var reg = !!st.registered;
     var pf = st.proof || null;
@@ -1280,7 +1411,7 @@ button,input{font-family:inherit}
        没接 API 时还是老样子：点一下就算，胶囊写「已完成 · 待复核」。 */
     /* 整句进词典，不拆成「X 上没查到」+「关注」——
        这个仓库吃过这个亏：单个词在别的地方是另一个词性，英文必然有一处别扭。 */
-    var NOTFOUND = { follow: '未核验到关注', like: '未核验到点赞', repost: '未核验到转发' };
+    var NOTFOUND = { follow: '未核验到关注', engage: '未核验到互动' };
     function trio(key, on, act) {
       var by = (st.verifiedBy && st.verifiedBy[key]) || null;
       /* 自称记录只在**接着 API** 的时候算数。API 被关掉之后还认它的话，
@@ -1292,7 +1423,7 @@ button,input{font-family:inherit}
           /* 胶囊上那半句：谁核的。'api' 是 X 上真查到的，别的都还要人再看一眼。 */
           note: by === 'api' ? 'X 已核实' : (by === 'trust' ? '待复核' : (by === 'auto' ? '已通过核验' : '')),
           how: by === 'api'
-            ? (key === 'follow' ? '已在 X 核验到该关注。' : '已在 X 核验到该点赞。')
+            ? (key === 'follow' ? '已在 X 核验到该关注。' : '已在 X 核验到该互动。')
             : '已记录，复核阶段将在 X 核验。',
           act: null                                  // **做完就把按钮收起来**，一行只剩一颗胶囊
         };
@@ -1300,7 +1431,7 @@ button,input{font-family:inherit}
       if (cl && cl.status === 'pending') {
         return {
           done: false, state: 'wait', wait: 'api', act: act, claim: false,
-          how: key === 'follow' ? '已提交，系统正在通过 X 核验该关注。' : '已提交，系统正在通过 X 核验该点赞。'
+          how: key === 'follow' ? '已提交，系统正在通过 X 核验该关注。' : '已提交，系统正在通过 X 核验该互动。'
         };
       }
       if (cl && cl.status === 'failed') {
@@ -1308,7 +1439,7 @@ button,input{font-family:inherit}
           done: false, state: 'bad',
           note: NOTFOUND[key] || '未核验通过',
           act: act,
-          how: key === 'follow' ? '未在 X 核验到该关注，完成后可重新提交。' : '未在 X 核验到该点赞，完成后可重新提交。',
+          how: key === 'follow' ? '未在 X 核验到该关注，完成后可重新提交。' : '未在 X 核验到该互动，完成后可重新提交。',
           claim: reg && !st.distrusted, claimText: '重新提交核验'
         };
       }
@@ -1317,8 +1448,8 @@ button,input{font-family:inherit}
         claim: reg && !st.distrusted,
         claimText: '已完成，提交核验',
         how: st.apiOn
-          ? (key === 'follow' ? '完成关注后提交，系统将通过 X 核验。' : '完成点赞后提交，系统将通过 X 核验。')
-          : (key === 'follow' ? '完成关注后提交，复核阶段将在 X 核验。' : '完成点赞后提交，复核阶段将在 X 核验。')
+          ? (key === 'follow' ? '完成关注后提交，系统将通过 X 核验。' : '点赞、转发、评论都完成后提交，系统将通过 X 核验。')
+          : (key === 'follow' ? '完成关注后提交，复核阶段将在 X 核验。' : '点赞、转发、评论都完成后提交，复核阶段将在 X 核验。')
       };
     }
 
@@ -1329,17 +1460,8 @@ button,input{font-family:inherit}
       },
       follow: trio('follow', st.followed, st.followUrl ? { text: '前往关注', href: st.followUrl, blank: true }
         : (reg ? null : { text: '请先登记', href: '#join' })),
-      /* 没配置顶推时 likeUrl 是空的：这时候**不给按钮**，而不是写「请先登记」——
-         他明明已经登记了，那句话只会让人以为自己漏了一步。 */
-      like: trio('like', st.liked, st.likeUrl ? { text: '前往点赞', href: st.likeUrl, blank: true }
-        : (reg ? null : { text: '请先登记', href: '#join' })),
-      repost: {
-        done: !!st.reposted,
-        state: st.reposted ? 'ok' : (bad ? 'bad' : (pf ? 'wait' : 'todo')),
-        why: (!st.reposted && pf && pf.reason) ? (WHY[pf.reason] || pf.reason) : '',
-        act: intent ? { text: '前往转发', href: intent, blank: true }
-          : (reg ? null : { text: '请先登记', href: '#join' })
-      },
+      /* 点赞 / 转发 / 评论不在这里了：它们合成了「推文互动」那一组卡，
+         一条推文一张，由 renderEngage 按服务端给的清单现画。 */
       invite: {
         done: (st.validInvites || 0) >= (P.inviteMax || 20),
         state: (st.validInvites || 0) > 0 ? 'ok' : 'todo',
@@ -1351,8 +1473,8 @@ button,input{font-family:inherit}
         act: reg ? null : { text: '请先登记', href: '#join' }
       },
       share: {
-        done: (st.shareDays || 0) >= (P.shareMaxDays || 5),
-        state: (st.shareDays || 0) > 0 ? 'ok' : 'todo',
+        done: (st.shares || 0) >= (P.shareMax || 15),
+        state: (st.shares || 0) > 0 ? 'ok' : 'todo',
         act: { text: '前往引爆', href: 'app.html' }
       },
       /* 引爆计分：两道上限（每日 / 预热期）都到顶才算「已完成」。
@@ -1366,9 +1488,10 @@ button,input{font-family:inherit}
     var progress = {
       invite: reg ? TF('{0} 位', st.validInvites || 0) : '',
       post: reg ? TF('已通过 {0} · 未通过 {1}', st.okPosts || 0, st.badPosts || 0) : '',
-      share: reg ? TF('{0} / {1} 天', st.shareDays || 0, P.shareMaxDays || 5) : '',
+      share: reg ? TF('今日 {0} / {1} · 累计 {2} / {3}',
+        st.sharesToday || 0, P.sharePerDay || 3, st.shares || 0, P.shareMax || 15) : '',
       bang: reg ? TF('今日 {0} / {1} 分 · 累计 {2} / {3} 分',
-        st.bangTodayPts || 0, P.bangPerDay || 10, st.bangPts || 0, P.bangMax || 50) : ''
+        st.bangTodayPts || 0, P.bangPerDay || 5, st.bangPts || 0, P.bangMax || 50) : ''
     };
     var LABEL = { todo: '未完成', wait: '核验中', ok: '已完成', bad: '未通过' };
     /* 「审核中」那句话要写清楚**等多久、上次什么时候查的** ——
@@ -1435,27 +1558,41 @@ button,input{font-family:inherit}
 
     renderWho();
 
-    /* 登记码芯片：登记之后才有 */
+    /* ---- 评论核不了的时候的退路 ----
+       平时评论由 X 的搜索接口自动核，这一整块不出现（st.commentFallback 是 false）。
+       搜索档位被拒时它才被 renderEngage 搬进置顶推那张卡里，
+       变回「在评论里回登记码 + 贴那条回复的链接」的老路。 */
+    var fallback = !!st.commentFallback;
+    $('proofSlot').hidden = !fallback;
     var chip = $('chipCode');
-    if (reg && st.code) { chip.hidden = false; chip.textContent = T('登记码') + ' ' + st.code; chip.setAttribute('data-copy', st.code); }
-    else chip.hidden = true;
+    if (fallback && reg && st.code) {
+      chip.hidden = false; chip.textContent = T('登记码') + ' ' + st.code; chip.setAttribute('data-copy', st.code);
+    } else chip.hidden = true;
 
-    /* 转发：贴链接那一块 */
     var box = $('proofBox'), doneP = $('proofDone');
-    if (!reg) { box.hidden = true; doneP.hidden = true; }
+    if (!fallback || !reg) { box.hidden = true; doneP.hidden = true; }
     else if (pf && !pf.rejected && !bad) {
       box.hidden = true; doneP.hidden = false;
       doneP.innerHTML = esc(T('已提交：')) + '<a href="' + esc(pf.url) + '" target="_blank" rel="noopener noreferrer">'
         + esc(pf.url.replace('https://x.com/', '')) + '</a>';
     } else {
-      box.hidden = !!st.reposted;
+      box.hidden = !!st.commented;
       doneP.hidden = true;
     }
-    if (reg && bad && pf && (pf.submits || 1) < (st.proofMaxSubmits || 2)) {
+    if (fallback && reg && bad && pf && (pf.submits || 1) < (st.proofMaxSubmits || 2)) {
       box.hidden = false;
       $('btnProof').textContent = T('重新提交');
     } else if (!box.hidden) {
       $('btnProof').textContent = T('提交链接');
+    }
+
+    /* 「前往发推」：只预填必需的那几样（@本站、话题标签、自己的分享链接），
+       **正文留空让他自己写** —— 替用户写好的宣传词，一眼就看得出是模板。 */
+    var comp = $('btnCompose');
+    if (comp) {
+      var seed = '@' + (st.xHandle || 'arcbang_xyz') + ' #ARCBANG';
+      if (reg && st.code) seed += '\n' + inviteLink(st);
+      comp.href = 'https://x.com/intent/post?text=' + encodeURIComponent(seed);
     }
 
     /* 邀请：里程碑轨道 + 链接 */
@@ -1506,21 +1643,28 @@ button,input{font-family:inherit}
       : TF('每周上限 {0} 条，预热期共 {1} 条', P.postPerWeek || 2, pmax)) + '</span>';
     $('postBox').hidden = !reg || okN >= pmax;
 
-    /* 每日打卡：五个点 */
-    var smax = P.shareMaxDays || 5, sd = st.shareDays || 0;
+    /* 引爆并广播：点数按**累计次数**上限画，后面跟今日与累计两个数。 */
+    var smax = P.shareMax || 15, sPerDay = P.sharePerDay || 3;
+    var sn = st.shares || 0, sToday = st.sharesToday || 0;
     var sdots = '';
-    for (var j = 0; j < smax; j++) sdots += '<i class="' + (j < sd ? 'on' : '') + '"></i>';
-    $('shareDots').innerHTML = sdots + '<span>' + esc(TF('已完成 {0} / {1} 天', sd, smax)) + '</span>';
+    for (var j = 0; j < smax; j++) sdots += '<i class="' + (j < sn ? 'on' : '') + '"></i>';
+    $('shareDots').innerHTML = sdots + '<span>' + esc(reg
+      ? TF('今日 {0} / {1} · 累计 {2} / {3}', sToday, sPerDay, sn, smax)
+      : TF('每日最多 {0} 次，累计 {1} 次', sPerDay, smax)) + '</span>';
+    $('shareHow').textContent = TF('每日最多 {0} 次，累计 {1} 次，每次 {2} 分。', sPerDay, smax, P.share || 5);
 
     /* 引爆计分：今天的进度用点表示（一点一分），后面跟累计。
        点数按每日上限画 —— 上限可配，写死 10 个在调小上限时会多出几个永远不亮的点。 */
-    var bMaxDay = P.bangPerDay || 10, bToday = st.bangTodayPts || 0;
+    var bMaxDay = P.bangPerDay || 5, bToday = st.bangTodayPts || 0;
     var bdots = '';
     for (var k2 = 0; k2 < bMaxDay; k2++) bdots += '<i class="' + (k2 < bToday ? 'on' : '') + '"></i>';
     $('bangDots').innerHTML = bdots + '<span>' + esc(reg
       ? TF('今日 {0} / {1} 分 · 累计 {2} / {3} 分', bToday, bMaxDay, st.bangPts || 0, P.bangMax || 50)
       : TF('每日最多 {0} 分，预热期最多 {1} 分', bMaxDay, P.bangMax || 50)) + '</span>';
-    $('bangHow').textContent = TF('在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次。', P.bang || 1);
+    /* 两次计分之间还有一道最短间隔（服务端的 ARCBANG_BANG_INTERVAL_MIN），
+        **故意不写在这句话里**：写出来等于教人踩着点刷，而正常玩的人碰不到它。 */
+    $('bangHow').textContent = TF('在模拟器中引爆任意 Arc 区块，每次计 {0} 分。同一区块只计一次，每日 {1} 次。',
+      P.bang || 1, bMaxDay);
 
     /* 主 CTA：登记过了就叫「继续」 */
     $('mainCta').textContent = reg ? T('继续任务') : T('开始任务');
@@ -1532,10 +1676,24 @@ button,input{font-family:inherit}
    * 那两个输入框 —— 摆一个填了也没用的表单，只会让人以为能改。
    * 刷新页面也保持这个状态：判据是 status.registered，不是本地存的什么标记。
    */
+  /** 钱包那一行。**登记完之后不再显示「更换钱包」** ——
+      它只是切浏览器里连的钱包，放在「已登记」卡上会被读成「能换绑」，而登记信息不可改。
+      连着的钱包和这个 X 账号绑的不是同一个时，这里说清楚该切到哪个地址。 */
+  function renderWallet(st) {
+    var done = !!(ADDR && st && st.registered);
+    $('btnConnect').hidden = done;
+    $('whoAddr').textContent = ADDR ? shortAddr(ADDR) : '';
+    var warn = $('walletWarn');
+    var mine = ADDR ? shortAddr(ADDR) : null;
+    var bad = !!(XL.login && XL.bound && mine && XL.bound !== mine);
+    warn.hidden = !bad;
+    if (bad) warn.textContent = TF('此 X 账号已绑定 {0}，请切换到该钱包。', XL.bound);
+  }
   function renderForm(st) {
     var done = !!(ADDR && st && st.registered);
     $('joinForm').hidden = done;
     $('joinDone').hidden = !done;
+    renderWallet(st);
     if (done) $('xStep').hidden = true;
     if (!done) { renderX(); return; }
     $('doneCode').textContent = st.code || '——';
@@ -1663,6 +1821,7 @@ button,input{font-family:inherit}
     $('whoAddr').textContent = ADDR ? shortAddr(ADDR) : '';
     syncJoinBtn();
     $('btnConnect').textContent = ADDR ? T('更换钱包') : T('连接钱包');
+    renderWallet(ST);
     return load();
   }
 
@@ -1710,7 +1869,7 @@ button,input{font-family:inherit}
         body: JSON.stringify({ address: ADDR, xHandle: x, sig: sig, ref: ref || undefined })
       });
     }).then(function (r) {
-      msg(T('登记完成，已计入登记积分。建议下一步完成转发任务，该项积分最高。'), 'ok');
+      msg(T('登记完成，已计入登记积分。下一步：推文互动，单项分值最高。'), 'ok');
       loadX();                 // 身份条上的「已绑 0x…」要跟着变
       return load();
     }).catch(function (e) {
@@ -1740,7 +1899,8 @@ button,input{font-family:inherit}
     b.disabled = true;
     api('/allowlist/claim', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ address: ADDR, sig: sig, task: task })
+      /* 互动是**按推文**的：哪张卡上点的就报哪条推文的 id。 */
+      body: JSON.stringify({ address: ADDR, sig: sig, task: task, post: b.getAttribute('data-post') || undefined })
     }).then(function () { return load(); }, function (e) {
       msg((e && e.message) || String(e), 'err');
     }).then(function () { b.disabled = false; });
