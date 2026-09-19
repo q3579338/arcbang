@@ -218,8 +218,8 @@ textarea{min-height:88px;resize:vertical;word-break:break-all;line-height:1.5}
 <section class="dw-step lk" id="step4">
   <h2><span class="n">04</span>部署 ArcMarket<span class="tick" id="tick4"></span></h2>
   <p>构造参数两个：<code>nft_</code> 就是上一步的 ArcUniverse（<b>immutable，部错修不回来</b>），
-     <code>treasury_</code> 是手续费收款地址（留空 = 当前地址）。手续费 1%，硬上限 10%；
-     版税走 ArcUniverse 的 ERC-2981（5%）。</p>
+     <code>treasury_</code> 是手续费收款地址（留空 = 当前地址）。市场默认不收手续费（feeBps = 0，owner 可调，硬上限 10%）；
+     成交只按 ArcUniverse 的 ERC-2981 付 5% 版税。</p>
   <div class="dw-row">
     <label class="dw-f">nft_（只读，来自第 3 步）<input type="text" class="mono" id="inNft" readonly></label>
   </div>
@@ -241,9 +241,11 @@ textarea{min-height:88px;resize:vertical;word-break:break-all;line-height:1.5}
     <tr><th>回读项</th><th>链上</th><th>应为</th></tr>
     <tr><td class="lbl">地址</td><td id="v4addr" colspan="2">—</td></tr>
     <tr><td class="lbl">nft()</td><td id="v4nft">—</td><td>第 3 步的 ArcUniverse</td></tr>
-    <tr><td class="lbl">feeBps()</td><td id="v4fee">—</td><td>100（1%）</td></tr>
+    <tr><td class="lbl">feeBps()</td><td id="v4fee">—</td><td>0（不收手续费）</td></tr>
     <tr><td class="lbl">treasury()</td><td id="v4tre">—</td><td>上面填的地址</td></tr>
   </table>
+  <div class="dw-row"><button id="btnFee0" class="gh" type="button">setFeeBps(0)</button>
+    <span class="dw-note">已部署的市场若 feeBps 不是 0，owner 在这里改成 0。新字节码默认就是 0，不用点。</span></div>
   <div class="dw-msg" id="msg4"></div>
 </section>
 
@@ -384,7 +386,7 @@ var NETS = {
 var MINT_SIG = 'bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)';
 var SIGS = ['MINT_CAP()', 'freeCap()', 'freePerAddr()', 'paidPerAddr()', 'price()', 'owner()', 'signer()',
             'setSigner(address)', 'setBaseURI(string)', 'baseURI()', 'totalSupply()',
-            'mintLeft()', 'royaltyInfo(uint256,uint256)', 'nft()', 'feeBps()', 'treasury()', 'withdraw(address)', MINT_SIG];
+            'mintLeft()', 'royaltyInfo(uint256,uint256)', 'nft()', 'feeBps()', 'treasury()', 'withdraw(address)', 'setFeeBps(uint16)', MINT_SIG];
 var FALLBACK_SEL = {
   'bangSigned(bytes32,uint64,uint8,uint8,bytes32,uint64,bool,bytes)': '0x1feb5d71',
   'MINT_CAP()': '0x98f1312e', 'freeCap()': '0x69b126ef', 'freePerAddr()': '0x21daa6e7', 'paidPerAddr()': '0xe7aea71c',
@@ -392,7 +394,7 @@ var FALLBACK_SEL = {
   'setSigner(address)': '0x6c19e783', 'setBaseURI(string)': '0x55f804b3', 'baseURI()': '0x6c0360eb',
   'totalSupply()': '0x18160ddd', 'mintLeft()': '0x022a2777',
   'royaltyInfo(uint256,uint256)': '0x2a55205a', 'nft()': '0x47ccca02',
-  'feeBps()': '0x24a9d853', 'treasury()': '0x61d027b3', 'withdraw(address)': '0x51cff8d9'
+  'feeBps()': '0x24a9d853', 'treasury()': '0x61d027b3', 'withdraw(address)': '0x51cff8d9', 'setFeeBps(uint16)': '0x023b1fc9'
 };
 var SEL = {};
 (function buildSel() {
@@ -741,8 +743,8 @@ function verifyMarket(addr) {
     if (sameAddr(r[0], S.uni)) { $('v4nft').className = 'good'; }
     else { $('v4nft').className = 'bad'; hard.push('nft() 是 ' + r[0] + '，不是第 3 步的 ' + S.uni + '　（immutable，改不了：这个市场只能弃用）'); }
     $('v4fee').textContent = r[1].toString();
-    if (r[1] === 100n) { $('v4fee').className = 'good'; }
-    else { $('v4fee').className = 'bad'; hard.push('feeBps() 是 ' + r[1] + '，应为 100'); }
+    if (r[1] === 0n) { $('v4fee').className = 'good'; }
+    else { $('v4fee').className = 'bad'; hard.push('feeBps() 是 ' + r[1] + '，应为 0（旧字节码部署的市场：owner 点下方 setFeeBps(0)）'); }
     $('v4tre').textContent = r[2];
     $('v4tre').className = '';
     S.tre = r[2];
@@ -956,6 +958,17 @@ $('btnSigner').addEventListener('click', function () {
     })
     .catch(function (e) { markDone(5, false); msg($('msg5'), '停下了：' + errOf(e), 'err'); })
     .then(function () { lockAll(); });
+});
+$('btnFee0').addEventListener('click', function () {
+  var mk = S.mkt || (window.ARCBANG_CONFIG && window.ARCBANG_CONFIG.market) || '';
+  if (!/^0x[0-9a-fA-F]{40}$/.test(mk)) { msg($('msg4'), '先完成第 4 步（或配置里有市场地址）。', 'err'); return; }
+  if (!S.acct) { msg($('msg4'), '先在第 1 步连接钱包。', 'err'); return; }
+  $('btnFee0').disabled = true;
+  sendAndWait($('msg4'), 'setFeeBps(0)', { from: S.acct, to: mk, data: SEL['setFeeBps(uint16)'] + '0'.repeat(64) })
+    .then(function () { return readUint(mk, 'feeBps()'); })
+    .then(function (v) { $('tbl4').hidden = false; $('v4fee').textContent = v.toString(); $('v4fee').className = v === 0n ? 'good' : 'bad'; msg($('msg4'), 'feeBps() = ' + v, v === 0n ? 'ok' : 'err'); })
+    .catch(function (e) { msg($('msg4'), '停下了：' + errOf(e), 'err'); })
+    .then(function () { $('btnFee0').disabled = false; });
 });
 $('btnBaseURI').addEventListener('click', function () {
   var u = String($('inBaseURI').value || '').trim();

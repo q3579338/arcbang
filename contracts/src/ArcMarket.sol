@@ -37,7 +37,7 @@ pragma solidity ^0.8.24;
  *
  * 分账（全部在同一笔交易里转出，合约一分钱都不留）：
  *     版税   → royaltyInfo 给的 receiver（≤ 10%）
- *     手续费 → treasury（feeBps，默认 1%，硬上限 10%）
+ *     手续费 → treasury（feeBps，默认 0：自家市场不收手续费，只收版税；owner 可调，硬上限 10%）
  *     其余   → 卖家
  * 三笔任意一笔转账失败就整笔 revert：与其让 NFT 转走了而钱卡住，不如什么都不发生。
  * 最坏情况卖家仍能拿到 80%（10% + 10% 两个硬上限相加），所以那个减法不会下溢。
@@ -99,8 +99,8 @@ contract ArcMarket {
 
     address public owner;
     address public treasury;
-    /// 成交抽 1%，全额进国库
-    uint16 public feeBps = 100;
+    /// 手续费，默认 0（2026-09-19 用户：自家不收手续费，只收 5% 版税）；setFeeBps 可调，≤ MAX_FEE_BPS
+    uint16 public feeBps = 0;
 
     uint256 private _lock = 1;                          // 防重入
 

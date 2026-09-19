@@ -3,7 +3,7 @@
  *
  * 守的是六条不变量：
  *   1. 只有 native（Arc 上就是 USDC）一种计价，buy 的 msg.value 必须**精确等于** price；
- *   2. 分账数值对得上：ERC-2981 版税（ArcUniverse 默认 5%）+ 手续费 1% + 卖家 94%，
+ *   2. 分账数值对得上：ERC-2981 版税（ArcUniverse 默认 5%）+ 手续费 0（默认不收）+ 卖家 95%，
  *      三笔在同一笔交易里全部转出，合约余额恒为 0；
  *   3. 版税**截断在 10%**：外部 NFT 报 50% 也只付 10%，报废的 royaltyInfo 不影响成交；
  *   4. 挂单是**不托管**的，失效（卖家转走 token / 撤授权）时 buy 带原因 revert，
@@ -199,11 +199,11 @@ async function main() {
   const checkListing = async (lid) => Number(asBig(words(await h.view(market, sel('checkListing(uint256)') + word(lid)))[0]));
 
   /* ============================================================ 1. 部署与常量 */
-  console.log('— 常量与构造：只认一个 NFT 合约，费率 1% —');
+  console.log('— 常量与构造：只认一个 NFT 合约，默认不收手续费 —');
   {
     eq(asAddr(words(await h.view(market, sel('nft()')))[0]), uni.toLowerCase(), 'nft 锁死在 ArcUniverse 上（immutable）');
     eq(asAddr(words(await h.view(market, sel('treasury()')))[0]), TREASURY.toLowerCase(), '国库地址就是构造时传的那个');
-    eq(asBig(words(await h.view(market, sel('feeBps()')))[0]), 100n, '默认手续费 1%');
+    eq(asBig(words(await h.view(market, sel('feeBps()')))[0]), 0n, '默认手续费 0（只收版税）');
     eq(asBig(words(await h.view(market, sel('MAX_FEE_BPS()')))[0]), 1000n, '手续费硬上限 10%');
     eq(asBig(words(await h.view(market, sel('MAX_ROYALTY_BPS()')))[0]), 1000n, '版税截断线 10%');
     /* 「没有 BANG」这一条对着 ABI 验，不是对着注释验：
@@ -278,7 +278,7 @@ async function main() {
   }
 
   /* ============================================================ 5. 买入与分账 */
-  console.log('\n— 买入：金额必须精确，分账 5% 版税 + 1% 手续费 + 94% 卖家 —');
+  console.log('\n— 买入：金额必须精确，分账 5% 版税 + 0 手续费 + 95% 卖家 —');
   {
     const r = await list(SELLER, t1, PRICE);
     const lid = asBig(words(r.data)[0]);
@@ -295,16 +295,16 @@ async function main() {
     eq(asBig(q[0]), PRICE, 'quote：price = 100 USDC');
     eq(asAddr(q[1]), OWNER.toLowerCase(), 'quote：版税收款人是 ArcUniverse 的 owner（royaltyReceiver 没设，退回 owner）');
     eq(asBig(q[2]), 5n * ONE, 'quote：版税 5 USDC（ArcUniverse 默认 5%）');
-    eq(asBig(q[3]), ONE, 'quote：手续费 1 USDC（1%）');
-    eq(asBig(q[4]), 94n * ONE, 'quote：卖家拿 94 USDC');
+    eq(asBig(q[3]), 0n, 'quote：手续费 0（默认不收）');
+    eq(asBig(q[4]), 95n * ONE, 'quote：卖家拿 95 USDC');
     eq(asBig(q[2]) + asBig(q[3]) + asBig(q[4]), PRICE, 'quote：三项之和恒等于成交价');
 
     const b0 = { own: await h.balance(OWNER), tre: await h.balance(TREASURY), sel_: await h.balance(SELLER) };
     await h.call(market, BUYER, sel('buy(uint256)') + word(lid), PRICE);
 
     eq(await h.balance(OWNER) - b0.own, 5n * ONE, '版税 5 USDC 到了 royaltyInfo 指定的收款人');
-    eq(await h.balance(TREASURY) - b0.tre, ONE, '手续费 1 USDC 进国库');
-    eq(await h.balance(SELLER) - b0.sel_, 94n * ONE, '卖家到手 94 USDC');
+    eq(await h.balance(TREASURY) - b0.tre, 0n, '手续费 0：国库一分不进');
+    eq(await h.balance(SELLER) - b0.sel_, 95n * ONE, '卖家到手 95 USDC');
     eq(await h.balance(market), 0n, '合约不留钱：余额仍然是 0');
     eq(await ownerOfTok(t1), BUYER.toLowerCase(), 'NFT 到了买家手上');
     eq((await listingAt(lid)).active, false, '成交后挂单自动下架');
@@ -321,8 +321,8 @@ async function main() {
     const b0 = { str: await h.balance(STRANGER), tre: await h.balance(TREASURY), sel_: await h.balance(SELLER) };
     await h.call(market, BUYER, sel('buy(uint256)') + word(lid), PRICE);
     eq(await h.balance(STRANGER) - b0.str, 10n * ONE, '版税 10 USDC 打给新的收款地址');
-    eq(await h.balance(TREASURY) - b0.tre, ONE, '手续费仍然是 1 USDC');
-    eq(await h.balance(SELLER) - b0.sel_, 89n * ONE, '卖家到手 89 USDC（100 − 10 − 1）');
+    eq(await h.balance(TREASURY) - b0.tre, 0n, '手续费仍然是 0');
+    eq(await h.balance(SELLER) - b0.sel_, 90n * ONE, '卖家到手 90 USDC（100 − 10 − 0）');
     eq(await h.balance(market), 0n, '合约余额仍然是 0');
     // 改回默认 5% / 收款人退回 owner，后面的用例按默认值算
     await h.call(uni, OWNER, sel('setRoyalty(address,uint16)') + addrWord(ZERO) + word(500n), 0);
@@ -383,13 +383,13 @@ async function main() {
 
     const q = words(await h.view(m2, sel('quote(uint256)') + word(lid)));
     eq(asBig(q[2]), 10n * ONE, 'quote：报 50% 的版税被截断成 10 USDC（10%）');
-    eq(asBig(q[4]), 89n * ONE, 'quote：卖家仍然拿到 89 USDC，不是 49');
+    eq(asBig(q[4]), 90n * ONE, 'quote：卖家仍然拿到 90 USDC，不是 50');
 
     const b0 = { str: await h.balance(STRANGER), tre: await h.balance(TREASURY), sel_: await h.balance(SELLER) };
     await h.call(m2, BUYER, sel('buy(uint256)') + word(lid), PRICE);
     eq(await h.balance(STRANGER) - b0.str, 10n * ONE, '实际只付了 10 USDC 版税');
-    eq(await h.balance(TREASURY) - b0.tre, ONE, '手续费 1 USDC');
-    eq(await h.balance(SELLER) - b0.sel_, 89n * ONE, '卖家到手 89 USDC');
+    eq(await h.balance(TREASURY) - b0.tre, 0n, '手续费 0');
+    eq(await h.balance(SELLER) - b0.sel_, 90n * ONE, '卖家到手 90 USDC');
     eq(await h.balance(m2), 0n, '合约余额 0');
 
     // royaltyInfo 直接爆炸 → 按没有版税处理，成交照常
@@ -402,7 +402,7 @@ async function main() {
     eq(asBig(q2[2]), 0n, '版税归零');
     const b1 = await h.balance(SELLER);
     await h.call(m2, BUYER, sel('buy(uint256)') + word(lid2), PRICE);
-    eq(await h.balance(SELLER) - b1, 99n * ONE, '成交照常，卖家拿 99 USDC（只扣 1% 手续费）');
+    eq(await h.balance(SELLER) - b1, 100n * ONE, '成交照常，卖家拿全额 100 USDC（版税归零、无手续费）');
 
     // receiver 是 0 地址 → 版税归零，那笔钱回到卖家手上，不是打给 0 地址烧掉
     const EID3 = 3n;
@@ -412,7 +412,7 @@ async function main() {
     const lid3 = asBig(words((await h.call(m2, SELLER, sel('list(uint256,uint256)') + word(EID3) + word(PRICE), 0)).data)[0]);
     const b2 = await h.balance(SELLER);
     await h.call(m2, BUYER, sel('buy(uint256)') + word(lid3), PRICE);
-    eq(await h.balance(SELLER) - b2, 99n * ONE, '版税收款人是 0 地址时版税归零，卖家拿 99 USDC');
+    eq(await h.balance(SELLER) - b2, 100n * ONE, '版税收款人是 0 地址时版税归零，卖家拿全额 100 USDC');
   }
 
   /* ============================================================ 9. 治理 */
@@ -437,7 +437,7 @@ async function main() {
     eq(await h.balance(TREASURY) - b0.tre, 10n * ONE, '手续费顶格 10 USDC');
     eq(await h.balance(SELLER) - b0.sel_, 80n * ONE, '最坏情况卖家仍然拿到 80 USDC —— 那个减法不会下溢');
 
-    await h.call(market, OWNER, sel('setFeeBps(uint16)') + word(100n), 0);
+    await h.call(market, OWNER, sel('setFeeBps(uint16)') + word(0n), 0);
     await h.call(uni, OWNER, sel('setRoyalty(address,uint16)') + addrWord(ZERO) + word(500n), 0);
     await expectRevert(() => h.call(market, OWNER, sel('setTreasury(address)') + addrWord(ZERO), 0),
       'market: treasury is zero', '国库改成 0 地址：revert');
@@ -470,7 +470,7 @@ async function main() {
     eq(L.decodeRevert(decodeBytesReturn(await h.view(attacker, sel('reentryError()')))), 'market: reentrant',
        '重入被 nonReentrant 挡住，原因是 market: reentrant');
     eq(await ownerOfTok(t), BUYER.toLowerCase(), '正常那一笔照样成交，NFT 到了买家手上');
-    eq(await h.balance(TREASURY) - treB, ONE, '国库只收了一次手续费（没有被重入刷两次）');
+    eq(await h.balance(TREASURY) - treB, 0n, '国库分文未收（手续费 0，且没有被重入刷出钱来）');
     eq(await h.balance(market), 0n, '市场合约余额仍然是 0');
   }
 

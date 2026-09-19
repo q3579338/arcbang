@@ -44,7 +44,7 @@ window.ARCBANG_CONFIG = {
 
      只有一种计价：native，在 Arc 上就是 USDC，挂单价是 wei（1 USDC = 1e18）。
      成交时先按 ERC-2981 付版税（ArcUniverse 默认 5%，市场侧截断在 10%），
-     再抽 1% 手续费进国库，其余给卖家；合约不留钱。 */
+     市场不收手续费（feeBps 默认 0），其余全部给卖家；合约不留钱。 */
   market: '',
   /* 造物与命名两套在 v1 不上（它们的定价原本全建在 BANG 上，要重设计）。 */
   crafted: '',
