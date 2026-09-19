@@ -335,6 +335,25 @@ function adminTokenOk(req) {
    后台每个接口的判断只有 adminTokenOk 一处，不给自己留第二道门。 */
 const ADMIN_NONCES = new Map();          // nonce → 发出的时间
 const ADMIN_SESSIONS = new Map();        // token → { addr, exp }
+/* 会话落盘（.store/admin-sessions.json，0600）：不落盘的话每次重启服务，后台的人就被踢出去，
+   页面还报「口令不对」（2026-09-19 用户设阶段时间时撞上）。只存 token 哈希后的键也没意义 ——
+   文件本身 0600，进程外没人读得到。 */
+const ADMIN_SESS_FILE = path.join(STORE_DIR, 'admin-sessions.json');
+function loadAdminSessions() {
+  try {
+    const j = JSON.parse(fs.readFileSync(ADMIN_SESS_FILE, 'utf8'));
+    const t = Date.now();
+    for (const k of Object.keys(j || {})) if (j[k] && j[k].exp > t && /^[0-9a-f]{32,}$/.test(k)) ADMIN_SESSIONS.set(k, { addr: j[k].addr, exp: j[k].exp });
+  } catch (e) { /* 没有就是没有 */ }
+}
+function saveAdminSessions() {
+  try {
+    fs.mkdirSync(STORE_DIR, { recursive: true });
+    const o = {}; for (const [k, v] of ADMIN_SESSIONS) o[k] = v;
+    fs.writeFileSync(ADMIN_SESS_FILE, JSON.stringify(o), { mode: 0o600 });
+  } catch (e) { console.error('[admin] 会话落盘失败：' + (e && e.message)); }
+}
+loadAdminSessions();
 const ADMIN_NONCE_MS = 5 * 60 * 1000;
 const ADMIN_SESSION_MS = 24 * 3600 * 1000;
 
@@ -922,7 +941,7 @@ async function handle(req, res, u) {
      secret 一个字符都不回 —— 贴进去之后连管理员自己也读不回来。 */
   if (p === '/admin/xauth') {
     if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
-    if (!adminTokenOk(req)) return json(res, 401, { error: '口令不对' }, { 'cache-control': 'no-store' });
+    if (!adminTokenOk(req)) return json(res, 401, { error: '登录已失效，请重新用钱包登录' }, { 'cache-control': 'no-store' });
     if (req.method === 'GET' || req.method === 'HEAD') {
       return json(res, 200, XA.credInfo(), { 'cache-control': 'no-store' });
     }
@@ -981,6 +1000,7 @@ async function handle(req, res, u) {
     }
     const token = nodeCrypto.randomBytes(32).toString('hex');
     ADMIN_SESSIONS.set(token, { addr, exp: Date.now() + ADMIN_SESSION_MS });
+    saveAdminSessions();
     console.log('[admin] 钱包登录：' + addr.slice(0, 6) + '…' + addr.slice(-4));
     return json(res, 200, { ok: true, token, addr, expiresIn: ADMIN_SESSION_MS / 1000 }, { 'cache-control': 'no-store' });
   }
@@ -989,7 +1009,7 @@ async function handle(req, res, u) {
      POST {run:true, full:true} 强制翻到底 —— 那一次读得最多，也最花钱。 */
   if (p === '/admin/xverify') {
     if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
-    if (!adminTokenOk(req)) return json(res, 401, { error: '口令不对' }, { 'cache-control': 'no-store' });
+    if (!adminTokenOk(req)) return json(res, 401, { error: '登录已失效，请重新用钱包登录' }, { 'cache-control': 'no-store' });
     if (req.method === 'GET' || req.method === 'HEAD') {
       return json(res, 200, XV.info(), { 'cache-control': 'no-store' });
     }
@@ -1144,7 +1164,7 @@ async function handle(req, res, u) {
      而且只在真有人访问后台时才炸。上面 /bang 那一处早就留过同样的注解。 */
   if (p.indexOf('/allowlist/admin') === 0) {
     if (!adminTokenConfigured()) return json(res, 404, { error: '没有这个接口' }, { 'cache-control': 'no-store' });
-    if (!adminTokenOk(req)) return json(res, 401, { error: '口令不对' }, { 'cache-control': 'no-store' });
+    if (!adminTokenOk(req)) return json(res, 401, { error: '登录已失效，请重新用钱包登录' }, { 'cache-control': 'no-store' });
 
     if (p === '/allowlist/admin/list' && (req.method === 'GET' || req.method === 'HEAD')) {
       return json(res, 200, AL.adminList(u.searchParams.get('q'), u.searchParams.get('only')), { 'cache-control': 'no-store' });
