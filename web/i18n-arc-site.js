@@ -368,6 +368,8 @@
 
     /* ---- 开放时间与规则 ---- */
     '开放时间': 'Schedule',
+    '预热期不签发任何铸造签名；白名单阶段仅对白名单地址开放；先到先得阶段对白名单与先到先得地址开放，免费额度先到先得；公售阶段向所有地址开放。':
+      'No mint signatures are issued during the warm-up. The whitelist phase is open to whitelist addresses only; the first-come phase is open to whitelist and first-come addresses, with free mints on a first-come basis; the public sale is open to all addresses.',
     '待定': 'TBA',
     '白名单地址优先铸造': 'Whitelisted addresses mint first',
 
