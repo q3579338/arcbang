@@ -3039,8 +3039,12 @@ function call(method, url, body, headers) {
       const g4 = await AL.gate(stranger, yes);
       ok('fcfs：名单外 → 403 NOT_LISTED', g4.ok === false && g4.code === 'NOT_LISTED');
       const g5 = await AL.gate(fcfsAddr, no);
-      ok('fcfs：链上免费额度用完 → 仍然签，但签的是 free=false（名单的意义是能铸，不是白送）',
-        g5.ok === true && g5.free === false && g5.freeGone === true);
+      ok('fcfs：链上免费额度用完 → 403 FREE_GONE，付费要等公售（2026-09-19：白名单段不签付费单）',
+        g5.ok === false && g5.status === 403 && g5.code === 'FREE_GONE' && g5.freeGone === true);
+      process.env.ARCBANG_PHASE = 'gtd';
+      const g5b = await AL.gate(gtdAddr, no);
+      ok('gtd：链上免费额度用完 → 同样 403 FREE_GONE', g5b.ok === false && g5b.code === 'FREE_GONE');
+      process.env.ARCBANG_PHASE = 'fcfs';
       const g6 = await AL.gate(fcfsAddr, down);
       ok('fcfs：链上读不到 → **关闸** 503，不是放行（上一次就是趁 RPC 抖动被薅的）',
         g6.ok === false && g6.status === 503 && g6.code === 'CHAIN_DOWN');
