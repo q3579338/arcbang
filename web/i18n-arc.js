@@ -137,6 +137,8 @@
       'This address is not on the allowlist. First-come round opens: {0}. Public sale opens: {1}.',
     '该地址不在白名单内。当前为先到先得阶段，公售开放时间：{0}，届时所有地址均可铸造。':
       'This address is not on the allowlist. The first-come round is running; the public sale opens: {0}, when any address can mint.',
+    '免费额度已用完，付费铸造将在公售阶段开放（{0}）。':
+      'Your free allocation is used up. Paid minting opens in the public sale ({0}).',
     /* 免费额度是白名单的：名单外的人看到的必须是价格，不能是「首批免费」——
        展示和真报价打架比不显示糟得多（钱包弹出来要 1 USDC）。 */
     '{0} {1} 铸造（免费额度只给白名单）': 'Mint for {0} {1} (the free tier is allowlist only)',

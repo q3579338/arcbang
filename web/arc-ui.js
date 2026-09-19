@@ -2061,6 +2061,12 @@
     if (PH.phase === 'fcfs' && !PH.listed) {
       return TF('该地址不在白名单内。当前为先到先得阶段，公售开放时间：{0}，届时所有地址均可铸造。', fmtOpen(o.public));
     }
+    /* 白名单 / 先到先得两段只放免费额度：这个地址的免费次数用完了就到此为止，
+       付费要等公售（服务端 gate 同样拒签 FREE_GONE，这里只是不给一个必然失败的按钮）。 */
+    if (PH.phase === 'gtd' || PH.phase === 'fcfs') {
+      var freeUsedUp = (W.fc && W.fc.supported) ? (W.fc.used >= W.fc.cap) : (W.usedFree === true);
+      if (freeUsedUp) return TF('免费额度已用完，付费铸造将在公售阶段开放（{0}）。', fmtOpen(o.public));
+    }
     return null;
   }
 

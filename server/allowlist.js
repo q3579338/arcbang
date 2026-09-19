@@ -2968,9 +2968,16 @@ function create(opts) {
       };
     }
     if (chainFree === true) return { ok: true, free: true, phase: p };
-    /* 免费额度用完了（或这个地址已经用过一次）：退回按付费签。
-       名单的意义是「能铸」，免费只是先到先得的那 387 枚，抢完就没了 —— 预热页上写着这句。 */
-    return { ok: true, free: false, phase: p, freeGone: true, paidFallback: !!allowPaidFallback };
+    /* 免费额度用完了（或这个地址已经用过一次）。**只有公售段才退回付费签**：
+       白名单 / 先到先得两段是放免费额度的，这时候签一张付费单等于把公售提前开给名单里的人
+       （2026-09-19 排练时就是这样：免费铸过一枚后 HUD 直接报 1 USDC 付费）。 */
+    if (!allowPaidFallback) {
+      return {
+        ok: false, status: 403, code: 'FREE_GONE', phase: p, freeGone: true,
+        error: '免费额度已用完，付费铸造将在公售阶段开放。'
+      };
+    }
+    return { ok: true, free: false, phase: p, freeGone: true, paidFallback: true };
   }
 
   return {
