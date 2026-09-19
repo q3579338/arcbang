@@ -274,9 +274,9 @@ button,input{font-family:inherit}
   var TIER_CN = { gtd: '白名单', fcfs: '先到先得' };
 
   function fmtWhen(iso) {
-    if (!iso) return T('时间待定');
+    if (!iso) return T('待定');
     var d = new Date(iso);
-    if (isNaN(d.getTime())) return T('时间待定');
+    if (isNaN(d.getTime())) return T('待定');
     /* 本地时间：访问者自己那一套时区与格式，比 UTC 串少一道心算。 */
     try { return d.toLocaleString(); } catch (e) { return iso; }
   }
