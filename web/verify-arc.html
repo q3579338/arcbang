@@ -8,7 +8,7 @@
      （arcbang.xyz）、站名换成 ARCBANG、/assets/og/home.jpg 换成 SITES.arc.og。
      域名只存在于 SITES 表那一处，换域那天不用回来改这些文件。
      **正文（<body> 里）siteify 一个字都不改，所以正文必须自己写对。** -->
-<title>自己验一遍 —— ARCBANG</title>
+<title>自己验证 · ARCBANG</title>
 <meta name="description" content="别信站点的一面之词。把引擎克隆下来，用任意 Arc 区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。两条命令，几分钟。">
 <link rel="canonical" href="https://arcbang.xyz/verify.html">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/verify.html">
@@ -17,7 +17,7 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/verify.html">
-<meta property="og:title" content="自己验一遍">
+<meta property="og:title" content="自己验证">
 <meta property="og:description" content="两条命令：从区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
@@ -25,7 +25,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="自己验一遍">
+<meta name="twitter:title" content="自己验证">
 <meta name="twitter:description" content="两条命令：从区块哈希重算一个宇宙，再跟链上那枚 NFT 对一遍。">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
@@ -72,8 +72,8 @@
 <div class="ab-wrap">
 
 <header class="ad-head">
-  <h1 class="ad-h1">别信我，自己跑一遍</h1>
-  <p class="ad-lede">每个宇宙都是区块哈希的纯函数，函数开源。你可以在自己机器上把它重算一遍，再跟链上存的对。两条命令，不用注册。</p>
+  <h1 class="ad-h1">自行重算与比对</h1>
+  <p class="ad-lede">每个宇宙都是区块哈希的纯函数，该函数已开源。你可以在本机重算一遍，再与链上记录比对。两条命令，无需注册。</p>
   <div class="ad-cta">
     <a class="ab-btn" href="https://github.com/q3579338/arcbang">克隆引擎</a>
     <a class="ab-btn2" href="how-it-works.html">这是怎么回事</a>
@@ -89,7 +89,7 @@
     <li><a href="#diff"><span>跟链上对</span></a></li>
     <li><a href="#sig"><span>签名管什么</span></a></li>
     <li><a href="#contracts"><span>合约</span></a></li>
-    <li><a href="#limits"><span>不是无信任的地方</span></a></li>
+    <li><a href="#limits"><span>当前的信任边界</span></a></li>
   </ol>
 </nav>
 
@@ -100,42 +100,42 @@
 <pre class="ad-cmd"><code>git clone https://github.com/q3579338/arcbang
 cd arcbang
 node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b</code></pre>
-<p>只要一个哈希，它就能把参数、结局、等级和 <code>cardHash</code> 全推出来。推导是纯整数的，换台机器结果也一样。零依赖，Node 18 起。</p>
+<p>仅需一个哈希即可推出参数、结局、等级与 <code>cardHash</code>。推导为纯整数运算，跨机器结果一致。零依赖，要求 Node 18 及以上。</p>
 </section>
 
 <section class="ad-sec" id="diff">
 <h2 class="ad-h2">跟链上对</h2>
 <pre class="ad-cmd"><code>node tools/verify-onchain.js 1</code></pre>
-<p>它从 Arc 上读回 1 号 NFT，拿它记着的块哈希重算一遍，再逐字节比对。整个过程只用到那个哈希，服务端的任何东西都不参与。</p>
+<p>该命令从 Arc 读取 1 号 NFT，以其记录的区块哈希重算并逐字节比对。全过程仅使用该哈希，不涉及服务端的任何数据。</p>
 <div class="ad-note">
-  <p>仓库里还带着引擎自检和链上比对的测试，<code>node engine/test.js</code> 在本地就能跑。</p>
+  <p>仓库另附引擎自检与链上比对测试，<code>node engine/test.js</code> 可在本地运行。</p>
 </div>
 </section>
 
 <section class="ad-sec" id="sig">
 <h2 class="ad-h2">签名管什么</h2>
-<p>铸造要服务端签个名。这一步只是为了防止有人拿伪造的参数来铸——服务端把参数重算一遍再签，签名地址在链上写着，谁都能查。</p>
-<p>它不能让我凭空造宇宙：被签的那组参数必须跟 <code>recompute.js</code> 从哈希算出来的一模一样，而这正是上面那条命令在核的事。</p>
+<p>铸造需要服务端签名。该步骤用于阻止以伪造参数铸造：服务端重算参数后再签名，签名地址写在链上，任何人都可以查询。</p>
+<p>签名无法凭空生成宇宙：被签名的参数必须与 <code>recompute.js</code> 从哈希算出的结果完全一致，上述命令核对的正是这一点。</p>
 </section>
 
 <section class="ad-sec" id="contracts">
 <h2 class="ad-h2">合约</h2>
-<p>Arc 主网，chainId 5042，gas 用 USDC 付。没有代理、没有升级通道、没有暂停开关，部署完就是那样。一共两个合约，没有代币就没有别的要部署。</p>
+<p>Arc 主网，chainId 5042，gas 以 USDC 支付。无代理、无升级通道、无暂停开关，部署后不再更改。合约共两个；项目没有代币，因此不需要部署其他合约。</p>
 <div class="ad-tblwrap"><table class="ad-tbl">
 <thead><tr><th>合约</th><th>干什么的</th></tr></thead>
 <tbody>
 <tr><td class="k">ArcUniverse</td><td>宇宙本身。铸造价格与免费额度、5% 版税，以及 <code>tokenURI</code> 的链上 SVG 兜底。</td></tr>
-<tr><td class="k">MirrorMarket</td><td>站内挂单、买入、撤单。手续费上限写死在合约里。</td></tr>
+<tr><td class="k">MirrorMarket</td><td>站内挂单、买入、撤单。手续费上限写入合约。</td></tr>
 </tbody></table></div>
-<p>部署地址上链当天会公布在这一页和 <code>config.js</code> 里，站点只从那一个文件读，所以页面显示的和你钱包在谈的不可能是两个东西。</p>
+<p>部署地址将在上链当天公布于本页与 <code>config.js</code>。站点只从该文件读取地址，因此页面显示的合约与钱包交互的合约始终一致。</p>
 </section>
 
 <section class="ad-sec" id="limits">
-<h2 class="ad-h2">不是无信任的地方</h2>
-<p>说两件我自己也不满意但确实存在的事。</p>
+<h2 class="ad-h2">当前的信任边界</h2>
+<p>以下两点需要明确说明。</p>
 <ul class="ad-bullets">
-  <li>铸造离不开服务端那个签名。签名地址在链上，被签的参数你能自己重算，但服务端挂了就没法铸新的（已经铸出来的不受影响，合约自带链上 SVG）。</li>
-  <li>合约里有几个 owner 开关。都有边界：免费额度只能调小，价格被常数夹在 0.1 到 20 USDC 之间，版税上限 10%，市场手续费上限 10%。已经存在的 NFT，谁也改不了它的参数。</li>
+  <li>铸造依赖服务端签名。签名地址在链上，被签参数可自行重算；服务端不可用时无法铸造新的 NFT，已铸出的不受影响，合约自带链上 SVG。</li>
+  <li>合约包含若干 owner 开关，均设有边界：免费额度只能调小，价格由常数限定在 0.1 至 20 USDC 之间，版税上限 10%，市场手续费上限 10%。已铸出的 NFT，参数不可更改。</li>
 </ul>
 <div class="ad-end-cta">
   <a class="ab-btn" href="https://github.com/q3579338/arcbang">克隆引擎</a>

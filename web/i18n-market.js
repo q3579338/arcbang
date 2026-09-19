@@ -44,8 +44,7 @@
     /* 这一段前面挨着 <b>…</b>，原文那个破折号要留着，别把句子接断了 */
     '—— 连接是钱包授予这个站点的权限，网页替你挂断不了；能撤就撤，撤不掉会明说。':
       '— the connection is a permission your wallet granted this site, and a web page cannot hang up for you. It is revoked where possible, and said plainly where not.',
-    '连接钱包后可以看自己的宇宙、挂单、撤单':
-      'Connect a wallet to see your own universes, post listings, and cancel them',
+    '连接钱包后可查看名下宇宙，并进行挂单与撤单': 'Connect a wallet to see the universes you hold and to post or cancel listings',
     '{0} · 点开看完整地址、切换账户、换钱包、断开':
       '{0} · open for the full address, account switching, switching wallet, and disconnect',
     '换钱包': 'Switch wallet',
@@ -59,10 +58,10 @@
     '未连钱包 · 只读浏览（走公开 RPC）': 'No wallet · read-only browsing (public RPC)',
     '已断开 · 只读浏览（走公开 RPC）': 'Disconnected · read-only browsing (public RPC)',
     '在售的宇宙': 'Universes for sale',
-    '销毁量与救活记录是这里最要紧的两栏 —— 区块要多少有多少，币不是':
-      'Burn totals and rescue records are the two columns that matter most here — blocks are endless, tokens are not',
+    '销毁量与救活记录是两项关键指标：区块可无限产生，BANG 不能':
+      'Burn totals and rescue records are the two key columns: blocks are unlimited, BANG is not',
     '最近铸造的宇宙': 'Recently minted universes',
-    '不在售，只是让你看看链上现在有什么': 'Not for sale — just a look at what is on-chain right now',
+    '未挂单，仅展示链上现有的宇宙': 'Not listed for sale; a view of what currently exists on-chain',
     '挂一单': 'Post a listing',
     '选宇宙 → 填价 → 授权 → 挂单': 'Pick a universe → set a price → approve → list',
     '我挂着的单': 'My listings',
@@ -71,31 +70,27 @@
     '宇宙 NFT': 'Universe NFT',
     'BANG 代币': 'BANG token',
     '{0}合约还没部署。': 'The {0} contract is not deployed yet.',
-    '这一块的合约还没接上 —— 页面其余部分照常能用。':
-      'This contract is not wired in yet — the rest of the page works as usual.',
+    '该合约尚未接入，页面其余功能不受影响。': 'This contract is not wired in yet. The rest of the page is unaffected.',
     '（未部署）': '(not deployed)',
     '市场合约未部署。': 'Market contract not deployed.',
     'NFT 合约未部署': 'NFT contract not deployed',
-    '站点配置没读到 —— 合约都还没接上，先用公开节点浏览':
-      'Site config did not load — none of the contracts are wired in; browsing uses the public nodes for now',
+    '未读到站点配置，合约尚未接入，当前使用公开节点浏览':
+      'Site config not loaded. No contract is wired in; browsing currently uses public nodes.',
 
     /* ---------------- 宇宙卡 ---------------- */
     '宇宙 {0}': 'Universe {0}',
     '宇宙缩略图': 'Universe thumbnail',
-    '图还没读到': 'Image not loaded',
+    '图片未读取到': 'Image not loaded',
     '结局未知': 'Outcome unknown',
     '读不到': 'Unreadable',
-    'cardOf 非零：这枚 NFT 走过服务端，参数指纹已写进合约':
-      'cardOf is non-zero: this NFT went through the server, and its parameter fingerprint is written into the contract',
-    'cardOf：服务端算过并签过名的参数指纹':
-      'cardOf: the parameter fingerprint the server computed and signed',
-    '区块号 —— 这个宇宙的身份。token {0}':
-      "Block number — this universe's identity. token {0}",
-    '链上读不到 burnedOn': 'burnedOn cannot be read on-chain',
-    '烧掉的币不会回来 —— 这个数字是这枚 NFT 的成本证明':
-      "Burned tokens never come back — this number is this NFT's proof of cost",
+    '该 NFT 的参数已由服务端复算并签名，参数指纹写入合约':
+      "This NFT's parameters were recomputed and signed by the server; the fingerprint is written into the contract",
+    '服务端复算并签名的参数指纹': 'The parameter fingerprint recomputed and signed by the server',
+    '区块号，即该宇宙的身份。token {0}': "Block number, this universe's identity. token {0}",
+    '链上未读到销毁量': 'Burn total could not be read on-chain',
+    '销毁不可逆。该数值是这枚 NFT 的投入证明': "Burning is irreversible. This figure is this NFT's proof of cost",
     '救活过': 'Rescued',
-    '救活过：这是全场最稀缺的一档': 'Rescued — the scarcest thing on this page',
+    '已救活：当前最稀缺的一档': 'Rescued: the scarcest tier on this page',
     '从「{0}」推回可能诞生观察者':
       'pulled back from "{0}" to a universe where observers are possible',
     '干预 {0} 次': '{0} interventions',
@@ -109,12 +104,12 @@
     '整数维（非三维）': 'Integer dimension (not 3D)',
     '半整数维': 'Half-integer dimension',
     '一维及以下': 'One dimension or lower',
-    '没有稀有度：要么是直接调 bang() 铸的（合约记 5 = 未知），要么这一枚的 universeOf 这次没读到':
-      'No rarity: either it was minted by calling bang() directly (the contract records 5 = unknown), or universeOf could not be read for this one this time',
-    '显示「{0} 档」的那几枚：是直接调 {1} 铸的，没走服务端引爆，本来就没有稀有度（合约里记的是 5 = 未知）。':
-      'The ones showing "Grade {0}" were minted by calling {1} directly, without a server detonation, so they never had a rarity (the contract records 5 = unknown).',
-    '稀有度由服务端算并签进摘要，只有 {0} 那条路才有。':
-      'Rarity is computed by the server and signed into the digest; only the {0} path has one.',
+    '无稀有度记录：该 NFT 未经服务端引爆铸造，或本次未读到链上稀有度':
+      'No rarity on record: this NFT was not minted through a server detonation, or its rarity could not be read this time',
+    '标为「{0} 档」的 NFT 由直接调用 {1} 铸造，未经服务端引爆，因此没有稀有度记录。':
+      'NFTs shown as tier {0} were minted by calling {1} directly. They never went through a server detonation, so they carry no rarity.',
+    '稀有度由服务端计算并签入摘要，仅经 {0} 路径铸造的 NFT 具备。':
+      'Rarity is computed by the server and signed into the digest; only NFTs minted through {0} carry it.',
 
     /* ---------------- 结局名：市场页这份和核心词典的措辞不完全一样
        （核心是「大坍缩 / 热寂，无结构 / 能诞生观察者」），key 逐字相等才命中，
@@ -128,89 +123,80 @@
     /* ---------------- 我的宇宙 ---------------- */
     '链上共 {0} 枚': '{0} on-chain in total',
     '，只扫了最新的 {0} 枚': ', only the newest {0} scanned',
-    '你名下还有 {0} 枚没盖章的宇宙没有列出来：它们的 {1} 是 0，没走服务端引爆，没有参数卡，市场不上架。':
-      'You hold {0} more unverified universes that are not listed here: their {1} is 0 — never detonated through the server, no parameter card, so the market will not list them.',
-    '还没连钱包。点右上角「连接钱包」看你手里的宇宙 —— 在那之前这一页也能随便逛，市场和挂单都是公开读的。':
-      'No wallet connected yet. Use "Connect wallet" at the top right to see the universes you hold — until then you can still browse freely: the market and the listings are public reads.',
-    '事实上链上一枚都还没有 —— 去模拟器里引爆一个。':
-      'In fact there is not one on-chain yet — go detonate one in the simulator.',
+    '另有 {0} 枚宇宙未列出：{1} 为 0，未经服务端引爆，没有参数卡，不支持上架。':
+      'Another {0} universes are not listed: their {1} is 0, they were not detonated through the server, they carry no parameter card, and they cannot be listed.',
+    '尚未连接钱包。点击右上角「连接钱包」查看名下宇宙。未连接时仍可浏览本页，市场与挂单数据公开可读。':
+      'No wallet connected. Use "Connect wallet" at the top right to see the universes you hold. The page remains browsable without a wallet: market and listing data are public reads.',
+    '链上暂无已铸造的宇宙。可前往模拟器引爆一个。': 'There are none on-chain yet. Detonate one in the simulator.',
 
     /* ---------------- 宇宙市场 ---------------- */
-    '下面是链上最近铸造的宇宙，先看着。':
-      'Below are the most recently minted universes on-chain, in the meantime.',
+    '以下为链上最近铸造的宇宙。': 'Below are the most recently minted universes on-chain.',
     '正在读取挂单…': 'Loading listings…',
     '正在读取链上数据…': 'Reading the chain…',
-    '链上节点暂时没响应，正在换节点重试 —— 几秒后会自动刷新。':
-      'Chain nodes are not responding right now; switching nodes and retrying — this page refreshes itself in a few seconds.',
-    '市场合约地址填了，但读不到挂单 —— 地址填错了，或者合约的 {0} 和规格对不上。':
-      'The market contract address is set, but no listings can be read — either the address is wrong, or the {0} of that contract does not match the spec.',
-    '（市场刚开张，没人挂单不是故障 —— 需求得自己长出来。）':
-      '(The market just opened. Nobody listing anything is not a fault — demand has to grow on its own.)',
-    '这一单已经取消或卖掉了': 'This listing was cancelled or already sold',
-    '卖家已经不持有这份资产了，买不成': 'The seller no longer holds this asset — it cannot be bought',
-    '卖家撤了对市场的授权，买不成': "The seller revoked the market's approval — it cannot be bought",
-    '现在买不成': 'Cannot be bought right now',
-    '买不成': 'Cannot buy',
+    '链上节点暂无响应，正在切换节点重试，稍后自动刷新。':
+      'Chain nodes are not responding. Switching nodes and retrying; the page refreshes automatically in a few seconds.',
+    '已配置市场合约地址，但读不到挂单。可能是地址有误，或合约的 {0} 与规格不一致。':
+      'The market contract address is set, but no listing can be read. Either the address is wrong, or the contract {0} does not match the spec.',
+    '（市场新开，暂无挂单属于正常情况。）': '(The market has just opened; an empty order book is expected at this stage.)',
+    '该挂单已取消或已成交': 'This listing was cancelled or has already sold',
+    '卖家已不持有该资产，无法成交': 'The seller no longer holds this asset, so it cannot be bought',
+    '卖家已撤销对市场合约的授权，无法成交': 'The seller revoked the approval for the market contract, so it cannot be bought',
+    '当前无法成交': 'Cannot be bought right now',
+    '无法成交': 'Cannot buy',
     '买入': 'Buy',
 
     /* ---------------- 挂单 ---------------- */
-    '表单先摆在这里，填不了。': 'The form is here, but it cannot be filled in.',
-    '挂单要签名，先连钱包。': 'Listing needs a signature — connect a wallet first.',
+    '表单当前不可用。': 'The form is unavailable.',
+    '挂单需要签名，请先连接钱包。': 'Listing requires a signature. Connect a wallet first.',
     /* 单位由 config.js 的 chain.currency（原生币）或 'BANG' 填 —— 一条词条管两种计价。 */
     '总价（{0}）': 'Total price ({0})',
     '例如 0.02': 'e.g. 0.02',
     '例如 5000': 'e.g. 5000',
     '计价': 'Currency',
     '授权 BANG': 'Approve BANG',
-    'BANG 代币地址没配，买不了 BANG 计价的单': 'BANG token address not configured; BANG-priced listings cannot be bought',
-    '读不到 BANG 授权额度，稍后再试': 'Could not read BANG allowance; try again shortly',
+    '未配置 BANG 代币地址，无法购买以 BANG 计价的挂单':
+      'No BANG token address is configured, so BANG-priced listings cannot be bought',
+    '未读到 BANG 授权额度，请稍后再试': 'The BANG allowance could not be read. Try again shortly.',
     '① 授权市场': '① Approve the market',
     '② 挂单': '② List',
     /* 表单下面那段说明被 <span class="mono"> 断成四个文本节点，每一段单独收。
        末尾的空格是**故意的**：它前后紧挨着代码块，没有它英文会粘成一个词。 */
-    '之后市场才有权在成交那一刻把 NFT 转给买家 —— 在那之前东西一直在你自己钱包里。':
-      'only then may the market move the NFT to the buyer at the moment of sale — until then it stays in your own wallet.',
-    '没盖章的宇宙（': 'Unverified universes (',
-    '，也就是没走服务端引爆的）不在这个下拉里 —— 它们没有参数卡，市场不上架。':
-      ', that is, those never detonated through the server) are not in this dropdown — they have no parameter card, so the market will not list them.',
-    '你名下没有可卖的宇宙': 'You have no universes to sell',
+    '名下没有可出售的宇宙': 'You hold no universe available for sale',
     '{0} 单在挂': '{0} listed',
-    '连钱包后这里显示你挂出去的单。': 'Connect a wallet and the listings you posted show up here.',
-    '你还没挂单。': 'You have not listed anything yet.',
+    '连接钱包后显示你的挂单。': 'Connect a wallet to see the listings you posted.',
+    '暂无挂单。': 'You have no listings.',
     '资产': 'Asset',
     '授权': 'Approve',
     '已授权': 'Approved',
-    '还没授权': 'Not approved yet',
-    '授权状态读不到': 'Approval status unreadable',
-    '先选一个要卖的宇宙': 'Pick the universe you want to sell first',
-    '价格填得不对，写成 0.02 这样': 'That price is not valid — write it like 0.02',
+    '尚未授权': 'Not approved',
+    '未读到授权状态': 'Approval status could not be read',
+    '请先选择要出售的宇宙': 'Select the universe you want to sell first',
+    '价格格式有误，请填写如 0.02 的数值': 'That price is not valid. Enter a number such as 0.02.',
 
     /* ---------------- BANG 数字条 ---------------- */
-    'BANG 代币还没接上': 'The BANG token is not wired in yet',
-    '连钱包后显示这个地址的余额': "Connect a wallet to see this address's balance",
-    '地址填错了，或者合约还没上线': 'Wrong address, or the contract is not live yet',
-    '铸造 NFT 时发放，修正宇宙和命名时销毁；团队 / 上交易所费用 / 返利另有三个一次性池':
-      'Issued when an NFT is minted, burned when a universe is corrected or named; team, listing fees and referral have three separate one-off pools',
-    '链上读不到 totalBurned': 'totalBurned cannot be read on-chain',
-    '全网累计销毁，只增不减 —— 这是所有 NFT 价值的总来源':
-      "Burned network-wide, only ever growing — the source of every NFT's value",
+    'BANG 代币尚未接入': 'The BANG token is not wired in yet',
+    '连接钱包后显示该地址余额': "Connect a wallet to see this address's balance",
+    '地址有误，或合约尚未上线': 'The address is wrong, or the contract is not live yet',
+    '铸造 NFT 时发放，修正宇宙与命名时销毁。团队、上所费用、返利另有三个一次性池。':
+      'Issued when an NFT is minted and burned when a universe is corrected or named. Team, listing fees and referrals have three separate one-off pools.',
+    '链上未读到累计销毁量': 'The total burned could not be read on-chain',
+    '全网累计销毁量，只增不减。': 'Burned network-wide. The figure only ever increases.',
 
     /* ---------------- 写链 ---------------- */
-    '没有检测到小狐狸（MetaMask）': 'MetaMask not detected',
+    '未检测到 MetaMask': 'MetaMask not detected',
     /* 钱包选择器空列表提示（web/wallet.js 的 pick；app 分册也收了同一条） */
     'TronLink / TokenPocket 连不上：请用 MetaMask 或币安钱包':
       'TronLink / TokenPocket cannot connect — please use MetaMask or Binance Wallet',
     '等待回执超时': 'Timed out waiting for the receipt',
-    '上一笔还没落地，等它出结果再点':
-      'The previous transaction has not landed — wait for its result before clicking again',
+    '上一笔交易尚未确认，请等待结果': 'The previous transaction has not settled. Wait for its result.',
     /* {0} = 动作名（授权 / 挂单 / 撤单 #3 / 买入 #3），{1} = 哈希或错误原文 */
     '{0}：在钱包里确认…': '{0}: confirm in your wallet…',
     '{0}：已发出，等上链… {1}': '{0}: sent, waiting for the chain… {1}',
     '{0}：成功': '{0}: done',
-    '{0}：交易被链上回滚了': '{0}: the transaction was reverted on-chain',
+    '{0}：交易在链上被回滚': '{0}: the transaction was reverted on-chain',
     '{0}失败：{1}': '{0} failed: {1}',
-    '这一单读不到了，刷新看看': 'This listing can no longer be read — try refreshing',
-    '读链出了点问题：{0}': 'Something went wrong reading the chain: {0}',
+    '该挂单已读不到，请刷新页面': 'This listing can no longer be read. Refresh the page.',
+    '读取链上数据失败：{0}': 'Reading the chain failed: {0}',
     'RPC 出错': 'RPC error',
 
     /* ---------------- 连接 / 切换 / 断开 ---------------- */
@@ -218,15 +204,16 @@
     '连接失败：{0}': 'Connection failed: {0}',
     '没拿到账户 —— 钱包可能锁着，或者你在弹窗里拒绝了':
       'No account came back — the wallet may be locked, or you rejected the prompt',
-    '账户没变，还是 {0}': 'Account unchanged — still {0}',
+    '未获取到账户。钱包可能处于锁定状态，或已在弹窗中拒绝。':
+      'No account was returned. The wallet may be locked, or the request was rejected in the popup.',
+    '账户未变更，仍为 {0}': 'The account did not change; it is still {0}',
     '已切到 {0}': 'Switched to {0}',
-    '钱包没给账户 —— 请到 MetaMask 里手动切换账户':
-      'The wallet returned no account — switch accounts by hand in MetaMask',
+    '钱包未返回账户，请在 MetaMask 中手动切换账户': 'The wallet returned no account. Switch accounts manually in MetaMask.',
     '取消了切换账户 —— 账户没变': 'Account switch cancelled — the account did not change',
-    '切换账户没成：{0} —— 可以到 MetaMask 里手动切':
-      'Could not switch account: {0} — you can switch by hand in MetaMask',
-    '本页已断开。钱包里的授权还在 —— 要彻底移除请到 MetaMask 的「已连接的网站」':
-      'This page is disconnected. The approval in your wallet is still there — remove it under "Connected sites" in MetaMask',
+    '已取消切换账户，账户未变更': 'Account switching was cancelled; the account did not change',
+    '切换账户失败：{0}。可在 MetaMask 中手动切换。': 'Account switching failed: {0}. You can switch manually in MetaMask.',
+    '本页已断开连接。钱包中的授权仍然存在，如需彻底移除请在 MetaMask 的「已连接的网站」中操作。':
+      'This page is disconnected. The approval in your wallet remains; remove it under "Connected sites" in MetaMask.',
 
     /* ---------------- 页脚。末尾的空格同样是**故意的**：紧挨着代码块或链接。 */
     '合约：': 'Contracts: ',
@@ -234,11 +221,14 @@
        主网走下面那条不带链名的。两条都是整句 —— 英文的语序和中文对不上。 */
     '这是 {0}。这里的一切都不是投资建议，也不构成任何价值承诺。':
       'This is {0}. Nothing here is investment advice, and nothing here promises any value.',
+    '「已验证」表示该 NFT 的参数已由服务端复算并签名，参数指纹写入合约。':
+      "\"Verified\" means this NFT's parameters were recomputed and signed by the server, with the fingerprint written into the contract.",
     '这里的一切都不是投资建议，也不构成任何价值承诺。':
       'Nothing here is investment advice, and nothing here promises any value.',
-    '「已验证」= 合约里的': '"Verified" = the',
-    '非零，表示这枚 NFT 的参数是服务端算过并签过名的； 「已烧」=':
-      'in the contract is non-zero, meaning this NFT\'s parameters were computed and signed by the server; "Burned" =',
+    '成交时先按 ERC-2981 支付版税（5%），再收取成交价 1% 的手续费，均由买家支付的金额中扣除。':
+      'At settlement an ERC-2981 royalty (5%) is paid first, then a 1% marketplace fee. Both are deducted from the amount the buyer pays.',
+    '挂单前需一次性授权市场合约；成交前 NFT 始终留在你的钱包。仅支持带参数卡的宇宙上架。':
+      'Listing requires a one-time approval of the marketplace contract. The NFT stays in your wallet until the sale settles, and only universes with a parameter card can be listed.',
     /* 唯一性口径 2026-08-21 改定：**不是全站唯一，是本系列内唯一** ——
        原生 BangNames 与造物 BangNames2 是两套独立名册。 */
 
@@ -255,62 +245,59 @@
     /* 「关闭」在核心词典（i18n.js）里，「名字」在 i18n-market 之前加载的 i18n-app.js 里，
        两个都已经进了全局表 —— 按本文件第 1 条规矩不重复收，重复一遍就是给自己留一处会走散的副本。 */
     '例如 first-light': 'e.g. first-light',
-    '「分数维的宇宙很少见，我要把这组创世参数记下来。」':
-      '"Fractional-dimension universes are rare. I want to write these genesis parameters down."',
-    '——《镜子》第八章': '— The Mirror, chapter 8',
-    '持有人烧 BANG 给它取的名字。在原生系列内唯一，链上可查':
-      'The name its holder burned BANG to register. Unique within the Native collection, readable on-chain',
-    '持有人烧 BANG 给它取的名字。在造物系列内唯一，链上可查':
-      'The name its holder burned BANG to register. Unique within the Crafted collection, readable on-chain',
+    '为这组创世参数登记一个链上名字。名字在本系列内唯一，随 NFT 一同转移。':
+      'Register an on-chain name for this set of genesis parameters. The name is unique within its series and transfers with the NFT.',
+    '持有人销毁 BANG 设定的名字，在原生系列内唯一，可在链上查询':
+      'A name the holder set by burning BANG. Unique within the native series and verifiable on-chain.',
+    '持有人销毁 BANG 设定的名字，在造物系列内唯一，可在链上查询':
+      'A name the holder set by burning BANG. Unique within the crafted series and verifiable on-chain.',
     /* 弹窗里那一行灰字。**必须有**：不写的话，有人给造物取名成功后会以为抢到了
        全站唯一，拿去二级市场按唯一性叫价 —— 那误解是我们造成的（用户点名要求）。 */
-    '原生宇宙与造物宇宙是两套独立名册：同一个名字在两边可以各占一次，查重也只在本系列内进行。':
-      'Native and Crafted are two separate name registries: the same name can be taken once in each, and uniqueness is checked within a collection only.',
-    '烧掉 BANG，把这组创世参数记下来': 'Burn BANG to write these genesis parameters down',
-    '改名要烧掉上一次的两倍 —— 这是为了让名字不能被反复铲走':
-      'Renaming costs twice what the last one did — so names cannot be shovelled away over and over',
+    '原生宇宙与造物宇宙使用两套独立名册。同一名字在两个系列各可占用一次，查重仅在本系列内进行。':
+      'Native and crafted universes use two separate name registries. The same name can be taken once in each series, and the uniqueness check runs within one series only.',
+    '销毁 BANG，为这组创世参数命名': 'Burn BANG to name this set of genesis parameters',
+    '改名需销毁上一次的两倍数量，以避免名字被反复替换':
+      'Renaming burns twice the previous amount, so a name cannot be taken over repeatedly',
 
     /* ---- 查重的每一种结果。**说清为什么**，否则用户只会反复试 ---- */
     '先起个名字': 'Type a name first',
     '查重中…': 'Checking…',
-    '「{0}」还没人用，可以命名': '"{0}" is free — you can take it',
-    '「{0}」已经被 {1} 占了 —— 名字在本系列内唯一，先到先得':
-      '"{0}" is already held by {1} — names are unique within a collection, first come first served',
-    '这就是它现在的名字（大小写、O/0、I/1 都算同一个），不用改':
-      'That is already its name (case, O/0 and I/1 all count as the same) — nothing to change',
+    '「{0}」尚未被占用，可以命名': '"{0}" is available and can be used',
+    '「{0}」已被 {1} 占用。名字在本系列内唯一，先到先得。':
+      '"{0}" is already taken by {1}. A name is unique within its series and assigned first come, first served.',
+    '这已是它当前的名字（大小写、O/0、I/1 视为同一字符），无需修改':
+      'This is already its current name (case, O/0 and I/1 count as the same character), so no change is needed',
     '名字不能是空的': 'A name cannot be empty',
     '最多 32 个字符': '32 characters at most',
-    '第 {0} 个字符不能用 —— 只收 a-z A-Z 0-9 和连字符':
-      'Character {0} is not allowed — only a-z A-Z 0-9 and the hyphen',
+    '第 {0} 个字符不可用，仅支持 a-z A-Z 0-9 与连字符':
+      'Character {0} is not allowed; only a-z, A-Z, 0-9 and hyphens are accepted',
     '首尾不能是连字符': 'A name cannot start or end with a hyphen',
     '查不了这个名字': 'This name cannot be checked',
-    '查不了 —— 命名合约地址可能填错了':
-      'Cannot check — the naming contract address may be wrong',
-    '查重没成：{0}': 'The check did not go through: {0}',
-    '命名要发交易，先连钱包': 'Naming sends a transaction — connect a wallet first',
+    '无法查重，命名合约地址可能有误': 'The uniqueness check failed; the naming contract address may be wrong',
+    '查重失败：{0}': 'Uniqueness check failed: {0}',
+    '命名需要发起交易，请先连接钱包': 'Naming sends a transaction. Connect a wallet first.',
 
     /* ---- 价格与授权。**授权多少必须写出来**，不做无限授权的诱导 ---- */
-    '价格要等名字合法才算得出来 —— 短名更贵，改名比上一次贵一倍':
-      'The price is computed once the name is valid — shorter names cost more, and each rename costs twice the last',
-    '这一步要烧掉': 'This burns',
-    '① 只授权这一笔的 {0} BANG，不做无限授权':
-      'Step ① approves exactly {0} BANG for this one burn — never an unlimited allowance',
-    '已授权 {0} BANG，够这一笔，直接点 ②':
-      '{0} BANG already approved, enough for this — go straight to ②',
-    '烧掉的币不会回来。名字跟着这枚 NFT 走，转手一起转':
-      'Burned tokens do not come back. The name belongs to this NFT and travels with it',
+    '名字合法后显示价格。名字越短价格越高，改名为上一次的两倍。':
+      'The price appears once the name is valid. Shorter names cost more, and renaming costs twice the previous amount.',
+    '本次将销毁': 'This step burns',
+    '① 仅授权本次所需的 {0} BANG，不做无限授权':
+      '① Approves only the {0} BANG this transaction needs, never an unlimited allowance',
+    '已授权 {0} BANG，满足本次所需，可直接点击 ②':
+      '{0} BANG is already approved, which covers this transaction. Go straight to ②.',
+    '销毁不可逆。名字随该 NFT 转移。': 'Burning is irreversible. The name transfers with the NFT.',
     '① 授权': '① Approve',
     '② 命名': '② Name it',
     '命名 {0}': 'Naming {0}',
-    '已经把它记下来了：{0}': 'Written down: {0}',
-    '名字只能用 a-z A-Z 0-9 和连字符，1 到 32 个字符，首尾不能是连字符。不收 Unicode —— 全角的「Ｅ」和「E」看起来一样，收了就有人拿它冒充别人的名字。大小写不区分；O 和 0、I i L l 和 1 也当作同一个字符，理由同上。':
-      'Names use a-z A-Z 0-9 and the hyphen, 1 to 32 characters, and cannot start or end with a hyphen. No Unicode: a full-width "Ｅ" looks exactly like "E", and allowing it would let someone impersonate another name. Case is ignored; O and 0, and I i L l and 1, are treated as the same character for the same reason.',
+    '命名已记录：{0}': 'The name is recorded: {0}',
+    '名字支持 a-z、A-Z、0-9 与连字符，长度 1 至 32 个字符，首尾不得为连字符。不支持 Unicode 字符，以避免全角字形冒充已有名字。大小写不敏感；O 与 0、I、i、L、l 与 1 视为同一字符。':
+      'A name accepts a-z, A-Z, 0-9 and hyphens, is 1 to 32 characters long, and may not start or end with a hyphen. Unicode is not accepted, which prevents full-width look-alikes from impersonating an existing name. Names are case-insensitive, and O and 0, as well as I, i, L, l and 1, count as the same character.',
 
     /* ---- BANG 那一栏里的新一格 ---- */
     '命名已销毁': 'Burned for names',
-    '给宇宙取名字烧掉的量。这是第二条销毁通路，和干预分开记':
-      'Burned to name universes. This is the second burn path, counted separately from interventions',
-    '链上读不到 totalBurnedForNames': 'totalBurnedForNames could not be read on-chain',
+    '命名消耗的销毁量。命名是第二条销毁通路，与干预分开记录':
+      'The amount burned by naming. Naming is the second burn path and is recorded separately from interventions.',
+    '链上未读到命名销毁总量': 'The total burned for names could not be read on-chain',
 
     /* ================================================================ 造物系列
        第二套 721（MirrorCrafted）：
@@ -323,33 +310,33 @@
     '造物宇宙': 'Crafted Universe',   // 挂单表单下拉的 optgroup 标签
     '造物缩略图': 'Crafted universe thumbnail',
     '起源区块': 'Origin block',
-    '铸造序号 —— 造物的身份是参数卡哈希（右边那串），起源区块在下面':
-      "Mint number — a crafted universe's identity is its card hash (to the right); its origin block is below",
-    '参数卡哈希（cardHash）：拿起源哈希和干预操作序列跑开源引擎，能复算出同一张卡':
-      'Card hash: replay the origin hash plus the recorded ops through the open engine and you recompute this exact card',
-    '造物必经服务端复算与签名才铸得出来，参数卡哈希已写进合约':
-      'A crafted universe can only be minted after the server recomputes and signs it; its card hash is written into the contract',
-    '造物系列：沙盒里干预后的宇宙。参数 = 起源区块哈希 + 干预操作序列，任何人可复算':
-      'Crafted series: a universe reshaped in the sandbox. Parameters = origin block hash + the recorded ops — anyone can recompute it',
+    '铸造序号。造物的身份为参数卡哈希，起源区块见下方':
+      'Mint number. A crafted universe is identified by its card hash; the origin block is shown below.',
+    '参数卡哈希：以起源哈希与干预操作序列运行开源引擎，可复算出同一张参数卡':
+      'Card hash: running the open-source engine on the origin hash and the intervention sequence reproduces the same card',
+    '造物须经服务端复算与签名方可铸造，参数卡哈希已写入合约':
+      'A crafted universe can only be minted after server-side recomputation and signature; the card hash is written into the contract',
+    '造物系列：沙盒中干预后的宇宙。参数由起源区块哈希与干预操作序列决定，任何人可复算':
+      'Crafted series: universes altered in the sandbox. Parameters follow from the origin block hash plus the sequence of interventions, and anyone can recompute them.',
     '；造物链上共 {0} 枚': '; {0} crafted on-chain',
-    '现在没有造物在售。': 'No crafted universes are for sale right now.',
+    '当前没有造物在售。': 'No crafted universe is currently for sale.',
     /* **绝不把铸造费标成「已烧掉」**：paid 里只有一部分真的销毁，
        其余进国库 —— 原生 burnedOn 那套 100% 全烧的口径不适用造物。
        8 槽用 cardOf.burned（铸造当时写入）；7 槽未知才按当前费率折算并标明。 */
     '铸造投入': 'Paid at mint',
-    '其中 {0} BANG 已销毁（铸造当时写入），其余进了国库':
-      'Of which {0} BANG was burned (written at mint); the rest went to the treasury',
-    '其中约 {0} BANG 已销毁（按当前费率 {1}% 折算，链上 burned 未知），其余进了国库':
-      'Of which about {0} BANG was burned (estimated at the current {1}% rate; on-chain burned unknown); the rest went to the treasury',
-    '销毁比例读不到（burnBps）—— 只给总投入，不猜销毁份额':
-      'The burn share cannot be read (burnBps) — only the total paid is shown; the burned part is not guessed',
-    '链上读不到 cardOf 的 paid': 'paid in cardOf cannot be read on-chain',
+    '其中 {0} BANG 已销毁（铸造时写入），其余计入国库':
+      'Of which {0} BANG was burned (recorded at mint); the remainder went to the treasury',
+    '其中约 {0} BANG 已销毁（按当前费率 {1}% 折算，链上销毁量未知），其余计入国库':
+      'Of which about {0} BANG was burned (derived from the current {1}% rate; the on-chain burn figure is unknown); the remainder went to the treasury',
+    '销毁比例未读到，仅显示总投入，不估算销毁份额':
+      'The burn ratio could not be read. Only the total cost is shown; the burned share is not estimated.',
+    '链上未读到铸造投入': 'Mint cost could not be read on-chain',
 
     /* ================================================================ 广播与推广
        激励口径 2026-08-21 定稿：说费率（10%/5%）、说人工核对、说专款与反女巫；
        绝不说「自动到账 / 立即到账」。文案是长句，整句进词典，别拆开拼。 */
     '广播': 'Broadcast',
-    '再引爆看看': 'Detonate it again',
+    '重新引爆': 'Detonate again',
     /* 拯救入口。术语跟 i18n-tools.js 定的一致：
        rescue = 救 / 拯救，burn = 烧（不是 spend）。
        「拯救」这个词个人中心那张持仓卡也用，i18n-site.js 里收的是**同一句英文** ——
@@ -364,6 +351,7 @@
     '复制链接+文案': 'Copy link + text',
     '已复制 ✓': 'Copied ✓',
     '复制不了 —— 手动选中上面的文案': 'Copy failed — select the text above by hand',
+    '无法复制，请手动选中上方文案': 'Copying failed. Select the text above manually.',
     '广播到 X': 'Broadcast on X',
     /* 渠道网格（用户 2026-08-21 加渠道）：专名 X/Telegram/Facebook/Reddit/WhatsApp
        中英同形不进词典，进词典的只有这两条。与 app 分册（i18n-app.js）同句同译。 */
@@ -377,6 +365,8 @@
     /* 剪贴板装不下图片时**必须明说**，否则用户以为图丢了。整句进词典 */
     '图片没能复制（这个浏览器不支持），文案已经进剪贴板了 —— 图片可以在卡片上右键另存。':
       'The image could not be copied (this browser does not support it). The text is on the clipboard — you can right-click the card image and save it.',
+    '图片未能复制（当前浏览器不支持），文案已复制到剪贴板。可在卡片上右键另存图片。':
+      'The image could not be copied (unsupported in this browser); the text is on the clipboard. Right-click the card to save the image.',
     /* 附图预览（用户 2026-08-21「附带一张游戏内的截图」）：市场页与 web/arc-ui.js
        的广播浮层共用这三条（app 页另有一条「实况截图」小签在 app 分册）。 */
     '广播附图': 'Broadcast image',
@@ -387,8 +377,9 @@
     '长按识别 / 扫码打开': 'Long-press to recognise, or scan to open',
     '这条链接太长，二维码画不下 —— 直接复制下面的链接吧':
       'This link is too long to fit in a QR code — copy the link below instead',
-    '这张卡还没读全，稍等一下再广播': 'This card has not fully loaded yet — try broadcasting again in a moment',
-    '这张卡还没读全，稍等一下再试': 'This card has not fully loaded yet — try again in a moment',
+    '链接过长，无法生成二维码，请直接复制下方链接。': 'The link is too long for a QR code. Copy the link below instead.',
+    '参数卡尚未读取完成，请稍后再广播': 'The parameter card is still loading. Try broadcasting again shortly.',
+    '参数卡尚未读取完成，请稍后再试': 'The parameter card is still loading. Try again shortly.',
 
     /* ================================================================ 筛选与排序条 */
     '排序': 'Sort',
@@ -404,25 +395,24 @@
     '未命名': 'Unnamed',
     '{0} 条符合 / 共 {1} 条': '{0} matching / {1} total',
     '清空筛选': 'Clear filters',
-    '没有符合筛选的宇宙 —— 点「清空筛选」看全部。':
-      'No universes match these filters — hit "Clear filters" to see everything.',
+    '没有符合筛选条件的宇宙。点击「清空筛选」查看全部。': 'No universe matches the filters. Use "Clear filters" to see all of them.',
 
     /* ================================================================ 物理参数筛选与排序
 。维度那一组是**人话**，不是让人填数字，
        所以英文也别退回 "dim=3" 这种参数写法。「全部」在 i18n-app.js 里已有（'All'），
        按第 1 条规矩不重复收。 */
     '维度': 'Dimension',
-    'D=3（能长出结构的）': 'D = 3 (structure can form)',
+    'D=3（可形成结构）': 'D=3 (can form structure)',
     'D>3': 'D > 3',
     '整数维': 'Integer D',
     '分数维': 'Fractional D',
     '维度↑': 'Dimension ↑',
     '维度↓': 'Dimension ↓',
     /* 维度这一组下面那句说明。**整句进词典**：英文的破折号和中文的不是一个字符 */
-    'D=3 是我们这个宇宙的维数，也是唯一能长出稳定轨道的':
-      'D = 3 is the dimension of our own universe — and the only one where stable orbits can form.',
+    'D=3 是我们所在宇宙的维数，也是唯一能形成稳定轨道的维数':
+      'D=3 is the dimension of our own universe and the only one in which stable orbits form',
     /* ---- 进阶：按卡面上印的常数筛 ---- */
-    '进阶：按卡面上的常数筛': 'Advanced: filter by the constants on the card',
+    '进阶：按参数卡上的常数筛选': 'Advanced: filter by the constants on the card',
     '不按常数筛': 'No constant filter',
     '光速 c': 'Speed of light c',
     '普朗克常数 h': 'Planck constant h',
@@ -431,36 +421,34 @@
     '精细结构常数倒数 α⁻¹': 'Inverse fine-structure constant α⁻¹',
     '最小值': 'Min',
     '最大值': 'Max',
-    '常数按卡面上的单位填（SI），可以写 3e8 这种科学计数法；两头都留空就是不按它筛。':
-      'Use the SI units printed on the card; scientific notation such as 3e8 works. Leave both ends empty and this constant is not filtered on.',
-    '区间只认数字（3e8 / 0.0073 这样），这一格先没算进筛选。':
-      'The range takes numbers only (3e8, 0.0073, …) — this box is left out of the filter for now.',
+    '常数按参数卡上的单位（SI）填写，支持 3e8 等科学计数法。两端留空表示不按该项筛选。':
+      'Enter constants in the units shown on the card (SI); scientific notation such as 3e8 is accepted. Leave both ends empty to skip that filter.',
+    '区间仅接受数字（如 3e8、0.0073），该项暂未计入筛选。':
+      'A range accepts numbers only (such as 3e8 or 0.0073); this field is not part of the filter for now.',
     /* ---- 偏离度：档位与文案全部由服务端算，这里只是把 low/high 说成人话 ---- */
     '偏离度': 'Deviation',
     '不看偏离度': 'Any deviation',
     '接近我们的宇宙': 'Close to ours',
-    '和我们差着一截': 'Some way off ours',
-    '差得很远': 'Far off from ours',
-    '空间维数 —— 服务端从这张卡的参数推出来的':
-      "Spatial dimension — derived on the server from this card's parameters",
-    '分数维：维数不是整数。这种空间里长不出我们熟悉的轨道和场':
-      'Fractional dimension: not a whole number. The orbits and fields we know cannot form in a space like this',
-    '与我们这个宇宙的偏离度，由服务端算': 'Deviation from our universe, computed on the server',
-    '与我们这个宇宙的偏离度 {0}（服务端算的，取各常数里偏得最狠的那一项）':
-      'Deviation from our universe: {0} (computed on the server — the constant that strays furthest)',
+    '偏离中等': 'Moderately off',
+    '偏离较大': 'Far off',
+    '空间维数，由服务端根据参数卡推导': 'Spatial dimension, derived by the server from the parameter card',
+    '分数维：维数不是整数。此类空间无法形成稳定的轨道与场结构':
+      'Fractional dimension: the dimension is not an integer, and such a space cannot form stable orbits or field structure',
+    '与我们所在宇宙的偏离度，由服务端计算': 'Deviation from our own universe, computed by the server',
+    '与我们所在宇宙的偏离度 {0}（服务端计算，取各常数中偏离最大的一项）':
+      'Deviation from our own universe: {0} (computed by the server from the most deviant constant)',
     /* ---- 服务端那一头的状态。读不到就明说读不到，不拿没筛过的一屏冒充筛过的 ---- */
-    '正在按物理参数筛…': 'Filtering by physics…',
-    '读不到服务端的物理索引，维度 / 常数 / 偏离度这几项这会儿筛不了。':
-      'The physics index on the server is unreachable, so dimension / constants / deviation cannot be filtered right now.',
-    '读不到服务端的物理索引，没按维度排 —— 下面仍是按最新上架排的。':
-      'The physics index on the server is unreachable, so nothing was sorted by dimension — the list below is still newest first.',
-    '挂单太多，服务端只考察了前 {0} 条，条数统计的是这一段。':
-      'Too many listings — the server only examined the first {0}, and the counts cover that stretch.',
-    '索引正在重扫，刚挂出来的那几单可能还没进去。':
-      'The index is rescanning — listings posted moments ago may not be in it yet.',
-    '读不到服务端的物理索引，维度 / 常数 / 偏离度这几项这会儿筛不了 —— 点「清空筛选」看全部。':
-      'The physics index on the server is unreachable, so dimension / constants / deviation cannot be filtered right now — hit "Clear filters" to see everything.',
-    '没有符合这些物理条件的宇宙 —— 换一档维度，或者点「清空筛选」看全部。':
-      'No universes match these physical conditions — try another dimension, or hit "Clear filters" to see everything.'
+    '正在按物理参数筛选…': 'Filtering by physical parameters…',
+    '未读到服务端物理索引，维度、常数与偏离度暂时无法筛选。':
+      'The server physics index could not be read, so dimension, constants and deviation cannot be filtered right now.',
+    '未读到服务端物理索引，未按维度排序，当前仍按最新上架排序。':
+      'The server physics index could not be read, so the list is not sorted by dimension and remains sorted by newest listing.',
+    '挂单数量较多，服务端仅处理前 {0} 条，统计范围为这一部分。':
+      'There are many listings; the server processed only the first {0}, and the counts cover that subset.',
+    '索引正在重建，最新挂单可能尚未收录。': 'The index is being rebuilt, so the newest listings may not be included yet.',
+    '未读到服务端物理索引，维度、常数与偏离度暂时无法筛选。点击「清空筛选」查看全部。':
+      'The server physics index could not be read, so dimension, constants and deviation cannot be filtered right now. Use "Clear filters" to see all of them.',
+    '没有符合这些物理条件的宇宙。可更换维度档位，或点击「清空筛选」查看全部。':
+      'No universe matches these physical conditions. Try another dimension tier, or use "Clear filters" to see all of them.'
   }, 'market');
 })(typeof window !== 'undefined' ? window : this);

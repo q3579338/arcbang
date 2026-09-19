@@ -275,13 +275,13 @@ footer a:hover{text-decoration:underline}
       return pre.then(function (sel) {
         if (sel === false) return null;
         var p = (sel && sel.provider) || prov();
-        if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+        if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
         return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
           addr = (a && a[0]) || null;
-          if (!addr) throw new Error(ST('没拿到账户 —— 钱包可能锁着，或者你在弹窗里拒绝了'));
+          if (!addr) throw new Error(ST('未获取到账户。钱包可能处于锁定状态，或已在弹窗中拒绝。'));
           return addr;
         }, function (er) {
-          throw new Error(er && er.code === 4001 ? ST('你在钱包里取消了') : ((er && er.message) || String(er)));
+          throw new Error(er && er.code === 4001 ? ST('已在钱包中取消') : ((er && er.message) || String(er)));
         });
       });
     },
@@ -291,18 +291,18 @@ footer a:hover{text-decoration:underline}
       if (p && p.request) {
         return p.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] })
           .then(function () { }, function () {
-            return ST('本页已断开。钱包里的授权还在 —— 要彻底移除请到钱包扩展的「已连接的网站」');
+            return ST('本页已断开连接。钱包中的授权仍然存在，如需彻底移除请在钱包扩展的「已连接的网站」中操作。');
           });
       }
     },
     switchAccount: function () {
       var p = prov();
-      if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+      if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
       return p.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
         .then(
           function () { return p.request({ method: 'eth_accounts' }); },
           function (er) {
-            if (er && er.code === 4001) throw new Error(ST('取消了切换账户 —— 账户没变'));
+            if (er && er.code === 4001) throw new Error(ST('已取消切换账户，账户未变更'));
             return p.request({ method: 'eth_requestAccounts' });
           }
         )
@@ -330,7 +330,7 @@ footer a:hover{text-decoration:underline}
 <main>
   <span class="eyebrow" id="eyebrow">ARCBANG · STATUS</span>
   <h1>ARCBANG <span class="dot">·</span> 系统状态</h1>
-  <p class="sub">区块链是控制台，这一页是舷窗 —— 读数全部链上现读，随时可复核。</p>
+  <p class="sub">本页读数全部取自链上实时读取，可随时复核。</p>
   <div class="beam"><i></i></div>
   <div class="meta">
     <span>链 <b id="mChain">—</b></span>
@@ -345,7 +345,7 @@ footer a:hover{text-decoration:underline}
   <details class="fold" data-fold="mx">
     <summary><h2>合约矩阵</h2><span class="fsum" id="fsMx">—</span></summary>
     <div class="fbody">
-    <p class="why" id="mxWhy">两个合约的地址、在线状态与关键参数。点击进区块浏览器。</p>
+    <p class="why" id="mxWhy">两个合约的地址、在线状态与关键参数。点击可在区块浏览器中打开。</p>
     <div class="mx" id="mx">
       <div class="hd">合约</div><div class="hd">地址</div><div class="hd">状态 · 关键参数</div>
     </div>
@@ -436,7 +436,7 @@ footer a:hover{text-decoration:underline}
   <details class="fold" data-fold="na" id="foldNa" hidden>
     <summary><h2>未接入</h2><span class="fsum warn" id="fsNa">—</span></summary>
     <div class="fbody">
-    <p class="why">还没填地址、或链上读不到代码的合约。全部接入后这一块自动消失。</p>
+    <p class="why">尚未配置地址或链上读不到代码的合约。全部接入后本区块自动隐藏。</p>
     <div class="dist" id="naList"></div>
     </div>
   </details>
@@ -798,8 +798,8 @@ footer a:hover{text-decoration:underline}
       for (iR = 0; iR < ROWS.length; iR++) {
         rR = ROWS[iR];
         if (codes[rR[3]] === true) onN++;
-        if (!isAddr(rR[2])) na.push([rR[0], rR[1], T('未部署（还没填地址）')]);
-        else if (codes[rR[3]] === false) na.push([rR[0], rR[1], T('地址有，链上读不到代码（离线）')]);
+        if (!isAddr(rR[2])) na.push([rR[0], rR[1], T('未部署（尚未配置地址）')]);
+        else if (codes[rR[3]] === false) na.push([rR[0], rR[1], T('已配置地址，链上读不到代码（离线）')]);
       }
       $('fsMx').textContent = onN === ROWS.length
         ? TF('{0} 个合约 · 全部在线', ROWS.length)
@@ -833,7 +833,7 @@ footer a:hover{text-decoration:underline}
   function renderWhy() {
     /* 由 JS 用整句词条重写（带 <b> 强调）：英文整段命中。 */
     /* ARCBANG：分发全景整块是 hidden 的，这里不再往里写任何一个字 */
-    $('mxWhy').textContent = T('两个合约的地址、在线状态与关键参数。点击进区块浏览器。');
+    $('mxWhy').textContent = T('两个合约的地址、在线状态与关键参数。点击可在区块浏览器中打开。');
   }
   if (REF) {
     $('rowRef').hidden = false;
@@ -854,7 +854,7 @@ footer a:hover{text-decoration:underline}
   /* ---------------------------------------------------------------- 放号阶段
      唯一一处走服务端 API 的读数（这一页其余全是直连 RPC）。
      阶段和白名单不在链上 —— 链上只有 bangSigned 的那道 free 边界 ——
-     所以这里只能问 /api/health。API 不通就整段标「问不到」，
+     所以这里只能问 /api/health。API 不通就整段标「读不到」，
      **绝不猜一个阶段出来**：猜错的后果是页面告诉人「公售开了」而服务端一张签名都不签。 */
   function loadPhase() {
     var base = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
@@ -865,12 +865,12 @@ footer a:hover{text-decoration:underline}
       var c = h.allowlist || {};
       $('phNow').textContent = p ? T(NAME[p] || p) : '—';
       var nx = h.phaseNext;
-      $('phNext').textContent = !nx ? T('已是最后一段')
+      $('phNext').textContent = !nx ? T('已是最后阶段')
         : (T(NAME[nx.phase] || nx.phase) + ' · ' + (nx.at ? new Date(nx.at).toLocaleString() : T('时间待定')));
       /* 名单已定格 = 不再随积分变。**不在预热期却还没定格是真实故障**
          （有人会在铸到一半被后来者挤出名单），所以那一种要标黄。 */
       var frozen = !!c.frozen;
-      $('phFrozen').textContent = frozen ? T('已定格（不再随积分变）') : T('实时按积分榜算');
+      $('phFrozen').textContent = frozen ? T('已定格（不再随积分变动）') : T('实时按积分榜算');
       $('phFrozen').className = (!frozen && p && p !== 'warmup') ? 'bad' : '';
       /* 定格之前服务端一律回 null（**不承诺名额**）：这里就写「定格时公布」，
          不要自己拿榜的长度去猜一个数出来。 */
@@ -895,7 +895,7 @@ footer a:hover{text-decoration:underline}
       var top = h.allowlistTop || [];
       var TIER = { gtd: '优先', fcfs: '免费' };
       $('phTop').innerHTML = !top.length
-        ? '<div class="row"><span class="k">' + T('还没有人上榜') + '</span><span class="dimtx">—</span></div>'
+        ? '<div class="row"><span class="k">' + T('暂无上榜地址') + '</span><span class="dimtx">—</span></div>'
         : top.map(function (r) {
             return '<div class="row"><span class="k"><b>#' + r.rank + '</b> '
               + '<span class="mono">' + r.addr + '</span></span>'
@@ -903,12 +903,12 @@ footer a:hover{text-decoration:underline}
                  摆一个「—」在那儿只是噪声，还会让人以为读数坏了。 */
               + '<span>' + TN('{0} 分', r.points)
               + (r.tier ? ' · ' + T(TIER[r.tier]) : '')
-              + (r.verified ? '' : ' · ' + T('未核')) + '</span></div>';
+              + (r.verified ? '' : ' · ' + T('未核对')) + '</span></div>';
           }).join('');
       $('fsPhase').textContent = p ? T(NAME[p] || p) : '—';
       $('fsPhase').className = 'fsum' + (p === 'warmup' ? ' warn' : '');
     }, function () {
-      $('fsPhase').textContent = T('问不到');
+      $('fsPhase').textContent = T('读不到');
       $('fsPhase').className = 'fsum warn';
     });
   }

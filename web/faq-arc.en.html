@@ -6,7 +6,7 @@
 <!-- 落盘到 /en/faq.html（build-web.js 的 SITES.arc.enPages）。相对地址由 absolutize() 在落盘时
      改成根绝对；SEO 头里写的是主站的占位域名，siteify() 会换成 SITES.arc.base。 -->
 <title>ARCBANG questions</title>
-<meta name="description" content="Ten things people ask before playing ARCBANG: does it cost anything, do I need a wallet, why did my universe die, can I sell what I mint, why the limit of 3, how is this different from other NFTs, is the art drawn or computed, is the code open, will there be a token.">
+<meta name="description" content="ARCBANG frequently asked questions: cost, wallets, why a universe ends, selling what you mint, the 3-per-address cap, how this differs from other NFTs, where the images come from, where the code is, and token plans.">
 <link rel="canonical" href="https://arcbang.xyz/en/faq.html">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/faq.html">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/faq.html">
@@ -15,7 +15,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/en/faq.html">
 <meta property="og:title" content="ARCBANG questions">
-<meta property="og:description" content="What it costs, why your universe died, whether you can sell it, why the limit of 3, and whether there will ever be a token. Ten short answers.">
+<meta property="og:description" content="Cost, why a universe ends, whether you can sell it, the 3-per-address cap, and token plans. Ten questions, answered one by one.">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -23,7 +23,7 @@
 <meta property="og:locale:alternate" content="zh_CN">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ARCBANG questions">
-<meta name="twitter:description" content="What it costs, why your universe died, whether you can sell it, why the limit of 3, and whether there will ever be a token.">
+<meta name="twitter:description" content="Cost, why a universe ends, whether you can sell it, the 3-per-address cap, and token plans.">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -73,7 +73,7 @@
 
 <header class="ad-head">
   <h1 class="ad-h1">Questions</h1>
-  <p class="ad-lede">The ten I get asked most. The rest is on <a href="/en/how-it-works.html">what this is</a>, and after that, in the code.</p>
+  <p class="ad-lede">The ten questions asked most often. Everything else is on <a href="/en/how-it-works.html">what this is</a>, and beyond that, in the code.</p>
   <div class="ad-cta">
     <a class="ab-btn" href="app.html">Detonate a block</a>
     <a class="ab-btn2" href="/en/how-it-works.html">What this is</a>
@@ -98,34 +98,34 @@
 
 <div class="ad-qa">
   <article class="ad-q">
-    <p class="verdict">No</p>
+    <p class="verdict">Free</p>
     <div>
-      <h3>Does playing cost anything?</h3>
-      <p>Detonating runs in your own browser. Look at as many universes as you want; it costs nothing.</p>
+      <h3>Does trying it cost anything?</h3>
+      <p>Detonation runs locally in your browser. You can view any number of universes at no cost.</p>
     </div>
   </article>
 
   <article class="ad-q">
-    <p class="verdict">Not to look</p>
+    <p class="verdict">Only to mint</p>
     <div>
       <h3>Do I need a wallet?</h3>
-      <p>Only if you want to keep one of them as an NFT. Browsing needs nothing at all.</p>
+      <p>A wallet is needed only to mint a universe as an NFT. Browsing requires none.</p>
     </div>
   </article>
 
   <article class="ad-q">
-    <p class="verdict">Wrong number of dimensions</p>
+    <p class="verdict">Dimension mismatch</p>
     <div>
-      <h3>Why did my universe die so fast?</h3>
-      <p>D is how many directions space has, and ours is 3. Hashes hand out 9, 14 or 18 all the time. At those numbers gravity is too steep for a planet to hold an orbit or an electron to hold onto a nucleus, and the whole thing is over in the first second. More than nine blocks in ten end this way, which is why finding one that grows stars is worth something.</p>
+      <h3>Why did my universe end so quickly?</h3>
+      <p>D is the number of spatial dimensions, and ours is 3. Hashes commonly yield 9, 14 or 18. At those values gravity is too steep for a planet to hold an orbit or an electron to stay bound to a nucleus, and the universe ends within the first second. More than nine blocks in ten stop at this gate, which is why a block that grows stars is uncommon.</p>
     </div>
   </article>
 
   <article class="ad-q">
-    <p class="verdict">Computed</p>
+    <p class="verdict">Computed, not drawn</p>
     <div>
-      <h3>Is the art drawn or computed?</h3>
-      <p>No artist, no layers, no asset library. Every image is a simulation of that universe's own parameters — turn it and you see something else, change one constant and the picture changes with it.</p>
+      <h3>Are the images drawn or computed?</h3>
+      <p>No artist, no layers, no asset library. Every image is a simulation of that universe's own parameters: a different viewing angle gives a different picture, and changing any constant changes it again.</p>
     </div>
   </article>
 </div>
@@ -136,10 +136,10 @@
 
 <div class="ad-qa">
   <article class="ad-q">
-    <p class="verdict">First 387 are free</p>
+    <p class="verdict">First 387 free</p>
     <div>
       <h3>What does a mint cost?</h3>
-      <p>The first 387 are free, one per address, gas only. Gas on Arc is USDC, so a mint is a fraction of a cent and you never need a separate fuel token. The price after that will be announced separately, and any one address can take at most 3 more. 1,387 pieces. No further issuance, ever.</p>
+      <p>The first 387 are free, one per address, gas only. Gas on Arc is paid in USDC, so a mint costs a fraction of a cent and no separate fuel token is required. The price after that will be announced separately, and each address may mint at most 3 more. Total supply is 1,387, with no further issuance.</p>
     </div>
   </article>
 
@@ -147,15 +147,15 @@
     <p class="verdict">Yes</p>
     <div>
       <h3>Can I sell what I mint?</h3>
-      <p>It is a plain ERC-721, so list it on OpenSea. Royalties are 5%. The site also has a simple listing and buying page, with the fee ceiling written into the contract.</p>
+      <p>A mint is a standard ERC-721 and can be traded on OpenSea and similar venues, with 5% royalties. The site also provides listing and buying, and the fee ceiling is written into the contract.</p>
     </div>
   </article>
 
   <article class="ad-q">
-    <p class="verdict">Bots</p>
+    <p class="verdict">Anti-sweep cap</p>
     <div>
-      <h3>Why is the paid mint limited to 3?</h3>
-      <p>Without a per-address cap a script could take the whole supply in minutes, and everyone else would be left buying on the secondary market. Three keeps the first mint within reach of more people. It is not there to make anyone feel rushed.</p>
+      <h3>Why does the paid mint keep the 3 cap?</h3>
+      <p>Without a per-address cap, a script could take the entire supply in minutes and everyone else would be left buying on the secondary market. A cap of three keeps the primary mint within reach of more addresses. It is not there to create urgency.</p>
     </div>
   </article>
 </div>
@@ -166,10 +166,10 @@
 
 <div class="ad-qa">
   <article class="ad-q">
-    <p class="verdict">The thing exists first</p>
+    <p class="verdict">Delivered before paid for</p>
     <div>
-      <h3>How is this different from other NFT projects?</h3>
-      <p>Most of them sell you a spot and show the art later. Here the thing you want is already on your screen before you pay anything, and looking is free. The scarcity is not a number I picked either: one block hash yields one universe, and once someone mints it, that one is gone.</p>
+      <h3>How does this differ from other NFT projects?</h3>
+      <p>Most projects sell an allocation first and show the work later. Here the universe you intend to mint is already on your screen before you pay anything, and viewing is free. The scarcity is not a chosen number either: one block hash yields one universe, and once it is minted it does not recur.</p>
     </div>
   </article>
 
@@ -177,7 +177,7 @@
     <p class="verdict">Open source</p>
     <div>
       <h3>Where is the code?</h3>
-      <p>The engine is AGPL-3.0 at <a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>. Any NFT can be recomputed on your own machine and compared against the chain — two commands, listed on <a href="/en/verify.html">verify</a>.</p>
+      <p>The engine is open source under AGPL-3.0 at <a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>. Any NFT can be recomputed locally and compared against the chain in two commands, listed on <a href="/en/verify.html">verify</a>.</p>
     </div>
   </article>
 
@@ -185,7 +185,7 @@
     <p class="verdict">No</p>
     <div>
       <h3>Will there be a token?</h3>
-      <p>No token, no presale, no airdrop, no points to farm. Just the 1,387 universes, and when they are minted this is finished.</p>
+      <p>No token, no presale, no airdrop, no points programme. The project is these 1,387 universes, and it is complete once they are minted.</p>
     </div>
   </article>
 </div>

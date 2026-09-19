@@ -7,7 +7,7 @@
      所有相对地址由 prerender-en.js 的 absolutize() 在落盘时改成根绝对，源文件照常写相对。
      SEO 头里写的是主站的占位域名，siteify() 会换成 SITES.arc.base —— 与中文版同一条规矩。 -->
 <title>Every Arc block hash is a universe — what ARCBANG is</title>
-<meta name="description" content="Arc closes a block every half second. ARCBANG takes the 32 bytes of the block hash as the physical constants of a universe and runs it. Most of them are duds; once in a while one grows stars and planets. Free to play, 1,387 to mint.">
+<meta name="description" content="Arc closes a block every half second. ARCBANG takes the 32 bytes of a block hash as the physical constants of a universe and runs it. Most form no structure; a few grow stars and planets. Free to run, 1,387 available to mint.">
 <link rel="canonical" href="https://arcbang.xyz/en/how-it-works.html">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/how-it-works.html">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/how-it-works.html">
@@ -16,7 +16,7 @@
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/en/how-it-works.html">
 <meta property="og:title" content="Every Arc block hash is a universe">
-<meta property="og:description" content="Take a block hash as the factory settings of a universe, run it, see what grows. Nine times out of ten, nothing.">
+<meta property="og:description" content="A block hash becomes the initial parameters of a universe, which is then run in full. Nine times out of ten, nothing forms.">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -24,7 +24,7 @@
 <meta property="og:locale:alternate" content="zh_CN">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Every Arc block hash is a universe">
-<meta name="twitter:description" content="Take a block hash as the factory settings of a universe, run it, see what grows. Nine times out of ten, nothing.">
+<meta name="twitter:description" content="A block hash becomes the initial parameters of a universe, which is then run in full. Nine times out of ten, nothing forms.">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
@@ -68,7 +68,7 @@
 
 <header class="ad-head">
   <h1 class="ad-h1">Every Arc block hash is a universe</h1>
-  <p class="ad-lede">Arc closes a block every half second, and every block comes with a hash nobody can order in advance. I take those 32 bytes as the factory settings of a universe and run it from the start. Usually nothing comes of it.</p>
+  <p class="ad-lede">Arc closes a block every half second, and every block carries a hash that cannot be arranged in advance. Those 32 bytes are taken as the initial parameters of a universe and run from the beginning. Most runs form no structure.</p>
   <div class="ad-cta">
     <a class="ab-btn" href="app.html">Detonate a block</a>
     <a class="ab-btn2" href="/en/faq.html">Questions</a>
@@ -81,8 +81,8 @@
   <p class="ad-railhead">On this page</p>
   <ol>
     <li><a href="#idea"><span>Where the universe comes from</span></a></li>
-    <li><a href="#dead"><span>Most are duds</span></a></li>
-    <li><a href="#alive"><span>Once in a while, one works</span></a></li>
+    <li><a href="#dead"><span>Most form no structure</span></a></li>
+    <li><a href="#alive"><span>A few do form</span></a></li>
     <li><a href="#play"><span>How to play</span></a></li>
     <li><a href="#supply"><span>1,387 of them</span></a></li>
     <li><a href="#code"><span>The code</span></a></li>
@@ -93,46 +93,46 @@
 
 <section class="ad-sec" id="idea">
 <h2 class="ad-h2">Where the universe comes from</h2>
-<p>The hash is unpacked into 23 numbers, all of them physical constants: how strong gravity is, how heavy the electron is, how much dark energy there is, how many dimensions space has. Those 23 numbers become the starting conditions, and real cosmology takes it from there — inflation through to heat death.</p>
-<p>So it is a function, not a random generator. The same hash gives the same universe today and in ten years. I cannot nudge one into looking nicer either; the hash says what it says.</p>
+<p>The hash is unpacked into 23 values, all of them physical constants: the strength of gravity, the mass of the electron, the density of dark energy, the number of spatial dimensions, and so on. Those 23 values become the starting conditions, and real cosmology carries the run from inflation through to heat death.</p>
+<p>It is therefore a deterministic function, not a random generator. The same hash gives the same universe today and in ten years. No parameter is adjusted for appearance; everything comes from the hash.</p>
 </section>
 
 <section class="ad-sec" id="dead">
-<h2 class="ad-h2">Most are duds</h2>
-<p>The first thing that usually goes wrong is D. D is the number of dimensions space has — we live with 3. Hashes hand out 9, 14, 18 all the time. Gravity gets too steep at those numbers, planets cannot hold an orbit and electrons cannot hold onto a nucleus, so the whole thing is over in the first second.</p>
-<p>Clear that and there is another gate, then another: atoms, galaxies, stars, carbon. The run stops at the first one it fails and that failure becomes the name of the universe. I drew 1,600 random blocks once; more than nine in ten stopped at the very first gate.</p>
+<h2 class="ad-h2">Most form no structure</h2>
+<p>The first gate to fail is usually D, the number of spatial dimensions; ours is 3, while hashes commonly yield 9, 14 or 18. At those values gravity is too steep for a planet to hold an orbit or an electron to stay bound to a nucleus, and the universe ends within the first second.</p>
+<p>Past that there are further gates: atoms, galaxies, stars, carbon. A run stops at the first gate it fails, and that failure becomes the name of the outcome. Across 1,600 randomly drawn blocks, more than nine in ten stopped at the first gate.</p>
 <figure class="ad-plate">
   <div class="win"><img src="assets/gallery/21000009-dim18-800.webp" width="800" height="474" loading="lazy" alt="N-body projection of an eighteen-dimensional universe; matter never clumps"></div>
-  <figcaption>Block 21,000,009 came out at <span class="h">D = 18</span>. This is a real 18-dimensional run, projected back onto three axes. Matter just drifts; nothing ever catches hold of anything.</figcaption>
+  <figcaption>Block 21,000,009 came out at <span class="h">D = 18</span>. The image is a full 18-dimensional run projected back onto three axes. Matter disperses and nothing stays bound.</figcaption>
 </figure>
 </section>
 
 <section class="ad-sec" id="alive">
-<h2 class="ad-h2">Once in a while, one works</h2>
-<p>Every fifteen to thirty blocks or so you hit a good one: galaxies form, stars light, there is carbon and water, and there is time to spare. Those the engine will draw all the way down to a planet surface, and you can turn it around and look.</p>
+<h2 class="ad-h2">A few do form</h2>
+<p>Roughly one in every fifteen to thirty blocks succeeds: galaxies form, stars ignite, carbon and water are present, and the universe lasts long enough. The engine renders those down to a planet surface, and the view can be rotated freely.</p>
 <figure class="ad-plate">
   <div class="win"><img src="assets/gallery/1000021-web-800.webp" width="800" height="474" loading="lazy" alt="Cosmic web with the halos the engine identified circled"></div>
-  <figcaption>Block 1,000,021 grew structure. The circles are the halos in this particular universe — 113 of them.</figcaption>
+  <figcaption>Block 1,000,021 formed structure. The marked regions are the halos in this universe, 113 in total.</figcaption>
 </figure>
 </section>
 
 <section class="ad-sec" id="play">
 <h2 class="ad-h2">How to play</h2>
-<p>Open the simulator and hit "latest", or type in a height you care about — the block from your birthday, the block your first transaction landed in. A few seconds and you have a universe. No money, no wallet, look at as many as you like.</p>
-<p>There is also a sandbox where you push the constants around yourself and watch the ending move. Purely for fun; nothing you make there touches the chain and none of it can be minted.</p>
+<p>Open the simulator and select "latest", or enter a specific block height, such as the block from your birthday or the one your first transaction landed in. A run takes a few seconds. No payment, no wallet, and no limit on how many you view.</p>
+<p>A sandbox is also available, where you can adjust the constants yourself and watch the outcome change. Sandbox results never touch the chain and cannot be minted.</p>
 </section>
 
 <section class="ad-sec" id="supply">
 <h2 class="ad-h2">1,387 of them</h2>
-<p>The universe is 13.787 billion years old, so that is the number I took: one NFT for every ten million years. When they are gone they are gone, and I will not add more.</p>
-<p>The first 387 are free, one per address, you only pay gas. Gas on Arc is USDC, which works out to a fraction of a cent per mint, so you never need to keep some separate fuel token around. The price after that will be announced separately, and any one address can take at most 3 more. The cap of 3 is there so a script cannot walk off with the lot, not to make anybody feel rushed.</p>
-<p>What you get is an ordinary ERC-721. List it on OpenSea whenever you like; royalties are 5%.</p>
+<p>Total supply is 1,387, with no further issuance. The number comes from the age of the universe, 13.787 billion years: one NFT for every ten million years.</p>
+<p>The first 387 are free, one per address, gas only. Gas on Arc is paid in USDC, so a mint costs a fraction of a cent and no separate fuel token is required. The price after that will be announced separately, and each address may mint at most 3 more. The cap of 3 prevents a single address from sweeping the supply; it is not there to create urgency.</p>
+<p>A mint is a standard ERC-721 and can be transferred on OpenSea and similar venues, with 5% royalties.</p>
 </section>
 
 <section class="ad-sec" id="code">
 <h2 class="ad-h2">The code</h2>
-<p>The engine is open source under AGPL-3.0. How the 23 constants are derived and how an ending is decided is clearer in the code than in a page of tables I could write here: <a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>.</p>
-<p>If you want to check that a particular NFT really came out of its block hash, <a href="/en/verify.html">verify</a> has two commands for it. Takes a couple of minutes.</p>
+<p>The engine is open source under AGPL-3.0. The derivation of the 23 constants and the rules that decide an outcome are defined in the code: <a href="https://github.com/q3579338/arcbang">github.com/q3579338/arcbang</a>.</p>
+<p>To check that a particular NFT really came out of its block hash, <a href="/en/verify.html">verify</a> provides two commands.</p>
 <div class="ad-end-cta">
   <a class="ab-btn" href="app.html">Detonate a block</a>
   <a class="ab-btn2" href="/en/faq.html">Questions</a>

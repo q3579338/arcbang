@@ -472,7 +472,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 @media (max-width:560px){.fbar .fcount{margin-left:0;flex-basis:100%}}
 
 /* ---- 物理参数那两组（维度 / 进阶常数），
-   维度 chip 上是「D=3（能长出结构的）」这种整句，比稀有度那种单字 chip 宽得多，
+   维度 chip 上是「D=3（可形成结构）」这种整句，比稀有度那种单字 chip 宽得多，
    所以 .wide 放开 min-width 并允许换行内断字；.fnote / .fadv 占满一行（flex-basis:100%）
    —— 说明必须落在**它解释的那一组下面**，跟在同一行末尾就没人当它是说明了。 */
 .fbar .fchip.wide{min-width:0;font-weight:600;max-width:100%}
@@ -501,7 +501,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 .pchip.pdim{font-family:var(--mono);color:var(--ink2)}
 .pchip .pfrac{font-style:normal;font-weight:600;font-size:10px;opacity:.75}
 /* 偏离度三档只借颜色分个远近，**不借金色**：这一页的金色是「已救活」那一档的身份色，
-   借过来会让人以为「差得很远」是一种稀缺档位。 */
+   借过来会让人以为「偏离较大」是一种稀缺档位。 */
 .pchip.dev-low{border-color:var(--cyan-line);background:var(--cyan-bg);color:var(--cyan)}
 .pchip.dev-mid{color:var(--dim)}
 .pchip.dev-high{border-color:var(--gold-line);color:var(--amber)}
@@ -561,7 +561,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     <div class="block">
       <div class="cardhead">
         <h2>在售的宇宙</h2>
-        <span class="dim tiny">销毁量与救活记录是这里最要紧的两栏 —— 区块要多少有多少，币不是</span>
+        <span class="dim tiny">销毁量与救活记录是两项关键指标：区块可无限产生，BANG 不能</span>
       </div>
       <!-- 系列筛选（全部 / 原生 / 造物）。**永远由 JS 填**：config.js 里 crafted
            没配时这个容器保持空，页面与没有造物代码时逐像素一致。 -->
@@ -572,7 +572,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       <div id="uniList" class="ugrid"></div>
     </div>
     <div class="block" id="recentCard" hidden>
-      <div class="cardhead"><h2>最近铸造的宇宙</h2><span class="dim tiny">不在售，只是让你看看链上现在有什么</span></div>
+      <div class="cardhead"><h2>最近铸造的宇宙</h2><span class="dim tiny">未挂单，仅展示链上现有的宇宙</span></div>
       <div id="recentList" class="ugrid"></div>
     </div>
   </section>
@@ -607,9 +607,8 @@ img.uthumb[data-view]{cursor:zoom-in}
         </div>
         <div id="listMsg" class="msg"></div>
         <div class="notice plain">
-          手续费在成交时从买家付的钱里扣：先按 ERC-2981 付版税（默认 5%），再抽成交价的 1%。授权是一次性的：<span class="mono">setApprovalForAll</span>
-          之后市场才有权在成交那一刻把 NFT 转给买家 —— 在那之前东西一直在你自己钱包里。<br>
-          没盖章的宇宙（<span class="mono">cardOf == 0</span>，也就是没走服务端引爆的）不在这个下拉里 —— 它们没有参数卡，市场不上架。
+          成交时先按 ERC-2981 支付版税（5%），再收取成交价 1% 的手续费，均由买家支付的金额中扣除。<br>
+          挂单前需一次性授权市场合约；成交前 NFT 始终留在你的钱包。仅支持带参数卡的宇宙上架。
         </div>
       </div>
     </div>
@@ -632,7 +631,7 @@ img.uthumb[data-view]{cursor:zoom-in}
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-      <p class="modalquote">「分数维的宇宙很少见，我要把这组创世参数记下来。」<span class="qsrc">——《镜子》第八章</span></p>
+      <p class="modalquote">为这组创世参数登记一个链上名字。名字在本系列内唯一，随 NFT 一同转移。</p>
       <div class="modalsub mono" id="nameFor"></div>
       <div class="field">
         <label for="fName">名字</label>
@@ -721,7 +720,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     合约：<span id="fContract" class="mono">—</span><br>
     <!-- 「这是 XX 测试网。」那半句只在 chain.isTestnet 为真时出现，见 renderChainText()。 -->
     <span id="fChainNote"></span><br>
-    「已验证」= 合约里的 <span class="mono">cardOf</span> 非零，表示这枚 NFT 的参数是服务端算过并签过名的；<br>
+    「已验证」表示该 NFT 的参数已由服务端复算并签名，参数指纹写入合约。<br>
     <!-- 命名（BangNames）整套建在 BANG 上，ARCBANG v1 不上：这一句直接删掉，不改写成含糊话。 -->
     <!-- 联系方式（用户 2026-08-21 点名）：邮箱本身当链接，中英同形不进词典 -->
     <a href="mailto:admin@arcbang.xyz" data-nolang>admin@arcbang.xyz</a>
@@ -1222,7 +1221,7 @@ img.uthumb[data-view]{cursor:zoom-in}
 
         /* baseURI 非空时 tokenURI 返回的是一个 **http 地址**，要去取。
            这里原来只认 data: URI，于是 baseURI 一设，每张卡的缩略图都成了
-           「图还没读到」—— 页面照着旧合约写的，没跟上。 */
+           「图片未读取到」—— 页面照着旧合约写的，没跟上。 */
         if (/^https?:\/\//i.test(uri)) {
           return fetch(uri).then(function (resp) {
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -1568,7 +1567,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
   function undeployed(which) {
     return '<b>' + TF('{0}合约还没部署。', T(which)) + '</b> '
-      + T('这一块的合约还没接上 —— 页面其余部分照常能用。');
+      + T('该合约尚未接入，页面其余功能不受影响。');
   }
   function thumb(m) {
     if (m && m.img) {
@@ -1576,7 +1575,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       return '<img class="uthumb" alt="' + esc(T('宇宙缩略图')) + '" src="' + esc(m.img)
         + '" data-view="' + esc(fullImg(m.img)) + '">';
     }
-    return '<div class="uthumb ph">' + esc(T('图还没读到')) + '</div>';
+    return '<div class="uthumb ph">' + esc(T('图片未读取到')) + '</div>';
   }
   /** 缩略图 URL → 原图 URL：把 t=1 摘掉，其余参数原样保留 */
   function fullImg(u) {
@@ -1588,16 +1587,16 @@ img.uthumb[data-view]{cursor:zoom-in}
   /** 徽标行：已验证（列表里每条都有，因为没验证的根本进不来）+ 稀有度 + 救活 */
   function badges(id) {
     var v = S.value[id] || {}, r = S.rar[id];
-    var out = '<span class="badge b-stamp" title="' + esc(T('cardOf 非零：这枚 NFT 走过服务端，参数指纹已写进合约')) + '">'
+    var out = '<span class="badge b-stamp" title="' + esc(T('该 NFT 的参数已由服务端复算并签名，参数指纹写入合约')) + '">'
       + esc(T('已验证')) + '</span>';
     if (r != null && RAR[r]) {
       out += '<span class="badge b-rar r-' + r + '" title="' + esc(TF('{0} · 全链约 {1}', T(RAR[r].why), RAR[r].pct)) + '">'
         + esc(TF('{0} 档', RAR[r].k)) + '</span>';
     } else {
-      out += '<span class="badge b-rar r-x" title="' + esc(T('没有稀有度：要么是直接调 bang() 铸的（合约记 5 = 未知），要么这一枚的 universeOf 这次没读到')) + '">'
+      out += '<span class="badge b-rar r-x" title="' + esc(T('无稀有度记录：该 NFT 未经服务端引爆铸造，或本次未读到链上稀有度')) + '">'
         + esc(TF('{0} 档', '?')) + '</span>';
     }
-    if (v.rescuedAt) out += '<span class="badge b-rescue" title="' + esc(T('救活过：这是全场最稀缺的一档')) + '">★ ' + esc(T('已救活')) + '</span>';
+    if (v.rescuedAt) out += '<span class="badge b-rescue" title="' + esc(T('已救活：当前最稀缺的一档')) + '">★ ' + esc(T('已救活')) + '</span>';
     return '<div class="badges">' + out + '</div>';
   }
   /** 销毁量（新的价值锚）+ 救活记录。读不到就写"读不到"，绝不默认写 0。 */
@@ -1607,8 +1606,8 @@ img.uthumb[data-view]{cursor:zoom-in}
     var has = burned !== null && burned !== undefined && BigInt(burned) > 0n;
     var txt = (burned === null || burned === undefined) ? T('读不到') : fmtBang(burned);
     var note = (burned === null || burned === undefined)
-      ? T('链上读不到 burnedOn')
-      : (has ? T('烧掉的币不会回来 —— 这个数字是这枚 NFT 的成本证明') : T('还没有人为它烧过币'));
+      ? T('链上未读到销毁量')
+      : (has ? T('销毁不可逆。该数值是这枚 NFT 的投入证明') : T('尚未有人为它销毁 BANG'));
     var html = '';        // ARCBANG：拯救下线，没有 burnedOn 可报，这一格整个不出现
     if (v && v.rescuedAt) {
       html += '<div class="rescuebox"><b>★ ' + esc(T('救活过')) + '</b> · '
@@ -1640,7 +1639,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
   function originCount() { var n = 0; for (var k in S.origin) if (S.origin.hasOwnProperty(k)) n++; return n; }
   /* 名下持仓的来源：/api/market/owned?addr= 的 native 条目带 origin。链上直读那条路（loadMine）不知道来源，
-     所以连上钱包后单独问一次；问不到就不标，页面照常。 */
+     所以连上钱包后单独问一次；读不到就不标，页面照常。 */
   var originOwnedFor = null;
   function loadOriginsOwned() {
     var a = S.account;
@@ -1677,7 +1676,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
 
   /* 卡底动作行追加的紧凑图标钮：
-     引爆（原生 =「再引爆看看」，造物 =「看它的起源宇宙」）+ 广播。
+     引爆（原生 =「重新引爆」，造物 =「看它的起源宇宙」）+ 广播。
      SVG 描边走 currentColor，主题切换不用管它。 */
   var ICON_BOOM = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 1.5 4 9h3.2L6 14.5 12 7H8.6z"/></svg>';
   var ICON_SHARE = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-6"/><path d="M8 10V1.8"/><path d="m5 4.5 3-3 3 3"/></svg>';
@@ -1688,7 +1687,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       if (c.originHash && !isZero32(c.originHash)) { deto = 'c:' + id; title = T('看它的起源宇宙'); }
     } else {
       var m = S.meta[id] || {};
-      if (m.blockHash && !isZero32(m.blockHash)) { deto = String(id); title = T('再引爆看看'); }
+      if (m.blockHash && !isZero32(m.blockHash)) { deto = String(id); title = T('重新引爆'); }
     }
     if (deto != null) {
       out += '<button class="sm icon" data-act="deto" data-id="' + deto + '" title="' + esc(title)
@@ -1707,11 +1706,11 @@ img.uthumb[data-view]{cursor:zoom-in}
       /* 命名过的：名字单独占一行当主标题，编号缩成它下面那一行的次要信息。
          编号不删 —— 名字可以改，区块号不能，出问题时要靠它对回链上。 */
       + (nm ? '<div class="unamerow"><span class="uname" title="'
-              + esc(T('持有人烧 BANG 给它取的名字。在原生系列内唯一，链上可查')) + '">' + esc(nm) + '</span></div>' : '')
+              + esc(T('持有人销毁 BANG 设定的名字，在原生系列内唯一，可在链上查询')) + '">' + esc(nm) + '</span></div>' : '')
       + '<div class="urow"><span class="uid' + (nm ? ' sub' : '') + '" title="'
-      + esc(TF('区块号 —— 这个宇宙的身份。token {0}', id)) + '">'
+      + esc(TF('区块号，即该宇宙的身份。token {0}', id)) + '">'
       + esc(uniNo(id)) + '</span>'
-      + '<span class="uhash" title="' + esc(T('cardOf：服务端算过并签过名的参数指纹')) + '">' + esc(shortHash(S.card[id])) + '</span></div>'
+      + '<span class="uhash" title="' + esc(T('服务端复算并签名的参数指纹')) + '">' + esc(shortHash(S.card[id])) + '</span></div>'
       + badges(id)
       + '<div class="uout">' + esc(outcomeName(m.outcome)) + '</div>'
       + valueBox(id)
@@ -1732,7 +1731,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
   function cBadges(c) {
     var out = '<span class="badge b-stamp" title="'
-      + esc(T('造物必经服务端复算与签名才铸得出来，参数卡哈希已写进合约')) + '">'
+      + esc(T('造物须经服务端复算与签名方可铸造，参数卡哈希已写入合约')) + '">'
       + esc(T('已验证')) + '</span>';
     var r = c.rarity;
     if (r != null && RAR[r]) {
@@ -1740,7 +1739,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         + esc(TF('{0} 档', RAR[r].k)) + '</span>';
     }
     out += '<span class="badge b-craft" title="'
-      + esc(T('造物系列：沙盒里干预后的宇宙。参数 = 起源区块哈希 + 干预操作序列，任何人可复算')) + '">'
+      + esc(T('造物系列：沙盒中干预后的宇宙。参数由起源区块哈希与干预操作序列决定，任何人可复算')) + '">'
       + esc(T('造物')) + '</span>';
     return '<div class="badges">' + out + '</div>';
   }
@@ -1753,18 +1752,18 @@ img.uthumb[data-view]{cursor:zoom-in}
     var html = '<div class="burnbox"><div class="statlab">' + esc(T('铸造投入')) + '</div>';
     if (paid === null || paid === undefined) {
       html += '<div class="burnval noburn">' + esc(T('读不到')) + '</div>'
-        + '<div class="statnote">' + esc(T('链上读不到 cardOf 的 paid')) + '</div>';
+        + '<div class="statnote">' + esc(T('链上未读到铸造投入')) + '</div>';
     } else {
       html += '<div class="burnval ' + (BigInt(paid) > 0n ? 'burned' : 'noburn') + '">'
         + esc(fmtBang(paid)) + '<span class="unit">BANG</span></div>';
       var note;
       if (c.burned !== null && c.burned !== undefined) {
-        note = TF('其中 {0} BANG 已销毁（铸造当时写入），其余进了国库', fmtBang(c.burned));
+        note = TF('其中 {0} BANG 已销毁（铸造时写入），其余计入国库', fmtBang(c.burned));
       } else {
         var bps = S.craftBps;
         note = (bps === null || bps === undefined)
-          ? T('销毁比例读不到（burnBps）—— 只给总投入，不猜销毁份额')
-          : TF('其中约 {0} BANG 已销毁（按当前费率 {1}% 折算，链上 burned 未知），其余进了国库',
+          ? T('销毁比例未读到，仅显示总投入，不估算销毁份额')
+          : TF('其中约 {0} BANG 已销毁（按当前费率 {1}% 折算，链上销毁量未知），其余计入国库',
                fmtBang(BigInt(paid) * bps / 10000n), fmtBps(bps));
       }
       html += '<div class="statnote">' + esc(note) + '</div>';
@@ -1785,12 +1784,12 @@ img.uthumb[data-view]{cursor:zoom-in}
       /* 命名过的造物：名字当主标题，铸造序号退成下面那一行的小字 —— 与原生卡同形。
          提示语写的是「造物系列内唯一」，不是「全站唯一」：名字在两套名册里各占一次。 */
       + (nm ? '<div class="unamerow"><span class="uname" title="'
-              + esc(T('持有人烧 BANG 给它取的名字。在造物系列内唯一，链上可查')) + '">' + esc(nm) + '</span></div>' : '')
+              + esc(T('持有人销毁 BANG 设定的名字，在造物系列内唯一，可在链上查询')) + '">' + esc(nm) + '</span></div>' : '')
       + '<div class="urow"><span class="uid' + (nm ? ' sub' : '') + '" title="'
-      + esc(T('铸造序号 —— 造物的身份是参数卡哈希（右边那串），起源区块在下面')) + '">'
+      + esc(T('铸造序号。造物的身份为参数卡哈希，起源区块见下方')) + '">'
       + esc(TF('造物宇宙 #{0}', id)) + '</span>'
       + '<span class="uhash" title="'
-      + esc(T('参数卡哈希（cardHash）：拿起源哈希和干预操作序列跑开源引擎，能复算出同一张卡')) + '">'
+      + esc(T('参数卡哈希：以起源哈希与干预操作序列运行开源引擎，可复算出同一张参数卡')) + '">'
       + esc(shortHash(c.cardHash)) + '</span></div>'
       + '<div class="urow"><span class="dim tiny">' + esc(T('起源区块')) + '</span><span class="mono">'
       + esc(c.originBlock != null ? '#' + c.originBlock : '—') + '</span></div>'
@@ -1818,11 +1817,11 @@ img.uthumb[data-view]{cursor:zoom-in}
       return;
     }
     elNotice('mineNotice', S.mineHidden
-      ? TF('你名下还有 {0} 枚没盖章的宇宙没有列出来：它们的 {1} 是 0，没走服务端引爆，没有参数卡，市场不上架。',
+      ? TF('另有 {0} 枚宇宙未列出：{1} 为 0，未经服务端引爆，没有参数卡，不支持上架。',
            '<b>' + S.mineHidden + '</b>', '<span class="mono">cardOf</span>')
       : '');
     if (!S.account) {
-      box.innerHTML = '<div class="empty">' + esc(T('还没连钱包。点右上角「连接钱包」看你手里的宇宙 —— 在那之前这一页也能随便逛，市场和挂单都是公开读的。')) + '</div>';
+      box.innerHTML = '<div class="empty">' + esc(T('尚未连接钱包。点击右上角「连接钱包」查看名下宇宙。未连接时仍可浏览本页，市场与挂单数据公开可读。')) + '</div>';
       $('mineNote').textContent = '';
       $('mineFil').innerHTML = '';
       return;
@@ -1837,8 +1836,8 @@ img.uthumb[data-view]{cursor:zoom-in}
       .concat((ADDR.crafted ? S.cmine : []).map(function (id) { return { kind: 'c', id: id }; }));
     if (!entries.length) {
       $('mineFil').innerHTML = '';
-      box.innerHTML = '<div class="empty">' + esc(T('这个地址名下还没有带参数的宇宙。')
-        + (S.supply ? '' : T('事实上链上一枚都还没有 —— 去模拟器里引爆一个。'))) + '</div>';
+      box.innerHTML = '<div class="empty">' + esc(T('该地址名下暂无带参数的宇宙。')
+        + (S.supply ? '' : T('链上暂无已铸造的宇宙。可前往模拟器引爆一个。'))) + '</div>';
       return;
     }
     /* 筛选与排序只动**已拉取**的这份持仓。排序在原生/造物两组**各自内部**进行、
@@ -1853,7 +1852,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     });
     renderFilBar('mine', kept.length, entries.length);
     if (!kept.length) {
-      box.innerHTML = '<div class="empty">' + esc(T('没有符合筛选的宇宙 —— 点「清空筛选」看全部。')) + '</div>';
+      box.innerHTML = '<div class="empty">' + esc(T('没有符合筛选条件的宇宙。点击「清空筛选」查看全部。')) + '</div>';
       return;
     }
     box.innerHTML = '<div class="ugrid">' + kept.map(function (e) {
@@ -1871,8 +1870,8 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (!ADDR.names) return '';
     var has = !!S.name[id];
     return '<button class="sm' + (has ? '' : ' name') + '" data-act="name" data-id="' + id + '" title="'
-      + esc(has ? T('改名要烧掉上一次的两倍 —— 这是为了让名字不能被反复铲走')
-                : T('烧掉 BANG，把这组创世参数记下来')) + '">'
+      + esc(has ? T('改名需销毁上一次的两倍数量，以避免名字被反复替换')
+                : T('销毁 BANG，为这组创世参数命名')) + '">'
       + esc(has ? T('改名') : T('取个名字')) + '</button>';
   }
   /* 造物卡的命名入口（BangNames2）。与 nameBtn 同形，
@@ -1882,12 +1881,12 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (!ADDR.cnames) return '';
     var has = !!S.cname[id];
     return '<button class="sm' + (has ? '' : ' name') + '" data-act="name" data-id="c:' + id + '" title="'
-      + esc(has ? T('改名要烧掉上一次的两倍 —— 这是为了让名字不能被反复铲走')
-                : T('烧掉 BANG，把这组创世参数记下来')) + '">'
+      + esc(has ? T('改名需销毁上一次的两倍数量，以避免名字被反复替换')
+                : T('销毁 BANG，为这组创世参数命名')) + '">'
       + esc(has ? T('改名') : T('取个名字')) + '</button>';
   }
   /* 「拯救」入口。**带字，不是图标**：卡底原来跟拯救
-     沾边的只有那颗闪电图标，title 写的还是「再引爆看看」—— 用户实测时以为拯救坏了，
+     沾边的只有那颗闪电图标，title 写的还是「重新引爆」—— 用户实测时以为拯救坏了，
      其实是根本没找到门。这颗按钮直达 app.html?bang=…&fix=1，落地那边自动开沙盒。
 
      两道闸：
@@ -1923,7 +1922,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     renderUniSeg();
     if (!ADDR.market) {
       elNotice('uniNotice', undeployed('市场', 'market')
-        + (S.recent.length ? ' ' + T('下面是链上最近铸造的宇宙，先看着。') : '') + (rarNote ? ' ' + rarNote : ''));
+        + (S.recent.length ? ' ' + T('以下为链上最近铸造的宇宙。') : '') + (rarNote ? ' ' + rarNote : ''));
       box.innerHTML = '';
       $('uniFil').innerHTML = '';
     } else if (S.listings === undefined) {
@@ -1933,9 +1932,9 @@ img.uthumb[data-view]{cursor:zoom-in}
       $('uniFil').innerHTML = '';
     } else if (S.listings === null && S.rpcDown) {
       /* 节点没答 —— 不是地址的错，别把人往「填错了」引；页面自己会再刷。 */
-      elNotice('uniNotice', T('链上节点暂时没响应，正在换节点重试 —— 几秒后会自动刷新。'), 'warn');
+      elNotice('uniNotice', T('链上节点暂无响应，正在切换节点重试，稍后自动刷新。'), 'warn');
     } else if (S.listings === null) {
-      elNotice('uniNotice', TF('市场合约地址填了，但读不到挂单 —— 地址填错了，或者合约的 {0} 和规格对不上。',
+      elNotice('uniNotice', TF('已配置市场合约地址，但读不到挂单。可能是地址有误，或合约的 {0} 与规格不一致。',
         '<span class="mono">activeListings/listingCount</span>'), 'bad');
       box.innerHTML = '';
       $('uniFil').innerHTML = '';
@@ -1964,15 +1963,15 @@ img.uthumb[data-view]{cursor:zoom-in}
       if (pstate === 'err' && physFilterOn(f)) {
         /* 读不到就明说读不到。**绝不把没筛过的一屏当成筛过的结果发出去** */
         box.innerHTML = '<div class="empty">'
-          + esc(T('读不到服务端的物理索引，维度 / 常数 / 偏离度这几项这会儿筛不了 —— 点「清空筛选」看全部。')) + '</div>';
+          + esc(T('未读到服务端物理索引，维度、常数与偏离度暂时无法筛选。点击「清空筛选」查看全部。')) + '</div>';
       } else if (!ls.length) {
         box.innerHTML = '<div class="empty">' + esc(total && filActive(f)
           ? (physFilterOn(f)
-              ? T('没有符合这些物理条件的宇宙 —— 换一档维度，或者点「清空筛选」看全部。')
-              : T('没有符合筛选的宇宙 —— 点「清空筛选」看全部。'))
+              ? T('没有符合这些物理条件的宇宙。可更换维度档位，或点击「清空筛选」查看全部。')
+              : T('没有符合筛选条件的宇宙。点击「清空筛选」查看全部。'))
           : (S.uniFilter === 'crafted'
-              ? T('现在没有造物在售。')
-              : T('现在没有带参数的宇宙在售。') + T('（市场刚开张，没人挂单不是故障 —— 需求得自己长出来。）'))) + '</div>';
+              ? T('当前没有造物在售。')
+              : T('当前没有带参数的宇宙在售。') + T('（市场新开，暂无挂单属于正常情况。）'))) + '</div>';
       } else {
         box.innerHTML = ls.map(function (l) {
           return isCraftListing(l) ? craftListingCard(l) : uniListingCard(l);
@@ -1999,9 +1998,9 @@ img.uthumb[data-view]{cursor:zoom-in}
     /* 稀有度直接从链上结构体读，不存在"窗口太窄读不到"这回事。
        还显示「? 档」只有一个原因：那几枚是走 <span class="mono">bang()</span>
        铸的，没走服务端签名，合约把 rarity 统一记成 5 = 未知。 */
-    return TF('显示「{0} 档」的那几枚：是直接调 {1} 铸的，没走服务端引爆，本来就没有稀有度（合约里记的是 5 = 未知）。',
+    return TF('标为「{0} 档」的 NFT 由直接调用 {1} 铸造，未经服务端引爆，因此没有稀有度记录。',
               '?', '<span class="mono">bang()</span>')
-      + TF('稀有度由服务端算并签进摘要，只有 {0} 那条路才有。', '<span class="mono">bangSigned()</span>');
+      + TF('稀有度由服务端计算并签入摘要，仅经 {0} 路径铸造的 NFT 具备。', '<span class="mono">bangSigned()</span>');
   }
 
   /* 市场上能显示的挂单：本站的两个 721（原生宇宙 + 造物），且各自盖过章。
@@ -2046,10 +2045,10 @@ img.uthumb[data-view]{cursor:zoom-in}
   /* 卖家挂完单又把东西转走 / 撤了授权时，买入会 revert —— 与其让人白撞一次，不如提前标灰 */
   function statusNote(l) {
     if (!l || !l.status) return '';
-    if (l.status === 1) return T('这一单已经取消或卖掉了');
-    if (l.status === 2) return T('卖家已经不持有这份资产了，买不成');
-    if (l.status === 3) return T('卖家撤了对市场的授权，买不成');
-    return T('现在买不成');
+    if (l.status === 1) return T('该挂单已取消或已成交');
+    if (l.status === 2) return T('卖家已不持有该资产，无法成交');
+    if (l.status === 3) return T('卖家已撤销对市场合约的授权，无法成交');
+    return T('当前无法成交');
   }
   function tradeBtn(l) {
     if (isMine(l.seller)) {
@@ -2058,7 +2057,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     }
     // status 2/3 = 卖家不持有 / 撤了授权，正是 cancelStale 认的那两种失效
     if (l.status === 2 || l.status === 3) return '<button class="sm" data-act="stale" data-lid="' + l.id + '">' + esc(T('清失效挂单')) + '</button>';
-    if (l.status) return '<button class="sm" disabled title="' + esc(statusNote(l)) + '">' + esc(T('买不成')) + '</button>';
+    if (l.status) return '<button class="sm" disabled title="' + esc(statusNote(l)) + '">' + esc(T('无法成交')) + '</button>';
     return '<button class="sm primary" data-act="buy" data-lid="' + l.id + '">' + esc(T('买入')) + '</button>';
   }
 
@@ -2066,9 +2065,9 @@ img.uthumb[data-view]{cursor:zoom-in}
   function renderListForm() {
     var sel = $('fAsset'), opts = '';
     if (!ADDR.market) {
-      elNotice('listNotice', undeployed('市场', 'market') + ' ' + T('表单先摆在这里，填不了。'));
+      elNotice('listNotice', undeployed('市场', 'market') + ' ' + T('表单当前不可用。'));
     } else if (!S.account) {
-      elNotice('listNotice', T('挂单要签名，先连钱包。'), 'plain');
+      elNotice('listNotice', T('挂单需要签名，请先连接钱包。'), 'plain');
     } else {
       elNotice('listNotice', '');
     }
@@ -2092,7 +2091,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       opts = (opts ? '<optgroup label="' + esc(T('宇宙')) + '">' + opts + '</optgroup>' : '')
         + '<optgroup label="' + esc(T('造物宇宙')) + '">' + copts + '</optgroup>';
     }
-    if (!opts) opts = '<option value="">' + esc(S.account ? T('你名下没有可卖的宇宙') : T('先连钱包')) + '</option>';
+    if (!opts) opts = '<option value="">' + esc(S.account ? T('名下没有可出售的宇宙') : T('先连钱包')) + '</option>';
     var keep = sel.value;
     sel.innerHTML = opts;
     if (keep) sel.value = keep;
@@ -2103,8 +2102,8 @@ img.uthumb[data-view]{cursor:zoom-in}
     var mine = (S.listings || []).filter(function (l) { return isMine(l.seller); });
     $('myListNote').textContent = S.account ? TF('{0} 单在挂', mine.length) : '';
     if (!ADDR.market) { box.innerHTML = '<div class="empty">' + esc(T('市场合约未部署。')) + '</div>'; return; }
-    if (!S.account) { box.innerHTML = '<div class="empty">' + esc(T('连钱包后这里显示你挂出去的单。')) + '</div>'; return; }
-    if (!mine.length) { box.innerHTML = '<div class="empty">' + esc(T('你还没挂单。')) + '</div>'; return; }
+    if (!S.account) { box.innerHTML = '<div class="empty">' + esc(T('连接钱包后显示你的挂单。')) + '</div>'; return; }
+    if (!mine.length) { box.innerHTML = '<div class="empty">' + esc(T('暂无挂单。')) + '</div>'; return; }
     /* 数字列右对齐 + tabular-nums（.num.r），见 §3.6。窄屏靠 .tablewrap 自己横滚。 */
     box.innerHTML = '<div class="tablewrap"><table><thead><tr><th>#</th><th>' + esc(T('资产')) + '</th>'
       + '<th class="r">' + esc(T('价格')) + '</th><th></th></tr></thead><tbody>'
@@ -2140,23 +2139,23 @@ img.uthumb[data-view]{cursor:zoom-in}
     $('btnApprove').disabled = !a || !ADDR.market || ok === true;
     $('btnList').disabled = !a || !ADDR.market;
     el.className = 'tiny ' + (ok === true ? 'ok' : 'dim');
-    el.textContent = !a ? '' : (ok === true ? T('已授权') : (ok === false ? T('还没授权') : T('授权状态读不到')));
+    el.textContent = !a ? '' : (ok === true ? T('已授权') : (ok === false ? T('尚未授权') : T('未读到授权状态')));
   }
 
   /* ============================================================ BANG 数字条 */
   function renderBangBar() {
     var bal, note;
-    if (!ADDR.bang) { bal = T('未部署'); note = T('BANG 代币还没接上'); }
-    else if (!S.account) { bal = '—'; note = T('连钱包后显示这个地址的余额'); }
+    if (!ADDR.bang) { bal = T('未部署'); note = T('BANG 代币尚未接入'); }
+    else if (!S.account) { bal = '—'; note = T('连接钱包后显示该地址余额'); }
     else if (S.bang === undefined) { bal = '…'; note = T('正在读取链上数据…'); }
-    else if (S.bang === null) { bal = T('读不到'); note = T('地址填错了，或者合约还没上线'); }
-    else { bal = fmtBang(S.bang); note = T('铸造 NFT 时发放，修正宇宙和命名时销毁；团队 / 上交易所费用 / 返利另有三个一次性池'); }
+    else if (S.bang === null) { bal = T('读不到'); note = T('地址有误，或合约尚未上线'); }
+    else { bal = fmtBang(S.bang); note = T('铸造 NFT 时发放，修正宇宙与命名时销毁。团队、上所费用、返利另有三个一次性池。'); }
 
     var tb, tbnote;
     if (!ADDR.universe) { tb = '—'; tbnote = T('NFT 合约未部署'); }
     else if (S.totalBurned === undefined) { tb = '…'; tbnote = T('正在读取链上数据…'); }
-    else if (S.totalBurned === null) { tb = T('读不到'); tbnote = T('链上读不到 totalBurned'); }
-    else { tb = fmtBang(S.totalBurned); tbnote = T('全网累计销毁，只增不减 —— 这是所有 NFT 价值的总来源'); }
+    else if (S.totalBurned === null) { tb = T('读不到'); tbnote = T('链上未读到累计销毁量'); }
+    else { tb = fmtBang(S.totalBurned); tbnote = T('全网累计销毁量，只增不减。'); }
 
     /* 命名销毁量单列一栏，**紧挨着上面那个全网销毁**，但绝不并进去：
        两条通路各记各的（干预记在 MirrorUniverse，命名记在 BangNames），
@@ -2170,8 +2169,8 @@ img.uthumb[data-view]{cursor:zoom-in}
         + '<div class="statnote">' + esc(S.namesBurned === undefined
             ? T('正在读取链上数据…')
             : S.namesBurned === null
-              ? T('链上读不到 totalBurnedForNames')
-              : T('给宇宙取名字烧掉的量。这是第二条销毁通路，和干预分开记')) + '</div></div>';
+              ? T('链上未读到命名销毁总量')
+              : T('命名消耗的销毁量。命名是第二条销毁通路，与干预分开记录')) + '</div></div>';
     }
 
     /* ARCBANG：没有代币，也没有拯救 —— 「我的 BANG 余额 / 全网已销毁 /
@@ -2207,7 +2206,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
   /** 两套名册各自独立这件事**必须写在弹窗里**：不写的话，有人给造物取名成功后会
       以为抢到了全站唯一，拿去二级市场按唯一性叫价——那误解是我们造成的。 */
-  var DUAL_REG_NOTE = '原生宇宙与造物宇宙是两套独立名册：同一个名字在两边可以各占一次，查重也只在本系列内进行。';
+  var DUAL_REG_NOTE = '原生宇宙与造物宇宙使用两套独立名册。同一名字在两个系列各可占用一次，查重仅在本系列内进行。';
   function openName(idSpec) {
     var k = nameKindOf(idSpec), kind = k.kind, id = k.id;
     var reg = nameRegOf(kind), tbl = nameTableOf(kind);
@@ -2219,7 +2218,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     $('nameMsg').textContent = '';
     $('nameMsg').className = 'msg';
     $('nameDual').textContent = T(DUAL_REG_NOTE);
-    $('nameRules').textContent = T('名字只能用 a-z A-Z 0-9 和连字符，1 到 32 个字符，首尾不能是连字符。不收 Unicode —— 全角的「Ｅ」和「E」看起来一样，收了就有人拿它冒充别人的名字。大小写不区分；O 和 0、I i L l 和 1 也当作同一个字符，理由同上。');
+    $('nameRules').textContent = T('名字支持 a-z、A-Z、0-9 与连字符，长度 1 至 32 个字符，首尾不得为连字符。不支持 Unicode 字符，以避免全角字形冒充已有名字。大小写不敏感；O 与 0、I、i、L、l 与 1 视为同一字符。');
     $('namePop').hidden = false;
     closePops();
     /* 焦点进输入框，并把已有的名字选中 —— 改名时最常见的动作是整个换掉 */
@@ -2260,7 +2259,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       if (!S.naming || S.naming.seq !== seq) return;      // 已经又敲了几个字，这次结果作废
       n.checking = false;
       n.allow = r[1] ? uw(r[1], 0) : null;
-      if (words(r[0]) < 4) { paintName(T('查不了 —— 命名合约地址可能填错了'), 'bad'); return; }
+      if (words(r[0]) < 4) { paintName(T('无法查重，命名合约地址可能有误'), 'bad'); return; }
       n.status = nw(r[0], 0);
       n.detail = nw(r[0], 1);
       n.heldBy = nw(r[0], 2);
@@ -2270,19 +2269,19 @@ img.uthumb[data-view]{cursor:zoom-in}
       if (!S.naming || S.naming.seq !== seq) return;
       n.checking = false;
       n.status = null;
-      paintName(TF('查重没成：{0}', (e && e.message ? e.message : String(e))), 'bad');
+      paintName(TF('查重失败：{0}', (e && e.message ? e.message : String(e))), 'bad');
     });
   }
 
   /** 状态码 → 人话。每一条都要说清**为什么**，不然用户只会反复试 */
   function nameStatusText(n, raw) {
-    if (n.status === NST.OK) return TF('「{0}」还没人用，可以命名', raw);
-    if (n.status === NST.TAKEN) return TF('「{0}」已经被 {1} 占了 —— 名字在本系列内唯一，先到先得', raw, '#' + n.heldBy);
-    if (n.status === NST.SAME) return T('这就是它现在的名字（大小写、O/0、I/1 都算同一个），不用改');
+    if (n.status === NST.OK) return TF('「{0}」尚未被占用，可以命名', raw);
+    if (n.status === NST.TAKEN) return TF('「{0}」已被 {1} 占用。名字在本系列内唯一，先到先得。', raw, '#' + n.heldBy);
+    if (n.status === NST.SAME) return T('这已是它当前的名字（大小写、O/0、I/1 视为同一字符），无需修改');
     if (n.status === NST.SHORT) return T('名字不能是空的');
     if (n.status === NST.LONG) return T('最多 32 个字符');
     // detail 是**从 0 数的字节下标**，说给人听要加 1，不然 '第 0 个字符' 没人看得懂
-    if (n.status === NST.CHAR) return TF('第 {0} 个字符不能用 —— 只收 a-z A-Z 0-9 和连字符', (n.detail || 0) + 1);
+    if (n.status === NST.CHAR) return TF('第 {0} 个字符不可用，仅支持 a-z A-Z 0-9 与连字符', (n.detail || 0) + 1);
     if (n.status === NST.EDGE) return T('首尾不能是连字符');
     return T('查不了这个名字');
   }
@@ -2298,24 +2297,24 @@ img.uthumb[data-view]{cursor:zoom-in}
     var ok = n.status === NST.OK && n.cost != null;
     var box = $('nameCost');
     if (!ok) {
-      box.innerHTML = '<span class="dim">' + esc(T('价格要等名字合法才算得出来 —— 短名更贵，改名比上一次贵一倍')) + '</span>';
+      box.innerHTML = '<span class="dim">' + esc(T('名字合法后显示价格。名字越短价格越高，改名为上一次的两倍。')) + '</span>';
     } else {
       var need = n.allow === null || n.allow === undefined || BigInt(n.allow) < BigInt(n.cost);
-      box.innerHTML = '<div>' + esc(T('这一步要烧掉')) + ' <b>' + esc(fmtBang(n.cost))
+      box.innerHTML = '<div>' + esc(T('本次将销毁')) + ' <b>' + esc(fmtBang(n.cost))
         + '<span class="unit">BANG</span></b></div>'
         /* **授权多少必须写出来**：这个合约只会 burnFrom，不需要无限额度，
            所以 ① 授权的就是这一笔的数，一分不多。 */
         + '<div class="dim" style="margin-top:3px">' + esc(need
-            ? TF('① 只授权这一笔的 {0} BANG，不做无限授权', fmtBang(n.cost))
-            : TF('已授权 {0} BANG，够这一笔，直接点 ②', fmtBang(n.allow))) + '</div>'
-        + '<div class="dim" style="margin-top:3px">' + esc(T('烧掉的币不会回来。名字跟着这枚 NFT 走，转手一起转')) + '</div>';
+            ? TF('① 仅授权本次所需的 {0} BANG，不做无限授权', fmtBang(n.cost))
+            : TF('已授权 {0} BANG，满足本次所需，可直接点击 ②', fmtBang(n.allow))) + '</div>'
+        + '<div class="dim" style="margin-top:3px">' + esc(T('销毁不可逆。名字随该 NFT 转移。')) + '</div>';
     }
     var need2 = ok && (n.allow === null || n.allow === undefined || BigInt(n.allow) < BigInt(n.cost));
     $('btnNameApprove').disabled = !ok || !S.account || !need2;
     $('btnNameGo').disabled = !ok || !S.account || need2;
     if (!S.account) {
       st.className = 'namestat bad';
-      st.textContent = T('命名要发交易，先连钱包');
+      st.textContent = T('命名需要发起交易，请先连接钱包');
     }
   }
 
@@ -2357,12 +2356,12 @@ img.uthumb[data-view]{cursor:zoom-in}
     });
   }
   function connect() {
-    if (!eth()) return Promise.reject(new Error(T('没有检测到小狐狸（MetaMask）')));
+    if (!eth()) return Promise.reject(new Error(T('未检测到 MetaMask')));
     return eth().request({ method: 'eth_requestAccounts' })
       .then(function (a) { return ensureChain().then(function () { return (a && a[0]) || null; }); });
   }
   function sendTx(to, data, valueWei) {
-    if (!eth()) return Promise.reject(new Error(T('没有检测到小狐狸（MetaMask）')));
+    if (!eth()) return Promise.reject(new Error(T('未检测到 MetaMask')));
     return connect().then(function (from) {
       var tx = { from: from, to: to, data: data };
       if (valueWei) tx.value = '0x' + BigInt(valueWei).toString(16);
@@ -2414,7 +2413,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      **必须排在 refresh() 之后**：排前面的话，重新查重读到的还是旧的链上状态。 */
   function runTx(label, make, after) {
     var L = function () { return (typeof label === 'function') ? label() : label; };
-    if (S.busy) { toast(function () { return T('上一笔还没落地，等它出结果再点'); }, 'warn'); return; }
+    if (S.busy) { toast(function () { return T('上一笔交易尚未确认，请等待结果'); }, 'warn'); return; }
     S.busy = true;
     toast(function () { return TF('{0}：在钱包里确认…', L()); });
     var p;
@@ -2425,7 +2424,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       return waitTx(hash);
     }).then(function (r) {
       var ok = !r || r.status === undefined || BigInt(r.status || 0) === 1n;
-      toast(function () { return ok ? TF('{0}：成功', L()) : TF('{0}：交易被链上回滚了', L()); }, ok ? 'ok' : 'err');
+      toast(function () { return ok ? TF('{0}：成功', L()) : TF('{0}：交易在链上被回滚', L()); }, ok ? 'ok' : 'err');
       S.busy = false;
       return refresh().then(function () { if (after) after(ok); });
     }).catch(function (e) {
@@ -2853,7 +2852,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   var SHARE_OF = null;                 // 浮层现在摆的是哪张卡（异步回填时要认它）
   function openShare(idSpec) {
     var d = shareDataOf(idSpec);
-    if (!d) { toast(function () { return T('这张卡还没读全，稍等一下再广播'); }, 'warn'); return; }
+    if (!d) { toast(function () { return T('参数卡尚未读取完成，请稍后再广播'); }, 'warn'); return; }
     var me = S.account ? String(S.account).toLowerCase() : null;
     /* **先按地址那版把浮层摆满**（地址一定拿得到，不用等网络），再等短码回来换成短的。
        不这么做的话：短码那条请求最长要 4 秒，这 4 秒里浮层摆的还是**上一张卡**的文案 ——
@@ -2913,7 +2912,7 @@ img.uthumb[data-view]{cursor:zoom-in}
        不说"自动到账/立即到账" —— 那是空头支票。 */
     /* ARCBANG：没有代币，也就没有铸造奖励与邀请返利可言 */
     $('shareNote').textContent =
-      T('链接里就是这一枚宇宙：谁点开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利 —— 引爆永远免费，想留住它才铸成 NFT。');
+      T('链接指向这一枚宇宙，任何人打开都能看到同一套物理常数。ARCBANG 没有代币、没有铸造奖励、没有邀请返利。引爆永远免费，需要留存时再铸成 NFT。');
     var msg = $('shareMsg');
     function say(text, warn) {
       msg.hidden = !text;
@@ -2937,10 +2936,10 @@ img.uthumb[data-view]{cursor:zoom-in}
       copyTextAndImage(full, img).then(function (r) {
         cp.disabled = false;
         cpSpan.textContent = T('已复制 ✓');
-        if (!r.image) say(T('图片没能复制（这个浏览器不支持），文案已经进剪贴板了 —— 图片可以在卡片上右键另存。'), true);
+        if (!r.image) say(T('图片未能复制（当前浏览器不支持），文案已复制到剪贴板。可在卡片上右键另存图片。'), true);
       }, function () {
         cp.disabled = false;
-        cpSpan.textContent = T('复制不了 —— 手动选中上面的文案');
+        cpSpan.textContent = T('无法复制，请手动选中上方文案');
       });
     };
     /* 复制链接：只复制链接本身（发群、发评论区用）。失败走同一条退路提示 ——
@@ -2956,7 +2955,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         clearTimeout(lk.__t);
         lk.__t = setTimeout(function () { lk.classList.remove('ok'); lkSpan.textContent = T('复制链接'); }, 1500);
       }
-      function bad() { say(T('复制不了 —— 手动选中上面的文案'), true); }
+      function bad() { say(T('无法复制，请手动选中上方文案'), true); }
       if (nc && nc.writeText) nc.writeText(link).then(okd, bad); else bad();
     };
     /* 微信：没有网页分享 API，能给的只有二维码（§四）。二维码**本地算**，
@@ -2965,7 +2964,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     function drawQr() {
       var svg = qrSvg(link, 168);
       if (svg) slot.innerHTML = svg;
-      else slot.textContent = T('这条链接太长，二维码画不下 —— 直接复制下面的链接吧');
+      else slot.textContent = T('链接过长，无法生成二维码，请直接复制下方链接。');
     }
     /* 短码回来后会再调一次 fillShare。二维码那块**已经打开的话就地重画**，
        别收回去 —— 用户正举着手机对着它扫。 */
@@ -3021,7 +3020,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   });
   function gotoOrigin(idSpec) {
     var d = shareDataOf(idSpec);
-    if (!d) { toast(function () { return T('这张卡还没读全，稍等一下再试'); }, 'warn'); return; }
+    if (!d) { toast(function () { return T('参数卡尚未读取完成，请稍后再试'); }, 'warn'); return; }
     // 深链不带 ref：这是自己去看，不是广播出去
     var base = String(location.href).split(/[?#]/)[0].replace(/[^\/]*$/, '') + 'app.html';
     location.href = base + '?bang=' + d.hash;
@@ -3033,7 +3032,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      一样不带 ref：这是自己去救自己的宇宙，不是广播。 */
   function gotoRescue(idSpec) {
     var d = shareDataOf(idSpec);
-    if (!d) { toast(function () { return T('这张卡还没读全，稍等一下再试'); }, 'warn'); return; }
+    if (!d) { toast(function () { return T('参数卡尚未读取完成，请稍后再试'); }, 'warn'); return; }
     var base = String(location.href).split(/[?#]/)[0].replace(/[^\/]*$/, '') + 'app.html';
     location.href = base + '?bang=' + d.hash + '&fix=1';
   }
@@ -3046,7 +3045,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      一个字都不在前端翻译成别的意思（'3' 精确、'int' 整数维、'frac' 分数维、'>3' 严格大于）。 */
   var DIM_OPTS = [
     ['all',  '全部'],
-    ['3',    'D=3（能长出结构的）'],
+    ['3',    'D=3（可形成结构）'],
     ['int',  '整数维'],
     ['frac', '分数维'],
     ['>3',   'D>3']
@@ -3062,7 +3061,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     ['alphaInv', '精细结构常数倒数 α⁻¹', '']
   ];
   /* 偏离度档位：服务端算好的 dev=low|high，**前端不算**（基准值只在那边）。 */
-  var DEV_OPTS = [['all', '全部'], ['low', '接近我们的宇宙'], ['high', '差得很远']];
+  var DEV_OPTS = [['all', '全部'], ['low', '接近我们的宇宙'], ['high', '偏离较大']];
   function inOpts(opts, v) { return opts.some(function (p) { return p[0] === v; }); }
   var FIL_KEY = 'bnbbang.mktfil.v1';
   function filDefault() {
@@ -3208,7 +3207,7 @@ img.uthumb[data-view]{cursor:zoom-in}
    *   'off'  不用问（没有物理条件、也不按维度排）
    *   'wait' 正在问
    *   'ok'   问到了，S.physSel.ids / order 可用
-   *   'err'  问不到（服务端读不到）——**不假装筛过**，由调用方明说一句
+   *   'err'  读不到（服务端读不到）——**不假装筛过**，由调用方明说一句
    */
   function physEnsure(f) {
     var q = physQuery(f);
@@ -3238,7 +3237,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
   /* ---- 卡片上的物理行 ----
      维度与偏离度都直接印服务端发下来的那份。**一个数都不在这儿算** */
-  var DEV_WORD = { low: '接近我们的宇宙', mid: '和我们差着一截', high: '差得很远' };
+  var DEV_WORD = { low: '接近我们的宇宙', mid: '偏离中等', high: '偏离较大' };
   /** 维度只做显示格式化：整数写 3，分数写 2.618（尾零去掉）。不改值、不四舍五入到别的位数 */
   function fmtDim(d) {
     if (d == null || !isFinite(Number(d))) return '?';
@@ -3250,15 +3249,15 @@ img.uthumb[data-view]{cursor:zoom-in}
     var p = S.phys[String(l.id)];
     if (!p) return '';                           // 索引里还没有它：不显示，也不编一个
     var out = '<span class="pchip pdim" title="' + esc(p.fractional
-        ? T('分数维：维数不是整数。这种空间里长不出我们熟悉的轨道和场')
-        : T('空间维数 —— 服务端从这张卡的参数推出来的')) + '">'
+        ? T('分数维：维数不是整数。此类空间无法形成稳定的轨道与场结构')
+        : T('空间维数，由服务端根据参数卡推导')) + '">'
       + esc('D = ' + fmtDim(p.dim))
       + (p.fractional ? '<i class="pfrac">' + esc(T('分数维')) + '</i>' : '') + '</span>';
     if (p.devBand && DEV_WORD[p.devBand]) {
       out += '<span class="pchip dev-' + esc(p.devBand) + '" title="'
         + esc(p.deviation == null
-              ? T('与我们这个宇宙的偏离度，由服务端算')
-              : TF('与我们这个宇宙的偏离度 {0}（服务端算的，取各常数里偏得最狠的那一项）', p.deviation))
+              ? T('与我们所在宇宙的偏离度，由服务端计算')
+              : TF('与我们所在宇宙的偏离度 {0}（服务端计算，取各常数中偏离最大的一项）', p.deviation))
         + '">' + esc(T(DEV_WORD[p.devBand])) + '</span>';
     }
     return '<div class="physrow">' + out + '</div>';
@@ -3313,9 +3312,9 @@ img.uthumb[data-view]{cursor:zoom-in}
         + '" aria-pressed="' + on + '">' + esc(T(p[1])) + '</button>';
     });
     /* 规格第三节点名要的那一句：维度这一组下面必须有它 */
-    h += '<div class="fnote">' + esc(T('D=3 是我们这个宇宙的维数，也是唯一能长出稳定轨道的')) + '</div>';
+    h += '<div class="fnote">' + esc(T('D=3 是我们所在宇宙的维数，也是唯一能形成稳定轨道的维数')) + '</div>';
     h += '<details class="fadv"' + (f.adv ? ' open' : '') + '><summary>'
-      + esc(T('进阶：按卡面上的常数筛')) + '</summary><div class="fadvbody">'
+      + esc(T('进阶：按参数卡上的常数筛选')) + '</summary><div class="fadvbody">'
       + '<select data-f="ck"><option value="">' + esc(T('不按常数筛')) + '</option>'
       + CONST_OPTS.map(function (p) {
           return '<option value="' + p[0] + '"' + (f.ck === p[0] ? ' selected' : '') + '>' + esc(T(p[1])) + '</option>';
@@ -3331,10 +3330,10 @@ img.uthumb[data-view]{cursor:zoom-in}
           return '<option value="' + p[0] + '"' + (f.dev === p[0] ? ' selected' : '') + '>'
             + esc(p[0] === 'all' ? T('不看偏离度') : T(p[1])) + '</option>';
         }).join('') + '</select>'
-      + '<div class="fnote">' + esc(T('常数按卡面上的单位填（SI），可以写 3e8 这种科学计数法；两头都留空就是不按它筛。'))
+      + '<div class="fnote">' + esc(T('常数按参数卡上的单位（SI）填写，支持 3e8 等科学计数法。两端留空表示不按该项筛选。'))
       + '</div>';
     if (numBad(f.cmin) || numBad(f.cmax)) {
-      h += '<div class="fnote warn">' + esc(T('区间只认数字（3e8 / 0.0073 这样），这一格先没算进筛选。')) + '</div>';
+      h += '<div class="fnote warn">' + esc(T('区间仅接受数字（如 3e8、0.0073），该项暂未计入筛选。')) + '</div>';
     }
     h += '</div></details>';
     var note = physStateNote(f, pstate);
@@ -3344,16 +3343,16 @@ img.uthumb[data-view]{cursor:zoom-in}
   /* 服务端那一头的状态，一句话说清楚。**不许闷着** —— 读不到却照样显示一屏结果，
      用户会以为自己筛过了。 */
   function physStateNote(f, pstate) {
-    if (pstate === 'wait') return T('正在按物理参数筛…');
+    if (pstate === 'wait') return T('正在按物理参数筛选…');
     if (pstate === 'err') {
       return physFilterOn(f)
-        ? T('读不到服务端的物理索引，维度 / 常数 / 偏离度这几项这会儿筛不了。')
-        : T('读不到服务端的物理索引，没按维度排 —— 下面仍是按最新上架排的。');
+        ? T('未读到服务端物理索引，维度、常数与偏离度暂时无法筛选。')
+        : T('未读到服务端物理索引，未按维度排序，当前仍按最新上架排序。');
     }
     if (pstate !== 'ok') return '';
     var sel = S.physSel || {};
-    if (sel.partial) return TF('挂单太多，服务端只考察了前 {0} 条，条数统计的是这一段。', sel.examined);
-    if (sel.stale) return T('索引正在重扫，刚挂出来的那几单可能还没进去。');
+    if (sel.partial) return TF('挂单数量较多，服务端仅处理前 {0} 条，统计范围为这一部分。', sel.examined);
+    if (sel.stale) return T('索引正在重建，最新挂单可能尚未收录。');
     return '';
   }
   function renderFilBar(sec, shown, total, pstate) {
@@ -3397,7 +3396,7 @@ img.uthumb[data-view]{cursor:zoom-in}
             + esc(p[0] === 'bnb' ? p[1] : T(p[1])) + '</option>';
         }).join('') + '</select>';
     if (f.src !== 'all' && !originCount()) {
-      h += '<div class="fnote warn">' + esc(T('来源由服务端索引给出，这会儿还没读到 —— 按来源筛先出不了结果。')) + '</div>';
+      h += '<div class="fnote warn">' + esc(T('来源由服务端索引提供，当前尚未读到，按来源筛选暂无结果。')) + '</div>';
     }
     if (sec === 'uni') h += physBarHtml(f, pstate);
     if (filActive(f)) {
@@ -3480,11 +3479,11 @@ img.uthumb[data-view]{cursor:zoom-in}
   function reprice(lid) {
     var l = null;
     (S.listings || []).forEach(function (x) { if (String(x.id) === String(lid)) l = x; });
-    if (!l) { toast(function () { return T('这一单读不到了，刷新看看'); }, 'err'); return; }
+    if (!l) { toast(function () { return T('该挂单已读不到，请刷新页面'); }, 'err'); return; }
     var raw = window.prompt(TF('新的总价（{0}）', CUR), fmtBNB(l.price));
     if (raw === null) return;                       // 点了取消
     var wei = toWei(raw);
-    if (wei === null || wei <= 0n) { toast(function () { return T('价格填得不对，写成 0.02 这样'); }, 'err'); return; }
+    if (wei === null || wei <= 0n) { toast(function () { return T('价格格式有误，请填写如 0.02 的数值'); }, 'err'); return; }
     runTx(function () { return T('改价') + ' #' + lid; },
           function () { return sendTx(ADDR.market, SEL.updatePrice + encUint(lid) + encUint(wei)); });
   }
@@ -3492,7 +3491,7 @@ img.uthumb[data-view]{cursor:zoom-in}
   function buy(lid) {
     var l = null;
     (S.listings || []).forEach(function (x) { if (String(x.id) === String(lid)) l = x; });
-    if (!l) { toast(function () { return T('这一单读不到了，刷新看看'); }, 'err'); return; }
+    if (!l) { toast(function () { return T('该挂单已读不到，请刷新页面'); }, 'err'); return; }
     var doBuy = function (value) {
       runTx(function () { return T('买入') + ' #' + lid; },
             function () { return sendTx(ADDR.market, SEL.buy + encUint(lid), value); });
@@ -3503,14 +3502,14 @@ img.uthumb[data-view]{cursor:zoom-in}
        所以先得有够额的 approve。授权不够就先发一笔，落地后自动接着买：
        两次钱包确认，一次点击。授权只批这一单的数目，不批无限额度。 */
     if (!S.account) { toast(function () { return T('先连钱包'); }, 'err'); return; }
-    if (!ADDR.bang) { toast(function () { return T('BANG 代币地址没配，买不了 BANG 计价的单'); }, 'err'); return; }
+    if (!ADDR.bang) { toast(function () { return T('未配置 BANG 代币地址，无法购买以 BANG 计价的挂单'); }, 'err'); return; }
     ethCall(ADDR.bang, SEL.allowance + encAddr(S.account) + encAddr(ADDR.market)).then(function (r) {
       var have = uw(r, 0);
       if (have !== null && have >= l.price) { doBuy(); return; }
       runTx(function () { return T('授权 BANG'); },
             function () { return sendTx(ADDR.bang, SEL.approveErc20 + encAddr(ADDR.market) + encUint(l.price)); },
             function (ok) { if (ok) doBuy(); });
-    }, function () { toast(function () { return T('读不到 BANG 授权额度，稍后再试'); }, 'err'); });
+    }, function () { toast(function () { return T('未读到 BANG 授权额度，请稍后再试'); }, 'err'); });
   }
 
   $('btnApprove').addEventListener('click', function () {
@@ -3520,9 +3519,9 @@ img.uthumb[data-view]{cursor:zoom-in}
   });
   $('btnList').addEventListener('click', function () {
     var a = currentAsset();
-    if (!a || !a.token || !ADDR.market) { say(T('先选一个要卖的宇宙'), 'err'); return; }
+    if (!a || !a.token || !ADDR.market) { say(T('请先选择要出售的宇宙'), 'err'); return; }
     var wei = toWei($('fPrice').value);
-    if (wei === null || wei <= 0n) { say(T('价格填得不对，写成 0.02 这样'), 'err'); return; }
+    if (wei === null || wei <= 0n) { say(T('价格格式有误，请填写如 0.02 的数值'), 'err'); return; }
     say('');
     // ERC-721 的数量恒为 1（合约里 list() 对 721 也只接受 1），没有可填的量
     runTx(function () { return TV('挂单'); }, function () {
@@ -3590,7 +3589,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         function (ok) {
           if (!ok) return;
           closeName();
-          toast(function () { return TF('已经把它记下来了：{0}', raw); }, 'ok');
+          toast(function () { return TF('命名已记录：{0}', raw); }, 'ok');
         });
     });
   })();
@@ -3608,7 +3607,7 @@ img.uthumb[data-view]{cursor:zoom-in}
        那时用户正开着设置浮层在点，把它关掉纯属添乱。 */
     if (!S.account && !keepPops) closePops(null);
     if (WCHIP) WCHIP.refresh();
-    if (S.account) loadOriginsOwned();     // 名下持仓的来源标签（₿ #N / BNB #N），问不到就不标
+    if (S.account) loadOriginsOwned();     // 名下持仓的来源标签（₿ #N / BNB #N），读不到就不标
   }
 
   /* ---------------------------------------------------------- 浮层（钱包 / 设置）
@@ -3638,7 +3637,7 @@ img.uthumb[data-view]{cursor:zoom-in}
      钱包不支持就退回 eth_requestAccounts，再不行就老实说去钱包里手动切。 */
   function switchAccount() {
     var e = eth();
-    if (!e || !e.request) { toast(function () { return T('没检测到小狐狸（MetaMask）—— 只读浏览不受影响'); }, 'err'); return; }
+    if (!e || !e.request) { toast(function () { return T('未检测到 MetaMask，只读浏览不受影响'); }, 'err'); return; }
     var before = S.account;
     e.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
       .then(
@@ -3657,19 +3656,19 @@ img.uthumb[data-view]{cursor:zoom-in}
         if (a && a[0]) {
           // 用户在弹窗里选了原来那个账户：也是"没换"，照实说，别报"已切到"
           if (before && String(a[0]).toLowerCase() === String(before).toLowerCase()) {
-            toast(function () { return TF('账户没变，还是 {0}', a[0]); }, 'dim');
+            toast(function () { return TF('账户未变更，仍为 {0}', a[0]); }, 'dim');
             return;
           }
           setWallet(a[0]);
           toast(function () { return TF('已切到 {0}', a[0]); }, 'ok');
           return refresh();
         }
-        toast(function () { return T('钱包没给账户 —— 请到 MetaMask 里手动切换账户'); }, 'warn');
+        toast(function () { return T('钱包未返回账户，请在 MetaMask 中手动切换账户'); }, 'warn');
       })
       .catch(function (er) {
-        if (er && er.code === 4001) { toast(function () { return T('取消了切换账户 —— 账户没变'); }, 'dim'); return; }
+        if (er && er.code === 4001) { toast(function () { return T('已取消切换账户，账户未变更'); }, 'dim'); return; }
         toast(function () {
-          return TF('切换账户没成：{0} —— 可以到 MetaMask 里手动切', (er && er.message ? er.message : String(er)));
+          return TF('切换账户失败：{0}。可在 MetaMask 中手动切换。', (er && er.message ? er.message : String(er)));
         }, 'err');
       });
   }
@@ -3690,7 +3689,7 @@ img.uthumb[data-view]{cursor:zoom-in}
         .then(done, function () {
           // 钱包不支持撤销：本页照样断开，但要说清钱包那边还留着授权
           setWallet(null);
-          toast(function () { return T('本页已断开。钱包里的授权还在 —— 要彻底移除请到 MetaMask 的「已连接的网站」'); }, 'warn');
+          toast(function () { return T('本页已断开连接。钱包中的授权仍然存在，如需彻底移除请在 MetaMask 的「已连接的网站」中操作。'); }, 'warn');
           refresh().catch(function () {});
         });
     } else done();
@@ -3710,14 +3709,14 @@ img.uthumb[data-view]{cursor:zoom-in}
          一个都没装时它负责说明 —— 手机端给「在 Binance App 里打开」的深链，桌面端说去装扩展。 */
       if (!eth()) {
         if (window.MirrorWallet && window.MirrorWallet.pick) { window.MirrorWallet.pick({ force: true }); return null; }
-        toast(function () { return T('没检测到小狐狸（MetaMask）—— 只读浏览不受影响'); }, 'err'); return null;
+        toast(function () { return T('未检测到 MetaMask，只读浏览不受影响'); }, 'err'); return null;
       }
       var pre = (window.MirrorWallet && window.MirrorWallet.pick) ? window.MirrorWallet.pick() : Promise.resolve(null);
       return pre.then(function (sel) {
         if (sel === false) return null;      // 用户自己关掉了选择器：不是错误，别 toast
         /* 下面这段就是原来挂在 #btnConnect click 上的那套，一字未改 */
         return connect().then(function (a) {
-          if (!a) { setWallet(null); toast(function () { return T('没拿到账户 —— 钱包可能锁着，或者你在弹窗里拒绝了'); }, 'err'); return null; }
+          if (!a) { setWallet(null); toast(function () { return T('未获取到账户。钱包可能处于锁定状态，或已在弹窗中拒绝。'); }, 'err'); return null; }
           setWallet(a);
           toast(function () { return TF('已连接 {0}', a); }, 'ok');
           return refresh().then(function () { return a; }, function () { return a; });
@@ -3734,7 +3733,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     switchAccount: switchAccount,
     explorer: function () { return S.account ? CHAIN.explorer + '/address/' + S.account : ''; },
     onChange: function () { /* 本页的账户变更都从 setWallet() 过，它直接调 WCHIP.refresh() */ },
-    connectHint: function () { return T('连接钱包后可以看自己的宇宙、挂单、撤单'); }
+    connectHint: function () { return T('连接钱包后可查看名下宇宙，并进行挂单与撤单'); }
   }) : null;
   $('btnRefresh').addEventListener('click', function () { refresh().catch(function () {}); });
   $('btnTheme').addEventListener('click', function () {
@@ -3832,7 +3831,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       $('nameTitle').textContent = nameTableOf(nmk)[S.naming.id] ? T('给宇宙改名') : T('给宇宙命名');
       $('nameFor').textContent = nameSubject(nmk, S.naming.id);
       $('nameDual').textContent = T(DUAL_REG_NOTE);
-      $('nameRules').textContent = T('名字只能用 a-z A-Z 0-9 和连字符，1 到 32 个字符，首尾不能是连字符。不收 Unicode —— 全角的「Ｅ」和「E」看起来一样，收了就有人拿它冒充别人的名字。大小写不区分；O 和 0、I i L l 和 1 也当作同一个字符，理由同上。');
+      $('nameRules').textContent = T('名字支持 a-z、A-Z、0-9 与连字符，长度 1 至 32 个字符，首尾不得为连字符。不支持 Unicode 字符，以避免全角字形冒充已有名字。大小写不敏感；O 与 0、I、i、L、l 与 1 视为同一字符。');
       runNameCheck();
     }
   });
@@ -3968,7 +3967,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       })
       .then(renderAll)
       .catch(function (e) {
-        toast(function () { return TF('读链出了点问题：{0}', (e && e.message ? e.message : String(e))); }, 'err');
+        toast(function () { return TF('读取链上数据失败：{0}', (e && e.message ? e.message : String(e))); }, 'err');
         renderAll();
       });
   }
@@ -3981,7 +3980,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     renderConfigBar();
     renderAll();                                   // 先把空架子画出来，别让人对着白屏等 RPC
     if (!window.ARCBANG_CONFIG) {
-      toast(function () { return T('站点配置没读到 —— 合约都还没接上，先用公开节点浏览'); }, 'warn');
+      toast(function () { return T('未读到站点配置，合约尚未接入，当前使用公开节点浏览'); }, 'warn');
     }
     if (eth() && eth().request) {
       eth().request({ method: 'eth_accounts' }).then(function (a) {

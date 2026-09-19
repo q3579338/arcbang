@@ -438,8 +438,11 @@
   I.add({
     '没有检测到钱包扩展（MetaMask / 币安钱包 等）':
       'No wallet extension detected (MetaMask, Binance Wallet, …)',
+    '未检测到钱包扩展（MetaMask、币安钱包等）': 'No wallet extension detected (MetaMask, Binance Wallet and similar)',
     '本页已断开。钱包里的授权还在 —— 要彻底移除请到钱包扩展的「已连接的网站」':
       'Disconnected on this page. The wallet-side authorization is still there — to remove it fully, open your wallet extension’s “Connected sites”.',
+    '本页已断开连接。钱包中的授权仍然存在，如需彻底移除请在钱包扩展的「已连接的网站」中操作。':
+      'This page is disconnected. The approval in your wallet remains; remove it under "Connected sites" in the wallet extension.',
     /* 选择器「上次使用」：landing / status 不载 i18n-app.js，picker 的 t(…, 'app')
        会落到全局表；这里补进 site 分册，顺带写进全局。换钱包在核心表。 */
     '上次使用': 'Last used',
@@ -490,54 +493,53 @@
   I.add({
     '镜像宇宙 · 个人中心': 'Mirror Universe · Profile',
     '连接钱包查看个人中心': 'Connect a wallet to view your profile',
-    '你的余额、推广、资产与销毁记录都在这一页 —— 但它得先知道你是谁。':
-      'Your balances, referrals, assets and burn record all live on this page — but it needs to know who you are first.',
+    '本页展示你的余额、推广、资产与销毁记录，需先连接钱包。':
+      'This page shows your balance, referrals, assets and burn records. Connect a wallet first.',
     'BANG 余额': 'BANG balance',
     /* 单位名由 config.js 的 chain.currency 填（tBNB / BNB）—— 整句进词典，英文语序不同。 */
     '{0} 余额': '{0} balance',
     '我的邀请': 'My referrals',
     '复制链接': 'Copy link',
-    '复制不了 —— 手动选中上面那串链接复制':
-      'Cannot copy — select the link above and copy it by hand',
+    '无法复制，请手动选中上方链接': 'Copying failed. Select the link above manually.',
     /* ---- 推广短码。
        8 位定长，链接里那 42 个字符的地址换成它。认领要签一次名（不花 gas）。 */
     '换一个': 'Reroll',
     '自定义': 'Custom',
     '认领': 'Claim',
     /* 「取消」与「读取中…」核心词典和本节下面已经有了，按本文件的规矩不重收 */
-    '还没有短码': 'No code yet',
+    '暂无短码': 'No short code yet',
     /* 输入框的 placeholder。字符集去掉了 O/0/I/1，这一句要说清楚，
        不然用户对着一个必失败的输入使劲。 */
     '8 位，A–Z 与 2–9（没有 O/0/I/1）': '8 characters, A–Z and 2–9 (no O/0/I/1)',
-    '短码要 8 位，只能用 A–Z 与 2–9（去掉了容易抄错的 O/0/I/1）':
-      'A code is exactly 8 characters, from A–Z and 2–9 (O/0/I/1 are left out because they are easy to mistype)',
-    '在钱包里签一下名就好 —— 不花 gas': 'Just sign once in your wallet — no gas',
-    '短码换成 {0} 了 —— 旧码立刻失效，已经发出去的旧链接请重发一次。':
-      'Your code is now {0}. The old code stopped working immediately — resend any links you already shared.',
-    '你在钱包里取消了 —— 短码没变': 'You cancelled in the wallet — the code did not change',
-    '没有检测到钱包扩展 —— 认领短码要签一次名（不花 gas）':
-      'No wallet extension detected — claiming a code takes one signature (no gas)',
+    '短码为 8 位，仅支持 A–Z 与 2–9，不含易混淆的 O/0/I/1':
+      'A short code is 8 characters and accepts A–Z and 2–9 only, excluding the easily confused O/0/I/1',
+    '在钱包中完成一次签名即可，不消耗 gas': 'One signature in the wallet is enough, and it costs no gas',
+    '短码已更换为 {0}。旧短码即刻失效，此前分发的链接需重新发送。':
+      'The short code is now {0}. The old code stops working immediately, so links already shared must be sent again.',
+    '已在钱包中取消，短码未变更': 'Cancelled in the wallet; the short code did not change',
+    '未检测到钱包扩展。认领短码需要一次签名，不消耗 gas。':
+      'No wallet extension detected. Claiming a short code takes one signature and costs no gas.',
     '二级邀请': 'Level-2 invites',
     '统计生成中': 'Stats are being generated',
     '我的资产': 'My assets',
     '原生宇宙': 'Native universes',
-    '点卡片去市场页看详情、挂单': 'Click a card to see details and list it on the market page',
-    '还没有带参数的原生宇宙。': 'No native universes with parameters yet.',
+    '点击卡片前往市场页查看详情与挂单': 'Open a card to view details and list it on the market page',
+    '暂无带参数的原生宇宙。': 'No native universe with parameters yet.',
     '去引爆一个 →': 'Go detonate one →',
     /* 持仓卡上的「拯救」。**与市场卡逐字同一句英文**
        （见 i18n-market.js 同名两条）—— 两个入口通向同一条路，文案走散就等于
        让用户以为是两件事。值一样，i18n.js 的全局撞车警告不会响。 */
     '拯救': 'Rescue',
-    '还没有造物。': 'No crafted universes yet.',
-    '去沙盒调教一个 →': 'Go shape one in the sandbox →',
+    '暂无造物。': 'No crafted universe yet.',
+    '前往沙盒创建 →': 'Create one in the sandbox →',
     '我的销毁': 'My burns',
     /* '这些销毁支撑着全网价值' / '名下原生宇宙 burnedOn 之和' 两条旧 key 已合并成
        下面那句带 · 的整句（中文 2026-08-21 定稿），死词条清掉。 */
     '读取中…': 'Loading…',
-    '另有 {0} 枚没盖章的宇宙没有列出（cardOf 为 0，没走服务端引爆）':
-      'Another {0} unstamped universes are not listed (cardOf is 0 — never detonated through the server)',
+    '另有 {0} 枚宇宙未列出：未经服务端引爆，没有参数卡':
+      'Another {0} universes are not listed: they were not detonated through the server and carry no parameter card',
     '只扫了最新的 {0} 枚': 'Only the latest {0} were scanned',
-    '合约还没配置，这一块暂时没有数据': 'The contract address is not configured yet — no data for this block',
+    '合约尚未配置，本区块暂无数据': 'The contract is not configured, so this section has no data',
     /* 我的销毁那行小灰字：2026-08-21 中文改成一句（中间用 · 连），key 跟着合并。 */
     '名下原生宇宙 burnedOn 之和 · 这些销毁支撑着全网价值':
       'Sum of burnedOn across your native universes · these burns underpin the value of the whole network',
@@ -550,8 +552,8 @@
   I.add({
     'BNBBANG · 系统状态': 'BNBBANG · System Status',
     '系统状态': 'System status',
-    '区块链是控制台，这一页是舷窗 —— 读数全部链上现读，随时可复核。':
-      'The blockchain is the console; this page is the porthole — every reading is taken live from the chain and can be re-checked at any time.',
+    '本页读数全部取自链上实时读取，可随时复核。':
+      'Every figure on this page is read live from the chain and can be verified at any time.',
     '链': 'Chain',
     '区块高度': 'Block height',
     '数据源': 'Data source',
@@ -612,10 +614,10 @@
     '{0}/{1} 在线': '{0}/{1} online',
     '已发行 {0} / 10 亿 · 已销毁 {1}': 'Issued {0} / 1B · burned {1}',
     '未接入': 'Not wired in',
-    '还没填地址、或链上读不到代码的合约。全部接入后这一块自动消失。':
-      'Contracts with no address yet, or whose code cannot be read on-chain. Once everything is wired in, this block disappears on its own.',
-    '未部署（还没填地址）': 'Not deployed (no address yet)',
-    '地址有，链上读不到代码（离线）': 'Address set, but no code readable on-chain (offline)',
+    '尚未配置地址或链上读不到代码的合约。全部接入后本区块自动隐藏。':
+      'Contracts whose address is not configured yet, or whose code cannot be read on-chain. This section disappears once all of them are wired in.',
+    '未部署（尚未配置地址）': 'Not deployed (no address configured)',
+    '已配置地址，链上读不到代码（离线）': 'Address configured, but no code can be read on-chain (offline)',
     '{0} 项': '{0} flagged'
   }, 'status');
 

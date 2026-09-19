@@ -235,7 +235,7 @@ footer a{color:var(--cyan)}
   <!-- 未连接：整页一个居中连接态 -->
   <div id="gate" class="gate">
     <p class="gate-t">连接钱包查看个人中心</p>
-    <p class="gate-sub">你的余额、推广、资产与销毁记录都在这一页 —— 但它得先知道你是谁。</p>
+    <p class="gate-sub">本页展示你的余额、推广、资产与销毁记录，需先连接钱包。</p>
     <button id="btnGateConnect" class="primary" type="button">连接钱包查看个人中心</button>
     <p id="gateMsg" class="err tiny" hidden></p>
   </div>
@@ -280,7 +280,7 @@ footer a{color:var(--cyan)}
     <!-- 3. 我的资产 -->
     <section class="card">
       <h2>我的资产</h2>
-      <p class="sub">点卡片去市场页看详情、挂单</p>
+      <p class="sub">点击卡片前往市场页查看详情与挂单</p>
       <h3>原生宇宙</h3>
       <p class="tiny dim" id="natNote" hidden></p>
       <div id="natGrid" class="pgrid"></div>
@@ -378,8 +378,8 @@ footer a{color:var(--cyan)}
     '我邀请的人': 'People you invited',
     '一级（{0}）': 'Level 1 ({0})',
     '二级（{0}）': 'Level 2 ({0})',
-    '还没有人通过你的链接完成铸造': 'No one has minted through your link yet',
-    '好友铸造奖励的一级 10% / 二级 5%，人工核对后发放，女巫不予发放':
+    '暂无通过你的链接完成铸造的地址': 'No one has minted through your link yet',
+    '好友铸造奖励一级 10%、二级 5%，人工核对后发放；女巫地址不予发放。':
       "Level 1 10% / level 2 5% of the friend's mint reward, paid after manual review; sybil accounts receive nothing"
   });
   function esc(s) {
@@ -509,9 +509,9 @@ footer a{color:var(--cyan)}
     ref: undefined,      // {l1,l2}；null = 接口没就绪 → 「统计生成中」
     /* /api/referrals/me 的结果：{granted, l1, l2}。granted 是**字符串**（整 BANG）
        或 null（链上读不到）；"0" 也要照常显示 0，判「读不到」只认 == null。
-       整个对象为 null = 接口问不到 → 列表安静地当「还没有数据」（本页一贯原则）。 */
+       整个对象为 null = 接口读不到 → 列表安静地当「还没有数据」（本页一贯原则）。 */
     grants: undefined,
-    refcode: undefined,  // 8 位推广短码；null = 服务端问不到 → 链接退回带地址的长形式
+    refcode: undefined,  // 8 位推广短码；null = 服务端读不到 → 链接退回带地址的长形式
     native: undefined,   // 盖过章的原生持仓 [{id,img,blockNumber,rarity}]
     natHidden: 0,        // 名下没盖章（cardOf 为 0）的枚数，只报个数不显示
     supply: 0,
@@ -743,7 +743,7 @@ footer a{color:var(--cyan)}
 。8 位定长、字符集去掉 O/0/I/1、一地址一码。
      GET 是**幂等**的：这个地址没有码时服务端当场生成一个并落盘，所以进这一页
      就等于领了码，不用单独一个「生成」按钮。
-     问不到（服务端没上线 / 网络不通）就是 null —— 链接退回 ?ref=<地址> 的长形式，
+     读不到（服务端没上线 / 网络不通）就是 null —— 链接退回 ?ref=<地址> 的长形式，
      照样能用，只是长一点。**不弹错**：短码是锦上添花，不该拦住个人中心。 */
   var ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/;
@@ -790,7 +790,7 @@ footer a{color:var(--cyan)}
     $('pBnb').className = 'balval' + n.cls; $('pBnb').innerHTML = n.html;
   }
   /** 邀请链接。**短码优先**（42 字符的地址换成 8 位），
-      短码还没到手或者服务端问不到就退回地址 —— 两种落地页都认，不会失效。 */
+      短码还没到手或者服务端读不到就退回地址 —— 两种落地页都认，不会失效。 */
   function refLinkText() {
     if (!S.account) return '';
     return SITE + '/?ref=' + (S.refcode || S.account);
@@ -806,7 +806,7 @@ footer a{color:var(--cyan)}
     var el = $('pRefCode');
     var busy = !!S.refBusy;
     if (S.refcode === undefined) { el.className = 'mono refcodeval wait'; el.textContent = P('读取中…'); }
-    else if (S.refcode === null) { el.className = 'mono refcodeval wait'; el.textContent = P('还没有短码'); }
+    else if (S.refcode === null) { el.className = 'mono refcodeval wait'; el.textContent = P('暂无短码'); }
     else { el.className = 'mono refcodeval'; el.textContent = S.refcode; }
     /* 认领要签名、要往返一次，期间两颗按钮都锁上 —— 连点两下就是签两次名，
        而第二次签的那个码多半已经被第一次占掉了。 */
@@ -847,11 +847,11 @@ footer a{color:var(--cyan)}
     }
     var body = $('invBody');
     if (st === undefined) { body.innerHTML = '<div class="invwait">' + esc(P('读取中…')) + '</div>'; return; }
-    /* 接口问不到（st === null）与真的空列表走同一句空态 —— 本页一贯的
+    /* 接口读不到（st === null）与真的空列表走同一句空态 —— 本页一贯的
        时序容错：不弹错、不红字，安静地当「还没有数据」。 */
     var l1 = (st && st.l1) || [], l2 = (st && st.l2) || [];
     if (!l1.length && !l2.length) {
-      body.innerHTML = '<div class="invwait">' + esc(P('还没有人通过你的链接完成铸造')) + '</div>';
+      body.innerHTML = '<div class="invwait">' + esc(P('暂无通过你的链接完成铸造的地址')) + '</div>';
       return;
     }
     var grp = function (label, arr) {
@@ -883,7 +883,7 @@ footer a{color:var(--cyan)}
      引爆完直接把干预沙盒开出来，不用再自己在 3D 里找 HUD 上那颗按钮。
 
      持仓卡在这之前是纯只读的，唯一沾边的是空态里那句链到 app.html（不带哈希）的
-     「去沙盒调教一个 →」—— 手里真有宇宙的人反而没有入口。
+     「前往沙盒创建 →」—— 手里真有宇宙的人反而没有入口。
      S.native 只收盖过章的（cardOf 非零），blockHash 再挡一次：没哈希的深链带不出去。 */
   function fixLink(m) {
     if (!m.blockHash || isZero32(m.blockHash)) return '';
@@ -893,13 +893,13 @@ footer a{color:var(--cyan)}
     var nat = $('natGrid'), cra = $('craftGrid'), note = $('natNote');
     /* 原生 */
     if (!ADDR.universe) {
-      nat.innerHTML = '<div class="empty">' + esc(P('合约还没配置，这一块暂时没有数据')) + '</div>';
+      nat.innerHTML = '<div class="empty">' + esc(P('合约尚未配置，本区块暂无数据')) + '</div>';
     } else if (S.native === undefined) {
       nat.innerHTML = '<div class="empty">' + esc(P('读取中…')) + '</div>';
     } else if (S.native === null) {
       nat.innerHTML = '<div class="empty">' + esc(P('读不到')) + '</div>';
     } else if (!S.native.length) {
-      nat.innerHTML = '<div class="empty">' + esc(P('还没有带参数的原生宇宙。'))
+      nat.innerHTML = '<div class="empty">' + esc(P('暂无带参数的原生宇宙。'))
         + ' <a href="app.html">' + esc(P('去引爆一个 →')) + '</a></div>';
     } else {
       nat.innerHTML = S.native.map(function (m) {
@@ -916,7 +916,7 @@ footer a{color:var(--cyan)}
     }
     if (ADDR.universe && S.natHidden > 0) {
       note.hidden = false;
-      note.textContent = PF('另有 {0} 枚没盖章的宇宙没有列出（cardOf 为 0，没走服务端引爆）', S.natHidden)
+      note.textContent = PF('另有 {0} 枚宇宙未列出：未经服务端引爆，没有参数卡', S.natHidden)
         + (S.supply > SCAN_CAP ? ' · ' + PF('只扫了最新的 {0} 枚', SCAN_CAP) : '');
     } else if (ADDR.universe && S.supply > SCAN_CAP) {
       note.hidden = false;
@@ -926,14 +926,14 @@ footer a{color:var(--cyan)}
     }
     /* 造物 */
     if (!ADDR.crafted) {
-      cra.innerHTML = '<div class="empty">' + esc(P('合约还没配置，这一块暂时没有数据')) + '</div>';
+      cra.innerHTML = '<div class="empty">' + esc(P('合约尚未配置，本区块暂无数据')) + '</div>';
     } else if (S.craft === undefined) {
       cra.innerHTML = '<div class="empty">' + esc(P('读取中…')) + '</div>';
     } else if (S.craft === null) {
       cra.innerHTML = '<div class="empty">' + esc(P('读不到')) + '</div>';
     } else if (!S.craft.length) {
-      cra.innerHTML = '<div class="empty">' + esc(P('还没有造物。'))
-        + ' <a href="app.html">' + esc(P('去沙盒调教一个 →')) + '</a></div>';
+      cra.innerHTML = '<div class="empty">' + esc(P('暂无造物。'))
+        + ' <a href="app.html">' + esc(P('前往沙盒创建 →')) + '</a></div>';
     } else {
       cra.innerHTML = S.craft.map(function (c) {
         var img = API + '/art/card/' + c.cardHash + '.svg?t=1';
@@ -980,13 +980,13 @@ footer a{color:var(--cyan)}
       return pre.then(function (sel) {
         if (sel === false) return null;
         var p = (sel && sel.provider) || prov();
-        if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+        if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
         return p.request({ method: 'eth_requestAccounts' }).then(function (a) {
           setAccount((a && a[0]) || null);
-          if (!S.account) throw new Error(ST('没拿到账户 —— 钱包可能锁着，或者你在弹窗里拒绝了'));
+          if (!S.account) throw new Error(ST('未获取到账户。钱包可能处于锁定状态，或已在弹窗中拒绝。'));
           return S.account;
         }, function (er) {
-          throw new Error(er && er.code === 4001 ? ST('你在钱包里取消了') : ((er && er.message) || String(er)));
+          throw new Error(er && er.code === 4001 ? ST('已在钱包中取消') : ((er && er.message) || String(er)));
         });
       });
     },
@@ -996,20 +996,20 @@ footer a{color:var(--cyan)}
       if (p && p.request) {
         return p.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] })
           .then(function () { }, function () {
-            return ST('本页已断开。钱包里的授权还在 —— 要彻底移除请到钱包扩展的「已连接的网站」');
+            return ST('本页已断开连接。钱包中的授权仍然存在，如需彻底移除请在钱包扩展的「已连接的网站」中操作。');
           });
       }
     },
     switchAccount: function () {
       var p = prov();
-      if (!p || !p.request) return Promise.reject(new Error(ST('没有检测到钱包扩展（MetaMask / 币安钱包 等）')));
+      if (!p || !p.request) return Promise.reject(new Error(ST('未检测到钱包扩展（MetaMask、币安钱包等）')));
       /* 4001 = 用户点了取消，不能退回 eth_requestAccounts（它不弹窗、立刻还你
          原账户，「没换」就会被说成「已切」）。只有钱包不支持这个方法才退回。 */
       return p.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
         .then(
           function () { return p.request({ method: 'eth_accounts' }); },
           function (er) {
-            if (er && er.code === 4001) throw new Error(ST('取消了切换账户 —— 账户没变'));
+            if (er && er.code === 4001) throw new Error(ST('已取消切换账户，账户未变更'));
             return p.request({ method: 'eth_requestAccounts' });
           }
         )
@@ -1081,7 +1081,7 @@ footer a{color:var(--cyan)}
       b.__t = setTimeout(function () { b.textContent = P('复制链接'); }, 1400);
     }, function () {
       msg.hidden = false;
-      msg.textContent = P('复制不了 —— 手动选中上面那串链接复制');
+      msg.textContent = P('无法复制，请手动选中上方链接');
     });
   });
 
@@ -1106,7 +1106,7 @@ footer a{color:var(--cyan)}
   }
   function claimCode(code) {
     var p = prov();
-    if (!p || !p.request) return Promise.reject(new Error(P('没有检测到钱包扩展 —— 认领短码要签一次名（不花 gas）')));
+    if (!p || !p.request) return Promise.reject(new Error(P('未检测到钱包扩展。认领短码需要一次签名，不消耗 gas。')));
     var a = S.account, ts = Math.floor(Date.now() / 1000);
     var text = 'BNBBANG refcode ' + code + ' ' + ts;
     return p.request({ method: 'personal_sign', params: [hexMsg(text), a] }).then(function (sig) {
@@ -1138,17 +1138,17 @@ footer a{color:var(--cyan)}
     return out;
   }
   function runClaim(code, tries) {
-    S.refBusy = true; renderRefCode(); refSay(P('在钱包里签一下名就好 —— 不花 gas'), false);
+    S.refBusy = true; renderRefCode(); refSay(P('在钱包中完成一次签名即可，不消耗 gas'), false);
     return claimCode(code).then(function (got) {
       S.refBusy = false; S.refcode = got;
       renderRefCode(); renderIdentity();
       $('refEdit').hidden = true;
-      refSay(PF('短码换成 {0} 了 —— 旧码立刻失效，已经发出去的旧链接请重发一次。', got), false);
+      refSay(PF('短码已更换为 {0}。旧短码即刻失效，此前分发的链接需重新发送。', got), false);
     }, function (e) {
       S.refBusy = false; renderRefCode();
       // 撞上别人占了的 / 保留词：随机那条路自己再掷一个，自定义那条路要让用户改
       if (tries > 0 && (e.reason === 'taken' || e.reason === 'reserved')) return runClaim(rollCode(), tries - 1);
-      if (e && e.code === 4001) { refSay(P('你在钱包里取消了 —— 短码没变'), true); return; }
+      if (e && e.code === 4001) { refSay(P('已在钱包中取消，短码未变更'), true); return; }
       refSay((e && e.message) || String(e), true);
     });
   }
@@ -1174,7 +1174,7 @@ footer a{color:var(--cyan)}
     if (!S.account || S.refBusy) return;
     var v = String($('refInput').value || '').toUpperCase();
     if (!CODE_RE.test(v)) {
-      refSay(P('短码要 8 位，只能用 A–Z 与 2–9（去掉了容易抄错的 O/0/I/1）'), true);
+      refSay(P('短码为 8 位，仅支持 A–Z 与 2–9，不含易混淆的 O/0/I/1'), true);
       return;
     }
     // 保留词那条闸在服务端（黑名单在那边，前端抄一份必然会漂），撞上了按它回的话说

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- 落盘到 /en/verify.html（build-web.js 的 SITES.arc.enPages）。相对地址由 absolutize() 在落盘时
      改成根绝对；SEO 头里写的是主站的占位域名，siteify() 会换成 SITES.arc.base。 -->
-<title>Check it yourself — ARCBANG</title>
-<meta name="description" content="Do not take the site's word for it. Clone the engine, recompute any Arc block hash into its universe, and diff it against the NFT on chain. Two commands, a couple of minutes.">
+<title>Verify it yourself · ARCBANG</title>
+<meta name="description" content="Clone the engine, recompute any Arc block hash into its universe, and diff the result against the NFT on chain. Two commands, no account required.">
 <link rel="canonical" href="https://arcbang.xyz/en/verify.html">
 <link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/verify.html">
 <link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/verify.html">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="ARCBANG">
 <meta property="og:url" content="https://arcbang.xyz/en/verify.html">
-<meta property="og:title" content="Check it yourself">
+<meta property="og:title" content="Verify it yourself">
 <meta property="og:description" content="Two commands: recompute a universe from its block hash, then diff it against the NFT on chain.">
 <meta property="og:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <meta property="og:image:width" content="1200">
@@ -22,7 +22,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="zh_CN">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Check it yourself">
+<meta name="twitter:title" content="Verify it yourself">
 <meta name="twitter:description" content="Two commands: recompute a universe from its block hash, then diff it against the NFT on chain.">
 <meta name="twitter:image" content="https://arcbang.xyz/assets/og/home.jpg">
 <link rel="icon" href="/assets/icons/favicon.ico" sizes="32x32">
@@ -66,8 +66,8 @@
 <div class="ab-wrap">
 
 <header class="ad-head">
-  <h1 class="ad-h1">Don't take my word for it</h1>
-  <p class="ad-lede">Every universe here is a pure function of a block hash, and the function is open source. Run it on your own machine and compare the result with what is on chain. Two commands, no account needed.</p>
+  <h1 class="ad-h1">Recompute and compare it yourself</h1>
+  <p class="ad-lede">Every universe here is a pure function of a block hash, and that function is open source. Run it on your own machine and compare the result with what is stored on chain. Two commands, no account required.</p>
   <div class="ad-cta">
     <a class="ab-btn" href="https://github.com/q3579338/arcbang">Clone the engine</a>
     <a class="ab-btn2" href="/en/how-it-works.html">What this is</a>
@@ -83,7 +83,7 @@
     <li><a href="#diff"><span>Diff it against the chain</span></a></li>
     <li><a href="#sig"><span>What the signature is for</span></a></li>
     <li><a href="#contracts"><span>Contracts</span></a></li>
-    <li><a href="#limits"><span>Where it is not trustless</span></a></li>
+    <li><a href="#limits"><span>Current trust boundary</span></a></li>
   </ol>
 </nav>
 
@@ -94,13 +94,13 @@
 <pre class="ad-cmd"><code>git clone https://github.com/q3579338/arcbang
 cd arcbang
 node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b</code></pre>
-<p>Give it a hash and it works out the parameters, the outcome, the grade and the <code>cardHash</code>. The derivation is integer-only, so another machine gives the same answer. No dependencies, Node 18 or later.</p>
+<p>Given a hash, it derives the parameters, the outcome, the grade and the <code>cardHash</code>. The derivation is integer-only, so any machine returns the same answer. No dependencies, Node 18 or later.</p>
 </section>
 
 <section class="ad-sec" id="diff">
 <h2 class="ad-h2">Diff it against the chain</h2>
 <pre class="ad-cmd"><code>node tools/verify-onchain.js 1</code></pre>
-<p>This reads NFT #1 back from Arc, recomputes it from the block hash stored with it, and compares the two byte for byte. The hash is the only input; nothing from my server is involved.</p>
+<p>This reads NFT #1 back from Arc, recomputes it from the block hash stored with it, and compares the two byte for byte. The hash is the only input, and no server data takes part.</p>
 <div class="ad-note">
   <p>The repository also ships the engine self-checks and the on-chain comparison tests. <code>node engine/test.js</code> runs the first set locally.</p>
 </div>
@@ -108,28 +108,28 @@ node tools/recompute.js 0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b
 
 <section class="ad-sec" id="sig">
 <h2 class="ad-h2">What the signature is for</h2>
-<p>Minting needs a signature from the server. That exists to stop anyone minting made-up parameters: the server recomputes them and signs what it got, and the signer address is on chain for anyone to check.</p>
-<p>It does not let me invent universes. The signed parameters have to match what <code>recompute.js</code> derives from the hash, which is exactly what the command above checks.</p>
+<p>Minting requires a signature from the server. It exists to stop anyone minting fabricated parameters: the server recomputes them before signing, and the signer address is on chain for anyone to check.</p>
+<p>The signature cannot conjure a universe. The signed parameters must match exactly what <code>recompute.js</code> derives from the hash, which is what the command above checks.</p>
 </section>
 
 <section class="ad-sec" id="contracts">
 <h2 class="ad-h2">Contracts</h2>
-<p>Arc mainnet, chainId 5042, gas paid in USDC. No proxy, no upgrade path, no pause switch — once deployed it stays as it is. Two contracts in total; with no token there is nothing else to deploy.</p>
+<p>Arc mainnet, chainId 5042, gas paid in USDC. No proxy, no upgrade path and no pause switch: once deployed, it stays as it is. Two contracts in total, and with no token there is nothing else to deploy.</p>
 <div class="ad-tblwrap"><table class="ad-tbl">
 <thead><tr><th>Contract</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td class="k">ArcUniverse</td><td>The universes. Mint price and free allowance, 5% royalties, and the on-chain SVG fallback for <code>tokenURI</code>.</td></tr>
 <tr><td class="k">MirrorMarket</td><td>Listing, buying and cancelling on the site. The fee ceiling is written into the contract.</td></tr>
 </tbody></table></div>
-<p>The deployed addresses go on this page and into <code>config.js</code> the day v1 lands. The site reads them from that one file, so what the page shows and what your wallet talks to cannot drift apart.</p>
+<p>The deployed addresses are published on this page and in <code>config.js</code> on the day v1 lands. The site reads them from that one file, so the contract shown on the page and the contract your wallet talks to cannot drift apart.</p>
 </section>
 
 <section class="ad-sec" id="limits">
-<h2 class="ad-h2">Where it is not trustless</h2>
-<p>Two things I am not thrilled about but that are real.</p>
+<h2 class="ad-h2">Current trust boundary</h2>
+<p>Two limitations are worth stating plainly.</p>
 <ul class="ad-bullets">
-  <li>Minting depends on that server signature. The signer is on chain and the signed parameters are recomputable, but if the server is down, no new mints. Existing NFTs are fine — the contract falls back to on-chain SVG.</li>
-  <li>There are a few owner switches. All of them are bounded: the free allowance can only be tightened, the price is clamped between 0.1 and 20 USDC, royalties cap at 10%, market fees cap at 10%. Nothing can change the parameters of an NFT that already exists.</li>
+  <li>Minting depends on the server signature. The signer is on chain and the signed parameters can be recomputed, but no new mint is possible while the server is down. Existing NFTs are unaffected, since the contract falls back to on-chain SVG.</li>
+  <li>A few owner switches exist, all of them bounded: the free allowance can only be tightened, the price is clamped between 0.1 and 20 USDC, royalties cap at 10% and market fees cap at 10%. The parameters of an NFT that already exists cannot be changed.</li>
 </ul>
 <div class="ad-end-cta">
   <a class="ab-btn" href="https://github.com/q3579338/arcbang">Clone the engine</a>
