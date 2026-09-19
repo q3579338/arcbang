@@ -1097,8 +1097,25 @@ button,input{font-family:inherit}
   }
   document.addEventListener('click', function (ev) {
     var t = ev.target && ev.target.closest ? ev.target.closest('.ab-tab') : null;
-    if (t) showTab(t.getAttribute('data-tab'));
+    if (t) { showTab(t.getAttribute('data-tab')); return; }
+    /* 页内 #quests / #record / #board 链接（首屏「看榜」那颗）：切标签 + 滚到标签栏。
+       之前只是个锚点，而对应的面板是 hidden 的，点了什么都不发生（09-19 用户：「点了没反应」）。 */
+    var a = ev.target && ev.target.closest ? ev.target.closest('a[href^="#"]') : null;
+    if (a) {
+      var name = a.getAttribute('href').slice(1);
+      if (name === 'quests' || name === 'record' || name === 'board') {
+        ev.preventDefault();
+        showTab(name);
+        var bar = document.querySelector('.ab-tabs');
+        if (bar && bar.scrollIntoView) bar.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }
   });
+  /* 带 #board 之类的地址直接打开时也切过去 */
+  (function () {
+    var h = (location.hash || '').slice(1);
+    if (h === 'quests' || h === 'record' || h === 'board') showTab(h);
+  })();
 
   /* ---------------- 可复制芯片 ---------------- */
   function copyText(v) {
