@@ -2396,9 +2396,21 @@
        老服务端不回 free 字段时才退回原来那条「问链上还给不给免费」的路。 */
     function valueForStamp() {
       if (stamp.free === true) return Promise.resolve(0n);
-      if (stamp.free === false) return C.price();
+      if (stamp.free === false) {
+        /* 付费单：优先用服务端随签名给的 priceWei（它读链有缓存、不会被公共 RPC 限流打成 0），
+           没给才自己读。无论哪条路，**0 一律不发**：msg.value 为 0 的付费单在合约上必然 WrongPrice。 */
+        var fromServer = null;
+        try { if (stamp.priceWei != null && /^d+$/.test(String(stamp.priceWei))) fromServer = BigInt(String(stamp.priceWei)); } catch (_) { fromServer = null; }
+        var p = (fromServer !== null && fromServer > 0n) ? Promise.resolve(fromServer) : C.price();
+        return p.then(function (v) {
+          if (!(v > 0n)) throw new Error(T('没有读到铸造价格，请刷新页面后重试。'));
+          lastValueWei = v;
+          return v;
+        });
+      }
       return C.mintValueFor(acct, d2r(stamp));
     }
+    var lastValueWei = null;
     var refAddr = refStored();
     Promise.resolve(null).then(function () {
       /* 推广留痕：ref 要随 /api/bang 一起交，
@@ -2531,8 +2543,8 @@
          错误对象各钱包长得不一样（message / data / originalError），整个序列化了再找。 */
       var raw = m + ' ' + (function () { try { return JSON.stringify(e); } catch (_) { return ''; } })();
       if (/WrongPrice|0xf7760f25/i.test(raw)) {
-        m = T('付款金额和合约要的对不上（WrongPrice）—— 多半是免费次数刚用完或价格刚调整。'
-          + '交易没有发出去，刷新页面按最新报价再试一次就行。');
+        m = T('付款金额与合约要求不一致（WrongPrice）。交易未发出，请刷新页面后重试。')
+          + (lastValueWei !== null ? ' [' + (stamp && stamp.free === false ? 'paid' : 'free') + ' ' + C.fmtBNB(lastValueWei) + ' ' + chainCur() + ']' : '');
       }
       report(TF('铸造失败：{0}', esc(m)), 'bnb-err');
     }).then(function () {

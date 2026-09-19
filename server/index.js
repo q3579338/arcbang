@@ -233,6 +233,24 @@ async function wouldBeFreeMint(minter) {
   return cnt < FREE_CACHE.per;
 }
 
+/** 一口价（price()，wei）。随签名一起回给前端：付费单的 msg.value 必须**正好**等于它，
+    前端自己去公共 RPC 读价一旦被限流 / 回空，就会按 0 报价撞 WrongPrice（2026-09-19 排练时出现过）。
+    60 秒缓存；读不到回 null，前端再退回自己读。 */
+const PRICE_CACHE = { wei: null, at: 0 };
+async function priceWeiCached() {
+  const to = CONTRACT;
+  if (!to || !/^0x[0-9a-f]{40}$/.test(to)) return null;
+  const now = Date.now();
+  if (PRICE_CACHE.wei !== null && now - PRICE_CACHE.at < 60e3) return PRICE_CACHE.wei;
+  try {
+    const hex = await chainMod.ethCall(to, '0xa035b1fe');
+    const h = String(hex || '').replace(/^0x/, '');
+    if (h.length < 64) return PRICE_CACHE.wei;
+    PRICE_CACHE.wei = BigInt('0x' + h.slice(0, 64)).toString(); PRICE_CACHE.at = now;
+    return PRICE_CACHE.wei;
+  } catch (e) { return PRICE_CACHE.wei; }
+}
+
 /** 链上还剩几枚免费额度（freeCap - totalSupply，发完是 0）。读不到回 null。
     /api/allowlist/status 拿它显示「免费还剩 X 枚」；用的是 wouldBeFreeMint 同一份缓存，
     所以看状态这件事不会额外打 RPC。 */
@@ -795,11 +813,12 @@ async function handle(req, res, u) {
       card.blockHash, blk.number, card.outcome.index, card.rarity.index, cardHash,
       undefined, minter, g.free
     );
+    const priceWei = g.free ? null : await priceWeiCached();
     json(res, 200, {
       card, cardHash, deadline, sig, signer: signer.address, rarity: card.rarity,
       /* free 必须原样回给前端：它要拿这个值拼 calldata（改一位就 BadSig），
-         也要拿它决定 msg.value 是 0 还是 price。 */
-      free: g.free, phase: g.phase, freeGone: !!g.freeGone,
+         也要拿它决定 msg.value 是 0 还是 price。付费单顺带把一口价（wei 字符串）也给出去。 */
+      free: g.free, phase: g.phase, freeGone: !!g.freeGone, priceWei,
       art: PUBLIC_BASE + '/api/art/' + card.blockHash + '.svg?p=1'
     }, { 'cache-control': 'no-store' });
     return;
