@@ -904,6 +904,14 @@ button,input{font-family:inherit}
     try { return d.toLocaleString(); } catch (e) { return iso; }
   }
   var target = null;
+  /* 到点后的重问要**节流**：2026-09-19 踩过 —— 后台把开放时间设成「现在」，服务端一度
+     回的 next.at 已在过去，每秒 tick 一次 → load() → renderStatus 又把过去的时间设成 target →
+     下一秒再来，一秒钟一对 status+board 请求，页面就「卡死」了。这里最多 5 秒重问一次。 */
+  var reloadTimer = null;
+  function reloadSoon() {
+    if (reloadTimer) return;
+    reloadTimer = setTimeout(function () { reloadTimer = null; load(); }, 5000);
+  }
   function tick() {
     if (!target) return;
     var ms = target - Date.now();
@@ -912,7 +920,7 @@ button,input{font-family:inherit}
       target = null;
       $('cdD').textContent = $('cdH').textContent = $('cdM').textContent = $('cdS').textContent = '0';
       $('cdWhen').textContent = T('已到时间，正在刷新状态');
-      load();
+      reloadSoon();
       return;
     }
     var s = Math.floor(ms / 1000);
@@ -941,11 +949,18 @@ button,input{font-family:inherit}
     put('tGtd', o.gtd); put('tFcfs', o.fcfs); put('tPublic', o.public);
 
     var nx = st.next;
-    if (nx && nx.at) {
-      target = new Date(nx.at).getTime();
+    var nxAt = (nx && nx.at) ? new Date(nx.at).getTime() : NaN;
+    if (nx && nxAt > Date.now() + 1000) {
+      target = nxAt;
       $('cd').hidden = false;
       $('cdWhen').textContent = TF('距离{0}开放', T(PHASE_CN[nx.phase] || nx.phase));
       tick();
+    } else if (nx && nx.at) {
+      /* 服务端给的时间已经过去（它还没把阶段推过去）：不倒计时、不每秒重问，隔几秒再问一次 */
+      target = null;
+      $('cd').hidden = true;
+      $('cdWhen').textContent = T('已到时间，正在刷新状态');
+      reloadSoon();
     } else if (nx) {
       target = null;
       $('cd').hidden = true;
