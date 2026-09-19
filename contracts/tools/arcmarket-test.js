@@ -360,7 +360,7 @@ async function main() {
     eq(await checkListing(lc), 0, '单枚 approve(market, id) 一样能挂能买');
     const b0 = await h.balance(SELLER);
     await h.call(market, BUYER, sel('buy(uint256)') + word(lc), PRICE);
-    eq(await h.balance(SELLER) - b0, 94n * ONE, '成交分账照旧');
+    eq(await h.balance(SELLER) - b0, 95n * ONE, '成交分账照旧（5% 版税，无手续费）');
     await approveAll(SELLER, true);   // 后面的用例还要用
   }
 
