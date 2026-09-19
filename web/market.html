@@ -3524,10 +3524,27 @@ img.uthumb[data-view]{cursor:zoom-in}
     if (wei === null || wei <= 0n) { say(T('价格格式有误，请填写如 0.02 的数值'), 'err'); return; }
     say('');
     // ERC-721 的数量恒为 1（合约里 list() 对 721 也只接受 1），没有可填的量
-    runTx(function () { return TV('挂单'); }, function () {
-      // ARCBANG：list(uint256 id, uint256 price)，价格是 USDC 的 wei（1 USDC = 1e18）
-      return sendTx(ADDR.market, SEL.list + encUint(a.id) + encUint(wei));
-    });
+    function doList() {
+      runTx(function () { return TV('挂单'); }, function () {
+        // ARCBANG：list(uint256 id, uint256 price)，价格是 USDC 的 wei（1 USDC = 1e18）
+        return sendTx(ADDR.market, SEL.list + encUint(a.id) + encUint(wei));
+      });
+    }
+    /* 挂单前**现读一次**授权：没授权就先弹授权，成功后自动接着挂单。
+       2026-09-19 排练：用户直接点挂单，链上回 "market not approved"，白付一次 gas。 */
+    ethCall(a.token, SEL.isApprovedForAll + encAddr(S.account) + encAddr(ADDR.market)).then(function (r) {
+      var v = uw(r, 0);
+      if (v === 1n) { if (a.crafted) S.capproved = true; else S.approved = true; syncApproveState(); doList(); return; }
+      say(T('尚未授权市场合约，先完成授权，随后自动挂单。'));
+      runTx(function () { return T('授权'); },
+            function () { return sendTx(a.token, SEL.setApprovalForAll + encAddr(ADDR.market) + encBool(true)); },
+            function (ok) {
+              if (!ok) return;
+              if (a.crafted) S.capproved = true; else S.approved = true;
+              syncApproveState();
+              doList();
+            });
+    }, function () { say(T('未读到授权状态，请稍后再试'), 'err'); });
   });
   $('fAsset').addEventListener('change', syncApproveState);
   /* 币种切换时把标签和示例跟着换 —— 不换的话「总价（tBNB）」下面填 5000 BANG，

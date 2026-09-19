@@ -167,6 +167,8 @@
     '暂无挂单。': 'You have no listings.',
     '资产': 'Asset',
     '授权': 'Approve',
+    '尚未授权市场合约，先完成授权，随后自动挂单。': 'The market contract is not approved yet. Approve first; the listing follows automatically.',
+    '未读到授权状态，请稍后再试': 'Could not read the approval state. Try again shortly.',
     '已授权': 'Approved',
     '尚未授权': 'Not approved',
     '未读到授权状态': 'Approval status could not be read',
