@@ -265,7 +265,7 @@ textarea{min-height:88px;resize:vertical;word-break:break-all;line-height:1.5}
      可改，改了不影响已铸的 NFT 的归属。</p>
   <div class="dw-row">
     <label class="dw-f">baseURI<input type="text" class="mono" id="inBaseURI" value="https://arcbang.xyz/api/token/"></label>
-    <script>(function () { var i = document.getElementById('inBaseURI'); if (/^https:///.test(location.origin) && !/localhost|127.0.0.1/.test(location.origin)) i.value = location.origin + '/api/token/'; })();</script>
+    <script>(function () { var i = document.getElementById('inBaseURI'); var h = location.hostname || ''; if (location.protocol === 'https:' && h.indexOf('localhost') < 0 && h.indexOf('127.0.0.1') < 0) i.value = location.origin + '/api/token/'; })();</script>
     <button id="btnBaseURI" class="gh" type="button">setBaseURI</button>
   </div>
   <table class="dw-tbl" id="tbl5" hidden>
