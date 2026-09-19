@@ -27,6 +27,12 @@ window.ARCBANG_CONFIG = {
      公售开始那天改成 true 重新构建即可；合约常量与 setPrice 不受它影响。 */
   showPrice: false,
 
+  /* 分享卡片版本号（2026-09-19 用户：分享链接也要清除缓存）。
+     X / Telegram / Discord 按 URL 缓存卡片，同一个链接几天内不重抓。站内生成的每条分享链接
+     （引爆分享 /s/<区块号>、邀请链接 quest.html?ref=）都带上 v=<这个值>；
+     卡片文案或 og 图一改，把它 +1 重新构建，新发出去的链接就是新卡片。服务端不读它。 */
+  shareVer: '2',
+
   /* ArcUniverse（宇宙 NFT，contracts/src/ArcUniverse.sol）。
      部署后填这里，并且**服务端 /etc/bnbbang/api.env 的 ARCBANG_CONTRACT 必须同步改**——
      签名把合约地址绑死了，两边不一致时签出来的名在链上一律 BadSig。 */
