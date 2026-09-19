@@ -2067,6 +2067,11 @@
       var freeUsedUp = (W.fc && W.fc.supported) ? (W.fc.used >= W.fc.cap) : (W.usedFree === true);
       if (freeUsedUp) return TF('免费额度已用完，付费铸造将在公售阶段开放（{0}）。', fmtOpen(o.public));
     }
+    /* 公售：这个地址的付费上限（paidPerAddr）用满了就不给按钮 —— 否则点下去是合约 PaidCapReached。 */
+    if (PH.phase === 'public' && W.pc && W.pc.supported && W.pc.cap > 0n && W.pc.used >= W.pc.cap) {
+      var freeLeftHere = (W.fc && W.fc.supported) ? (W.fc.used < W.fc.cap) : false;
+      if (!freeLeftHere) return TF('该地址付费铸造已达上限（每地址 {0} 枚）。', String(W.pc.cap));
+    }
     return null;
   }
 
@@ -2542,7 +2547,23 @@
          典型是免费次数**刚好在这一刻**被用完（或 owner 调了价），重报一次价就好。
          错误对象各钱包长得不一样（message / data / originalError），整个序列化了再找。 */
       var raw = m + ' ' + (function () { try { return JSON.stringify(e); } catch (_) { return ''; } })();
-      if (/WrongPrice|0xf7760f25/i.test(raw)) {
+      /* 合约自定义错误：revert data 只有 4 字节选择器，钱包常把它当文本显示成乱码（PaidCapReached → "S·G"）。
+         按选择器（hex）和它的 4 字节原文两种形态都认，翻成人话。 */
+      var ERRS = [
+        ['0x53d7b347', T('该地址付费铸造已达上限（每地址最多 3 枚）。')],
+        ['0xc9467753', T('免费额度已用完。')],
+        ['0x334272b4', T('该区块已被铸造。')],
+        ['0x5fb1eed1', T('全部 1,387 枚已铸完。')],
+        ['0x203d82d8', T('签名已过期，请重新引爆后再铸。')],
+        ['0x05312688', T('签名无效，请刷新页面后重试。')]
+      ];
+      function selText(hex) { var b = hex.slice(2).match(/../g) || []; return b.map(function (x) { return String.fromCharCode(parseInt(x, 16)); }).join(''); }
+      var known = null;
+      for (var ei = 0; ei < ERRS.length && !known; ei++) {
+        if (raw.toLowerCase().indexOf(ERRS[ei][0]) >= 0 || raw.indexOf(selText(ERRS[ei][0])) >= 0) known = ERRS[ei][1];
+      }
+      if (known) { m = known; }
+      else if (/WrongPrice|0xf7760f25/i.test(raw)) {
         m = T('付款金额与合约要求不一致（WrongPrice）。交易未发出，请刷新页面后重试。')
           + (lastValueWei !== null ? ' [' + (stamp && stamp.free === false ? 'paid' : 'free') + ' ' + C.fmtBNB(lastValueWei) + ' ' + chainCur() + ']' : '');
       }
@@ -2854,7 +2875,7 @@
      price   = price()：v5 一口价（免费次数用完后每枚收这个数，不分档）
      原来这里还有个 band = priceBnb[0..4] 的区间 —— 那是 v4 的分档价，
      v5 字节码里没有 priceBnb，读了一律 revert，随 mintValueFor 一起清掉了。 */
-  var W = { el: null, chip: null, addr: null, free: null, fc: null, usedFree: null, price: null };
+  var W = { el: null, chip: null, addr: null, free: null, fc: null, pc: null, usedFree: null, price: null };
 
   function shortAddr(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
 
@@ -2931,7 +2952,8 @@
     /* 换了地址，「在不在名单、是哪一层」也跟着变 —— 免费计数和放号资格是一对，
        只刷一半的话按钮会按上一个地址的资格显示。 */
     if ((W.addr || null) !== PH.addr) phaseLoad();
-    if (!W.addr || !C.contract()) { W.fc = null; W.usedFree = null; walletSync(); return; }
+    if (!W.addr || !C.contract()) { W.fc = null; W.pc = null; W.usedFree = null; walletSync(); return; }
+    if (C.paidStatus) C.paidStatus(a).then(function (st) { if (W.addr === a) { W.pc = st; walletSync(); } }, function () { });
     var a = W.addr;
     C.freeStatus(a).then(function (st) {
       if (W.addr !== a) return;                             // 问的过程中又换了地址就作废

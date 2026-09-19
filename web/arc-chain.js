@@ -332,6 +332,14 @@
       });
     });
   }
+  /** 付费口的按地址计数：paidMintCount / paidPerAddr。读不到（旧合约 / 节点抖）回 supported:false。 */
+  function paidStatus(addr) {
+    return Promise.all([
+      callUint('paidMintCount(address)', encAddress(addr)),
+      callUint('paidPerAddr()', '')
+    ]).then(function (v) { return { supported: true, used: v[0], cap: v[1] }; },
+      function () { return { supported: false, used: null, cap: null }; });
+  }
   /* 这一枚该付多少 wei。**付费口是一口价 price()** —— 原来这里问的是 v4 的分档价
      priceBnb[rarity]，而 v5 字节码里根本没有那个函数，eth_call 一律 revert 0x，
      用户看到的就是「铸造失败: execution reverted: 0x」（2026-08-21 币安钱包实测）。
@@ -607,6 +615,7 @@
     freeLeft: freeLeft,
     usedFree: usedFree,
     freeStatus: freeStatus,
+    paidStatus: paidStatus,
     mintValueFor: mintValueFor,
     ownerOf: ownerOf,
     tokenURI: tokenURI,
