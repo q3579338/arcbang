@@ -296,6 +296,22 @@ textarea{min-height:88px;resize:vertical;word-break:break-all;line-height:1.5}
   <div class="dw-msg" id="msg6"></div>
 </section>
 
+<section class="dw-step" id="step7">
+  <h2><span class="n">07</span>官号授权（自动核验）<span class="tick" id="tick7"></span></h2>
+  <p>任务系统的点赞核验只对<b>推文作者本人</b>的授权返回数据。站方官号在任务页用 X 登录一次，
+     服务端即记录该授权并用于全部自动核验；不登记、不影响其他账号。每个环境（排练 / 正式）各做一次。</p>
+  <ol class="dw-list">
+    <li>浏览器切换到官号（<span class="mono" id="v7want">@arcbang_xyz</span>）。</li>
+    <li>打开任务页，点「用 X 登录」并在 X 上确认。</li>
+    <li>回到本页点「刷新状态」，显示已授权即完成。之后可退出登录，换回个人账号。</li>
+  </ol>
+  <div class="dw-row">
+    <a class="gh" id="btnGoQuest" href="quest.html" target="_blank" rel="noopener">打开任务页登录</a>
+    <button id="btnOwner7" type="button">刷新状态</button>
+  </div>
+  <div class="dw-msg" id="msg7"></div>
+</section>
+
 <p class="dw-foot">
   合约源码 <code>contracts/src/ArcUniverse.sol</code> / <code>contracts/src/ArcMarket.sol</code>；
   无浏览器时的备用路径是 <code>contracts/tools/deploy-arc.mjs</code>（私钥走环境变量）。
@@ -1045,6 +1061,27 @@ $('btnCheck6').addEventListener('click', function () {
 lockAll();
 msg($('msg1'), '目标链：' + NET().label + '（chainId ' + NET().id + '，RPC ' + NET().rpc[0] + '）' +
   (NET().fromCfg ? '　—— 链参数来自 config.js' : '　—— config.js 里没有这条链，用的是页面内置参数'), 'dim');
+
+/* ---- 07 官号授权：只读 /api/x/owner，不碰任何 token ---- */
+function ownerCheck7(quiet) {
+  var base = (window.ARCBANG_CONFIG && window.ARCBANG_CONFIG.apiBase) || '/api';
+  fetch(base + '/x/owner', { headers: { accept: 'application/json' } }).then(function (r) { return r.json(); }).then(function (j) {
+    var want = $('v7want'); if (want && j.want) want.textContent = '@' + j.want;
+    var t = $('tick7');
+    if (j.authorized) {
+      if (t) t.textContent = '✓';
+      msg($('msg7'), '已授权：@' + (j.handle || j.want) + '（' + (j.at ? new Date(j.at).toLocaleString() : '') + '）。自动核验使用该授权。', 'ok');
+    } else if (!j.loginConfigured) {
+      if (t) t.textContent = '';
+      msg($('msg7'), '服务端尚未配置 X 登录凭证（.store/xauth.json），先在后台配置后再授权。', 'err');
+    } else {
+      if (t) t.textContent = '';
+      if (!quiet) msg($('msg7'), '尚未授权。请用官号在任务页登录一次后再刷新。', 'err');
+    }
+  }).catch(function () { if (!quiet) msg($('msg7'), '读不到状态：服务端 API 不可达。', 'err'); });
+}
+$('btnOwner7').addEventListener('click', function () { ownerCheck7(false); });
+ownerCheck7(true);
 </script>
 </body>
 </html>

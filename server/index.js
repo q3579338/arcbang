@@ -867,6 +867,16 @@ async function handle(req, res, u) {
       });
     }
 
+    /* 站方官号授权了没（部署向导第 7 步问它）。只回有没有、用户名、时间，token 一个字符不出。 */
+    if (p === '/x/owner' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const ci = XA.credInfo();
+      return json(res, 200, {
+        authorized: !!ci.hasOwnerToken, handle: ci.ownerHandle || null, at: ci.ownerAt || null,
+        want: String(process.env.ARCBANG_X_HANDLE || 'arcbang_xyz').replace(/^@+/, ''),
+        loginConfigured: !!ci.configured
+      }, { 'cache-control': 'no-store' });
+    }
+
     /* 页面问「我登录了吗」。没登录回 200 + {login:false} —— 这不是错误。 */
     if (p === '/x/me' && (req.method === 'GET' || req.method === 'HEAD')) {
       const s = XA.fromReq(req);

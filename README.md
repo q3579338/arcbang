@@ -248,3 +248,14 @@ npm test          # 引擎 / 服务端 / 两份合约的全部测试
 ```
 
 This repository is the single source of truth for ARCBANG. It builds and runs on its own.
+
+## Deploy checklist addendum / 部署补充：官号授权
+
+After contracts and config are in place, sign in to the quest page once **as the official X account**
+(`ARCBANG_X_HANDLE`, default `@arcbang_xyz`). The callback stores that account's access token server-side
+(`.store/xauth.json`, never displayed) and the auto-verifier uses it: X only returns a post's likers to the
+post's author. Step 07 of `deploy.html` shows whether this is done. Do it once per environment.
+
+合约与配置就绪后，用**官号**在任务页用 X 登录一次即可：回调把官号的授权存到服务端，自动核验改用它
+（X 的点赞列表只对推文作者本人返回）。`deploy.html` 第 07 步会显示是否已授权，每个环境做一次。
+
