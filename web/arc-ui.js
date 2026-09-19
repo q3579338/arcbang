@@ -274,9 +274,12 @@
     var no = o && o.no;
     var token = (no != null && isFinite(no)) ? String(no) : String((o && o.hash) || '');
     var site = siteRoot();
-    if (site) return site + '/s/' + token + (ref ? '?ref=' + encodeURIComponent(ref) : '');
-    var base = String(location.href).split(/[?#]/)[0].replace(/[^\/]*$/, '') + 'app.html';
-    return base + '?bang=' + token + (ref ? '&ref=' + encodeURIComponent(ref) : '');
+    /* v=<shareVer>：社交平台按 URL 缓存卡片，版本号一改就是新链接、新卡片（config.shareVer） */
+    var ver = String((root.ARCBANG_CONFIG || {}).shareVer || '');
+    var tail = (ref ? '&ref=' + encodeURIComponent(ref) : '') + (ver ? '&v=' + encodeURIComponent(ver) : '');
+    if (site) return site + '/s/' + token + tail.replace(/^&/, '?');
+    var base = String(location.href).split(/[?#]/)[0].replace(/[^/]*$/, '') + 'app.html';
+    return base + '?bang=' + token + tail;
   }
   /** 老签名留着：BnbShare.url(hash, addr) 曾经就是这个形状，外面可能还有人拿着它 */
   function appShareUrl(hash, myAddr) { return shareUrl({ hash: hash }, myAddr); }

@@ -1054,7 +1054,9 @@ button,input{font-family:inherit}
   /** 邀请链接。按**当前这一页的地址**拼：首页被切成任务页时它就是 /，
       独立发布时它是 /quest.html。写死任何一个都会在另一种情况下指错。 */
   function inviteLink(st) {
-    return location.origin + location.pathname + '?ref=' + ((st && st.code) || '');
+    /* v=<shareVer>：让社交平台把它当新链接重抓卡片（见 config.arc.js） */
+    var ver = String(CFG.shareVer || '');
+    return location.origin + location.pathname + '?ref=' + ((st && st.code) || '') + (ver ? '&v=' + encodeURIComponent(ver) : '');
   }
   /** 两张要交链接的卡上写清楚「按谁核」：自动核的第一关就是比作者，
       作者对不上直接不通过 —— 那就该在他贴链接之前说，而不是之后。
