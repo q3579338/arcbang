@@ -2946,6 +2946,15 @@ function create(opts) {
     const deny = denyReason(minter, now);
     if (deny) return deny;
     const p = phaseNow(now);
+    /* 安全网：放号阶段第一张签名之前榜单还没定格（后台忘了点、或开放时间到点自动推进），
+       这里替他定格一次并留痕。不定格的话名单会随积分实时变，有人铸到一半被挤出名单。 */
+    if (p !== 'warmup' && !isFrozen()) {
+      try {
+        const r = freeze(now);
+        logPhase({ at: new Date(now == null ? Date.now() : now).toISOString(), auto: 'freeze', phase: p, by: 'auto', gtd: r && r.gtd, fcfs: r && r.fcfs });
+        console.log('[allowlist] 放号阶段（' + p + '）榜单未定格，已自动定格');
+      } catch (e) { console.error('[allowlist] 自动定格失败：' + (e && e.message)); }
+    }
     const tier = tierOf(minter);
     /* public 段的路人：一律付费，**根本不必问链** —— 那 387 枚免费额度是留给名单的，
        不该被公售的人先抢走，所以这里连「还剩几枚」都不需要知道。 */

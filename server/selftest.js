@@ -3116,7 +3116,7 @@ function call(method, url, body, headers) {
 
     /* ---- status / board：公开的是规则，私密的只对本人 ---- */
     {
-      const st = await AL.status(a1);
+      let st = await AL.status(a1);
       /* **不回具体名次**（用户拍板）：只说在不在公开榜里、还差几分进去。 */
       ok('status 回自己的积分、明细、登记码，但不回名次数字',
         st.registered === true && st.points === AL.scoreOf(a1).total
@@ -3124,6 +3124,10 @@ function call(method, url, body, headers) {
         && st.rank === undefined && typeof st.inTop100 === 'boolean'
         && typeof st.gapToTop100 === 'number');
       ok('status 带上分值表（页面上一个分值都不写死）', st.pts.register === 10);
+      /* 上面 gate() 在放号阶段跑过：安全网会自动定格。这里要测的是「定格之前」的口径，先解除。 */
+      AL.unfreeze();
+      process.env.ARCBANG_PHASE = 'warmup';
+      st = await AL.status(a1);
       /* **不承诺名额**（2026-09-18 用户拍板）：定格之前人数与名额上限一律 null，
          不然 ARCBANG_GTD_TOP 会从「前 100 名是保底」这句话里被反推出来。 */
       ok('定格之前 status 给两档人数、不给名额上限；合约那个 387 硬上限照给',
