@@ -3113,8 +3113,11 @@
       var run = function () {
         if (ran) return;
         ran = true;
-        S.anDeferred = false;
-        if (S.analysisOpen && S.sim === sim) openAnalysis();
+        /* 标志要**保持为 true 进入第二次调用**，第二次才会跳过延迟分支去拼正文；
+           拼完再清掉，下次打开重新走一遍延迟。原来先清再调，第二次又进延迟分支，
+           永远停在「正在生成计算报告」。 */
+        try { if (S.analysisOpen && S.sim === sim) openAnalysis(); }
+        finally { S.anDeferred = false; }
       };
       (window.requestAnimationFrame || setTimeout)(run);
       setTimeout(run, 150);
