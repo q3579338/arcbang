@@ -716,9 +716,12 @@ async function handle(req, res, u) {
       phase: AL.phase(), phaseOpens: AL.opens(), phaseNext: AL.nextOpen(),
       /* **不承诺名额**：定格之前 publicCounts 里的数字全是 null（见 allowlist.js）。
          /health 是公开接口，不能从这里把 ARCBANG_GTD_TOP 漏出去。 */
-      allowlist: AL.publicCounts(), allowlistApplied: AL.appliedCount(),
-      allowlistBoardSize: AL.board().rows.length,
-      allowlistPts: AL.pointsTable(), allowlistTop: AL.topRows(10)
+      /* 登记不满 ARCBANG_BOARD_MIN：人数与榜前 10 都不给（allowlistHidden = true）。 */
+      allowlist: AL.publicCounts(),
+      allowlistHidden: AL.boardHidden(), allowlistBoardMin: AL.boardMin(),
+      allowlistApplied: AL.boardHidden() ? null : AL.appliedCount(),
+      allowlistBoardSize: AL.boardHidden() ? null : AL.board().rows.length,
+      allowlistPts: AL.pointsTable(), allowlistTop: AL.boardHidden() ? [] : AL.topRows(10)
     });
   }
 

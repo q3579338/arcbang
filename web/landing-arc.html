@@ -1393,8 +1393,10 @@ a.cardc:hover code{color:var(--ab-signal)}
        3. 天数读不出来时只写人数，不编一个数字出来。 */
   (function () {
     var base = (CFG.apiBase != null ? CFG.apiBase : '/api').replace(/\/$/, '');
+    var LAST = null;
     function paint(st) {
       if (!st || st.phase !== 'warmup') return;
+      LAST = st;
       var end = (st.warmup && st.warmup.end) || (st.opens && st.opens.gtd);
       var days = null;
       if (end) {
@@ -1402,9 +1404,20 @@ a.cardc:hover code{color:var(--ab-signal)}
         if (ms > 0) days = Math.ceil(ms / 86400000);
       }
       var n = st.boardSize == null ? null : st.boardSize;
-      var txt = days != null
-        ? TF('预热期进行中 · 剩余 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人', days, n == null ? '—' : grp(n))
-        : TF('预热期进行中 · 已登记 <b>{0}</b> 人', n == null ? '—' : grp(n));
+      var txt;
+      if (st.hidden) {
+        /* 登记不满门槛：人数不公开，横幅不写人数。 */
+        txt = days != null ? TF('预热期进行中 · 剩余 <b>{0}</b> 天', days) : T('预热期进行中');
+      } else {
+        txt = days != null
+          ? TF('预热期进行中 · 剩余 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人', days, n == null ? '—' : grp(n))
+          : TF('预热期进行中 · 已登记 <b>{0}</b> 人', n == null ? '—' : grp(n));
+      }
+      /* 稀缺提示：服务端只在「登记 < 门槛 且 登记 < 保底名额」时给 gtdSpots，那时这句才是真话。 */
+      if (st.hidden && st.gtdSpots != null && st.boardMin != null) {
+        txt += '<br>' + TF('目前登记不足 {0} 人，保底名额共 {1} 个：完成登记与任务即可进入保底名单。',
+          '<b>' + grp(st.boardMin) + '</b>', '<b>' + grp(st.gtdSpots) + '</b>');
+      }
       $('warmText').innerHTML = txt;
       $('warmBanner').hidden = false;
     }
@@ -1419,6 +1432,8 @@ a.cardc:hover code{color:var(--ab-signal)}
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(paint)
       .catch(function () { /* 读不到就不出现 */ });
+    /* 切语言：用上一份读数原地重画（带占位符的句子 DOM 遍历够不着）。 */
+    document.addEventListener('mirror:lang', function () { if (LAST) { try { paint(LAST); } catch (e) { } } });
   })();
 
   /* 语言切换：用同一份 RAW 重画动态区（数字不变，标签换语言）。

@@ -588,6 +588,15 @@
     '预热期进行中 · 剩余 <b>{0}</b> 天 · 已登记 <b>{1}</b> 人':
       'Warm-up in progress · <b>{0}</b> days remaining · <b>{1}</b> registered',
     '预热期进行中 · 已登记 <b>{0}</b> 人': 'Warm-up in progress · <b>{0}</b> registered',
+    '预热期进行中 · 剩余 <b>{0}</b> 天': 'Warm-up in progress · <b>{0}</b> days remaining',
+    /* ---- 登记不满门槛时藏榜（2026-09-22）+ 保底名额稀缺提示 ----
+       {0} = 服务端 boardMin（ARCBANG_BOARD_MIN），{1} = 保底名额 gtdSpots。
+       稀缺那句只在「登记 < 门槛 且 登记 < 保底名额」时出现，由服务端决定。 */
+    '积分榜将在登记满 {0} 人后公开。': 'The leaderboard goes public once {0} addresses have registered.',
+    '目前登记不足 {0} 人，保底名额共 {1} 个：完成登记与任务即可进入保底名单。':
+      'Fewer than {0} addresses have registered and there are {1} guaranteed spots: register and complete the quests to secure one.',
+    '当前在保底名单内': 'On the guaranteed list',
+    '当前在先到先得名单内': 'On the first-come, first-served list',
     '前往任务页': 'View quests',
     '用 X 登录绑定': 'via Sign in with X',
     '核对 @{0} 发的那条': 'We check the post from @{0}',

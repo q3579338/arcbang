@@ -893,8 +893,10 @@ footer a:hover{text-decoration:underline}
     $('phFrozen').className = (!frozen && p && p !== 'warmup') ? 'bad' : '';
     /* 定格之前服务端一律回 null（**不承诺名额**）：这里就写「定格时公布」，
        不要自己拿榜的长度去猜一个数出来。 */
-    $('phGtd').textContent = c.gtd == null ? T('定格时公布') : String(c.gtd);
-    $('phFcfs').textContent = c.fcfs == null ? T('定格时公布') : String(c.fcfs);
+    /* 登记不满门槛（allowlistHidden）：人数格一律「—」，不写 0 也不写「定格时公布」。 */
+    var hid = !!h.allowlistHidden;
+    $('phGtd').textContent = hid ? '—' : (c.gtd == null ? T('定格时公布') : String(c.gtd));
+    $('phFcfs').textContent = hid ? '—' : (c.fcfs == null ? T('定格时公布') : String(c.fcfs));
     $('phApplied').textContent = h.allowlistBoardSize == null
       ? (h.allowlistApplied == null ? '—' : String(h.allowlistApplied))
       : String(h.allowlistBoardSize);
@@ -913,7 +915,9 @@ footer a:hover{text-decoration:underline}
     /* 榜前 10。空榜就写一句，别留个空框。 */
     var top = h.allowlistTop || [];
     var TIER = { gtd: '白名单', fcfs: '先到先得' };
-    $('phTop').innerHTML = !top.length
+    $('phTop').innerHTML = hid
+      ? '<div class="row"><span class="k">' + TN('积分榜将在登记满 {0} 人后公开。', h.allowlistBoardMin == null ? 100 : h.allowlistBoardMin) + '</span><span class="dimtx">—</span></div>'
+      : !top.length
       ? '<div class="row"><span class="k">' + T('暂无上榜地址') + '</span><span class="dimtx">—</span></div>'
       : top.map(function (r) {
           return '<div class="row"><span class="k">'

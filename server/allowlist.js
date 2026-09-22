@@ -147,6 +147,9 @@ const BOARD_TTL_MS = 30 * 1000;
     第 101 名往后不在榜上出现 —— 但他自己的名次、积分、离保底名额差几分
     照常在 status 里回给**他本人**。这道上限在服务端夹死，前端改不了。 */
 const BOARD_PUBLIC_MAX = 100;
+/** 登记数不到这个门槛时，积分榜与一切人数都不对外（2026-09-22 用户拍板）。
+    ARCBANG_BOARD_MIN，默认 100；每次现读，改 env 重启即生效。0 = 不设门槛。 */
+function boardMin() { return envInt('ARCBANG_BOARD_MIN', 100); }
 
 /** 合约里那个免费额度硬上限（ArcUniverse.freeCap 的部署默认值）。
     2026-09-19 用户拍板：总量 1,387 = 免费 887 + 付费 500。
@@ -2095,10 +2098,25 @@ function create(opts) {
     /* 2026-09-19 用户改口径：**两档人数实时显示**（状态实时可查）。
        但**名额上限仍然不公布** —— gtdTop / freeTop 在定格之前一律 null。
        人数是事实（现在有多少人站在这一层），上限是承诺（我们要发多少个），两件事。 */
-    if (!c.frozen) {
-      return { frozen: false, gtd: c.gtd, fcfs: c.fcfs, total: c.total, gtdTop: null, freeTop: null };
+    /* 2026-09-22：登记不满 ARCBANG_BOARD_MIN 时人数一个都不给（hidden:true）。
+       十几个人的榜摆出来只会劝退；管理员那一份走 counts()，不受影响。 */
+    if (boardHidden()) {
+      return { frozen: c.frozen, hidden: true, boardMin: boardMin(), gtd: null, fcfs: null, total: null,
+        gtdTop: c.frozen ? c.gtdTop : null, freeTop: c.frozen ? c.freeTop : null };
     }
-    return { frozen: true, gtd: c.gtd, fcfs: c.fcfs, total: c.total, gtdTop: c.gtdTop, freeTop: c.freeTop };
+    if (!c.frozen) {
+      return { frozen: false, hidden: false, boardMin: boardMin(), gtd: c.gtd, fcfs: c.fcfs, total: c.total, gtdTop: null, freeTop: null };
+    }
+    return { frozen: true, hidden: false, boardMin: boardMin(), gtd: c.gtd, fcfs: c.fcfs, total: c.total, gtdTop: c.gtdTop, freeTop: c.freeTop };
+  }
+  /** 对外是否藏榜：登记数 < ARCBANG_BOARD_MIN。 */
+  function boardHidden() { return appliedCount() < boardMin(); }
+  /** 稀缺提示里的保底名额数 G。**只在藏榜且登记数 < G 时给**：
+      那时每个有积分的人都在保底线内，「完成登记与任务即可进入保底名单」才是真话。
+      其余时候回 null，页面上那句就不出现。 */
+  function gtdSpots() {
+    const g = topsNow().gtd;
+    return (boardHidden() && appliedCount() < g) ? g : null;
   }
 
   /** 离榜上上一名差几分（同分也算 0 —— 同分时先登记的在前，追平还不够，但那一句由页面说）。 */
@@ -2777,6 +2795,7 @@ function create(opts) {
     const s = scoreOf(addr, now);
     const T = topsNow();
     const API = apiInfo();
+    const hidden = boardHidden();
     let freeLeft = null;
     if (readFreeLeft) {
       try { const v = await readFreeLeft(); freeLeft = v == null ? null : Number(v); }
@@ -2794,8 +2813,13 @@ function create(opts) {
       /* **不承诺名额**：定格之前这里的数字全是 null（见 publicCounts 的说明）。 */
       counts: publicCounts(),
       cap: NFT_FREE_CAP,                           // 合约的硬上限，公开可查，说它不算承诺
-      applied: appliedCount(),
-      boardSize: board(now).rows.length,
+      /* 登记不满门槛（hidden）时两个人数都不给。 */
+      applied: hidden ? null : appliedCount(),
+      boardSize: hidden ? null : board(now).rows.length,
+      hidden, boardMin: boardMin(),
+      gtdSpots: gtdSpots(),                        // 稀缺提示的 G；不该说那句时为 null
+      /* 本人在不在保底线（gtdTop）内。只说在不在，不给名次。 */
+      inGuaranteed: addr ? (!!s.registered && tierOf(addr, now) === 'gtd') : false,
       boardPublicMax: BOARD_PUBLIC_MAX,            // 榜只公布前这么多名
       /* ---- 本人那一份 ---- */
       registered: s.registered,
@@ -2948,10 +2972,12 @@ function create(opts) {
       名额数量定格之前不出门（见 publicCounts / topRows 的说明）。 */
   function boardView(top) {
     const c = publicCounts();
+    const hidden = !!c.hidden;
+    /* 登记不满门槛：榜是空的、人数是 null，页面照 hidden 写那一句「将在登记满 N 人后公开」。 */
     return {
-      phase: phaseNow(), frozen: c.frozen,
+      phase: phaseNow(), frozen: c.frozen, hidden, boardMin: boardMin(), gtdSpots: gtdSpots(),
       gtdTop: c.gtdTop, freeTop: c.freeTop, cap: NFT_FREE_CAP, publicMax: BOARD_PUBLIC_MAX,
-      total: board().rows.length, pts: pointsTable(), rows: topRows(top)
+      total: hidden ? null : board().rows.length, pts: pointsTable(), rows: hidden ? [] : topRows(top)
     };
   }
 
@@ -3052,7 +3078,7 @@ function create(opts) {
     pointsTable, tops: topsNow, inviteCount, validInviteCount, shareDaysOf, sharesOf, isVerified, hasCheck,
     xHandle, followUrl, likeUrl, CHECKS,
     // 名单
-    tierOf, tasksDone, counts, publicCounts, isFrozen, freeze, unfreeze,
+    tierOf, tasksDone, counts, publicCounts, boardHidden, boardMin, gtdSpots, isFrozen, freeze, unfreeze,
     addAddresses, removeAddresses, setTier, listFile, appliedFile, stateFile,
     // 登记 / 核验 / 分享
     register, share, bang, bangsOf,

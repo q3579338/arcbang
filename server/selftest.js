@@ -4,6 +4,9 @@
  */
 'use strict';
 require('./env-compat.js');            // 环境变量旧名兼容，排在所有 require 之前
+/* 藏榜门槛（ARCBANG_BOARD_MIN，默认 100）：老断言都是十来个登记的小场景，
+   这里整体关掉门槛；门槛本身的断言在 [BOARD_MIN] 那一节里单独拨。 */
+process.env.ARCBANG_BOARD_MIN = '0';
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -4380,6 +4383,74 @@ function call(method, url, body, headers) {
 
       if (svTop === undefined) delete process.env.ARCBANG_GTD_TOP; else process.env.ARCBANG_GTD_TOP = svTop;
       if (svFree === undefined) delete process.env.ARCBANG_FREE_TOP; else process.env.ARCBANG_FREE_TOP = svFree;
+    }
+
+    /* ---- [BOARD_MIN] 登记不满门槛时藏榜与人数（2026-09-22） ---- */
+    {
+      const bdir = path.join(TMP, 'boardmin'); fs.mkdirSync(bdir, { recursive: true });
+      const sv = { m: process.env.ARCBANG_BOARD_MIN, g: process.env.ARCBANG_GTD_TOP, f: process.env.ARCBANG_FREE_TOP };
+      process.env.ARCBANG_BOARD_MIN = '3';
+      process.env.ARCBANG_GTD_TOP = '5';
+      delete process.env.ARCBANG_FREE_TOP;
+      const ALM = ALX6.create({ storeDir: bdir, take: () => ({ ok: true }) });
+      const mkM = (h, task) => {
+        const w = new Wallet('0x' + h.repeat(32));
+        ALM.register({ address: w.address, xHandle: 'm' + h, sig: w.signMessageSync(ALX6.registerMessage(w.address)) }, '4.4.4.4');
+        const a = w.address.toLowerCase();
+        if (task) ALM.verify(a, { repost: true });
+        return a;
+      };
+      const m1 = mkM('81', true), m2 = mkM('82', false);
+      const bvH = ALM.boardView(100);
+      ok('门槛下：公开榜 rows 为空、hidden 为真、带 boardMin、total 为 null',
+        bvH.hidden === true && Array.isArray(bvH.rows) && bvH.rows.length === 0 && bvH.boardMin === 3 && bvH.total === null,
+        JSON.stringify({ h: bvH.hidden, n: bvH.rows.length, m: bvH.boardMin, t: bvH.total }));
+      const pcH = ALM.publicCounts();
+      ok('门槛下：publicCounts 的 gtd / fcfs / total 全为 null',
+        pcH.hidden === true && pcH.gtd === null && pcH.fcfs === null && pcH.total === null, JSON.stringify(pcH));
+      const stH = await ALM.status(m1);
+      ok('门槛下：status 不给登记数、在榜人数与两档人数',
+        stH.hidden === true && stH.applied === null && stH.boardSize === null
+        && stH.counts.gtd === null && stH.counts.fcfs === null && stH.counts.total === null,
+        JSON.stringify({ a: stH.applied, b: stH.boardSize, c: stH.counts }));
+      ok('门槛下：本人仍拿得到积分、层级与 inGuaranteed，且不回名次',
+        stH.points > 0 && stH.tier === 'gtd' && stH.inGuaranteed === true && !('rank' in stH),
+        JSON.stringify({ p: stH.points, t: stH.tier, g: stH.inGuaranteed }));
+      ok('门槛下且登记数 < 保底名额：gtdSpots 给出保底名额数', stH.gtdSpots === 5 && bvH.gtdSpots === 5, String(stH.gtdSpots));
+      const anonH = await ALM.status(null);
+      ok('未连钱包的 status 同样藏人数，inGuaranteed 为假', anonH.applied === null && anonH.inGuaranteed === false);
+      const adH = ALM.adminList();
+      const piH = ALM.phaseInfo();
+      ok('门槛下：管理员接口照常给全量（名单、人数、登记数）',
+        adH.total === 2 && adH.rows.length === 2 && adH.counts.total === 2 && adH.boardSize === 2 && piH.applied === 2,
+        JSON.stringify({ t: adH.total, c: adH.counts.total, a: piH.applied }));
+      const m3 = mkM('83', true);
+      const bvS = ALM.boardView(100);
+      const stS = await ALM.status(m2);
+      ok('登记数达到门槛：榜与人数照常公开',
+        bvS.hidden === false && bvS.rows.length === 3 && bvS.total === 3
+        && stS.hidden === false && stS.applied === 3 && stS.boardSize === 3 && stS.counts.total === 3,
+        JSON.stringify({ h: bvS.hidden, n: bvS.rows.length, a: stS.applied, c: stS.counts }));
+      ok('门槛上：稀缺提示的 gtdSpots 自动为 null', stS.gtdSpots === null && bvS.gtdSpots === null);
+      process.env.ARCBANG_BOARD_MIN = '10';
+      process.env.ARCBANG_GTD_TOP = '2';
+      const stG = await ALM.status(m3);
+      ok('藏榜但登记数 ≥ 保底名额：不再给 gtdSpots（那句话已不是真话）',
+        stG.hidden === true && stG.gtdSpots === null, JSON.stringify({ h: stG.hidden, g: stG.gtdSpots }));
+      ok('保底线之外的已登记用户 inGuaranteed 为假', stG.inGuaranteed === false && stG.tier !== 'gtd', String(stG.tier));
+      {
+        const rd = (n) => fs.readFileSync(path.join(__dirname, '..', 'web', n), 'utf8');
+        const dictM = rd('i18n-arc-site.js'), qM = rd('quest-arc.html'), sM = rd('status.html'), lM = rd('landing-arc.html');
+        ok('藏榜与稀缺提示的中英词条齐全',
+          ['积分榜将在登记满 {0} 人后公开。', '目前登记不足 {0} 人，保底名额共 {1} 个：完成登记与任务即可进入保底名单。',
+            '当前在保底名单内', '当前在先到先得名单内'].every((k) => dictM.indexOf("'" + k + "':") > 0));
+        ok('任务页 / 状态页 / 首页都按 hidden 分支，稀缺句只看服务端 gtdSpots',
+          qM.indexOf('BD.hidden') > 0 && qM.indexOf('st.gtdSpots != null') > 0
+          && sM.indexOf('allowlistHidden') > 0 && lM.indexOf('st.gtdSpots != null') > 0);
+      }
+      if (sv.m === undefined) delete process.env.ARCBANG_BOARD_MIN; else process.env.ARCBANG_BOARD_MIN = sv.m;
+      if (sv.g === undefined) delete process.env.ARCBANG_GTD_TOP; else process.env.ARCBANG_GTD_TOP = sv.g;
+      if (sv.f === undefined) delete process.env.ARCBANG_FREE_TOP; else process.env.ARCBANG_FREE_TOP = sv.f;
     }
 
     /* ---- 排练数据：seed / unseed ---- */

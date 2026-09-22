@@ -138,6 +138,9 @@ button,input{font-family:inherit}
   font-size:clamp(26px,3.6vw,42px);font-weight:600;line-height:1;letter-spacing:-.02em}
 .ab-cd-k{display:block;margin-top:8px;font-size:var(--t-xs);color:rgba(214,220,238,.62)}
 .ab-when{margin-top:16px;font-size:var(--t-s);color:var(--ab-graphite)}
+/* 稀缺提示：只在登记不满门槛、且登记数 < 保底名额时由脚本放出来（服务端给 gtdSpots）。 */
+.ab-scarce{margin-top:18px;font-size:var(--t-s);line-height:1.6;font-weight:600;max-width:60ch}
+.ab-scarce b{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .ab-phase{display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:6px 14px;
   border:1px solid rgba(19,33,74,.28);border-radius:999px;font-size:var(--t-xs);font-weight:600}
 .ab-phase b{color:var(--ab-signal)}
@@ -438,6 +441,7 @@ button,input{font-family:inherit}
       <a class="ab-btn2" href="app.html">前往引爆</a>
       <a class="ab-btn2" href="check.html">资格查询</a>
     </div>
+    <p class="ab-scarce" id="scarceLine" hidden></p>
   </div>
 </section>
 
@@ -977,6 +981,16 @@ button,input{font-family:inherit}
     }
 
     $('kvApplied').textContent = st.boardSize == null ? '—' : String(st.boardSize);
+    /* 稀缺提示：服务端只在「登记 < 门槛 且 登记 < 保底名额」时给 gtdSpots，别处一律 null。
+       那时每个有积分的人都在保底线内，这句话才是真话；页面不自己判断。 */
+    var sc = $('scarceLine');
+    if (st.hidden && st.gtdSpots != null && st.boardMin != null) {
+      sc.innerHTML = TF('目前登记不足 {0} 人，保底名额共 {1} 个：完成登记与任务即可进入保底名单。',
+        '<b>' + esc(st.boardMin) + '</b>', '<b>' + esc(st.gtdSpots) + '</b>');
+      sc.hidden = false;
+    } else {
+      sc.hidden = true;
+    }
     $('kvCap').textContent = st.cap == null ? '887' : String(st.cap);
     /* 免费剩余：合约开铸前一枚没放，剩余就等于上限；开铸后由服务端按链上 freeMinted 算 */
     $('kvFree').textContent = st.freeLeft != null ? String(st.freeLeft)
@@ -1764,8 +1778,9 @@ button,input{font-family:inherit}
     var t = st.tier;
     var k = (t === 'gtd' || t === 'fcfs') ? t : 'none';
     var tag = $('tierTag');
-    tag.className = 'ab-tag ' + k;
-    tag.textContent = T(TIER_CN[t] || '未获资格');
+    tag.className = 'ab-tag ' + (st.inGuaranteed ? 'gtd' : k);
+    tag.textContent = st.inGuaranteed ? T('当前在保底名单内')
+      : t === 'fcfs' ? T('当前在先到先得名单内') : T('未获资格');
     $('tierWhy').textContent = t === 'gtd' ? T('白名单：在白名单阶段优先铸造。')
       : t === 'fcfs' ? T('先到先得：白名单阶段之后按顺序领取剩余免费名额。')
         : T('未获资格：完成任一任务即可进入先到先得。');
@@ -1776,6 +1791,16 @@ button,input{font-family:inherit}
     if (bd) BD = bd;
     var rows = (BD && BD.rows) || [];
     var body = $('boardBody');
+    /* 登记不满门槛（服务端 hidden）：不画榜、不写人数，只写一句什么时候公开。 */
+    if (BD && BD.hidden) {
+      body.innerHTML = '<tr><td colspan="3"><div class="ab-empty">'
+        + esc(TF('积分榜将在登记满 {0} 人后公开。', BD.boardMin == null ? 100 : BD.boardMin)) + '</div></td></tr>';
+      $('boardFoot').textContent = '';
+      $('btnMore').hidden = true;
+      $('meLine').hidden = true;
+      $('kvApplied').textContent = '—';
+      return;
+    }
     if (!rows.length) {
       body.innerHTML = '<tr><td colspan="3"><div class="ab-empty">'
         + '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2"/>'
