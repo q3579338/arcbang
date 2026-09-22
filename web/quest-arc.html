@@ -480,7 +480,7 @@ button,input{font-family:inherit}
       </div>
       <div class="ab-stat">
         <b class="ab-stat-v" id="stTop">—</b>
-        <span class="ab-stat-k">TOP 100</span>
+        <span class="ab-stat-k" id="stTopK">TOP 100</span>
         <span class="ab-stat-s" id="stTopSub">按积分排名</span>
       </div>
       <div class="ab-stat">
@@ -1368,10 +1368,20 @@ button,input{font-family:inherit}
     $('stInv').textContent = connected ? ((st.validInvites || 0) + ' / ' + (P.inviteMax || 10)) : '—';
     $('stInvSub').textContent = TF('每位 +{0} 分', P.invite || 10);
 
-    var inTop = !!st.inTop100;
-    $('stTop').textContent = connected ? (inTop ? T('已进入') : ('+' + (st.gapToTop100 == null ? '—' : st.gapToTop100))) : '—';
-    $('stTop').parentNode.classList.toggle('in', connected && inTop);
-    $('stTopSub').textContent = connected ? (inTop ? T('已进 TOP 100') : T('距 TOP 100 所需积分')) : T('按积分排名');
+    /* 登记未满门槛（榜单隐藏）时「TOP 100」没有意义 —— 人人都在前 100。这时这一格改成「保底名单」。 */
+    if (st.hidden) {
+      var inG = !!st.inGuaranteed;
+      $('stTopK').textContent = T('保底名单');
+      $('stTop').textContent = connected ? (inG ? T('已在内') : T('未在内')) : '—';
+      $('stTop').parentNode.classList.toggle('in', connected && inG);
+      $('stTopSub').textContent = st.gtdSpots != null ? TF('共 {0} 个名额', st.gtdSpots) : T('按积分排名');
+    } else {
+      var inTop = !!st.inTop100;
+      $('stTopK').textContent = 'TOP 100';
+      $('stTop').textContent = connected ? (inTop ? T('已进入') : ('+' + (st.gapToTop100 == null ? '—' : st.gapToTop100))) : '—';
+      $('stTop').parentNode.classList.toggle('in', connected && inTop);
+      $('stTopSub').textContent = connected ? (inTop ? T('已进 TOP 100') : T('距 TOP 100 所需积分')) : T('按积分排名');
+    }
 
     /* 剩余天数：预热结束时间来自服务端（ARCBANG_WARMUP_START + 天数）。 */
     var end = (st.warmup && st.warmup.end) || (st.opens && st.opens.gtd) || (st.next && st.next.at);
@@ -1837,8 +1847,8 @@ button,input{font-family:inherit}
         + '<span>' + esc(T('你')) + '</span>'
         + '<b>' + (ST.points || 0) + '</b><span class="lag">' + esc(T('分')) + '</span>'
         + tierTag(ST.tier)
-        + '<span class="lag">' + esc(ST.inTop100 ? T('已进 TOP 100')
-          : TF('距 TOP 100 还差 {0} 分', ST.gapToTop100 == null ? '—' : ST.gapToTop100)) + '</span>';
+        + (ST.hidden ? '' : '<span class="lag">' + esc(ST.inTop100 ? T('已进 TOP 100')
+          : TF('距 TOP 100 还差 {0} 分', ST.gapToTop100 == null ? '—' : ST.gapToTop100)) + '</span>');
     } else {
       ml.hidden = true;
     }
