@@ -1,0 +1,13 @@
+# /etc/systemd/system/arcbang-daily-pick.timer
+# 每天北京时间 09:00 跑一次 arcbang-daily-pick.service（错过了开机后补跑）。
+
+[Unit]
+Description=ARCBANG 每日稀有宇宙推文素材（北京时间 09:00）
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Asia/Shanghai
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

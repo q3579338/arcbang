@@ -1,0 +1,36 @@
+# /etc/systemd/system/arcbang-daily-pick.service
+#
+# 每日稀有宇宙：从 Arc 主网最近 3000 块里随机抽 400 个，本地算卡、挑一个结局稀有的，
+# 生成推文素材写进 .store/daily-picks.json，并经 PushPlus 推到微信（失败只记日志）。
+# 由 arcbang-daily-pick.timer 每天北京时间 09:00 触发；手动跑一次：
+#   systemctl start arcbang-daily-pick.service && journalctl -u arcbang-daily-pick -n 80
+#
+# PushPlus 令牌复用 /etc/btt-monitor.env 里的 BTT_PUSHPLUS_TOKEN（systemd 以 root 读入，不进仓库）。
+
+[Unit]
+Description=ARCBANG 每日稀有宇宙推文素材
+After=network-online.target arcbang-api.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=arcbang
+Group=arcbang
+WorkingDirectory=/opt/arcbang/server
+EnvironmentFile=/etc/arcbang/api.env
+EnvironmentFile=-/etc/btt-monitor.env
+Environment=ARCBANG_PORT=8803
+Environment=ARCBANG_STORE=/opt/arcbang/server/.store
+ExecStart=/usr/bin/node tools/daily-pick.js --push
+TimeoutStartSec=15min
+Nice=10
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/arcbang/server/.store
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=arcbang-daily-pick
