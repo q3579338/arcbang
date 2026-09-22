@@ -334,6 +334,14 @@ button,input{font-family:inherit}
 .ab-invc-n b{font-family:var(--mono);font-variant-numeric:tabular-nums;
   font-size:clamp(28px,4.4vw,40px);font-weight:700;line-height:1;letter-spacing:-.02em}
 .ab-invc-n span{font-size:var(--t-xs);color:var(--ab-graphite)}
+/* 邀请卡片：一张 1200×630 的图（/api/invite-card/<码>.png），缩略预览 + 下载。
+   发推时把图一起附上，比光秃秃一条链接显眼得多。 */
+.ab-invc-card{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;
+  margin:0 22px 18px;padding-top:18px;border-top:1px solid var(--ab-hair)}
+.ab-invc-card img{display:block;width:100%;max-width:360px;aspect-ratio:1200/630;height:auto;
+  border-radius:6px;border:1px solid var(--ab-hair);background:var(--ab-plate2);object-fit:cover}
+.ab-invc-card-side{flex:1 1 220px;min-width:0}
+.ab-invc-card-side p{margin:0 0 12px;font-size:var(--t-xs);line-height:1.65;color:var(--ab-graphite)}
 .ab-invc-foot{padding:0 22px 18px;font-size:var(--t-xs);line-height:1.65;color:var(--ab-graphite)}
 
 /* 邀请里程碑轨道：一条线 + 三个节点，走到哪亮到哪 */
@@ -595,6 +603,14 @@ button,input{font-family:inherit}
             <div class="ab-track" id="msTrack" aria-hidden="true"></div>
           </div>
 
+        </div>
+        <div class="ab-invc-card" id="invCardRow" hidden>
+          <img id="invCardImg" alt="邀请卡片" width="360" height="189" loading="lazy" decoding="async">
+          <div class="ab-invc-card-side">
+            <span class="ab-invc-k">邀请卡片</span>
+            <p>带有你的邀请码，可附在推文或群聊中分享。</p>
+            <button class="ab-btn3" type="button" id="btnInvCard">下载邀请卡片</button>
+          </div>
         </div>
         <p class="ab-invc-foot" id="inviteHint">被邀请人完成登记并通过核验后，计为一位有效邀请。</p>
       </section>
@@ -1100,12 +1116,14 @@ button,input{font-family:inherit}
     renderWho();
     syncJoinBtn();
   }
-  /** 邀请链接。按**当前这一页的地址**拼：首页被切成任务页时它就是 /，
-      独立发布时它是 /quest.html。写死任何一个都会在另一种情况下指错。 */
+  /** 邀请链接：/i/<码> 短链（服务端 invite.js）。社交平台抓到的预览是这个码自己的邀请卡片，
+      真人点开 302 到 quest.html?ref=<码>&v=<shareVer>。按当前站点的 origin 拼，排练站也对。 */
   function inviteLink(st) {
-    /* v=<shareVer>：让社交平台把它当新链接重抓卡片（见 config.arc.js） */
-    var ver = String(CFG.shareVer || '');
-    return location.origin + location.pathname + '?ref=' + ((st && st.code) || '') + (ver ? '&v=' + encodeURIComponent(ver) : '');
+    return location.origin + '/i/' + ((st && st.code) || '');
+  }
+  /** 邀请卡片 PNG（1200×630）。?v= 跟着服务端 invite.js 的 CARD_VER 走。 */
+  function inviteCardUrl(code) {
+    return BASE + '/invite-card/' + encodeURIComponent(code) + '.png?v=1';
   }
   /** 两张要交链接的卡上写清楚「按谁核」：自动核的第一关就是比作者，
       作者对不上直接不通过 —— 那就该在他贴链接之前说，而不是之后。
@@ -1673,9 +1691,18 @@ button,input{font-family:inherit}
     if (reg) {
       inv.hidden = false;
       inv.href = 'https://x.com/intent/post?text='
-        + encodeURIComponent(TF('我正在参与 ARCBANG 预热，积分榜前列可免费铸造。通过此链接登记：{0} @{1}',
-          link, st.xHandle || 'arcbang_xyz'));
+        + encodeURIComponent(TF('每个 Arc 区块哈希，都是一个宇宙。在 @arc 上免费铸造，887 枚免费。用我的邀请加入：{0}', link));
     } else { inv.hidden = true; }
+    /* 邀请卡片：登记过才有码、才有图。src 只在码变了时才换，60 秒一轮的刷新不重新拉图。 */
+    var cardRow = $('invCardRow');
+    cardRow.hidden = !(reg && st.code);
+    if (reg && st.code) {
+      var img = $('invCardImg');
+      var src = inviteCardUrl(st.code);
+      if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+      img.alt = TF('邀请卡片 · {0}', st.code);
+      $('btnInvCard').setAttribute('data-code', st.code);
+    }
     $('invN').textContent = String(st.validInvites || 0);
     $('invMax').textContent = '/ ' + (P.inviteMax || 10);
     $('inviteHint2').textContent = reg
@@ -2036,6 +2063,29 @@ button,input{font-family:inherit}
     var done = function () { var b = $('btnCopy'); b.textContent = T('已复制'); setTimeout(function () { b.textContent = T('复制'); }, 1600); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(el.value).then(done, function () { });
     else { try { document.execCommand('copy'); done(); } catch (e) { /* 老浏览器：已经选中了，让用户自己按 Ctrl+C */ } }
+  });
+
+  /* 下载邀请卡片：先 fetch 成 blob 再存（跨域时 <a download> 会被浏览器忽略，变成打开图片）；
+     fetch 不通就退回新窗口打开，让用户自己长按 / 右键保存。 */
+  $('btnInvCard').addEventListener('click', function () {
+    var b = $('btnInvCard');
+    var code = b.getAttribute('data-code');
+    if (!code) return;
+    var url = inviteCardUrl(code);
+    var name = 'arcbang-invite-' + code + '.png';
+    b.disabled = true;
+    fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    }).then(function (blob) {
+      var a = document.createElement('a');
+      var href = URL.createObjectURL(blob);
+      a.href = href; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
+    }).catch(function () {
+      window.open(url, '_blank', 'noopener');
+    }).then(function () { b.disabled = false; });
   });
 
   /* ---------------- 启动 ---------------- */

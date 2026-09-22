@@ -568,8 +568,11 @@
     '每位有效邀请 +{0} 分，上限 {1} 位。': '+{0} points per valid invite, up to {1}.',
     '被邀请人完成登记并通过转发核验后，计为一位有效邀请。':
       'An invite counts once the invitee registers and passes repost verification.',
-    '我正在参与 ARCBANG 预热，积分榜前列可免费铸造。通过此链接登记：{0} @{1}':
-      'I am taking part in the ARCBANG warm-up. The top of the leaderboard mints free. Register here: {0} @{1}',
+    '每个 Arc 区块哈希，都是一个宇宙。在 @arc 上免费铸造，887 枚免费。用我的邀请加入：{0}':
+      'Every Arc block hash is a universe. Free mint on @arc, 887 free. Join with my invite: {0}',
+    '邀请卡片': 'Invite card', '邀请卡片 · {0}': 'Invite card · {0}',
+    '带有你的邀请码，可附在推文或群聊中分享。': 'Carries your invite code. Attach it to a post or a group chat.',
+    '下载邀请卡片': 'Download invite card',
     'X 已核实': 'verified on X', '待复核': 'pending review', '已通过核验': 'verified',
     '未核验到关注': 'follow not verified',
     '未核验到点赞': 'like not verified',

@@ -4626,6 +4626,63 @@ function call(method, url, body, headers) {
     }
   }
 
+  console.log('\n[邀请卡片] /api/invite-card/<码>.png 与 /i/<码> 短链落地页');
+  {
+    const INV = require('./invite.js');
+    const WI = new Wallet('0x' + '5c'.repeat(32));
+    const ALI = require('./allowlist.js');
+    const rg = await call('POST', '/api/allowlist/register',
+      { address: WI.address, xHandle: 'invite_card', sig: WI.signMessageSync(ALI.registerMessage(WI.address)) },
+      { 'x-forwarded-for': '10.77.0.1' });
+    const code = ALI.codeOf(WI.address);
+    ok('先登记一个地址，拿到登记码', rg.status === 200 && /^[A-Z0-9]{6}$/.test(code), rg.status + ' ' + code);
+    const bad = code === 'ZZZZZ9' ? 'ZZZZZ8' : 'ZZZZZ9';
+    const n404 = await call('GET', '/api/invite-card/' + bad + '.png');
+    ok('登记码不存在 → 404', n404.status === 404, String(n404.status));
+    ok('码格式不对 → 不进这条路（404）', (await call('GET', '/api/invite-card/ab.png')).status === 404);
+    const c1 = await call('GET', '/api/invite-card/' + code + '.png');
+    const isPNGb = b => Buffer.isBuffer(b) && b.length > 24 && b.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
+    ok('存在的码 → 200 PNG（魔数对）', c1.status === 200 && c1.hdr['content-type'] === 'image/png' && isPNGb(c1.body),
+      c1.status + ' ' + c1.hdr['content-type']);
+    const fb = c1.hdr['x-png-cache'] === 'fallback';
+    ok('1200×630', fb || (c1.body.readUInt32BE(16) === 1200 && c1.body.readUInt32BE(20) === 630),
+      fb ? '（没装 resvg，退通用图）' : c1.body.readUInt32BE(16) + '×' + c1.body.readUInt32BE(20));
+    ok('第一次现渲、带一天缓存头', fb || (c1.hdr['x-png-cache'] === 'miss' && c1.hdr['cache-control'] === 'public, max-age=86400'),
+      c1.hdr['x-png-cache'] + ' · ' + c1.hdr['cache-control']);
+    const c2 = await call('GET', '/api/invite-card/' + code.toLowerCase() + '.png');
+    ok('第二次（小写码）命中磁盘缓存，字节一致', fb || (c2.hdr['x-png-cache'] === 'hit' && sha(c2.body) === sha(c1.body)),
+      String(c2.hdr['x-png-cache']));
+    ok('缓存文件落在 .store/png 下', fb || fs.existsSync(path.join(process.env.ARCBANG_STORE, 'png', 'invite-' + code + '-v' + INV.CARD_VER + '.png')));
+    ok('同一个码永远挑同一枚宇宙', INV.pickFor(code).hash === INV.pickFor(code).hash);
+    const svg = INV.composeInvite(code, { baseURI: '', cardSVG: '' });
+    ok('卡面有口号、887 free、邀请码、网址，不印价格 / 人数 / 名次',
+      svg.indexOf('block hash is a universe.') > 0 && svg.indexOf('887 free') > 0
+      && svg.indexOf('Invite code:') > 0 && svg.indexOf('/quest.html?ref=' + code) > 0
+      && !/USDC|price|rank|applied|\$/i.test(svg));
+
+    const bot = await call('GET', '/i/' + code, null, { 'user-agent': 'Mozilla/5.0 (compatible) Twitterbot/1.0' });
+    const bh = String(bot.body);
+    ok('/i/<码> 爬虫分支：200 HTML，og:image / twitter:image 指向邀请卡',
+      bot.status === 200 && /text\/html/.test(String(bot.hdr['content-type']))
+      && bh.indexOf('<meta property="og:image" content="https://x.test/api/invite-card/' + code + '.png') > 0
+      && bh.indexOf('<meta name="twitter:image" content="https://x.test/api/invite-card/' + code + '.png') > 0
+      && bh.indexOf('summary_large_image') > 0, bot.status + '');
+    ok('/i/ 爬虫页 noindex，且带 refresh 兜底去任务页',
+      bot.hdr['x-robots-tag'] === 'noindex, follow' && bh.indexOf('url=/quest.html?ref=' + code) > 0);
+    const hum = await call('GET', '/i/' + code.toLowerCase(), null, { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0) Chrome/128' });
+    ok('/i/<码> 真人分支：302 → /quest.html?ref=<码>&v=<shareVer>',
+      hum.status === 302 && hum.hdr.location === '/quest.html?ref=' + code + '&v=2' && hum.hdr['cache-control'] === 'no-store',
+      hum.status + ' ' + hum.hdr.location);
+    const unk = await call('GET', '/i/' + bad, null, { 'user-agent': 'Twitterbot/1.0' });
+    ok('/i/<不存在的码> 不给错误页：302 回任务页', unk.status === 302 && unk.hdr.location === '/quest.html');
+    const q = fs.readFileSync(path.join(__dirname, '..', 'web', 'quest-arc.html'), 'utf8');
+    const dict = fs.readFileSync(path.join(__dirname, '..', 'web', 'i18n-arc-site.js'), 'utf8');
+    ok('任务页邀请链接改成 /i/<码>，带卡片预览与下载按钮',
+      q.indexOf("'/i/' + ") > 0 && q.indexOf('id="invCardImg"') > 0 && q.indexOf('id="btnInvCard"') > 0);
+    ok('分享到 X 的新文案中英都在词典里',
+      dict.indexOf('Every Arc block hash is a universe. Free mint on @arc, 887 free. Join with my invite: {0}') > 0);
+  }
+
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* 临时目录，删不掉也不算失败 */ }
 
   console.log('\n通过 ' + pass + ' 条，失败 ' + fail + ' 条  (derivation v' + DERIVATION_VERSION + ')\n');

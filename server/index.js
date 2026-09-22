@@ -34,6 +34,8 @@ const RELAY = require('./rpcrelay.js');
 const LANDING = require('./landing.js');
 const SEO = require('./seo.js');
 const OG = require('./og.js');
+/* 邀请卡片（/api/invite-card/<码>.png）与 /i/<码> 短链落地页：版式、选图、爬虫判定都在 invite.js */
+const INVITE = require('./invite.js');
 /* 邀请奖励 + 邀请列表。同样是旁路：
    它挂了个人中心少两块数据，铸造/干预/市场一个字节都不经过它。 */
 /* 按高度取块要走 chainMod.blockByNumber 而**不是**解构出来的引用：
@@ -1581,6 +1583,24 @@ async function handle(req, res, u) {
     });
   }
 
+  /* GET /api/invite-card/<登记码>.png —— 邀请卡片（1200×630，invite.js）。
+     登记码不存在 → 404（不给任意 6 位串出图：那等于一个现渲接口）。
+     按码落盘缓存（.store/png/invite-<码>-v<版式>.png），头给一天；
+     退了通用图时照 sendPNG 的规矩给 no-cache，别把通用图钉在这个 URL 上。 */
+  m = p.match(/^\/invite-card\/([A-Za-z0-9]{6})\.png$/);
+  if (m && (req.method === 'GET' || req.method === 'HEAD')) {
+    const code = INVITE.normCode(m[1]);
+    if (!code || !AL.addrOfCode(code)) return json(res, 404, { error: '没有这个登记码' }, { 'cache-control': 'no-store' });
+    const key = 'invite-' + code + '-v' + INVITE.CARD_VER + '.png';
+    const r = await PNG.pngFor(key, () => INVITE.inviteSVG(code, { cardFor, chainId: CHAIN_ID }), { width: INVITE.W });
+    return send(res, 200, req.method === 'HEAD' ? '' : r.buf, {
+      'content-type': 'image/png',
+      'cache-control': r.fallback ? 'no-cache' : 'public, max-age=86400',
+      'x-png-cache': r.fallback ? 'fallback' : (r.cached ? 'hit' : 'miss'),
+      'x-png-ms': String(r.ms)
+    });
+  }
+
   /* GET /api/art/preview.png —— 站点通用预览图。
      落地页在拿不到区块哈希时把 og:image 指到这里，前端也可以拿它当占位图。 */
   if (p === '/art/preview.png') {
@@ -1762,6 +1782,29 @@ async function handle(req, res, u) {
     if (parsedSub.error) return json(res, 400, { error: parsedSub.error }, NOSTORE);
     const r = SUB.add(parsedSub.value, RL.ipOf(req));
     return json(res, r.status, r.body, NOSTORE);
+  }
+
+  /* ================================================================ 邀请短链
+     GET /i/<登记码>：社交爬虫（Twitterbot 等）拿一份带 og:image = 邀请卡片的极小 HTML，
+     真人 302 去 /quest.html?ref=<码>&v=<shareVer>。码不存在也 302 去任务页（不带 ref）——
+     绝不给错误页，这是分享链接。nginx 把 /i/ 转到本进程，同 /s/。
+     同一个 URL 按 UA 给两种响应：带 vary，且 302 那份 no-store。 */
+  m = p.match(/^\/i\/([A-Za-z0-9]{6})\/?$/);
+  if (m && (req.method === 'GET' || req.method === 'HEAD')) {
+    const code = INVITE.normCode(m[1]);
+    let known = false;
+    try { known = !!(code && AL.addrOfCode(code)); } catch (e) { known = false; }
+    if (!known) return send(res, 302, '', { location: '/quest.html', 'cache-control': 'no-store' });
+    if (INVITE.isBot(req.headers && req.headers['user-agent'])) {
+      const html = INVITE.crawlerHTML(code, PUBLIC_BASE);
+      return send(res, 200, req.method === 'HEAD' ? '' : html, {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'public, max-age=300',
+        vary: 'User-Agent',
+        'x-robots-tag': 'noindex, follow'
+      });
+    }
+    return send(res, 302, '', { location: INVITE.questUrlOf(code), 'cache-control': 'no-store', vary: 'User-Agent' });
   }
 
   /* ================================================================ 分享落地页
