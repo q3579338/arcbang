@@ -541,7 +541,7 @@
     var ms = A.getModules();
     return { id: 'random', label: '#' + String(A.catalog.nextId()).padStart(4, '0'), name: '随机', params: A.randomParams(ms), modules: ms, preset: false, ours: false, temp: true };
   }
-  /* 宇宙来源钩子。站点版（web/arc-ui.js）把它换成"从 BNB 链上取真区块"，
+  /* 宇宙来源钩子。站点版（web/arc-ui.js）把它换成"从 Arc 链上取真区块"，
      于是**分析面板底部的"随机引爆"和右键菜单里的同名项也只能来自 BNB 区块**——
      以前 lockToBlocks() 只收了起爆页的入口，这两条路是漏的，
      等于站点上仍有办法引爆一个不属于任何区块的宇宙。
@@ -554,7 +554,7 @@
     var bs = blockSource();
     if (!bs) { closeAnalysis(); selectEntry(randomEntry()); detonate(); return; }
     closeAnalysis();
-    toast(T('正在从 BNB 链上取一个区块…'));
+    toast(T('正在从 Arc 链上取一个区块…'));
     bs.one(function (entry, err) {
       if (!entry) { toast(T('取区块失败：') + ((err && err.message) || T('链上节点没响应'))); return; }
       selectEntry(entry); detonate();
@@ -997,13 +997,13 @@
     if (e && e.hash != null) return 'h:' + e.hash;
     return entryParamsKey(e);
   }
-  /* 站点版（MIRROR_LOCK_TO_BLOCKS）的管理目录**只显示来自 BNB 区块的宇宙**。
+  /* 站点版（MIRROR_LOCK_TO_BLOCKS）的管理目录**只显示来自链上区块的宇宙**。
      判据：catalogSave 存的结构里没有区块哈希/高度字段（id/name/params/modules/outcome/note，
      见 ui/adapter.js 的 list() 映射——e.hash 是参数种子，不是区块哈希），
-     所以只能认 name：区块宇宙的 name 一律以「BNB 」开头（bnb-ui 的 fire()/entryOf 写的
-     'BNB 区块 N' / 'BNB 0x…'）。**数据一条不删**——localStorage 是用户的，
-     离线单文件版照常全量可见；这里只是站点版的显示过滤。 */
-  function cmIsBlock(e) { return /^BNB /.test(String((e && e.name) || '')); }
+     所以只能认 name：arc-ui 的 entryName()/entryOf 写的是 'Arc 区块 N' / 'Arc 区块' / 'Arc 0x…'；
+     英文变体 'Arc block …' 同样以「Arc 」开头。旧 BNB 站存下的 'BNB 区块 N' / 'BNB 0x…' 兼容保留。
+     **数据一条不删**——localStorage 是用户的，离线单文件版照常全量可见；这里只是站点版的显示过滤。 */
+  function cmIsBlock(e) { return /^(?:Arc|BNB)\s/i.test(String((e && e.name) || '')); }
   function cmHiddenCount() {
     if (!window.MIRROR_LOCK_TO_BLOCKS) return 0;
     return A.catalog.list().filter(function (e) { return !cmIsBlock(e); }).length;

@@ -4681,6 +4681,38 @@ function call(method, url, body, headers) {
       q.indexOf("'/i/' + ") > 0 && q.indexOf('id="invCardImg"') > 0 && q.indexOf('id="btnInvCard"') > 0);
     ok('分享到 X 的新文案中英都在词典里',
       dict.indexOf('Every Arc block hash is a universe. Free mint on @arc, 887 free. Join with my invite: {0}') > 0);
+
+    /* ---- 个人中心「我的邀请」复用登记码（2026-09-23）----
+       旧站的 8 位推广短码（/api/refcode + 签 'BNBBANG refcode …'）在本站不另起一套：
+       本站唯一的邀请关系是「登记时带 ref=<登记码>」，另造短码的话，拿短码链接来的人
+       在登记表里查不到邀请人，邀请分记不上。个人中心改读 /api/allowlist/status。 */
+    const WJ = new Wallet('0x' + '5d'.repeat(32));
+    const rj = await call('POST', '/api/allowlist/register',
+      { address: WJ.address, xHandle: 'invite_friend', sig: WJ.signMessageSync(ALI.registerMessage(WJ.address)), ref: code.toLowerCase() },
+      { 'x-forwarded-for': '10.77.0.2' });
+    ok('好友登记时带邀请人的码（小写也认）→ 200', rj.status === 200, String(rj.status));
+    const stI = await call('GET', '/api/allowlist/status?addr=' + WI.address);
+    const sj = JSON.parse(String(stI.body));
+    ok('status 给本人：registered、code = 登记码、invites 计上这位好友',
+      stI.status === 200 && sj.registered === true && sj.code === code && sj.invites === 1
+      && typeof sj.validInvites === 'number', JSON.stringify({ r: sj.registered, c: sj.code, i: sj.invites, v: sj.validInvites }));
+    const stU = JSON.parse(String((await call('GET', '/api/allowlist/status?addr=0x' + '7e'.repeat(20))).body));
+    ok('没登记的地址：registered=false（个人中心据此不给邀请链接）', stU.registered === false && stU.invites === 0);
+    ok('没有第二套短码接口：/api/refcode 与 /api/referrals/me 都是 404',
+      (await call('GET', '/api/refcode?addr=' + WI.address)).status === 404
+      && (await call('GET', '/api/referrals/me?addr=' + WI.address)).status === 404);
+    const prof = fs.readFileSync(path.join(__dirname, '..', 'web', 'profile.html'), 'utf8');
+    ok('个人中心：读 /allowlist/status、链接用 /i/<码>、只在已登记时给链接',
+      prof.indexOf("'/allowlist/status?addr='") > 0 && prof.indexOf("'/i/' + r.code") > 0
+      && /if \(!r \|\| !r\.registered \|\| !r\.code\) return '';/.test(prof));
+    ok('个人中心：旧短码的签名认领与返利接口一处不剩',
+      !/refcode ' \+|\/refcode|\/referrals\/|personal_sign|BNBBANG/.test(prof));
+    const uiS = fs.readFileSync(path.join(__dirname, '..', 'web', 'arc-ui.js'), 'utf8');
+    const mkS = fs.readFileSync(path.join(__dirname, '..', 'web', 'market.html'), 'utf8');
+    ok('模拟器与市场的分享链接：邀请码也取自 /allowlist/status（已登记才带），不再问 /refcode?addr=',
+      uiS.indexOf("'/allowlist/status?addr='") > 0 && mkS.indexOf("'/allowlist/status?addr='") > 0
+      && uiS.indexOf("'/refcode?addr='") < 0 && mkS.indexOf("'/refcode?addr='") < 0
+      && /j\.registered && j\.code/.test(uiS) && /j\.registered && j\.code/.test(mkS));
   }
 
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* 临时目录，删不掉也不算失败 */ }

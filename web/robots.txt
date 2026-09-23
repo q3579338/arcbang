@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /deploy.html
+
+Sitemap: https://arcbang.xyz/sitemap.xml
+Sitemap: https://arcbang.xyz/sitemap-s.xml

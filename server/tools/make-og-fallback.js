@@ -34,9 +34,9 @@ const svg =
   + '<circle cx="600" cy="500" r="410" stroke-width="0.7"/>'
   + '</g>'
   + '<text x="600" y="520" text-anchor="middle" fill="#ffd08c" font-family="' + F
-  + '" font-size="86" font-weight="300" letter-spacing="26">BNBBANG</text>'
+  + '" font-size="86" font-weight="300" letter-spacing="26">ARCBANG</text>'
   + '<text x="600" y="592" text-anchor="middle" fill="#ffffff" fill-opacity="0.72" font-family="' + F
-  + '" font-size="34" font-weight="300" letter-spacing="2">Every BNB block hash is a set of physical laws</text>'
+  + '" font-size="34" font-weight="300" letter-spacing="2">Every Arc block hash is a set of physical laws</text>'
   + '<text x="600" y="1130" text-anchor="middle" fill="#ffffff" fill-opacity="0.34" font-family="' + MONO
   + '" font-size="22" letter-spacing="3">DETONATE  ·  MINT  ·  RESCUE</text>'
   + '</svg>';

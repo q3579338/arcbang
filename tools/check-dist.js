@@ -351,6 +351,40 @@ head('7. ARCBANG 站（web/dist-arc / config.arc.js / nginx）');
   (lack.length ? bad : ok)('web/dist-arc 页面齐全（' + (want.length - lack.length) + '/' + want.length + '）'
     + (lack.length ? '：缺 ' + lack.join('、') : ''));
 
+  /* a2. robots.txt / sitemap.xml：robots 要有 User-agent: * 与两条 Sitemap；
+     sitemap 里每个 URL 都得对应 dist-arc 里一张真页面，且那张页没有 noindex、canonical 就是它自己。 */
+  (function () {
+    var rb = '', sm = '';
+    try { rb = fs.readFileSync(path.join(dist, 'robots.txt'), 'utf8'); } catch (e) { }
+    try { sm = fs.readFileSync(path.join(dist, 'sitemap.xml'), 'utf8'); } catch (e) { }
+    var rBad = [];
+    if (!rb) rBad.push('缺 robots.txt');
+    else {
+      if (!/^User-agent:\s*\*\s*$/m.test(rb)) rBad.push('没有 User-agent: *');
+      ['https://arcbang.xyz/sitemap.xml', 'https://arcbang.xyz/sitemap-s.xml'].forEach(function (u) {
+        if (!new RegExp('^Sitemap:\\s*' + u.replace(/[.\/]/g, '\\$&') + '\\s*$', 'm').test(rb)) rBad.push('没有 Sitemap: ' + u);
+      });
+    }
+    (rBad.length ? bad : ok)('robots.txt 口径（User-agent: * + sitemap.xml + sitemap-s.xml）' + (rBad.length ? '：' + rBad.join('；') : ''));
+    var locs = [], lm, lre = /<loc>([^<]+)<\/loc>/g;
+    while ((lm = lre.exec(sm)) !== null) locs.push(lm[1]);
+    var sBad = [];
+    if (!sm) sBad.push('缺 sitemap.xml');
+    else if (!locs.length) sBad.push('sitemap.xml 一个 <loc> 都没有');
+    locs.forEach(function (u) {
+      var p = u.replace(/^https:\/\/arcbang\.xyz\//, '');
+      if (p === u) return void sBad.push(u + ' 不是本站');
+      var f = path.join(dist, p === '' || /\/$/.test(p) ? p + 'index.html' : p);
+      if (!fs.existsSync(f)) return void sBad.push(u + ' 没有对应文件');
+      var h = fs.readFileSync(f, 'utf8');
+      if (/<meta name="robots" content="[^"]*noindex/.test(h)) sBad.push(u + ' 页面自带 noindex');
+      var c = h.match(/<link rel="canonical" href="([^"]+)"/);
+      if (!c || c[1] !== u) sBad.push(u + ' 的 canonical 是 ' + (c ? c[1] : '（无）'));
+    });
+    (sBad.length ? bad : ok)('sitemap.xml 列的 ' + locs.length + ' 个 URL 都是真页面、可索引、canonical 指向自己'
+      + (sBad.length ? '：' + sBad.slice(0, 5).join('；') : ''));
+  })();
+
   /* b. 图廊：index.html 引到的每一张都真的在 dist-arc 里 */
   var html = fs.readFileSync(idx, 'utf8');
   var refs = {}, m, re = new RegExp("assets\\/gallery\\/([A-Za-z0-9._-]+)", "g");

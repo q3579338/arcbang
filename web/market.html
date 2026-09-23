@@ -2747,8 +2747,8 @@ img.uthumb[data-view]{cursor:zoom-in}
   }
   /** 广播链接。两头都砍：
         bang 用**区块号**代替 66 字符的哈希（拿不到区块号才退回哈希）；
-        ref  用**8 位短码**代替 42 字符的地址（拿不到短码才退回地址）。
-          https://arcbang.xyz/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
+        ref  用 6 位邀请码（任务页的登记码，只在已登记时有；拿不到就不带）。
+          https://arcbang.xyz/s/8642956?ref=K7M2X9       ≈ 40 字符（原来 ≈ 160）
       老形式的链接**仍然有效**：落地页 /s/ 两种 token 都认，?ref= 两种格式也都认。
       连了钱包才带 ref；没连就不带，照常能广播（§二）。 */
   function shareLink(d, ref) {
@@ -2767,12 +2767,11 @@ img.uthumb[data-view]{cursor:zoom-in}
     return '';
   }
 
-  /* 推广短码：8 位定长，字符集去掉 O/0/I/1。
-     **拿不到就退回地址** —— 链接长一点，但一定能用。一次会话只问一次：
-     短码是幂等生成的，问十次也是同一个，但每次都问会把服务端那道
-     「生成短码」的 IP 闸白白吃掉。 */
-  var CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/;
-  var RC_KEY = 'bnbbang.refcode.v1';
+  /* 邀请码 = 任务页的登记码（server/allowlist.js，6 位，从地址现算），与 web/arc-ui.js 的
+     myRefCode 同一个口径：从 /api/allowlist/status 取，**只在已登记时给**；拿不到就不带 ref
+     （/s/ 落地页只透传 6 位码，带地址也会被丢掉）。一次会话只问一次。 */
+  var CODE_RE = /^[A-Z0-9]{6}$/;
+  var RC_KEY = 'arcbang.invcode.v1';
   var rcCache = {};
   function myRefCode(a) {
     a = String(a || '').toLowerCase();
@@ -2782,10 +2781,10 @@ img.uthumb[data-view]{cursor:zoom-in}
       var o = JSON.parse(sessionStorage.getItem(RC_KEY) || 'null');
       if (o && o.addr === a && CODE_RE.test(o.code || '')) { rcCache[a] = o.code; return Promise.resolve(o.code); }
     } catch (e) { /* 隐私模式：不缓存，每次现问 */ }
-    var p = fetch((CFG.apiBase || '/api') + '/refcode?addr=' + encodeURIComponent(a))
+    var p = fetch((CFG.apiBase || '/api') + '/allowlist/status?addr=' + encodeURIComponent(a), { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
-        var c = (j && j.code) ? String(j.code).toUpperCase() : '';
+        var c = (j && j.registered && j.code) ? String(j.code).toUpperCase() : '';
         if (!CODE_RE.test(c)) return null;
         rcCache[a] = c;
         try { sessionStorage.setItem(RC_KEY, JSON.stringify({ addr: a, code: c })); } catch (e2) { /* ignore */ }
@@ -2793,7 +2792,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       })
       .catch(function () { return null; });
     /* **不许把浮层挂在这条请求上**：服务端慢的时候广播浮层也得照常打开，
-       超时就当没有短码，链接退回 ?ref=<地址>。 */
+       超时就当没有邀请码，链接不带 ref。 */
     return new Promise(function (done) {
       var fired = false;
       var t = setTimeout(function () { if (!fired) { fired = true; done(null); } }, 4000);
@@ -3111,12 +3110,12 @@ img.uthumb[data-view]{cursor:zoom-in}
     var d = shareDataOf(idSpec);
     if (!d) { toast(function () { return T('参数卡尚未读取完成，请稍后再广播'); }, 'warn'); return; }
     var me = S.account ? String(S.account).toLowerCase() : null;
-    /* **先按地址那版把浮层摆满**（地址一定拿得到，不用等网络），再等短码回来换成短的。
-       不这么做的话：短码那条请求最长要 4 秒，这 4 秒里浮层摆的还是**上一张卡**的文案 ——
+    /* **先按不带 ref 的那版把浮层摆满**（不用等网络），再等邀请码回来换成带码的。
+       不这么做的话：邀请码那条请求最长要 4 秒，这 4 秒里浮层摆的还是**上一张卡**的文案 ——
        用户关掉 A 打开 B，看到的是 A 的链接，复制走就是错的。 */
     SHARE_OF = String(idSpec);
     $('shareWxBox').hidden = true;     // 换一张卡就把二维码那块收回去，从头来
-    fillShare(d, me);
+    fillShare(d, null);                // 先出不带 ref 的链接；邀请码回来再换
     /* 上一次关闭的 160ms 收场可能还没走完 —— 先把它掐掉，别让残余的定时器
        把刚打开的浮层又藏回去。 */
     clearTimeout(SHARE_CLOSE_T);
@@ -3126,7 +3125,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     try { $('sharePop').querySelector('.modalbox').focus({ preventScroll: true }); }
     catch (e) { try { $('sharePop').querySelector('.modalbox').focus(); } catch (e2) { /* 老浏览器：不聚焦也能用 */ } }
     myRefCode(me).then(function (code) {
-      // 换成短码前先确认浮层还开着、而且还是同一张卡
+      // 换成带邀请码的链接前先确认浮层还开着、而且还是同一张卡
       if (code && !$('sharePop').hidden && SHARE_OF === String(idSpec)) fillShare(d, code);
     });
   }
@@ -3137,7 +3136,7 @@ img.uthumb[data-view]{cursor:zoom-in}
     var noLink = shareTextOf(d, '');
     $('sharePreview').textContent = full;
     /* 附图预览（用户 2026-08-21）：**懒加载** —— fillShare 只在浮层打开时跑，
-       所以 src 到这一刻才填，列表页滚动不会白拉一堆 PNG。短码回来会再进一次
+       所以 src 到这一刻才填，列表页滚动不会白拉一堆 PNG。邀请码回来会再进一次
        fillShare：src 没变就不重设，别让已经显出来的图闪一下。
        显隐交给 load/error（监听器在下面一次性挂好）：404 = 图还没生成，整块收起。 */
     var sb = $('shareShot'), si = $('shareShotImg');
@@ -3223,7 +3222,7 @@ img.uthumb[data-view]{cursor:zoom-in}
       if (svg) slot.innerHTML = svg;
       else slot.textContent = T('链接过长，无法生成二维码，请直接复制下方链接。');
     }
-    /* 短码回来后会再调一次 fillShare。二维码那块**已经打开的话就地重画**，
+    /* 邀请码回来后会再调一次 fillShare。二维码那块**已经打开的话就地重画**，
        别收回去 —— 用户正举着手机对着它扫。 */
     var wasOpen = !wxBox.hidden;
     slot.innerHTML = '';

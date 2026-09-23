@@ -109,7 +109,6 @@
     "看这个区块变成什么宇宙。不花钱、不上链 —— 看完不喜欢就换一个。": "See what universe this block becomes. No payment, nothing on chain — if you do not like it, try another.",
     "免费期铸造": "Free-period mint",
     "产出": "Issues",
-    "付 BNB 铸造": "Mint with BNB",
     "消耗": "Spends",
     "干预 / 救活": "Intervene / rescue",
     "消耗 · 全烧": "Spends · all burned",
@@ -179,7 +178,6 @@
     "收入": "Revenue",
     "比例": "Rate",
     "主要收入": "main revenue",
-    "BNB 铸造": "BNB mints",
     "市场成交": "Market sales",
     "刻意不抽，理由见上": "Deliberately zero — see above for why",
     "不建池、不掏本金。": "No pool, no capital of our own. ",
@@ -205,7 +203,6 @@
     "100% 烧": "100% burned",
     "铸造发的、二级市场买的。": "What minting pays out, and what you buy on the secondary market. ",
     "合约里没有售币入口": "The contract has no token-sale entry point",
-    "——\n      固定价卖币等于给铸造额度开第二条路，任何人花一笔 BNB 就能把额度买空，\n      「只在真实铸造时发出」当场作废，所以这条路被整个删掉了。": "— a fixed-price sale would be a second road into the mint allowance: anyone with enough BNB could buy the whole allowance out, and “only issued when a real mint happens” would be void on the spot. So that road was deleted outright.",
     "总量 10 亿，切成四份，各有各的闸": "1 billion total, cut into four slices, each behind its own gate",
     "份额": "Slice",
     "数量": "Amount",
@@ -227,7 +224,6 @@
     "约 1.26 亿": "~126 million",
     "任何人可触发，永久销毁": "Anyone can trigger it; destroyed forever",
     "测试网现状": "Testnet status",
-    "BNB 价固定，发币五档同额": "Fixed BNB price, one flat payout",
     "推导代码开源，可以自己算：github.com/q3579338/arcbang":
       "Derivation is open source — recompute it yourself: github.com/q3579338/arcbang",
     "付费期价格": "Paid-period price",
@@ -241,19 +237,14 @@
     "合约焊死的两件事": "Two things the contract welds shut",
     "免费期只能收紧。": "The free period can only tighten. ",
     "枚数、发币量和每地址次数三个开关都只能调小，\n      总发放焊死在 1,000,000 × 50 = 5,000 万。": "The count, payout, and per-address knobs all only turn down; total issuance is welded at 1,000,000 × 50 = 50 million.",
-    "BNB 价调不到 0。": "The BNB price cannot reach 0. ",
     "下限 0.001 写死 —— 免费 + 发币就是印钞机，\n      以前靠运营纪律挡，现在直接写进合约。": "The 0.001 floor is hard-coded — free plus a payout is a money printer; it used to be held off by operational discipline, now it is written into the contract.",
     "S 档现存 179 万个，每天新增近三千，而全部铸造额度只有 1,707,000 枚 ——\n    比现存 S 档还少。": "1.79 million Grade S universes already exist and close to three thousand more arrive each day, while the entire mint allowance is 1,707,000 — fewer than the Grade S already out there. ",
     "早期铸造": "Early mints",
     "最早铸出的那几枚（tokenId #1、#100）就那么几个，先到先得": "The first few ever minted (tokenId #1, #100) — there are only so many, first come, first served",
     "零投入，收入全在链上分账": "Zero capital in, every split settled on chain",
-    "免费期之后固定 0.01 BNB，全额归运营方，": "A fixed 0.01 BNB after the free period, all of it to the operator — the ",
     "100% 销毁，合约里没有手续费": "100% burned; the contract has no fee",
     "gas 成本（本地 EVM 跑真实字节码 · gasPrice 0.05 gwei，BSC 近月区间 0.05–0.10 的低位）": "Gas costs (real bytecode on a local EVM · gasPrice 0.05 gwei, the low end of BSC's recent 0.05–0.10 range)",
-    "gas · 约 1.6×10⁻⁵ BNB": "gas · ~1.6×10⁻⁵ BNB",
     "gas · 验签 + 发币 + 收款": "gas · verify + payout + collect",
-    "gas · 约 6×10⁻⁶ BNB": "gas · ~6×10⁻⁶ BNB",
-    "gas ≈ 0.000291 BNB，两个部署 + 四笔配置": "gas ≈ 0.000291 BNB, two deployments + four config calls",
     "——\n      启动资金走上交易所费用池（每笔发放带理由上链）和二级市场。": "— starting funds come from the listing-fee pool (every grant carries its reason on chain) and the secondary market.",
     "引擎数据来自 2026-08-19 的实测：N=6000 · BSC 主网块高 116,795,103。合约与 gas 数据来自 2026-08-22 本地 EVM 跑真实字节码的实测：经济链路 185 项通过 · 0 失败": "Engine data measured on 2026-08-19: N=6000 · BSC mainnet block height 116,795,103. Contract and gas data measured on 2026-08-22 against the real bytecode on a local EVM: economy suite 185 passed · 0 failed"
   }, 'site');
@@ -315,7 +306,6 @@
     "第 2 步 / 共 3 步": "Step 2 of 3",
     "第 3 步 / 共 3 步": "Step 3 of 3",
     "一个区块哈希，就是一套物理定律": "One block hash is one set of physical laws",
-    "BNB 链每隔几秒吐出一个区块，每个区块带一串 64 位哈希。这串数字被拆成 20 个创世参数 —— 电磁力有多强、暗能量有多少、空间有几个维度……全由它决定。你不需要懂这些参数：换一个区块，就是换一套物理定律。": "BNB Chain puts out a block every few seconds, each carrying a 64-digit hash. That number is split into 20 genesis parameters — how strong electromagnetism is, how much dark energy there is, how many dimensions space has, all decided by it. You do not need to understand any of them: a different block is a different set of physical laws.",
     "0x9a00…6478　→　20 个物理常数": "0x9a00…6478 → 20 physical constants",
     "引爆，看它长成什么样": "Detonate it and see what it grows into",
     "点「给我一个宇宙」，浏览器会在本地真算一遍这个宇宙的一生：有没有原子、点不点得着恒星、造不造得出碳、有没有液态水。最后落进 12 种结局里的一种。不用连钱包，也不上链 —— 免费炸，喜欢了再铸造。": "Hit “give me a universe” and the browser really computes that universe’s whole life, locally: whether it has atoms, whether stars ignite, whether carbon gets made, whether liquid water exists. It lands in one of 12 outcomes. No wallet, nothing on chain — detonate for free, mint only if you like it.",
@@ -421,14 +411,6 @@
     "但快多少完全取决于显卡和驱动，个别机器上反而更卡甚至花屏。遇到就把开关关掉，回到 WebGL2。": "how much faster depends entirely on the GPU and its driver, and on some machines it is choppier or glitches instead. If that happens, switch the toggle off and go back to WebGL2."
   }, 'site');
 
-  /* 带品牌名的两条。曾经这里得把 'BNB' + 'BANG' 拼起来写 ——
-     build-web.js 当时拿「输入里出现品牌名」当"已经注入过"的哨兵，而本文件会被
-     打进离线包，于是品牌名一出现就误报、站点构建当场停住。
-     哨兵已经改成认层标记（`<!-- arcbang-layer -->`），品牌名可以正常写了。 */
-  I.add({
-    '← 回到 BNBBANG': '← Back to BNBBANG',
-  }, 'site');
-
   /* ---- web/nav.js 的钱包 chip（四页共用壳）----
      只补市场分册里**没有**的两条：多钱包时代的「没检测到」与断开话术的通用版
      （市场那句点名 MetaMask，chip 页面走 MirrorWallet，钱包不一定是它）。
@@ -494,31 +476,11 @@
     '本页展示你的资产与铸造记录，需先连接钱包。':
       'This page shows your assets and mint history. Connect a wallet first.',
     'BANG 余额': 'BANG balance',
-    /* 单位名由 config.js 的 chain.currency 填（tBNB / BNB）—— 整句进词典，英文语序不同。 */
+    /* 单位名由 config.js 的 chain.currency 填（USDC）—— 整句进词典，英文语序不同。 */
     '{0} 余额': '{0} balance',
-    '我的邀请': 'My referrals',
+    '我的邀请': 'My invites',
     '复制链接': 'Copy link',
     '无法复制，请手动选中上方链接': 'Copying failed. Select the link above manually.',
-    /* ---- 推广短码。
-       8 位定长，链接里那 42 个字符的地址换成它。认领要签一次名（不花 gas）。 */
-    '换一个': 'Reroll',
-    '自定义': 'Custom',
-    '认领': 'Claim',
-    /* 「取消」与「读取中…」核心词典和本节下面已经有了，按本文件的规矩不重收 */
-    '暂无短码': 'No short code yet',
-    /* 输入框的 placeholder。字符集去掉了 O/0/I/1，这一句要说清楚，
-       不然用户对着一个必失败的输入使劲。 */
-    '8 位，A–Z 与 2–9（没有 O/0/I/1）': '8 characters, A–Z and 2–9 (no O/0/I/1)',
-    '短码为 8 位，仅支持 A–Z 与 2–9，不含易混淆的 O/0/I/1':
-      'A short code is 8 characters and accepts A–Z and 2–9 only, excluding the easily confused O/0/I/1',
-    '在钱包中完成一次签名即可，不消耗 gas': 'One signature in the wallet is enough, and it costs no gas',
-    '短码已更换为 {0}。旧短码即刻失效，此前分发的链接需重新发送。':
-      'The short code is now {0}. The old code stops working immediately, so links already shared must be sent again.',
-    '已在钱包中取消，短码未变更': 'Cancelled in the wallet; the short code did not change',
-    '未检测到钱包扩展。认领短码需要一次签名，不消耗 gas。':
-      'No wallet extension detected. Claiming a short code takes one signature and costs no gas.',
-    '二级邀请': 'Level-2 invites',
-    '统计生成中': 'Stats are being generated',
     '我的资产': 'My assets',
     '原生宇宙': 'Native universes',
     '点击卡片前往市场页查看详情与挂单': 'Open a card to view details and list it on the market page',
@@ -548,7 +510,7 @@
      静态标记靠 DOM 遍历；JS 拼的读数走 t(zh, 'status')。
      数字口径：英文态亿级摘要写 M/B（600M / 1B），页内 fmtYi 按语言分叉。 */
   I.add({
-    'BNBBANG · 系统状态': 'BNBBANG · System Status',
+    'ARCBANG · 系统状态': 'ARCBANG · System Status',
     '系统状态': 'System status',
     '本页读数全部取自链上实时读取，可随时复核。':
       'Every figure on this page is read live from the chain and can be verified at any time.',
@@ -635,7 +597,6 @@
      key 是 landing.html 里的整段文本节点（trim 后逐字相等才命中）；改了版式记得回来对一遍。 */
   I.add({
     "文档": "Docs",
-    "每个 BNB 区块哈希，就是一套物理定律": "Every BNB block hash is a set of physical laws",
     "引爆它：哈希决定引力、光速、维度这些常数，物理引擎把这个宇宙从第一秒推演到热寂——看它能不能长出恒星、化学，乃至观察者。": "Detonate it: the hash fixes gravity, the speed of light and the number of dimensions. The physics engine runs that universe from its first second to heat death and reports whether it grows stars, chemistry, or observers.",
     "进入 App": "Open the app",
     "逛市场": "Browse the market",
@@ -646,7 +607,6 @@
     "已诞生的宇宙": "Universes born",
     "已通过 MINT 赠送": "Given away through minting",
     "前 100 万枚免费 · 每地址限 10 次": "First 1,000,000 free · 10 per address",
-    "全网限量 · 致敬 BNB 2017 年 7 月发行": "Hard cap · a nod to BNB's July 2017 launch",
     "引擎实况": "Engine, live",
     "下面每一张都是引擎实时渲染时截的屏，没修过图。每张都标了区块号——引爆同一个区块，你看到的就是这个，": "Every frame below is a screenshot of the engine rendering in real time, untouched. Each carries its block number: detonate the same block and this is what you get,",
     "或用开源引擎自己复算": "or recompute it yourself with the open-source engine",
@@ -661,7 +621,6 @@
     "宇宙 #121572853": "Universe #121572853",
     "三个动作": "Three actions",
     "前两个几乎免费，第三个是这里唯一稀缺的东西。": "The first two are nearly free. The third is the only scarce thing here.",
-    "选一个 BNB 区块，哈希被确定性地展开成一整套物理常数，引擎当场推演这个宇宙的一生。同一个区块，谁来引爆结果都一样——": "Pick a BNB block. Its hash expands deterministically into a full set of physical constants, and the engine runs that universe's whole life on the spot. Same block, same result, whoever detonates it —",
     "可复算，不可挑选": "recomputable, not selectable",
     "打开模拟器 →": "Open the simulator →",
     "喜欢就收下：全网限量": "Like it? Keep it. Hard cap",

@@ -191,10 +191,11 @@
         .catch(function () { /* 网络不好：不留痕，广播照常 */ });
     } catch (e) { /* 老浏览器没有 fetch */ }
   }
-  /* 我自己的短码（广播链接要用）。**拿不到就退回地址**：链接长一点，但一定能用。
-     一次会话只问一次 —— 短码是幂等生成的，问十次也是同一个，
-     但每次都问会把服务端那道「生成短码」的 IP 闸白白吃掉。 */
-  var RC_KEY = 'bnbbang.refcode.v1';
+  /* 我自己的邀请码（广播链接要用）= 任务页的登记码（server/allowlist.js，6 位，从地址现算）。
+     从 /api/allowlist/status 取，**只在已登记时给** —— 没登记的地址，码在登记表里查不到
+     邀请人，带上也不计分。拿不到就不带 ref。一次会话只问一次（码是确定的，不会变）。 */
+  var INV_RE = /^[A-Z0-9]{6}$/;
+  var RC_KEY = 'arcbang.invcode.v1';
   var rcCache = {};
   function myRefCode(addr) {
     var a = String(addr || '').toLowerCase();
@@ -202,15 +203,15 @@
     if (rcCache[a]) return Promise.resolve(rcCache[a]);
     try {
       var o = JSON.parse(root.sessionStorage.getItem(RC_KEY) || 'null');
-      if (o && o.addr === a && CODE_RE.test(o.code || '')) { rcCache[a] = o.code; return Promise.resolve(o.code); }
+      if (o && o.addr === a && INV_RE.test(o.code || '')) { rcCache[a] = o.code; return Promise.resolve(o.code); }
     } catch (e) { /* 隐私模式：不缓存，每次现问 */ }
     var p;
     try {
-      p = fetch(apiBase() + '/refcode?addr=' + encodeURIComponent(a))
+      p = fetch(apiBase() + '/allowlist/status?addr=' + encodeURIComponent(a), { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) {
-          var c = (j && j.code) ? String(j.code).toUpperCase() : '';
-          if (!CODE_RE.test(c)) return null;
+          var c = (j && j.registered && j.code) ? String(j.code).toUpperCase() : '';
+          if (!INV_RE.test(c)) return null;
           rcCache[a] = c;
           try { root.sessionStorage.setItem(RC_KEY, JSON.stringify({ addr: a, code: c })); } catch (e2) { /* ignore */ }
           return c;
@@ -218,7 +219,7 @@
         .catch(function () { return null; });
     } catch (e) { return Promise.resolve(null); }
     /* **不许把浮层挂在这条请求上**：服务端慢的时候广播按钮要能照常打开，
-       超时就当没有短码，退回地址形式。 */
+       超时就当没有邀请码，链接不带 ref。 */
     return new Promise(function (done) {
       var fired = false;
       var t = setTimeout(function () { if (!fired) { fired = true; done(null); } }, 4000);
@@ -258,8 +259,8 @@
 
   /** 分享链接。两头都砍：
         bang 用**区块号**代替 66 字符的哈希（拿不到区块号才退回哈希）；
-        ref  用**8 位短码**代替 42 字符的地址（拿不到短码才退回地址）。
-          https://arcbang.xyz/s/8642956?ref=K7M2X9QP     ≈ 42 字符（原来 ≈ 160）
+        ref  用 6 位邀请码（任务页的登记码，只在已登记时有；拿不到就不带）。
+          https://arcbang.xyz/s/8642956?ref=K7M2X9       ≈ 40 字符（原来 ≈ 160）
       老形式的链接**仍然有效** —— 落地页 /s/ 两种 token 都认，?ref= 两种格式也都认，
       所以这里只管把新发出去的链接缩短，已经发出去的一条都不会失效。
       不用 URL()：这段要在老一点的 WebView 里也能跑，字符串拼起来就够了。 */
@@ -813,8 +814,7 @@
     catch (e) { acctP = Promise.resolve(null); }
     acctP.then(null, function () { return null; }).then(function (acct) {
       var my = acct ? String(acct).toLowerCase() : null;
-      /* 短码要问一次服务端。**问不到不拦浮层** —— myRefCode 自带 4 秒上限，
-         到点就当没有，链接退回 ?ref=<地址>（长一点，但一样能用）。 */
+      /* 邀请码要问一次服务端。**问不到不拦浮层** —— myRefCode 自带 4 秒上限，到点就当没有。 */
       /* 拿不到码就**不带 ref**（而不是退回地址）：没登记的人本来也没有推广留痕可言，
          为此把链接撑长一倍不值。 */
       return myRefCode(my).then(function (code) { return { my: my, ref: code || null }; });

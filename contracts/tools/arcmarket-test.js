@@ -174,9 +174,10 @@ async function main() {
   console.log('ArcMarket    ' + market + '（owner = OWNER，treasury = TREASURY）\n');
 
   await h.call(uni, OWNER, sel('setSigner(address)') + addrWord(signerWallet.address), 0);
-  /* 免费期关掉：市场测试只是要几枚 NFT 当货，每枚都走付费期的固定 1 USDC，
-     不用在这里分「第一枚免费」那一支。 */
+  /* 免费期关掉：市场测试只是要几枚 NFT 当货，每枚都走付费期的固定价，
+     不用在这里分「第一枚免费」那一支。价格不写死，按链上 price() 现读（09-19 起 6 USDC）。 */
   await h.call(uni, OWNER, sel('setFreeCap(uint256)') + word(0n), 0);
+  const MINT_PRICE = big(await h.view(uni, sel('price()')));
 
   /* 付费期每地址最多 3 枚（paidPerAddr，09-17）：SELLER 一个人在这份测试里要拿 8 枚当货，
      所以每枚都由一个一次性地址铸出来再转给 `to` —— 市场测试要的只是「to 持有这枚」。 */
@@ -186,7 +187,7 @@ async function main() {
     const bh = B.keccak256(tag), ch = B.keccak256('card-' + tag);
     const minter = '0x' + (0xc0de000000000000000000000000000000000000n + BigInt(n)).toString(16).padStart(40, '0');
     await h.fund(minter, 10n ** 20n);
-    await h.call(uni, minter, mintData(bh, 0, OBS, R.S, ch, DL, signMint(uni, bh, 0, OBS, R.S, ch, DL, minter, false), false), ONE);
+    await h.call(uni, minter, mintData(bh, 0, OBS, R.S, ch, DL, signMint(uni, bh, 0, OBS, R.S, ch, DL, minter, false), false), MINT_PRICE);
     const id = big(await h.view(uni, sel('tokenOfHash(bytes32)') + bytes32Word(bh)));
     await h.call(uni, minter, sel('transferFrom(address,address,uint256)') + addrWord(minter) + addrWord(to) + word(id), 0);
     return id;

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- arcbang.xyz 静态公开页。/s/ 宇宙落地页另见 /sitemap-s.xml（服务端现生成）。
+     改页面清单时同步 tools/check-dist.js 第 7 节的 sitemap 检查。 -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://arcbang.xyz/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/"/>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/en/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/"/>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/quest.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/quest.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/quest.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/quest.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/en/quest.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/quest.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/quest.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/quest.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/check.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/check.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/check.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/check.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/en/check.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/check.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/check.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/check.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/faq.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/faq.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/faq.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/faq.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/en/faq.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/faq.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/faq.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/faq.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/how-it-works.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/how-it-works.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/how-it-works.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/how-it-works.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/en/how-it-works.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/how-it-works.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/how-it-works.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/how-it-works.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/verify.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/verify.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/verify.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/verify.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/en/verify.html</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://arcbang.xyz/verify.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://arcbang.xyz/en/verify.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arcbang.xyz/en/verify.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/app.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://arcbang.xyz/market.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>

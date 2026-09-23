@@ -97,7 +97,7 @@
     '还没有保存的宇宙（引爆后在分析面板点「把这组创世参数记下来」）': 'No saved universes yet (after a detonation, click “Note down these genesis parameters” in the analysis panel)',
     '粒子档位：': 'Particle tier: ',
     ' 粒子）': ' particles)',
-    '正在从 BNB 链上取一个区块…': 'Fetching a block from BNB Chain…',
+    '正在从 Arc 链上取一个区块…': 'Fetching a block from Arc…',
     '取区块失败：': 'Could not fetch a block: ',
     '链上节点没响应': 'the chain node did not respond',
     '这个目标已经隐含 D=3：': 'This target already implies D=3: ',
@@ -731,14 +731,12 @@
     '{0} {1} 铸造': 'Mint for {0} {1}'
   }, 'app');
 
-  /* ---- BNBBANG 起爆页（web/arc-ui.js 的静态模板 + 运行时消息，2026-08-21 英文校订补收）
+  /* ---- 起爆页（web/arc-ui.js 的静态模板 + 运行时消息，2026-08-21 英文校订补收）
      静态模板那部分靠 bnb-ui 挂载后补跑的 MirrorI18n.apply() 整树翻译；
      运行时消息全部改走 T()/TF()/TX()。产品动词统一 Detonate（引爆）/ Mint（铸造）/
      Rescue（拯救）—— 与核心词典、市场分册同一套口径。 ---- */
   I.add({
     /* 标题与首屏 */
-    '每个 BNB 区块哈希就是一套物理定律：引爆它，看这样的宇宙能不能长出生命':
-      'Every BNB block hash is a complete set of physical laws: detonate it and see whether such a universe can grow life',
     '免费引爆，喜欢再铸造': 'Detonate free — mint the ones you like',
     '使用说明': 'How it works',
     '重看三步引导': 'Replay the three-step intro',
@@ -1145,8 +1143,6 @@
     '跳过引导': 'Skip',
     '下一步': 'Next',
     '开始玩': 'Start playing',
-    '先拿一个宇宙。BNB 链的一个区块哈希，就是一套完整的物理定律。':
-      'Start by getting a universe. One BNB Chain block hash is one complete set of physical laws.',
     '先拿一个宇宙。Arc 链的一个区块哈希，就是一套完整的物理定律。':
       'Start by getting a universe. One Arc block hash is one complete set of physical laws.',
     '这就是那套定律：物理常数和它注定的结局。D 是空间有几个维度——我们的宇宙是 3。':

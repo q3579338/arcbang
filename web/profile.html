@@ -14,16 +14,18 @@
 <!--
   web/profile.html —— 个人中心（独立静态页，市场页那套应用世界风）
   ============================================================================
-  四块内容，自上而下：身份卡（头像 / 地址 / 两种余额）、我的邀请（专属链接 +
-  邀请统计 + 激励说明）、我的资产（原生宇宙与造物两张网格）、我的销毁。
+  三块内容，自上而下：身份卡（头像 / 地址 / 余额）、我的邀请（邀请码 + 邀请链接 +
+  邀请人数）、我的资产（原生宇宙网格）。
 
   **这一页只读，不写链。** 所有动作（挂单 / 命名 / 干预）都在市场页和沙盒里，
   卡片点过去就是。读操作走公开 RPC（CFG.rpc 轮换，照 landing.html 的写法）；
   钱包只用来回答「你是谁」—— 没连钱包时整页就是一个居中的连接提示，
   因为个人中心没有「游客也能看」的那一半。
 
-  邀请统计打 GET /api/referrals/mine?addr=…。这个接口可能比本页晚上线 ——
-  读失败 / 404 一律显示「统计生成中」，不报错。这是刻意的时序容错，别“修”掉。
+  我的邀请**复用任务页那一套**（server/allowlist.js）：邀请码就是登记码（HMAC 从地址现算，
+  登记后才生效），链接是 /i/<码>（server/invite.js，带邀请卡片预览），人数取自
+  GET /api/allowlist/status?addr=… 的 invites / validInvites。没有第二套短码。
+  读失败一律安静显示「读不到」，不报错。
 
   选择器照 market.html 的先例离线算好写死（复核命令见 SEL 的注释）。
   合约地址全部来自 web/config.arc.js，没配的块显示「还没配置」，页面其余照常。
@@ -127,34 +129,14 @@ button.sm{height:30px;padding:0 11px;font-size:12px}
 .refnotes{margin:12px 0 0;padding:10px 0 0;border-top:1px solid var(--line-soft);
   list-style:none;font-size:12px;color:var(--dim);line-height:1.9}
 .refnotes li{margin:0}
-/* 短码那一行。375 宽下按钮会换行，所以整行允许 wrap —— 不给横滚留口子 */
+/* 邀请码那一行。375 宽下允许 wrap —— 不给横滚留口子 */
 .refcode{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .refcodelab{font-size:12px;color:var(--dim);font-weight:600}
 .refcodeval{font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:1.5px;
   color:var(--ink);word-break:break-all;min-width:0}
 .refcodeval.wait{font-family:var(--sans);font-size:13px;font-weight:400;color:var(--dim2);letter-spacing:0}
-.refedit{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
-.refedit input{flex:1 1 190px;min-width:0;height:32px;padding:0 10px;font-family:var(--mono);
-  font-size:14px;letter-spacing:1.5px;text-transform:uppercase;border:1px solid var(--line);
-  border-radius:10px;background:var(--panel);color:var(--ink)}
-.refedit input:focus{outline:none;border-color:var(--cyan-line)}
-/* 短码那一行的回话既报错也报成功，所以配一个 .ok（.err 早就有了） */
+/* 复制地址那颗按钮的成功态 */
 .ok{color:var(--green)}
-/* 邀请奖励 + 我邀请的人。奖励数字复用 .balgrid/.bal
-   那一套；这里只补列表自己的。行内允许 wrap —— 375 宽不给横滚留口子（同 .refcode 的思路），
-   地址已缩短显示、时间一小段，换行也只是掉到下一行，不溢出。 */
-.grantnote{margin:8px 0 0;font-size:12px;color:var(--dim);line-height:1.6}
-.invites{margin-top:14px}
-.invites h3{margin:0 0 4px}
-/* 列表封顶 200×2 条，纵向在自己格子里滚，别把整页拖成一公里长 */
-.invbody{max-height:320px;overflow-y:auto;min-width:0}
-.invlab{font-size:12px;color:var(--dim);font-weight:600;margin-top:10px}
-.invrow{display:flex;gap:8px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;
-  min-width:0;padding:6px 0;border-bottom:1px solid var(--line-soft)}
-.invrow:last-child{border-bottom:0}
-.invaddr{font-size:13px;color:var(--ink2)}
-.invat{font-size:12px;color:var(--dim2);white-space:nowrap}
-.invwait{margin-top:8px;font-size:13px;color:var(--dim2)}
 
 /* ------------------------------------------------------------ 资产网格 */
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:var(--gap)}
@@ -258,23 +240,25 @@ footer a{color:var(--cyan)}
       </div>
     </section>
 
-    <!-- 2. 我的邀请：ARCBANG 没有代币，没有铸造奖励，也就没有邀请返利这回事。
-         整节换成**只剩 id 的 hidden 空壳**，一个字也不摆：本页的脚本
-         （renderRef / renderRefCode / renderReferralGrants 和六颗按钮的
-         addEventListener）全是按 id 直取节点的，真删干净会在第一个
-         $('pRefLink') 上抛 TypeError，把整页读数一起带走。 -->
-    <section class="card refcard" hidden>
-      <span class="mono" id="pRefLink"></span>
-      <button id="btnCopyRef" type="button" hidden></button>
-      <span id="pRefCode"></span>
-      <button id="btnRefRoll" type="button" hidden></button>
-      <button id="btnRefEdit" type="button" hidden></button>
-      <div id="refEdit" hidden><input id="refInput" type="text" maxlength="8">
-        <button id="btnRefClaim" type="button" hidden></button>
-        <button id="btnRefCancel" type="button" hidden></button></div>
-      <p id="refMsg" hidden></p>
-      <span id="pRef1"></span><span id="pRef2"></span>
-      <span id="pGrant"></span><span id="invBody"></span>
+    <!-- 2. 我的邀请：与任务页同一套邀请码（登记码）与 /i/ 短链，不另设短码。
+         未登记时只给一句去任务页登记的提示。 -->
+    <section class="card refcard">
+      <h2>我的邀请</h2>
+      <p class="sub" id="refSub">读取中…</p>
+      <div class="refcode">
+        <span class="refcodelab">邀请码</span>
+        <span class="mono refcodeval wait" id="pRefCode">读取中…</span>
+      </div>
+      <div class="reflink" id="refLinkRow" hidden>
+        <span class="mono" id="pRefLink"></span>
+        <button id="btnCopyRef" class="sm" type="button">复制链接</button>
+      </div>
+      <p id="refMsg" class="err tiny" hidden></p>
+      <div class="balgrid">
+        <div class="bal"><div class="ballab">已邀请</div><div class="balval wait" id="pRef1">读取中…</div></div>
+        <div class="bal"><div class="ballab">有效邀请</div><div class="balval wait" id="pRef2">读取中…</div></div>
+      </div>
+      <p class="sub"><a href="quest.html" id="refQuest">前往任务页 →</a></p>
     </section>
 
     <!-- 3. 我的资产 -->
@@ -368,20 +352,21 @@ footer a{color:var(--cyan)}
      '造物 #{0}' 这些沿用市场分册的现成全局词条，不重收）。 */
   var P = function (s) { return window.MirrorI18n ? window.MirrorI18n.t(s, 'profile') : s; };
   function PF(zh, a) { return P(zh).split('{0}').join(String(a)); }
-  /* 邀请奖励 + 邀请列表的词条**内联在本页**（照 landing.html 的先例，不传
-     namespace —— 落进全局表：静态 HTML 靠 DOM 遍历翻，P() 查不到 profile
-     分节时也会落回全局表，两边都用得到）。i18n-site.js 归另一个并行任务，不碰。 */
+  /* 我的邀请那一块的词条**内联在本页**（不传 namespace —— 落进全局表：静态 HTML 靠
+     DOM 遍历翻，P() 查不到 profile 分节时也会落回全局表）。
+     '邀请码' / '有效邀请' / '复制链接' 与任务页同一句英文。 */
   if (window.MirrorI18n) window.MirrorI18n.add({
-    '邀请奖励': 'Referral rewards',
-    '链上已发放': 'granted on-chain',
-    '链上查询暂不可用': 'On-chain query temporarily unavailable',
-    '我邀请的人': 'People you invited',
-    '一级（{0}）': 'Level 1 ({0})',
-    '二级（{0}）': 'Level 2 ({0})',
-    '暂无通过你的链接完成铸造的地址': 'No one has minted through your link yet',
-    '好友铸造奖励一级 10%、二级 5%，人工核对后发放；女巫地址不予发放。':
-      "Level 1 10% / level 2 5% of the friend's mint reward, paid after manual review; sybil accounts receive nothing"
+    '邀请码': 'Invite code',
+    '已邀请': 'Invited',
+    '有效邀请': 'Valid invites',
+    '登记后获得': 'After registering',
+    '在任务页完成登记后获得邀请码。': 'Register on the quests page to get an invite code.',
+    '好友通过你的链接登记，计入任务页的邀请分。':
+      'Friends who register through your link count toward your invite points on the quests page.',
+    '邀请信息暂时读不到，稍后刷新。': 'Invite info is unavailable right now. Refresh later.',
+    '前往任务页 →': 'Go to quests →'
   });
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -506,12 +491,7 @@ footer a{color:var(--cyan)}
     account: null,
     bang: undefined,     // BANG 余额（BigInt）
     bnb: undefined,      // 原生币余额（BigInt）
-    ref: undefined,      // {l1,l2}；null = 接口没就绪 → 「统计生成中」
-    /* /api/referrals/me 的结果：{granted, l1, l2}。granted 是**字符串**（整 BANG）
-       或 null（链上读不到）；"0" 也要照常显示 0，判「读不到」只认 == null。
-       整个对象为 null = 接口读不到 → 列表安静地当「还没有数据」（本页一贯原则）。 */
-    grants: undefined,
-    refcode: undefined,  // 8 位推广短码；null = 服务端读不到 → 链接退回带地址的长形式
+    ref: undefined,      // 我的邀请 {registered, code, invites, valid}；null = 读不到
     native: undefined,   // 盖过章的原生持仓 [{id,img,blockNumber,rarity}]
     natHidden: 0,        // 名下没盖章（cardOf 为 0）的枚数，只报个数不显示
     supply: 0,
@@ -681,85 +661,28 @@ footer a{color:var(--cyan)}
     });
   }
 
-  /* 邀请统计。接口（/api/referrals/mine）可能比本页晚上线 ——
-     读失败 / 404 / 形状不认识，一律「统计生成中」，**不报错**（刻意的时序容错）。 */
-  function loadReferrals() {
-    S.ref = undefined; renderRef();
+  /* 我的邀请。与任务页同一个接口：GET /api/allowlist/status?addr=
+     回的 code 是登记码（从地址现算）、registered 说明登记了没有，
+     invites / validInvites 是登记时带了这个码的人数与其中通过核验的人数。
+     读失败 / 404 / 形状不认识，一律 null（界面写「读不到」），不弹错。 */
+  var INV_CODE_RE = /^[A-Z0-9]{6}$/;
+  function loadInvite() {
+    S.ref = undefined; renderInvite();
     var a = S.account;
-    var done = function (v) { if (S.account === a) { S.ref = v; renderRef(); } };
+    var done = function (v) { if (S.account === a) { S.ref = v; renderInvite(); } };
+    function num(x) { return (typeof x === 'number' && isFinite(x) && x >= 0) ? Math.floor(x) : 0; }
     try {
-      fetch(API + '/referrals/mine?addr=' + encodeURIComponent(a))
+      fetch(API + '/allowlist/status?addr=' + encodeURIComponent(a), { cache: 'no-store' })
         .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function (j) {
-          function num(x) {
-            if (typeof x === 'number' && isFinite(x) && x >= 0) return x;
-            if (typeof x === 'string' && /^\d+$/.test(x)) return Number(x);
-            return null;
-          }
-          j = j || {};
-          var l1 = num(j.l1); if (l1 === null) l1 = num(j.level1); if (l1 === null) l1 = num(j.direct);
-          var l2 = num(j.l2); if (l2 === null) l2 = num(j.level2); if (l2 === null) l2 = num(j.indirect);
-          if (l1 === null && l2 === null) done(null);
-          else done({ l1: l1, l2: l2 });
-        })
-        .catch(function () { done(null); });
-    } catch (e) { done(null); }
-  }
-
-  /* 邀请奖励（链上已发放）+ 一级/二级邀请列表。
-     时序容错照 loadReferrals() 的同一套：404 / 网络失败 / 形状不认识，一律
-     安静地当「还没有数据」，不弹错、不显示红字。 */
-  function loadReferralGrants() {
-    S.grants = undefined; renderReferralGrants();
-    var a = S.account;
-    var done = function (v) { if (S.account === a) { S.grants = v; renderReferralGrants(); } };
-    try {
-      fetch(API + '/referrals/me?addr=' + encodeURIComponent(a))
-        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(function (j) {
-          j = j || {};
-          var list = function (x) {
-            if (!Array.isArray(x)) return [];
-            var out = [];
-            for (var i = 0; i < x.length; i++) {
-              var it = x[i] || {};
-              if (typeof it.addr === 'string' && /^0x[0-9a-fA-F]{40}$/.test(it.addr)) {
-                out.push({ addr: it.addr.toLowerCase(), at: typeof it.at === 'string' ? it.at : null });
-              }
-            }
-            return out;
-          };
-          /* granted 是字符串或 null，**不是数字**。"0" 必须照常当 0 显示 ——
-             判「读不到」只认 == null / 形状不对，绝不用 !granted（!"0" 恰好是
-             false 才没炸，这种赌不该赌）。 */
-          var g = (typeof j.granted === 'string' && /^\d+$/.test(j.granted)) ? j.granted : null;
-          done({ granted: g, l1: list(j.invitedL1), l2: list(j.invitedL2) });
-        })
-        .catch(function () { done(null); });
-    } catch (e) { done(null); }
-  }
-
-  /* ============================================================ 推广短码
-。8 位定长、字符集去掉 O/0/I/1、一地址一码。
-     GET 是**幂等**的：这个地址没有码时服务端当场生成一个并落盘，所以进这一页
-     就等于领了码，不用单独一个「生成」按钮。
-     读不到（服务端没上线 / 网络不通）就是 null —— 链接退回 ?ref=<地址> 的长形式，
-     照样能用，只是长一点。**不弹错**：短码是锦上添花，不该拦住个人中心。 */
-  var ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  var CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/;
-  function loadRefCode() {
-    S.refcode = undefined; renderRefCode(); renderIdentity();
-    var a = S.account;
-    var done = function (v) {
-      if (S.account !== a) return;
-      S.refcode = v; renderRefCode(); renderIdentity();
-    };
-    try {
-      fetch(API + '/refcode?addr=' + encodeURIComponent(a))
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) {
-          var c = (j && j.code) ? String(j.code).toUpperCase() : '';
-          done(CODE_RE.test(c) ? c : null);
+          if (!j || typeof j !== 'object' || typeof j.registered !== 'boolean') return done(null);
+          var c = typeof j.code === 'string' ? j.code.toUpperCase() : '';
+          done({
+            registered: j.registered,
+            code: INV_CODE_RE.test(c) ? c : null,
+            invites: num(j.invites),
+            valid: num(j.validInvites)
+          });
         })
         .catch(function () { done(null); });
     } catch (e) { done(null); }
@@ -768,9 +691,7 @@ footer a{color:var(--cyan)}
   function loadAll() {
     if (!S.account) return;
     loadBalances();
-    loadReferrals();
-    loadRefCode();
-    loadReferralGrants();
+    loadInvite();
     loadNative();
     loadCrafted();
   }
@@ -789,84 +710,51 @@ footer a{color:var(--cyan)}
     var n = balHtml(S.bnb, CUR);
     $('pBnb').className = 'balval' + n.cls; $('pBnb').innerHTML = n.html;
   }
-  /** 邀请链接。**短码优先**（42 字符的地址换成 8 位），
-      短码还没到手或者服务端读不到就退回地址 —— 两种落地页都认，不会失效。 */
+  /** 邀请链接：/i/<码>（server/invite.js）—— 与任务页 inviteLink() 同一个口径。
+      社交平台抓到的是这个码自己的邀请卡片，真人点开落到任务页的登记表单（?ref= 预填）。
+      没登记就没有链接：未登记地址的码在登记表里查不到邀请人，发出去也不计分。 */
   function refLinkText() {
-    if (!S.account) return '';
-    return SITE + '/?ref=' + (S.refcode || S.account);
+    var r = S.ref;
+    if (!r || !r.registered || !r.code) return '';
+    return (SITE || location.origin) + '/i/' + r.code;
   }
   function renderIdentity() {
     var a = S.account || '';
     $('pAv').style.background = a ? avatarCss(a) : '';
     $('pAddr').textContent = a;
-    $('pRefLink').textContent = refLinkText();
     renderBalances();
   }
-  function renderRefCode() {
-    var el = $('pRefCode');
-    var busy = !!S.refBusy;
-    if (S.refcode === undefined) { el.className = 'mono refcodeval wait'; el.textContent = P('读取中…'); }
-    else if (S.refcode === null) { el.className = 'mono refcodeval wait'; el.textContent = P('暂无短码'); }
-    else { el.className = 'mono refcodeval'; el.textContent = S.refcode; }
-    /* 认领要签名、要往返一次，期间两颗按钮都锁上 —— 连点两下就是签两次名，
-       而第二次签的那个码多半已经被第一次占掉了。 */
-    $('btnRefRoll').disabled = busy || !S.account;
-    $('btnRefEdit').disabled = busy || !S.account;
-    $('btnRefClaim').disabled = busy;
-  }
-  function renderRef() {
+  function renderInvite() {
+    var r = S.ref;
+    var code = $('pRefCode'), sub = $('refSub'), row = $('refLinkRow');
     function cell(el, v) {
-      if (S.ref === undefined || S.ref === null) {
-        el.className = 'balval wait';
-        el.textContent = S.ref === undefined ? P('读取中…') : P('统计生成中');
-        return;
-      }
-      if (v === null || v === undefined) { el.className = 'balval wait'; el.textContent = P('统计生成中'); return; }
-      el.className = 'balval'; el.textContent = group(String(v));
+      if (r === undefined) { el.className = 'balval wait'; el.textContent = P('读取中…'); return; }
+      if (r === null) { el.className = 'balval wait'; el.textContent = P('读不到'); return; }
+      el.className = 'balval'; el.textContent = group(String(v || 0));
     }
-    cell($('pRef1'), S.ref && S.ref.l1);
-    cell($('pRef2'), S.ref && S.ref.l2);
-  }
-  /* 邀请奖励 + 邀请列表。
-     奖励三态照 balHtml() 的现成模式：undefined = 读取中，null = 链上查询暂不可用，
-     字符串 = 正常显示 —— "0" 也是 0 BANG，不藏、不省略。 */
-  function shortAddr(a) { return a.slice(0, 6) + '...' + a.slice(-4); }
-  function invDate(at) {
-    if (!at) return '';
-    var d = new Date(at);
-    return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
-  }
-  function renderReferralGrants() {
-    var st = S.grants;
-    var g = $('pGrant');
-    if (st === undefined) { g.className = 'balval wait'; g.textContent = P('读取中…'); }
-    else if (st === null || st.granted == null) { g.className = 'balval wait'; g.textContent = P('链上查询暂不可用'); }
-    else {
-      g.className = 'balval';
-      g.innerHTML = esc(group(st.granted)) + '<span class="unit">' + esc(P('链上已发放')) + '</span>';
-    }
-    var body = $('invBody');
-    if (st === undefined) { body.innerHTML = '<div class="invwait">' + esc(P('读取中…')) + '</div>'; return; }
-    /* 接口读不到（st === null）与真的空列表走同一句空态 —— 本页一贯的
-       时序容错：不弹错、不红字，安静地当「还没有数据」。 */
-    var l1 = (st && st.l1) || [], l2 = (st && st.l2) || [];
-    if (!l1.length && !l2.length) {
-      body.innerHTML = '<div class="invwait">' + esc(P('暂无通过你的链接完成铸造的地址')) + '</div>';
+    cell($('pRef1'), r && r.invites);
+    cell($('pRef2'), r && r.valid);
+    if (r === undefined || r === null) {
+      code.className = 'mono refcodeval wait';
+      code.textContent = r === undefined ? P('读取中…') : P('读不到');
+      sub.textContent = r === undefined ? P('读取中…') : P('邀请信息暂时读不到，稍后刷新。');
+      row.hidden = true;
       return;
     }
-    var grp = function (label, arr) {
-      if (!arr.length) return '';
-      var h = '<div class="invgrp"><div class="invlab">' + esc(label) + '</div>';
-      for (var i = 0; i < arr.length; i++) {
-        var it = arr[i];
-        /* 完整地址放 title，方便悬停复制核对；行内只放前 6 后 4 —— 375 宽不横滚 */
-        h += '<div class="invrow"><span class="mono invaddr" title="' + esc(it.addr) + '">'
-          + esc(shortAddr(it.addr)) + '</span><span class="invat">' + esc(invDate(it.at)) + '</span></div>';
-      }
-      return h + '</div>';
-    };
-    body.innerHTML = grp(PF('一级（{0}）', l1.length), l1) + grp(PF('二级（{0}）', l2.length), l2);
+    if (!r.registered || !r.code) {
+      code.className = 'mono refcodeval wait';
+      code.textContent = P('登记后获得');
+      sub.textContent = P('在任务页完成登记后获得邀请码。');
+      row.hidden = true;
+      return;
+    }
+    code.className = 'mono refcodeval';
+    code.textContent = r.code;
+    sub.textContent = P('好友通过你的链接登记，计入任务页的邀请分。');
+    $('pRefLink').textContent = refLinkText();
+    row.hidden = false;
   }
+
   function rarBadge(r) {
     if (r != null && RAR[r]) {
       return '<span class="badge b-rar r-' + r + '" title="' + esc(P(RAR[r].why) + ' · ' + RAR[r].pct) + '">'
@@ -951,7 +839,7 @@ footer a{color:var(--cyan)}
     el.className = 'burnbig' + (S.burned === 0n ? ' zero' : '');
     el.innerHTML = esc(fmtBang(S.burned)) + '<span class="unit">BANG</span>';
   }
-  function renderAll() { renderIdentity(); renderRef(); renderRefCode(); renderReferralGrants(); renderAssets(); renderBurn(); }
+  function renderAll() { renderIdentity(); renderInvite(); renderAssets(); renderBurn(); }
 
   /* ============================================================ 连接态切换 */
   function setAccount(a) {
@@ -1072,7 +960,7 @@ footer a{color:var(--cyan)}
     }, function () { /* 地址就摆在旁边，复制失败手动选中即可 */ });
   });
   $('btnCopyRef').addEventListener('click', function () {
-    if (!S.account) return;
+    if (!S.account || !refLinkText()) return;
     var b = $('btnCopyRef'), msg = $('refMsg');
     msg.hidden = true;
     copyText(refLinkText()).then(function () {
@@ -1085,101 +973,6 @@ footer a{color:var(--cyan)}
     });
   });
 
-  /* ------------------------------------------------------------ 短码：换一个 / 自定义
-     认领必须**验签**：没有签名的话任何人都能把
-     别人的短码改到自己名下 —— 短码是拿返利的凭据，那等于把别人的推广收益转走。
-     要签的那句话服务端定死了：`BNBBANG refcode <CODE> <Unix 秒>`，
-     差一个空格都验不过，所以这里一个字符都不许自己发挥。
-     签名走 personal_sign（EIP-191），**不花 gas、不上链** —— 短码只是服务端的留痕别名。 */
-  function refSay(text, bad) {
-    var msg = $('refMsg');
-    msg.hidden = !text;
-    msg.className = (bad ? 'err' : 'ok') + ' tiny';
-    msg.textContent = text || '';
-  }
-  /** 消息按十六进制传：personal_sign 收裸字符串时各家钱包的解释不完全一致，
-      而这句话必须**逐字节**和服务端算的一样。这里只有 ASCII，转起来一行就够。 */
-  function hexMsg(s) {
-    var out = '0x';
-    for (var i = 0; i < s.length; i++) out += ('0' + s.charCodeAt(i).toString(16)).slice(-2);
-    return out;
-  }
-  function claimCode(code) {
-    var p = prov();
-    if (!p || !p.request) return Promise.reject(new Error(P('未检测到钱包扩展。认领短码需要一次签名，不消耗 gas。')));
-    var a = S.account, ts = Math.floor(Date.now() / 1000);
-    var text = 'BNBBANG refcode ' + code + ' ' + ts;
-    return p.request({ method: 'personal_sign', params: [hexMsg(text), a] }).then(function (sig) {
-      return fetch(API + '/refcode', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ addr: a, code: code, sig: sig, ts: ts })
-      }).then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok) { var e = new Error((j && j.error) || ('HTTP ' + r.status)); e.reason = j && j.reason; throw e; }
-          return String(j.code || code).toUpperCase();
-        });
-      });
-    });
-  }
-  /** 随机一个码。**服务端仍然会查重**，这里只是先本地掷一个 ——
-      被占用（409 / reason=taken）或撞上保留词就再掷，最多三次，
-      每次都要重新签名，所以不能无限重试（那是无限弹窗）。 */
-  function rollCode() {
-    var out = '', buf, i;
-    try {
-      buf = new Uint8Array(8);
-      (window.crypto || window.msCrypto).getRandomValues(buf);
-      for (i = 0; i < 8; i++) out += ALPHABET[buf[i] % ALPHABET.length];
-    } catch (e) {
-      out = '';
-      for (i = 0; i < 8; i++) out += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-    }
-    return out;
-  }
-  function runClaim(code, tries) {
-    S.refBusy = true; renderRefCode(); refSay(P('在钱包中完成一次签名即可，不消耗 gas'), false);
-    return claimCode(code).then(function (got) {
-      S.refBusy = false; S.refcode = got;
-      renderRefCode(); renderIdentity();
-      $('refEdit').hidden = true;
-      refSay(PF('短码已更换为 {0}。旧短码即刻失效，此前分发的链接需重新发送。', got), false);
-    }, function (e) {
-      S.refBusy = false; renderRefCode();
-      // 撞上别人占了的 / 保留词：随机那条路自己再掷一个，自定义那条路要让用户改
-      if (tries > 0 && (e.reason === 'taken' || e.reason === 'reserved')) return runClaim(rollCode(), tries - 1);
-      if (e && e.code === 4001) { refSay(P('已在钱包中取消，短码未变更'), true); return; }
-      refSay((e && e.message) || String(e), true);
-    });
-  }
-  $('btnRefRoll').addEventListener('click', function () {
-    if (!S.account || S.refBusy) return;
-    $('refEdit').hidden = true;
-    runClaim(rollCode(), 2);
-  });
-  $('btnRefEdit').addEventListener('click', function () {
-    if (!S.account || S.refBusy) return;
-    var box = $('refEdit');
-    box.hidden = !box.hidden;
-    refSay('');
-    if (!box.hidden) { $('refInput').value = ''; $('refInput').focus(); }
-  });
-  $('btnRefCancel').addEventListener('click', function () { $('refEdit').hidden = true; refSay(''); });
-  $('refInput').addEventListener('input', function () {
-    // 小写自动转大写（规格 §8.1）；字符集外的直接吃掉，别让人对着一个必失败的输入使劲
-    var v = this.value.toUpperCase().replace(/[^ABCDEFGHJKLMNPQRSTUVWXYZ23456789]/g, '');
-    if (v !== this.value) this.value = v;
-  });
-  $('btnRefClaim').addEventListener('click', function () {
-    if (!S.account || S.refBusy) return;
-    var v = String($('refInput').value || '').toUpperCase();
-    if (!CODE_RE.test(v)) {
-      refSay(P('短码为 8 位，仅支持 A–Z 与 2–9，不含易混淆的 O/0/I/1'), true);
-      return;
-    }
-    // 保留词那条闸在服务端（黑名单在那边，前端抄一份必然会漂），撞上了按它回的话说
-    runClaim(v, 0);
-  });
   /* 原生币那一格的标签（「tBNB 余额」/「BNB 余额」）。**整句进词典**（'{0} 余额'）：
      英文是 '{0} balance'，语序和中文不一样，在外面拼会拼错。
      渲染不能挂在 renderAll 上 —— 没连钱包时它压根不跑，标签会一直空着。 */

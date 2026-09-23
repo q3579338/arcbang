@@ -83,7 +83,8 @@ const ST = {
      通用句子仍走 i18n-site.js（重复收会触发「全局词条被改写」告警）。 */
   /* keccak-lite.js 单独拷一份：部署向导要它给字节码打指纹（显示 keccak 前 10 位）。
      单文件包里它已经被 build.js 内联进去了。 */
-  extraAssets: ['i18n-arc.js', 'i18n-arc-site.js', 'arc-doc.css', 'keccak-lite.js'],
+  /* robots.txt / sitemap.xml：静态公开页的索引入口；/s/ 落地页的 sitemap-s.xml 由服务端现生成。 */
+  extraAssets: ['i18n-arc.js', 'i18n-arc-site.js', 'arc-doc.css', 'keccak-lite.js', 'robots.txt', 'sitemap.xml'],
   lightOnly: true,
   /* 部署向导（deploy.html）要在浏览器里现取字节码。ABI 一并拷过去：向导自己手写编解码，
      用不到 abi.json，但运营者拿它去浏览器上做合约验证时就在旁边，不用再回仓库找。 */
