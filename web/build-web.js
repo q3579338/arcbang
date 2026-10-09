@@ -84,7 +84,7 @@ const ST = {
   /* keccak-lite.js 单独拷一份：部署向导要它给字节码打指纹（显示 keccak 前 10 位）。
      单文件包里它已经被 build.js 内联进去了。 */
   /* robots.txt / sitemap.xml：静态公开页的索引入口；/s/ 落地页的 sitemap-s.xml 由服务端现生成。 */
-  extraAssets: ['i18n-arc.js', 'i18n-arc-site.js', 'arc-doc.css', 'keccak-lite.js', 'robots.txt', 'sitemap.xml'],
+  extraAssets: ['i18n-arc.js', 'i18n-arc-site.js', 'arc-doc.css', 'keccak-lite.js', 'robots.txt', 'sitemap.xml', 'llms.txt'],
   lightOnly: true,
   /* 部署向导（deploy.html）要在浏览器里现取字节码。ABI 一并拷过去：向导自己手写编解码，
      用不到 abi.json，但运营者拿它去浏览器上做合约验证时就在旁边，不用再回仓库找。 */
@@ -538,4 +538,26 @@ if (ST.lightOnly) {
   });
   walk(outDir);
   console.log('  + ' + ST.stamp + ' 产物全部 HTML：<head> 首行打 MIRROR_LIGHT_ONLY（只浅色）');
+}
+
+/* Public site description; retain the existing noindex policy on operator pages. */
+{
+  const LLMS_LINK = '<link rel="describedby" type="text/plain" href="/llms.txt">';
+  let n = 0;
+  const walk = (dir) => fs.readdirSync(dir).forEach((f) => {
+    const p = path.join(dir, f);
+    if (fs.statSync(p).isDirectory()) { if (f !== 'assets') walk(p); return; }
+    if (!/\.html$/i.test(f)) return;
+    const h = fs.readFileSync(p, 'utf8');
+    const head = h.match(/<head\b[^>]*>[\s\S]*?<\/head\s*>/i);
+    if (!head) return;
+    const tags = head[0].match(/<meta\b[^>]*>/gi) || [];
+    if (tags.some((tag) => /\bname=["']robots["']/i.test(tag) && /\bcontent=["'][^"']*\bnoindex\b/i.test(tag))) return;
+    if (head[0].includes(LLMS_LINK)) return;
+    const next = h.replace(/<\/head\s*>/i, LLMS_LINK + '\n</head>');
+    fs.writeFileSync(p, next);
+    n++;
+  });
+  walk(outDir);
+  console.log('  + llms.txt discovery links: ' + n + ' public HTML pages');
 }

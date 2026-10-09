@@ -1,0 +1,29 @@
+# ARCBANG
+
+> ARCBANG is a browser universe simulator and optional universe NFT project on Arc, with Chinese and English public documentation, quests, and an eligibility checker.
+
+ARCBANG maps Arc block hashes to parameters for a virtual universe simulation. Exploring a universe is free and does not require a wallet. Keeping one as an NFT is optional and follows the current minting phases, eligibility rules, and transaction costs. ARCBANG has no project token. Simulation outputs are an entertainment experience, not scientific predictions; quests, points, and eligibility do not promise investment returns. Current phase information and minting details should be checked on the linked public pages rather than inferred from old announcements.
+
+## Start here
+- [Chinese homepage](https://arcbang.xyz/): Project introduction and access to the simulator.
+- [English homepage](https://arcbang.xyz/en/): English project introduction.
+- [Universe simulator](https://arcbang.xyz/app.html): Explore a universe derived from an Arc block hash; optional NFT actions.
+- [NFT marketplace](https://arcbang.xyz/market.html): Public universe listings and marketplace interface.
+
+## Documentation
+- [How it works, Chinese](https://arcbang.xyz/how-it-works.html): Simulation mechanics and the Arc universe NFT model.
+- [How it works, English](https://arcbang.xyz/en/how-it-works.html): English mechanics documentation.
+- [FAQ, Chinese](https://arcbang.xyz/faq.html): Common project, minting, and Arc questions.
+- [FAQ, English](https://arcbang.xyz/en/faq.html): English frequently asked questions.
+- [Verification guide, Chinese](https://arcbang.xyz/verify.html): Published contract and simulation verification references.
+- [Verification guide, English](https://arcbang.xyz/en/verify.html): English verification documentation.
+
+## Quests and eligibility
+- [Quests, Chinese](https://arcbang.xyz/quest.html): Public quest introduction and entry to wallet-based participation.
+- [Quests, English](https://arcbang.xyz/en/quest.html): English quest page.
+- [Eligibility checker, Chinese](https://arcbang.xyz/check.html): Public interface for checking address eligibility and the current minting phase.
+- [Eligibility checker, English](https://arcbang.xyz/en/check.html): English eligibility checker.
+
+## Optional
+- [Sitemap](https://arcbang.xyz/sitemap.xml): Public static page index.
+- [Crawler policy](https://arcbang.xyz/robots.txt): Existing crawler access policy.
